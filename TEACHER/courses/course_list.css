@@ -1,65 +1,176 @@
- :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
-      --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+ :root {
+   --bg: #f6f8fa;
+   --text: #1f2328;
+   --muted: #6a737d;
+   --card: #ffffff;
+   --border: #e5e7eb;
+   --brand-dark-1: #4A1A0C;
+   --brand-dark-2: #7A2810;
+   --brand-accent-1: #FF6A00;
+   --brand-accent-2: #B03C10;
+   --radius: 14px;
+ }
 
-    /* Header */
-   
-    .logo-header{height:44px}
-    .search-box{max-width:520px; width:100%; position:relative}
-    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
-    .profile-btn{color:#fff}
+ html,
+ body {
+   height: 100%;
+   background: var(--bg);
+   color: var(--text)
+ }
 
-    /* Page */
-    .content{padding:24px}
-    h2.page-title{
-      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      -webkit-background-clip:text;background-clip:text
-    }
+ .dashboard {
+   display: flex;
+   min-height: 100vh
+ }
 
-    /* Cards */
-    .course-card{
-      border:1px solid var(--border); border-radius:var(--radius);
-      background:var(--card); box-shadow:0 10px 24px rgba(0,0,0,.08);
-      display:flex; flex-direction:column; padding:14px; height:100%;
-      transition:transform .07s ease, box-shadow .2s ease;
-    }
-    .course-card:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
-    .course-title{margin:0 0 4px; font-weight:700}
-    .badge-soft{
-      display:inline-flex; align-items:center; gap:6px;
-      border:1px solid rgba(176,60,16,.25); border-radius:999px;
-      padding:2px 10px; font-size:.75rem; color:var(--brand-accent-2);
-      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
-    }
-    .course-meta{color:var(--muted); font-size:.9rem}
-    .course-actions .btn{min-width:90px}
+ .main {
+   margin-left: 70px;
+   width: calc(100% - 70px);
+   transition: margin-left .3s, width .3s;
+   display: flex;
+   flex-direction: column;
+   background: var(--bg)
+ }
 
-    /* Buttons */
-    .btn-amber{
-      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
-      color:#fff; border:none;
-    }
-    .btn-amber:hover{filter:brightness(1.06); color:#fff}
-    .btn-outline-danger{border-radius:10px}
+ .sidebar:hover~.main {
+   margin-left: 220px;
+   width: calc(100% - 220px)
+ }
 
-    /* Modal theme */
-    .modal-header{
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9; border-bottom:none;
-    }
-    .modal-content{border-radius:12px;border:1px solid var(--border)}
-    .modal-footer{border-top:1px solid var(--border)}
-    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+ /* Header */
 
-    /* Toolbar */
+ .logo-header {
+   height: 44px
+ }
+
+ .search-box {
+   max-width: 520px;
+   width: 100%;
+   position: relative
+ }
+
+ .search-box input {
+   border: none;
+   border-radius: 999px;
+   padding: .6rem .9rem .6rem 1rem
+ }
+
+ .profile-btn {
+   color: #fff
+ }
+
+ /* Page */
+ .content {
+   padding: 24px
+ }
+
+ h2.page-title {
+   font-weight: 800;
+   font-size: 1.6rem;
+   margin: 4px 0 18px;
+   text-align: center;
+   color: transparent;
+   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+   -webkit-background-clip: text;
+   background-clip: text
+ }
+
+ /* Cards */
+ .course-card {
+   border: 1px solid var(--border);
+   border-radius: var(--radius);
+   background: var(--card);
+   box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+   display: flex;
+   flex-direction: column;
+   padding: 14px;
+   height: 100%;
+   transition: transform .07s ease, box-shadow .2s ease;
+ }
+
+ .course-card:hover {
+   transform: translateY(-2px);
+   box-shadow: 0 14px 26px rgba(0, 0, 0, .12)
+ }
+
+ .course-title {
+   margin: 0 0 4px;
+   font-weight: 700
+ }
+
+ .badge-soft {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   border: 1px solid rgba(176, 60, 16, .25);
+   border-radius: 999px;
+   padding: 2px 10px;
+   font-size: .75rem;
+   color: var(--brand-accent-2);
+   background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+ }
+
+ .course-meta {
+   color: var(--muted);
+   font-size: .9rem
+ }
+
+ .course-actions .btn {
+   min-width: 90px
+ }
+
+  /* Badges / small bits */
+ .meta-pill {
+   display: inline-flex;
+   gap: 6px;
+   align-items: center;
+   border: 1px solid rgba(176, 60, 16, .25);
+   border-radius: 999px;
+   padding: 2px 10px;
+   font-size: .75rem;
+   color: var(--brand-accent-2);
+   background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+ }
+
+ /* Buttons */
+ .btn-amber {
+   background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+   color: #fff;
+   border: none;
+ }
+
+ .btn-amber:hover {
+   filter: brightness(1.06);
+   color: #fff
+ }
+
+ .btn-outline-danger {
+   border-radius: 10px
+ }
+
+ /* Modal theme */
+ .modal-header {
+   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+   color: #FFD8A9;
+   border-bottom: none;
+ }
+
+ .modal-content {
+   border-radius: 12px;
+   border: 1px solid var(--border)
+ }
+
+ .modal-footer {
+   border-top: 1px solid var(--border)
+ }
+
+ .form-control:focus,
+ .form-select:focus {
+   border-color: var(--brand-accent-2);
+   box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
+ }
+
+ /* Toolbar */
  .toolbar-card {
    background: var(--card);
    border: 1px solid var(--border);
@@ -90,307 +201,338 @@
  }
 
 
-.logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  color: white;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.3s ease;
-  white-space: nowrap;
-  opacity: 0;
-   text-decoration: none; /* ✅ add this line */
-  display: inline-block;
-}
+ .logout-btn {
+   background: linear-gradient(to bottom, #FF6A00, #B03C10);
+   border: none;
+   padding: 0.6rem 1.5rem;
+   border-radius: 20px;
+   color: white;
+   font-size: 1rem;
+   font-weight: bold;
+   cursor: pointer;
+   transition: opacity 0.3s ease;
+   white-space: nowrap;
+   opacity: 0;
+   text-decoration: none;
+   /* ✅ add this line */
+   display: inline-block;
+ }
 
 
-.sidebar:hover .logout-btn {
-  opacity: 1;
-}
+ .sidebar:hover .logout-btn {
+   opacity: 1;
+ }
 
-.logout-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C; /* New text color on hover */
-}
+ .logout-btn:hover {
+   opacity: 0.85;
+   color: #4A1A0C;
+   /* New text color on hover */
+ }
 
-/* Main Content */
-.main {
-  margin-left: 70px;
-  transition: margin-left 0.3s ease;
-  width: calc(100% - 70px);
-  min-height: 100vh;
-  background: #e6ebeb;
-  display: flex;
-  flex-direction: column;
-}
+ /* Main Content */
+ .main {
+   margin-left: 70px;
+   transition: margin-left 0.3s ease;
+   width: calc(100% - 70px);
+   min-height: 100vh;
+   background: #e6ebeb;
+   display: flex;
+   flex-direction: column;
+ }
 
-.sidebar:hover ~ .main {
-  margin-left: 220px;
-  width: calc(100% - 220px);
-}
+ .sidebar:hover~.main {
+   margin-left: 220px;
+   width: calc(100% - 220px);
+ }
 
-/* Header */
-.header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+ /* Header */
+ .header-top {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 1rem 2rem;
+   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+   color: #fff;
+   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+ }
 
-.logo-header {
-  height: 45px;
-}
+ .logo-header {
+   height: 45px;
+ }
 
-.search-box {
-  position: relative;
-  flex: 1;
-  max-width: 500px;
-  margin: 0 20px;
-}
+ .search-box {
+   position: relative;
+   flex: 1;
+   max-width: 500px;
+   margin: 0 20px;
+ }
 
-.search-box input {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 30px;
-  border: none;
-  outline: none;
-}
+ .search-box input {
+   width: 100%;
+   padding: 10px 14px;
+   border-radius: 30px;
+   border: none;
+   outline: none;
+ }
 
-.search-box i {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #999;
-}
+ .search-box i {
+   position: absolute;
+   right: 15px;
+   top: 50%;
+   transform: translateY(-50%);
+   color: #999;
+ }
 
 
-.back-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  color: white;
-  font-weight: bold;
-  padding: 0.5rem 1.2rem;
-  border-radius: 20px;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-}
+ .back-btn {
+   background: linear-gradient(to bottom, #FF6A00, #B03C10);
+   color: white;
+   font-weight: bold;
+   padding: 0.5rem 1.2rem;
+   border-radius: 20px;
+   text-decoration: none;
+   transition: all 0.3s ease;
+   display: inline-flex;
+   align-items: center;
+   gap: 8px;
+   font-size: 0.95rem;
+ }
 
-.back-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C;
-  /* New text color on hover */
-}
+ .back-btn:hover {
+   opacity: 0.85;
+   color: #4A1A0C;
+   /* New text color on hover */
+ }
 
-.title-name h2{
-    font-family: 'Raleway', sans-serif;
-    font-weight: 700;
-    color: #4A1A0C;
-}
+ .title-name h2 {
+   font-family: 'Raleway', sans-serif;
+   font-weight: 700;
+   color: #4A1A0C;
+ }
 
-.username{
-  font-size: 14px;
-}
+ .username {
+   font-size: 14px;
+ }
 
-.profile-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-}
-.profile-btn .username {
-  font-size: 14px;
-}
-/* ===== Mobile header: search + icon + username (no overlap) ===== */
-@media (max-width: 480px) {
-  :root {
-    --m-header-gap: 12px;
-  }
+ .profile-btn {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   background: none;
+   border: none;
+   color: #fff;
+   font-size: 20px;
+   cursor: pointer;
+ }
 
-  /* Header = one row */
-  .header-top{
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: var(--m-header-gap) !important;
-    padding: .6rem .8rem !important;
-    text-align: left !important;
-  }
+ .profile-btn .username {
+   font-size: 14px;
+ }
 
-  /* Hide logo on mobile */
-  .logo-header{ display: none !important; }
+ /* ===== Mobile header: search + icon + username (no overlap) ===== */
+ @media (max-width: 480px) {
+   :root {
+     --m-header-gap: 12px;
+   }
 
-  /* Search shrinks as needed; no overflow */
-  .search-box{
-    flex: 1 1 0 !important;
-    min-width: 0 !important;          /* allow flex item to shrink */
-    margin: 0 !important;
-  }
-  .search-box input{
-    height: 36px !important;
-    padding: 6px 34px 6px 12px !important;
-    font-size: .9rem !important;
-    border-radius: 28px !important;
-  }
-  .search-box i{ right: 10px !important; }
+   /* Header = one row */
+   .header-top {
+     display: flex !important;
+     flex-direction: row !important;
+     align-items: center !important;
+     justify-content: space-between !important;
+     gap: var(--m-header-gap) !important;
+     padding: .6rem .8rem !important;
+     text-align: left !important;
+   }
 
-  /* Profile button shows icon + username, clamps width, no overlap */
-  .profile-btn{
-    flex: 0 0 auto !important;
-    width: auto !important;
-    height: 44px !important;
-    padding: 0 .75rem !important;
-    margin-left: var(--m-header-gap) !important;
-    border-radius: 999px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    max-width: 45vw !important;       /* never eat the whole row */
-  }
-  .profile-btn i{
-    font-size: 22px !important;
-    flex: 0 0 auto !important;
-    line-height: 1 !important;
-  }
-  .profile-btn .username{
-    display: inline-flex !important;  /* make it visible on mobile */
-    align-items: center !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
-    font-size: .9rem !important;
-    line-height: 1.1 !important;
-  }
-}
-@media (max-width: 480px) {
-  .dashboard {
-    flex-direction: column;
-  }
+   /* Hide logo on mobile */
+   .logo-header {
+     display: none !important;
+   }
 
-  .main {
-    margin-left: 0;
-    width: 100%;
-  }
+   /* Search shrinks as needed; no overflow */
+   .search-box {
+     flex: 1 1 0 !important;
+     min-width: 0 !important;
+     /* allow flex item to shrink */
+     margin: 0 !important;
+   }
 
-  .sidebar {
-    width: 100%;
-    position: relative;
-    z-index: 10;
-  }
+   .search-box input {
+     height: 36px !important;
+     padding: 6px 34px 6px 12px !important;
+     font-size: .9rem !important;
+     border-radius: 28px !important;
+   }
 
-  .sidebar:hover ~ .main {
-    margin-left: 0;
-    width: 100%;
-  }
+   .search-box i {
+     right: 10px !important;
+   }
 
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 0.8rem;
-    text-align: center;
-  }
+   /* Profile button shows icon + username, clamps width, no overlap */
+   .profile-btn {
+     flex: 0 0 auto !important;
+     width: auto !important;
+     height: 44px !important;
+     padding: 0 .75rem !important;
+     margin-left: var(--m-header-gap) !important;
+     border-radius: 999px !important;
+     display: inline-flex !important;
+     align-items: center !important;
+     justify-content: center !important;
+     gap: 8px !important;
+     max-width: 45vw !important;
+     /* never eat the whole row */
+   }
 
-  .search-box {
-    max-width: 100%;
-    margin: 0;
-  }
+   .profile-btn i {
+     font-size: 22px !important;
+     flex: 0 0 auto !important;
+     line-height: 1 !important;
+   }
 
-  .search-box input {
-    padding: 8px 32px 8px 12px;
-    font-size: 0.9rem;
-  }
+   .profile-btn .username {
+     display: inline-flex !important;
+     /* make it visible on mobile */
+     align-items: center !important;
+     white-space: nowrap !important;
+     overflow: hidden !important;
+     text-overflow: ellipsis !important;
+     max-width: calc(45vw - 28px - 16px) !important;
+     /* button max minus icon+gap */
+     font-size: .9rem !important;
+     line-height: 1.1 !important;
+   }
+ }
 
-  .ui-card {
-    padding: 10px;
-  }
+ @media (max-width: 480px) {
+   .dashboard {
+     flex-direction: column;
+   }
 
-  .ui-card.card-themed .ui-card-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  }
-@media (max-width: 480px) {
-  /* Make buttons easy to tap and nicely spaced */
-  .btn,
-  .back-btn,
-  .logout-btn,
-  .btn-amber,
-  .btn-amber-outline {
-    display: block;           /* stack cleanly */
-    width: 100%;              /* full-width buttons */
-    min-height: 44px;         /* Apple HIG tap target */
-    padding: 0.9rem 1rem;     /* comfy padding */
-    font-size: 1rem;          /* avoid iOS zoom */
-    line-height: 1.2;
-    border-radius: 14px;      /* softer corners on small screens */
-    margin: 10px 0;           /* vertical gap between buttons */
-    text-align: center;
-  }
+   .main {
+     margin-left: 0;
+     width: 100%;
+   }
 
-  /* Icon + text alignment inside buttons */
-  .btn i,
-  .back-btn i {
-    margin-right: 8px;
-  }
+   .sidebar {
+     width: 100%;
+     position: relative;
+     z-index: 10;
+   }
 
-  /* Button groups wrap nicely with spacing */
-  .btn-group,
-  .lesson-nav,
-  .content .d-flex,
-  .content .btn-toolbar {
-    flex-wrap: wrap !important;
-    gap: 10px;
-  }
+   .sidebar:hover~.main {
+     margin-left: 0;
+     width: 100%;
+   }
 
-  /* Specific: lesson prev/next should stack under title if tight */
-  .lesson-nav .btn {
-    min-width: unset;         /* let full-width rule apply */
-  }
+   .header-top {
+     flex-direction: column;
+     align-items: stretch;
+     gap: 10px;
+     padding: 0.8rem;
+     text-align: center;
+   }
 
-  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
-  .content .d-flex.gap-2 {
-    gap: 10px !important;
-  }
+   .search-box {
+     max-width: 100%;
+     margin: 0;
+   }
 
-  /* Prevent tiny outline/ghost borders on gradient buttons */
-  .btn-amber,
-  .btn-amber-outline,
-  .back-btn,
-  .logout-btn {
-    border-width: 1px;
-  }
-}
+   .search-box input {
+     padding: 8px 32px 8px 12px;
+     font-size: 0.9rem;
+   }
 
-/* Tablet: keep buttons inline but add breathing room */
-@media (min-width: 481px) and (max-width: 1280px) {
-  .btn,
-  .back-btn,
-  .btn-amber,
-  .btn-amber-outline {
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    border-radius: 12px;
-    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
-  }
+   .ui-card {
+     padding: 10px;
+   }
 
-  /* Lesson nav buttons keep reasonable width */
-  .lesson-nav .btn { min-width: 120px; }
-}
+   .ui-card.card-themed .ui-card-head {
+     flex-direction: column;
+     align-items: flex-start;
+     gap: 4px;
+   }
+ }
+
+ @media (max-width: 480px) {
+
+   /* Make buttons easy to tap and nicely spaced */
+   .btn,
+   .back-btn,
+   .logout-btn,
+   .btn-amber,
+   .btn-amber-outline {
+     display: block;
+     /* stack cleanly */
+     width: 100%;
+     /* full-width buttons */
+     min-height: 44px;
+     /* Apple HIG tap target */
+     padding: 0.9rem 1rem;
+     /* comfy padding */
+     font-size: 1rem;
+     /* avoid iOS zoom */
+     line-height: 1.2;
+     border-radius: 14px;
+     /* softer corners on small screens */
+     margin: 10px 0;
+     /* vertical gap between buttons */
+     text-align: center;
+   }
+
+   /* Icon + text alignment inside buttons */
+   .btn i,
+   .back-btn i {
+     margin-right: 8px;
+   }
+
+   /* Button groups wrap nicely with spacing */
+   .btn-group,
+   .lesson-nav,
+   .content .d-flex,
+   .content .btn-toolbar {
+     flex-wrap: wrap !important;
+     gap: 10px;
+   }
+
+   /* Specific: lesson prev/next should stack under title if tight */
+   .lesson-nav .btn {
+     min-width: unset;
+     /* let full-width rule apply */
+   }
+
+   /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+   .content .d-flex.gap-2 {
+     gap: 10px !important;
+   }
+
+   /* Prevent tiny outline/ghost borders on gradient buttons */
+   .btn-amber,
+   .btn-amber-outline,
+   .back-btn,
+   .logout-btn {
+     border-width: 1px;
+   }
+ }
+
+ /* Tablet: keep buttons inline but add breathing room */
+ @media (min-width: 481px) and (max-width: 1280px) {
+
+   .btn,
+   .back-btn,
+   .btn-amber,
+   .btn-amber-outline {
+     padding: 0.75rem 1rem;
+     font-size: 0.95rem;
+     border-radius: 12px;
+     margin: 6px 6px 6px 0;
+     /* small gaps between inline buttons */
+   }
+
+   /* Lesson nav buttons keep reasonable width */
+   .lesson-nav .btn {
+     min-width: 120px;
+   }
+ }
