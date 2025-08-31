@@ -1,4 +1,4 @@
-// ==== routes/coursesRoutes.js ==== //
+// ==== routes/coursesRoutes.js ====
 const router = require('express').Router();
 const path = require('path');
 const fs = require('fs/promises');
@@ -9,7 +9,6 @@ const { firestore, admin } = require('../config/firebase');
 /* ---------------------------------------
    Helpers
 ---------------------------------------- */
-
 function tsToMillis(ts) {
   if (!ts) return 0;
   if (typeof ts.toMillis === 'function') return ts.toMillis();
@@ -30,12 +29,10 @@ async function getNextCourseNumber(uploadedBy) {
       .orderBy('courseNumber', 'desc')
       .limit(1)
       .get();
-
     if (snap.empty) return 1;
     const max = Number(snap.docs[0].data().courseNumber || 0);
     return max + 1;
   } catch {
-    // Fallback if composite index missing: count user's courses
     const snap = await firestore.collection('courses').where('uploadedBy', '==', uploadedBy).get();
     return (snap.size || 0) + 1;
   }
@@ -63,23 +60,14 @@ async function renumberUserCourses(uploadedBy) {
   }
 }
 
-/**
- * Delete any local files referenced by a document's fields if they look like "/uploads/...".
- * Adjust the detection if your schema uses different fields.
- */
 async function maybeDeleteLocalFilesFromDoc(docData) {
   if (!docData || typeof docData !== 'object') return;
   const candidates = [];
 
-  // Scan all string fields for /uploads/ pattern
-  for (const [k, v] of Object.entries(docData)) {
-    if (typeof v === 'string' && /(^\/?uploads\/)/i.test(v)) {
-      candidates.push(v);
-    }
+  for (const v of Object.values(docData)) {
+    if (typeof v === 'string' && /(^\/?uploads\/)/i.test(v)) candidates.push(v);
   }
-
-  // Also scan common nested arrays/objects for file paths
-  for (const [k, v] of Object.entries(docData)) {
+  for (const v of Object.values(docData)) {
     if (Array.isArray(v)) {
       v.forEach(item => {
         if (item && typeof item === 'object') {
@@ -95,32 +83,19 @@ async function maybeDeleteLocalFilesFromDoc(docData) {
     }
   }
 
-  // Dedup and delete
   const unique = Array.from(new Set(candidates));
   for (const rel of unique) {
-    const relClean = rel.replace(/^\/+/, ''); // strip leading slash
+    const relClean = rel.replace(/^\/+/, '');
     const abs = path.join(__dirname, '..', relClean);
-    try {
-      await fs.unlink(abs);
-      // eslint-disable-next-line no-console
-      console.log('🗑️  Deleted file:', abs);
-    } catch {
-      // ignore missing files
-    }
+    try { await fs.unlink(abs); } catch { /* ignore */ }
   }
 }
 
-/**
- * Recursively delete all subcollections for a given docRef.
- * Depth-first: delete subcollections (and their docs) first, then caller can delete the doc.
- */
 async function deleteAllSubcollections(docRef) {
   const subcols = await docRef.listCollections();
   for (const col of subcols) {
-    // Delete all docs in this subcollection (and their subcollections) in chunks
     let after = null;
     const pageSize = 400;
-    // We page through collection – no query constraints here
     while (true) {
       let q = col.limit(pageSize);
       if (after) q = q.startAfter(after);
@@ -128,12 +103,9 @@ async function deleteAllSubcollections(docRef) {
       if (snap.empty) break;
 
       for (const d of snap.docs) {
-        // Recurse into sub-subcollections first
         await deleteAllSubcollections(d.ref);
-        // Delete any local files referenced
         await maybeDeleteLocalFilesFromDoc(d.data());
       }
-
       const batch = firestore.batch();
       snap.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
@@ -144,11 +116,6 @@ async function deleteAllSubcollections(docRef) {
   }
 }
 
-/**
- * Delete all docs in a top-level collection where `field == value`, including:
- *  - every matched doc's subcollections (recursively)
- *  - local /uploads/... files referenced in those docs
- */
 async function cascadeDeleteByQuery(collectionName, field, value) {
   const pageSize = 400;
   while (true) {
@@ -157,31 +124,21 @@ async function cascadeDeleteByQuery(collectionName, field, value) {
       .where(field, '==', value)
       .limit(pageSize)
       .get();
-
     if (snap.empty) break;
 
-    // Prepare: subcollections + any referenced local files
     for (const d of snap.docs) {
       await deleteAllSubcollections(d.ref);
       await maybeDeleteLocalFilesFromDoc(d.data());
     }
-
     const batch = firestore.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
-
     if (snap.docs.length < pageSize) break;
   }
 }
 
-/**
- * Given classIds, returns { activeIds, archivedIds, missingIds }
- */
 async function splitClassIdsByArchived(classIds) {
-  const activeIds = [];
-  const archivedIds = [];
-  const missingIds = [];
-
+  const activeIds = [], archivedIds = [], missingIds = [];
   const chunk = (arr, size = 10) => {
     const out = [];
     for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
@@ -198,11 +155,8 @@ async function splitClassIdsByArchived(classIds) {
       if (d.archived === true) archivedIds.push(doc.id);
       else activeIds.push(doc.id);
     });
-    ids.forEach(id => {
-      if (!found.has(id)) missingIds.push(id);
-    });
+    ids.forEach(id => { if (!found.has(id)) missingIds.push(id); });
   }
-
   return { activeIds, archivedIds, missingIds };
 }
 
@@ -210,8 +164,7 @@ async function splitClassIdsByArchived(classIds) {
    Routes
 ---------------------------------------- */
 
-// ==== COURSE: CREATE (per-user numbering) ====
-// POST /upload-course
+// CREATE
 router.post('/upload-course', asyncHandler(async (req, res) => {
   const { title, category, description, uploadedBy } = req.body;
   let { assignedClasses } = req.body;
@@ -221,18 +174,14 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
   }
 
   if (!Array.isArray(assignedClasses)) assignedClasses = [];
-  assignedClasses = assignedClasses
-    .filter(x => typeof x === 'string' && x.trim() !== '')
-    .map(x => x.trim());
+  assignedClasses = assignedClasses.filter(x => typeof x === 'string' && x.trim() !== '').map(x => x.trim());
 
-    
-// Filter out archived/missing classes
-let skipped = { archived: [], missing: [] };
-if (assignedClasses.length) {
-  const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(assignedClasses);
-  skipped = { archived: archivedIds, missing: missingIds };
-  assignedClasses = activeIds;
-}
+  let skipped = { archived: [], missing: [] };
+  if (assignedClasses.length) {
+    const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(assignedClasses);
+    skipped = { archived: archivedIds, missing: missingIds };
+    assignedClasses = activeIds;
+  }
 
   const owner = String(uploadedBy).trim();
   const nextCourseNumber = await getNextCourseNumber(owner);
@@ -245,6 +194,8 @@ if (assignedClasses.length) {
     assignedClasses,
     courseNumber: nextCourseNumber,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    archived: false,
+    archivedAt: null
   };
 
   const newDoc = await firestore.collection('courses').add(newCourse);
@@ -253,32 +204,28 @@ if (assignedClasses.length) {
     id: newDoc.id,
     courseNumber: nextCourseNumber,
     assignedClasses,
-     skipped
+    skipped
   });
 }));
 
-// ==== COURSES: LIST (optionally filter by uploadedBy) ====
-// GET /courses?uploadedBy=<userId>
+// LIST (optionally filter by uploadedBy; includeArchived=true to include)
 router.get('/courses', asyncHandler(async (req, res) => {
   const uploadedBy = String(req.query.uploadedBy || '').trim();
+  const includeArchived = String(req.query.includeArchived || '').toLowerCase() === 'true';
 
   let q = firestore.collection('courses');
   if (uploadedBy) q = q.where('uploadedBy', '==', uploadedBy);
   q = q.orderBy('createdAt', 'desc');
 
   let snapshot;
-  try {
-    snapshot = await q.get();
-  } catch {
-    // fallback if index missing
-    if (uploadedBy) {
-      snapshot = await firestore.collection('courses').where('uploadedBy', '==', uploadedBy).get();
-    } else {
-      snapshot = await firestore.collection('courses').get();
-    }
+  try { snapshot = await q.get(); }
+  catch {
+    snapshot = uploadedBy
+      ? await firestore.collection('courses').where('uploadedBy', '==', uploadedBy).get()
+      : await firestore.collection('courses').get();
   }
 
-  const courses = snapshot.docs.map(doc => {
+  let courses = snapshot.docs.map(doc => {
     const data = doc.data();
     return {
       id: doc.id,
@@ -287,14 +234,16 @@ router.get('/courses', asyncHandler(async (req, res) => {
       description: data.description || '',
       courseNumber: data.courseNumber || null,
       assignedClasses: data.assignedClasses || [],
+      archived: !!data.archived,
+      archivedAt: data.archivedAt || null,
     };
   });
 
+  if (!includeArchived) courses = courses.filter(c => !c.archived);
   res.json(courses);
 }));
 
-// ==== COURSE: GET BY ID ====
-// GET /courses/:id
+// GET BY ID
 router.get('/courses/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const doc = await firestore.collection('courses').doc(id).get();
@@ -302,9 +251,7 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
   res.json({ id: doc.id, ...doc.data() });
 }));
 
-// ==== COURSE: UPDATE ====
-// PUT /courses/:id
-// body: { title, category, description, assignedClasses? }
+// UPDATE (PUT)
 router.put('/courses/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { title, category, description, assignedClasses, uploadedBy } = req.body;
@@ -332,12 +279,48 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// ==== COURSE: DELETE (deep cascade + renumber owner) ====
-// DELETE /courses/:id
+// ARCHIVE TOGGLE (PATCH)
+router.patch('/courses/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updates = {};
+  if (typeof req.body.archived === 'boolean') {
+    updates.archived = req.body.archived;
+    updates.archivedAt = req.body.archived
+      ? admin.firestore.FieldValue.serverTimestamp()
+      : null;
+  }
+  ['title', 'category', 'description', 'assignedClasses'].forEach(k => {
+    if (k in req.body) updates[k] = req.body[k];
+  });
+  if (!Object.keys(updates).length) {
+    return res.status(400).json({ success:false, message:'No updates provided.' });
+  }
+  await firestore.collection('courses').doc(id).update(updates);
+  res.json({ success:true });
+}));
+
+// ARCHIVE explicit endpoints
+router.post('/courses/:id/archive', asyncHandler(async (req,res)=>{
+  const { id } = req.params;
+  await firestore.collection('courses').doc(id).update({
+    archived:true,
+    archivedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  res.json({ success:true });
+}));
+router.post('/courses/:id/unarchive', asyncHandler(async (req,res)=>{
+  const { id } = req.params;
+  await firestore.collection('courses').doc(id).update({
+    archived:false,
+    archivedAt: null
+  });
+  res.json({ success:true });
+}));
+
+// DELETE (cascade)
 router.delete('/courses/:id', asyncHandler(async (req, res) => {
   const courseId = req.params.id;
 
-  // 0) Load course and remember owner
   const courseRef = firestore.collection('courses').doc(courseId);
   const courseDoc = await courseRef.get();
   if (!courseDoc.exists) {
@@ -345,8 +328,6 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
   }
   const owner = String(courseDoc.data().uploadedBy || '').trim();
 
-  // 1) Define all top-level collections that reference courseId
-  //    Add or remove items here to match your app’s data model.
   const CASCADING_COLLECTIONS = [
     { name: 'modules',      field: 'courseId' },
     { name: 'quizzes',      field: 'courseId' },
@@ -356,35 +337,22 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
     { name: 'discussions',  field: 'courseId' },
     { name: 'submissions',  field: 'courseId' },
     { name: 'grades',       field: 'courseId' },
-    // add any other collections that carry courseId
   ];
 
-  // 2) For each related collection:
-  //    - delete subcollections for each matched doc
-  //    - delete any local /uploads/... files referenced
-  //    - delete the docs in batches
   for (const { name, field } of CASCADING_COLLECTIONS) {
     await cascadeDeleteByQuery(name, field, courseId);
   }
 
-  // 3) Delete subcollections that live directly under the course doc (if any),
-  //    plus any local files referenced on the course doc itself.
   await deleteAllSubcollections(courseRef);
   await maybeDeleteLocalFilesFromDoc(courseDoc.data());
-
-  // 4) Finally delete the course document
   await courseRef.delete();
 
-  // 5) Renumber ONLY this user's courses
-  if (owner) {
-    await renumberUserCourses(owner);
-  }
+  if (owner) await renumberUserCourses(owner);
 
   res.json({ success: true, message: 'Course and all related data deleted. User courses renumbered.' });
 }));
 
-// ==== COURSES ASSIGNED TO A CLASS ====
-// GET /api/classes/:id/courses
+// CLASS → COURSES (hide archived unless ?archived=include)
 router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
   const classId = req.params.id;
   const includeArchived = String(req.query.archived || '').toLowerCase() === 'include';
@@ -402,9 +370,10 @@ router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
     .where('assignedClasses', 'array-contains', classId)
     .get();
 
-  const courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (!includeArchived) courses = courses.filter(c => !c.archived);
+
   return res.json({ success: true, courses });
 }));
-
 
 module.exports = router;

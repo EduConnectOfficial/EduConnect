@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,95 +11,227 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-  <!-- Your existing styles (kept) -->
+  <!-- Shared styles -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <link rel="stylesheet" href="course_list.css" />
 
-  <!-- Page theme overrides -->
   <style>
-    :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
-      --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
-
-    /* Header */
-   
-    .logo-header{height:44px}
-    .search-box{max-width:520px; width:100%; position:relative}
-    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
-    .profile-btn{color:#fff}
-
-    /* Page */
-    .content{padding:24px}
-    h2.page-title{
-      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      -webkit-background-clip:text;background-clip:text
+    :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --brand-accent-1: #FF6A00;
+      --brand-accent-2: #B03C10;
+      --radius: 14px;
     }
 
-    /* Cards */
-    .course-card{
-      border:1px solid var(--border); border-radius:var(--radius);
-      background:var(--card); box-shadow:0 10px 24px rgba(0,0,0,.08);
-      display:flex; flex-direction:column; padding:14px; height:100%;
-      transition:transform .07s ease, box-shadow .2s ease;
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text)
     }
-    .course-card:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
-    .course-title{margin:0 0 4px; font-weight:700}
-    .badge-soft{
-      display:inline-flex; align-items:center; gap:6px;
-      border:1px solid rgba(176,60,16,.25); border-radius:999px;
-      padding:2px 10px; font-size:.75rem; color:var(--brand-accent-2);
-      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
-    }
-    .course-meta{color:var(--muted); font-size:.9rem}
-    .course-actions .btn{min-width:90px}
 
-    /* Buttons */
-    .btn-amber{
-      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
-      color:#fff; border:none;
+    .dashboard {
+      display: flex;
+      min-height: 100vh
     }
-    .btn-amber:hover{filter:brightness(1.06); color:#fff}
-    .btn-outline-danger{border-radius:10px}
 
-    /* Modal theme */
-    .modal-header{
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9; border-bottom:none;
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg)
     }
-    .modal-content{border-radius:12px;border:1px solid var(--border)}
-    .modal-footer{border-top:1px solid var(--border)}
-    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+
+    .sidebar:hover~.main {
+      margin-left: 220px;
+      width: calc(100% - 220px)
+    }
+
+    .logo-header {
+      height: 44px
+    }
+
+    .search-box {
+      max-width: 520px;
+      width: 100%;
+      position: relative
+    }
+
+    .search-box input {
+      border: none;
+      border-radius: 999px;
+      padding: .6rem .9rem .6rem 1rem
+    }
+
+    /* search icon inside input */
+    .search-box i.fas.fa-search {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      opacity: .6;
+      font-size: .95rem;
+    }
+
+    .search-box input {
+      padding-right: 36px;
+    }
+
+    .profile-btn {
+      color: #fff
+    }
+
+    .content {
+      padding: 24px
+    }
+
+    h2.page-title {
+      font-weight: 800;
+      font-size: 1.6rem;
+      margin: 4px 0 18px;
+      text-align: center;
+      color: transparent;
+      background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+      -webkit-background-clip: text;
+      background-clip: text
+    }
+
+    /* Toolbar / meta pill */
+    .toolbar-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 16px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(0, 0, 0, .08);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: .85rem;
+      color: #444;
+      background: #fff;
+    }
+
+    /* Course card */
+    .course-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      height: 100%;
+      transition: transform .07s ease, box-shadow .2s ease;
+    }
+
+    .course-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 26px rgba(0, 0, 0, .12)
+    }
+
+    .course-title {
+      margin: 0 0 4px;
+      font-weight: 700
+    }
+
+    .badge-soft {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(176, 60, 16, .25);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: .75rem;
+      color: var(--brand-accent-2);
+      background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+    }
+
+    .course-meta {
+      color: var(--muted);
+      font-size: .9rem
+    }
+
+    .course-actions .btn {
+      min-width: 90px
+    }
+
+    .btn-amber {
+      background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+      color: #fff;
+      border: none;
+    }
+
+    .btn-amber:hover {
+      filter: brightness(1.06);
+      color: #fff
+    }
+
+    .btn-outline-danger {
+      border-radius: 10px
+    }
+
+    /* Modals */
+    .modal-header {
+      background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+      color: #FFD8A9;
+      border-bottom: none;
+    }
+
+    .modal-content {
+      border-radius: 12px;
+      border: 1px solid var(--border)
+    }
+
+    .modal-footer {
+      border-top: 1px solid var(--border)
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--brand-accent-2);
+      box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
+    }
+
+    /* Empty state card */
+    .empty-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px
+    }
   </style>
 </head>
 
 <body>
   <div class="dashboard">
-    <!-- Sidebar Container -->
+    <!-- Sidebar mount -->
     <div id="sidebar-container"></div>
-
-    <!-- Sidebar + Dropdown Logic -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         fetch("/components/sidebar.html")
           .then(res => res.text())
           .then(html => {
             document.getElementById("sidebar-container").innerHTML = html;
-
             const sidebar = document.querySelector(".sidebar");
             const dashboard = document.querySelector(".dashboard");
             if (sidebar && dashboard) {
               sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
               sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
             }
-
             document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
               toggle.addEventListener('click', e => {
                 e.preventDefault();
@@ -113,13 +246,13 @@
       });
     </script>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <div class="main">
-       <!-- Header -->
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
-          <input id="searchBox" type="text" placeholder="Search my courses..." />
+          <input id="searchBox" type="text" placeholder="Search my courses..." aria-label="Search courses" />
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn btn">
@@ -128,8 +261,43 @@
         </button>
       </header>
 
+      <!-- Content -->
       <section class="content">
         <h2 class="page-title">COURSE MANAGEMENT – LIST OF UPLOADED COURSES</h2>
+
+        <!-- Toolbar: My Courses + Archive filter + Count + Add -->
+        <div class="toolbar-card d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <h1 class="page-title mb-0">My Courses</h1>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Course count pill -->
+            <span id="courseCountPill" class="meta-pill d-none">
+              <i class="bi bi-journal-text"></i>
+              <span id="courseCount">0</span> courses
+            </span>
+
+            <!-- Archive Filter Toggle -->
+            <div class="btn-group" role="group" aria-label="Archive filter">
+              <input type="radio" class="btn-check" name="archFilter" id="archEx" autocomplete="off" checked>
+              <label class="btn btn-outline-secondary" for="archEx" title="Show active only">Active</label>
+
+              <input type="radio" class="btn-check" name="archFilter" id="archOnly" autocomplete="off">
+              <label class="btn btn-outline-secondary" for="archOnly" title="Show archived only">Archived</label>
+
+              <input type="radio" class="btn-check" name="archFilter" id="archInc" autocomplete="off">
+              <label class="btn btn-outline-secondary" for="archInc" title="Show all">All</label>
+            </div>
+
+
+            <button class="btn btn-amber" onclick="window.location.href='course.html'">
+              <i class="bi bi-plus-lg me-1"></i> Add Course
+            </button>
+
+          </div>
+        </div>
+
+        <small class="text-muted d-block mb-3">Archived courses are hidden by default.</small>
+
+        <!-- List -->
         <div id="courseList" class="row g-4"></div>
       </section>
     </div>
@@ -173,54 +341,177 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    const API = 'http://127.0.0.1:5000';
+  <!-- Archive / Unarchive Modal -->
+  <div class="modal fade" id="archiveCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="archiveCourseId" />
+          <p id="archiveModalText" class="mb-0"></p>
+          <div class="mt-2 small text-muted">
+            Archiving hides this course’s modules and quizzes from teachers and students. You can unarchive later.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="confirmArchiveBtn" type="button" class="btn btn-amber">Yes, proceed</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    // auth redirect
+  <!-- Delete Modal -->
+  <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Delete Course</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="deleteCourseId" />
+          <p class="mb-2">Are you sure you want to <strong>permanently delete</strong> this course? This cannot be
+            undone.</p>
+          <div class="small text-muted">Tip: If you only want to hide the course, use <strong>Archive</strong> instead.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="confirmDeleteBtn" type="button" class="btn btn-danger">
+            <i class="bi bi-trash3 me-1"></i>Delete
+          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Page Script -->
+  <script>
+    const API = 'http://127.0.0.1:5000/api';
+
+    // Auth / header name
     const userData = JSON.parse(localStorage.getItem("user") || '{}');
     if (!userData.username) location.href = "../login/login.html";
     document.getElementById("dashboardUsername").textContent = userData.username;
 
-    // state
+    // State
     let allCourses = [];
+    let archiveFilter = 'active'; // 'active' | 'archived' | 'all'
 
-    // load list (ONLY my courses)
+    // Debounce helper
+    function debounce(fn, delay = 200) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); }; }
+
+    // Count pill
+    function updateCourseCountPill(count) {
+      const pill = document.getElementById('courseCountPill');
+      const num = document.getElementById('courseCount');
+      if (!pill || !num) return;
+      num.textContent = count;
+      pill.classList.toggle('d-none', count <= 0);
+    }
+
+    // Escape HTML
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    // Load courses
     async function loadCourses() {
       try {
-        const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}`);
+        const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
+        const res = await fetch(url);
         const payload = await res.json();
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
         allCourses = courses.slice();
-        renderCourses(allCourses);
+        applyFiltersAndRender();
       } catch (e) {
         console.error(e);
         alert("Failed to load courses");
       }
     }
 
+    // Apply filters (search + archive)
+    function applyFiltersAndRender() {
+      const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+
+      const filtered = allCourses.filter(c => {
+        const matchesSearch =
+          !q ||
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q) ||
+          String(c.courseNumber || '').toLowerCase().includes(q);
+
+        const isArchived = !!c.archived;
+        const matchesArchive =
+          archiveFilter === 'all' ||
+          (archiveFilter === 'active' && !isArchived) ||
+          (archiveFilter === 'archived' && isArchived);
+
+        return matchesSearch && matchesArchive;
+      });
+
+      updateCourseCountPill(filtered.length);
+      renderCourses(filtered);
+    }
+
+    // Render list + empty state
     function renderCourses(courses) {
       const list = document.getElementById("courseList");
       list.innerHTML = '';
-      courses.sort((a, b) => (a.courseNumber || 0) - (b.courseNumber || 0));
+      courses.sort((a, b) => (Number(a.courseNumber) || 0) - (Number(b.courseNumber) || 0));
+
+      if (!courses.length) {
+        list.innerHTML = `
+          <div class="col-12">
+            <div class="empty-card text-center p-5">
+              <div class="mb-2"><i class="bi bi-inbox" style="font-size:2rem; opacity:.6;"></i></div>
+              <h5 class="mb-1">No courses found</h5>
+              <div class="text-muted">Try adjusting your search or filters.</div>
+            </div>
+          </div>`;
+        return;
+      }
 
       courses.forEach(c => {
         const col = document.createElement('div');
         col.className = 'col-sm-6 col-lg-4 col-xxl-3';
+
+        const isArchived = !!c.archived;
+        const archivedBadge = isArchived
+          ? `<span class="badge-soft ms-2" title="Archived" style="border-color:#999;color:#555;background:linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.06));">
+               <i class="bi bi-archive"></i> Archived
+             </span>`
+          : '';
+
         col.innerHTML = `
           <div class="course-card">
             <div>
               <h5 class="course-title">${escapeHtml(c.title || 'Untitled')}</h5>
               <div class="mb-2">
                 <span class="badge-soft"><i class="bi bi-collection"></i> Course #${c.courseNumber || '—'}</span>
+                ${archivedBadge}
               </div>
               <p class="mb-1"><strong>Category:</strong> ${escapeHtml(c.category || '—')}</p>
               <p class="course-meta mb-0">${escapeHtml(c.description || 'No description provided.')}</p>
             </div>
             <div class="course-actions d-flex justify-content-between pt-3 mt-3">
-              <button class="btn btn-sm btn-amber edit-btn" data-id="${c.id}">
-                <i class="bi bi-pencil-square me-1"></i>Edit
-              </button>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-amber edit-btn" data-id="${c.id}">
+                  <i class="bi bi-pencil-square me-1"></i>Edit
+                </button>
+                <button class="btn btn-sm ${isArchived ? 'btn-outline-secondary' : 'btn-outline-warning'} archive-btn" data-id="${c.id}" data-archived="${isArchived}">
+                  <i class="bi ${isArchived ? 'bi-archive' : 'bi-archive-fill'} me-1"></i>${isArchived ? 'Unarchive' : 'Archive'}
+                </button>
+              </div>
               <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${c.id}">
                 <i class="bi bi-trash3 me-1"></i>Delete
               </button>
@@ -230,33 +521,28 @@
       });
     }
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, m => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[m]));
-    }
+    // Event: search (debounced)
+    document.getElementById('searchBox').addEventListener('input', debounce(applyFiltersAndRender, 200));
 
-    loadCourses();
+    // Event: toolbar archive radios
+    document.addEventListener('DOMContentLoaded', () => {
+      const ex = document.getElementById('archEx');
+      const only = document.getElementById('archOnly');
+      const inc = document.getElementById('archInc');
 
-    // live search
-    document.getElementById('searchBox').addEventListener('input', (e) => {
-      const q = e.target.value.trim().toLowerCase();
-      const filtered = !q ? allCourses : allCourses.filter(c =>
-        (c.title || '').toLowerCase().includes(q) ||
-        (c.category || '').toLowerCase().includes(q) ||
-        String(c.courseNumber || '').toLowerCase().includes(q)
-      );
-      renderCourses(filtered);
+      if (ex) ex.addEventListener('change', () => { if (ex.checked) { archiveFilter = 'active'; applyFiltersAndRender(); } });
+      if (only) only.addEventListener('change', () => { if (only.checked) { archiveFilter = 'archived'; applyFiltersAndRender(); } });
+      if (inc) inc.addEventListener('change', () => { if (inc.checked) { archiveFilter = 'all'; applyFiltersAndRender(); } });
     });
 
-    // click handler
+    // Edit / Archive / Delete interactions
     document.getElementById("courseList").addEventListener("click", async e => {
       const btn = e.target.closest('button');
       if (!btn) return;
       const id = btn.dataset.id;
 
+      // EDIT
       if (btn.classList.contains("edit-btn")) {
-        // fetch single course
         let course;
         try {
           const r = await fetch(`${API}/courses/${id}`);
@@ -266,35 +552,34 @@
           return alert("Failed to load course");
         }
 
-        // populate
         document.getElementById("editCourseId").value = course.id;
-        document.getElementById("editTitle").value   = course.title || '';
-        document.getElementById("editCategory").value= course.category || '';
+        document.getElementById("editTitle").value = course.title || '';
+        document.getElementById("editCategory").value = course.category || '';
         document.getElementById("editDescription").value = course.description || '';
 
-        // load all classes for checkboxes (teacher's own)
         const cont = document.getElementById("editAssignedClassesContainer");
         cont.innerHTML = '';
         try {
-          const r2 = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(userData.userId)}`);
+          const r2 = await fetch(`${API}/classes?teacherId=${encodeURIComponent(userData.userId)}`);
           const { success, classes } = await r2.json();
           if (success && Array.isArray(classes)) {
             classes.forEach(cls => {
               const col = document.createElement('div');
               col.className = 'col-12';
-              const label = document.createElement('label');
-              label.className = 'form-check-label d-flex align-items-center';
-              const chk = document.createElement('input');
-              chk.type = 'checkbox';
-              chk.className = 'form-check-input me-2';
-              chk.value = cls.id;
+              col.innerHTML = `
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="cls_${cls.id}" value="${cls.id}">
+                  <label class="form-check-label" for="cls_${cls.id}">
+                    ${cls.name} (${cls.gradeLevel}-${cls.section})
+                  </label>
+                </div>`;
+              cont.appendChild(col);
+
+              const chk = col.querySelector('input');
               if (Array.isArray(course.assignedClasses) &&
-                  course.assignedClasses.map(x => String(x)).includes(String(cls.id))) {
+                course.assignedClasses.map(String).includes(String(cls.id))) {
                 chk.checked = true;
               }
-              label.append(chk, document.createTextNode(`${cls.name} (${cls.gradeLevel}-${cls.section})`));
-              col.appendChild(label);
-              cont.appendChild(col);
             });
           } else {
             cont.innerHTML = '<div class="text-danger">No classes found.</div>';
@@ -306,57 +591,119 @@
         new bootstrap.Modal(document.getElementById("editCourseModal")).show();
       }
 
+      // DELETE (open modal)
       if (btn.classList.contains("delete-btn")) {
-        if (!confirm("Delete this course?")) return;
-        try {
-          const r = await fetch(`${API}/courses/${id}`, { method:'DELETE' });
-          const j = await r.json();
-          if (j.success) {
-            await loadCourses();
-          } else {
-            alert("Delete failed: " + (j.message || 'Unknown error'));
-          }
-        } catch {
-          alert("Server error");
-        }
+        openDeleteModal(id);
+      }
+
+      // ARCHIVE / UNARCHIVE
+      if (btn.classList.contains("archive-btn")) {
+        const isArchived = btn.getAttribute('data-archived') === 'true';
+        openArchiveModal(id, isArchived);
       }
     });
 
-    // save edits
-    document.getElementById("editCourseForm").addEventListener("submit", async e => {
+    // Save Edit
+    document.getElementById("editCourseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const cid = document.getElementById("editCourseId").value;
-      const payload = {
+      const id = document.getElementById("editCourseId").value;
+      const body = {
         title: document.getElementById("editTitle").value.trim(),
         category: document.getElementById("editCategory").value.trim(),
         description: document.getElementById("editDescription").value.trim(),
-        assignedClasses: Array.from(
-          document.querySelectorAll("#editAssignedClassesContainer input:checked")
-        ).map(x => x.value)
+        assignedClasses: Array.from(document.querySelectorAll("#editAssignedClassesContainer input[type=checkbox]:checked"))
+          .map(chk => chk.value)
       };
+
+      const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+      const prev = btn.innerHTML; btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+
       try {
-        const r = await fetch(`${API}/courses/${cid}`, {
-          method:'PUT',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
+        const r = await fetch(`${API}/courses/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
         const j = await r.json();
         if (j.success) {
-          alert("Course updated successfully!");
-          bootstrap.Modal.getInstance(document.getElementById("editCourseModal")).hide();
+          bootstrap.Modal.getInstance(document.getElementById('editCourseModal')).hide();
           await loadCourses();
         } else {
           alert("Update failed: " + (j.message || 'Unknown error'));
         }
-      } catch {
+      } catch (err) {
+        console.error(err);
+        alert("Server error");
+      } finally {
+        btn.disabled = false; btn.innerHTML = prev;
+      }
+    });
+
+    // Archive modal open
+    function openArchiveModal(id, isArchived) {
+      document.getElementById('archiveCourseId').value = id;
+      document.getElementById('archiveModalText').textContent =
+        isArchived
+          ? "Unarchive this course? It will become visible again to you and your students where applicable."
+          : "Archive this course? Its modules and quizzes will be hidden from teachers and students.";
+      new bootstrap.Modal(document.getElementById('archiveCourseModal')).show();
+    }
+
+    // Confirm archive/unarchive
+    document.getElementById('confirmArchiveBtn').addEventListener('click', async () => {
+      const id = document.getElementById('archiveCourseId').value;
+      const course = allCourses.find(c => String(c.id) === String(id));
+      const makeArchived = course ? !course.archived : true;
+
+      try {
+        const r = await fetch(`${API}/courses/${id}/${makeArchived ? 'archive' : 'unarchive'}`, { method: 'POST' });
+        const j = await r.json();
+        if (j.success) {
+          bootstrap.Modal.getInstance(document.getElementById('archiveCourseModal')).hide();
+          await loadCourses();
+        } else {
+          alert("Action failed: " + (j.message || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error(err);
         alert("Server error");
       }
     });
 
-    function logoutUser() {
-      localStorage.clear();
-      window.location.href="/ADMIN/login/login.html";
+    // Delete modal open
+    function openDeleteModal(id) {
+      document.getElementById('deleteCourseId').value = id;
+      new bootstrap.Modal(document.getElementById('deleteCourseModal')).show();
     }
+
+    // Confirm delete
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+      const id = document.getElementById('deleteCourseId').value;
+      const btn = document.getElementById('confirmDeleteBtn');
+      const prevHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
+
+      try {
+        const r = await fetch(`${API}/courses/${id}`, { method: 'DELETE' });
+        const j = await r.json();
+        if (j.success) {
+          bootstrap.Modal.getInstance(document.getElementById('deleteCourseModal')).hide();
+          await loadCourses();
+        } else {
+          alert("Delete failed: " + (j.message || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Server error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = prevHTML;
+      }
+    });
+
+    // Init
+    loadCourses();
   </script>
 </body>
+
 </html>

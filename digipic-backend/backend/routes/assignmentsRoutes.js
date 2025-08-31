@@ -1,9 +1,11 @@
-// ==== routes/assignmentsRoutes.js ==== //
+// ==== routes/assignmentsRoutes.js ====
 const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { uploadAssign, uploadSubmission } = require('../config/multerConfig');
 const { getUserRefByAnyId } = require('../utils/idUtils');
+
+/* ---------------- Helpers ---------------- */
 
 // Convert millis/ISO to Firestore Timestamp (or null)
 function toTimestampOrNull(v) {
@@ -18,20 +20,12 @@ function toTimestampOrNull(v) {
   return null;
 }
 
-/**
- * Given classIds, returns { activeIds, archivedIds, missingIds } by reading classes in chunks.
- */
+/** Given classIds, returns { activeIds, archivedIds, missingIds } */
 async function splitClassIdsByArchived(classIds) {
-  const activeIds = [];
-  const archivedIds = [];
-  const missingIds = [];
-
+  const activeIds = [], archivedIds = [], missingIds = [];
   const chunk = (arr, size = 10) => {
-    const out = [];
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-    return out;
+    const out = []; for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size)); return out;
   };
-
   const classesCol = firestore.collection('classes');
   for (const ids of chunk(classIds, 10)) {
     const snap = await classesCol.where('__name__', 'in', ids).get();
@@ -39,37 +33,32 @@ async function splitClassIdsByArchived(classIds) {
     snap.forEach(doc => {
       found.add(doc.id);
       const d = doc.data() || {};
-      if (d.archived === true) archivedIds.push(doc.id);
-      else activeIds.push(doc.id);
+      if (d.archived === true) archivedIds.push(doc.id); else activeIds.push(doc.id);
     });
-    ids.forEach(id => {
-      if (!found.has(id)) missingIds.push(id);
-    });
+    ids.forEach(id => { if (!found.has(id)) missingIds.push(id); });
   }
-
   return { activeIds, archivedIds, missingIds };
 }
 
+/** Check if a course is archived. Returns { ok, archived, code?, message? } */
+async function checkCourseArchived(courseId) {
+  if (!courseId) return { ok:false, code:400, message:'courseId required' };
+  const doc = await firestore.collection('courses').doc(courseId).get();
+  if (!doc.exists) return { ok:false, code:404, message:'Course not found.' };
+  return { ok:true, archived: doc.data().archived === true };
+}
 
 /* ===========================================================
-   CREATE ASSIGNMENT
+   CREATE ASSIGNMENT  (archive-aware)
    POST /assignments
-   multipart/form-data: files[], links[] (optional)
 =========================================================== */
 router.post(
   '/assignments',
   uploadAssign.array('files'),
   asyncHandler(async (req, res) => {
     const {
-      title,
-      content,
-      courseId,
-      courseTitle,   // optional
-      moduleId,
-      publishAt,
-      dueAt,
-      points,
-      teacherId,     // createdBy
+      title, content, courseId, courseTitle, moduleId,
+      publishAt, dueAt, points, teacherId
     } = req.body;
 
     if (!title || !content || !courseId || !teacherId) {
@@ -77,6 +66,13 @@ router.post(
         success: false,
         message: 'Missing required fields: title, content, courseId, teacherId.'
       });
+    }
+
+    // ❗ Block creation if the course is archived
+    const status = await checkCourseArchived(String(courseId).trim());
+    if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
+    if (status.archived) {
+      return res.status(403).json({ success:false, message:'Course is archived; cannot create assignments.' });
     }
 
     // Optional links[] from body
@@ -110,7 +106,7 @@ router.post(
       title: String(title).trim(),
       content: String(content).trim(),
       courseId: String(courseId).trim(),
-      courseTitle: courseTitle ? String(courseTitle).trim() : undefined, // removed if undefined below
+      courseTitle: courseTitle ? String(courseTitle).trim() : undefined,
       moduleId: moduleId ? String(moduleId).trim() : null,
       moduleNumber,
       points: points != null && points !== '' ? Number(points) : null,
@@ -123,7 +119,6 @@ router.post(
       teacherId: String(teacherId).trim(),
     };
 
-    // remove undefined keys
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
     const ref = await firestore.collection('assignments').add(payload);
@@ -156,7 +151,6 @@ router.get(
 /* ===========================================================
    UPDATE (PATCH) ASSIGNMENT
    PATCH /assignments/:id
-   body: { title?, content?, points?, publishAt?, dueAt?, moduleId? }
 =========================================================== */
 router.patch(
   '/assignments/:id',
@@ -207,7 +201,6 @@ router.patch(
 /* ===========================================================
    DELETE ASSIGNMENT
    DELETE /assignments/:id
-   (Note: Does NOT delete subcollections. Use a recursive delete if needed.)
 =========================================================== */
 router.delete(
   '/assignments/:id',
@@ -224,15 +217,26 @@ router.delete(
 );
 
 /* ===========================================================
-   LIST ASSIGNMENTS BY MODULE
+   LIST ASSIGNMENTS BY MODULE (archive-aware)
    GET /modules/:moduleId/assignments
 =========================================================== */
 router.get(
   '/modules/:moduleId/assignments',
   asyncHandler(async (req, res) => {
+    const { moduleId } = req.params;
+
+    // find the parent course via module
+    const mDoc = await firestore.collection('modules').doc(moduleId).get();
+    if (!mDoc.exists) return res.json({ success:true, assignments: [] });
+
+    const courseId = mDoc.data()?.courseId;
+    const status = await checkCourseArchived(courseId);
+    if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
+    if (status.archived) return res.json({ success:true, assignments: [] });
+
     const snap = await firestore
       .collection('assignments')
-      .where('moduleId', '==', req.params.moduleId)
+      .where('moduleId', '==', moduleId)
       .orderBy('publishAt', 'desc')
       .get();
 
@@ -242,13 +246,18 @@ router.get(
 );
 
 /* ===========================================================
-   LIST ASSIGNMENTS BY COURSE (teacher)
+   LIST ASSIGNMENTS BY COURSE (teacher, archive-aware)
    GET /courses/:courseId/assignments
 =========================================================== */
 router.get(
   '/courses/:courseId/assignments',
   asyncHandler(async (req, res) => {
     const { courseId } = req.params;
+
+    const status = await checkCourseArchived(courseId);
+    if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
+    if (status.archived) return res.json({ success:true, assignments: [] });
+
     const snap = await firestore
       .collection('assignments')
       .where('courseId', '==', courseId)
@@ -261,11 +270,7 @@ router.get(
 );
 
 /* ===========================================================
-   CONSOLIDATED STUDENT ASSIGNMENTS
-   GET /students/:userId/assignments
-=========================================================== */
-/* ===========================================================
-   CONSOLIDATED STUDENT ASSIGNMENTS (archived-aware)
+   CONSOLIDATED STUDENT ASSIGNMENTS (archive-aware)
    GET /students/:userId/assignments
 =========================================================== */
 router.get(
@@ -285,7 +290,7 @@ router.get(
     const { activeIds } = await splitClassIdsByArchived(classIds);
     if (!activeIds.length) return res.json({ success: true, assignments: [] });
 
-    // 2) find courses assigned to those active classes (array-contains-any in chunks)
+    // 2) find courses assigned to those active classes
     const classChunks = [];
     for (let i = 0; i < activeIds.length; i += 10) classChunks.push(activeIds.slice(i, i + 10));
 
@@ -298,15 +303,17 @@ router.get(
         .get();
 
       snap.forEach(doc => {
-        if (!courseSeen.has(doc.id)) {
+        const data = doc.data() || {};
+        // ❗ Exclude archived courses here
+        if (!courseSeen.has(doc.id) && data.archived !== true) {
           courseSeen.add(doc.id);
-          courses.push({ id: doc.id, ...doc.data() });
+          courses.push({ id: doc.id, ...data });
         }
       });
     }
     if (!courses.length) return res.json({ success: true, assignments: [] });
 
-    // 3) fetch assignments for those courses (in chunks of 10)
+    // 3) fetch assignments for those (non-archived) courses
     const courseIds = courses.map(c => c.id);
     const aChunks = [];
     for (let i = 0; i < courseIds.length; i += 10) aChunks.push(courseIds.slice(i, i + 10));
@@ -347,7 +354,6 @@ router.get(
 /* ===========================================================
    STUDENT SUBMIT ASSIGNMENT
    POST /assignments/:id/submissions
-   form-data: studentId (required), text?, files[]
 =========================================================== */
 router.post(
   '/assignments/:id/submissions',
@@ -387,9 +393,7 @@ router.post(
       feedback: null
     };
 
-    // upsert to allow resubmission
     await subRef.set(payload, { merge: true });
-
     res.json({ success: true, message: 'Submission saved.' });
   })
 );
@@ -397,7 +401,6 @@ router.post(
 /* ===========================================================
    TEACHER: GRADE SUBMISSION
    PATCH /assignments/:id/submissions/:studentId
-   body: { grade?, feedback? }
 =========================================================== */
 router.patch(
   '/assignments/:id/submissions/:studentId',
@@ -408,18 +411,11 @@ router.patch(
     const aRef  = firestore.collection('assignments').doc(assignmentId);
     const subRef = aRef.collection('submissions').doc(studentId);
 
-    // 1) Update the submission itself
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (grade !== undefined) {
-      updates.grade = Number(grade);
-      updates.graded = true;
-    }
-    if (feedback !== undefined) {
-      updates.feedback = String(feedback);
-    }
+    if (grade !== undefined) { updates.grade = Number(grade); updates.graded = true; }
+    if (feedback !== undefined) { updates.feedback = String(feedback); }
     await subRef.set(updates, { merge: true });
 
-    // 2) Read latest assignment + submission (for mirroring)
     const [aSnap, sSnap] = await Promise.all([aRef.get(), subRef.get()]);
     if (!aSnap.exists) {
       return res.status(404).json({ success: false, message: 'Assignment not found.' });
@@ -428,11 +424,9 @@ router.patch(
     const a = aSnap.data() || {};
     const s = sSnap.exists ? (sSnap.data() || {}) : {};
 
-    // 3) Mirror grade into the user's document and recompute averages
     const userRef = await getUserRefByAnyId(studentId);
     if (userRef) {
       const gradeDocRef = userRef.collection('assignmentGrades').doc(assignmentId);
-
       await gradeDocRef.set({
         assignmentId,
         courseId: a.courseId || null,
@@ -442,16 +436,8 @@ router.patch(
         dueAt: a.dueAt ?? null,
         submittedAt: s.submittedAt ?? null,
         gradedAt: admin.firestore.FieldValue.serverTimestamp(),
-        grade:
-          grade !== undefined
-            ? Number(grade)
-            : typeof s.grade === 'number'
-            ? s.grade
-            : null,
-        feedback:
-          feedback !== undefined
-            ? String(feedback)
-            : s.feedback ?? null,
+        grade: grade !== undefined ? Number(grade) : (typeof s.grade === 'number' ? s.grade : null),
+        feedback: feedback !== undefined ? String(feedback) : (s.feedback ?? null),
       }, { merge: true });
 
       // recompute simple average
@@ -461,18 +447,12 @@ router.patch(
         const g = d.data()?.grade;
         if (typeof g === 'number') { sum += g; count += 1; }
       });
-
       await userRef.set({
         gradedAssignmentsCount: count,
         averageAssignmentGrade: count ? Math.round(sum / count) : 0,
         lastAssignmentGrade: {
           assignmentId,
-          grade:
-            grade !== undefined
-              ? Number(grade)
-              : typeof s.grade === 'number'
-              ? s.grade
-              : null,
+          grade: grade !== undefined ? Number(grade) : (typeof s.grade === 'number' ? s.grade : null),
           at: admin.firestore.FieldValue.serverTimestamp(),
         },
       }, { merge: true });
@@ -498,9 +478,7 @@ router.get(
       .doc(studentId)
       .get();
 
-    if (!snap.exists) {
-      return res.json({ success: true, submission: null });
-    }
+    if (!snap.exists) return res.json({ success: true, submission: null });
     return res.json({ success: true, submission: { id: snap.id, ...snap.data() } });
   })
 );
@@ -530,18 +508,14 @@ router.get(
       try {
         let userSnap = await firestore.collection('users').doc(sid).get();
         let user = null;
-        if (userSnap.exists) {
-          user = userSnap.data();
-        } else {
+        if (userSnap.exists) user = userSnap.data();
+        else {
           const userQuery = await firestore.collection('users').where('studentId', '==', sid).limit(1).get();
           if (!userQuery.empty) user = userQuery.docs[0].data();
         }
         if (user) {
-          if (user.fullName && user.fullName.trim()) {
-            studentName = user.fullName.trim();
-          } else {
-            studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || sid;
-          }
+          if (user.fullName && user.fullName.trim()) studentName = user.fullName.trim();
+          else studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || sid;
         }
       } catch { /* ignore and keep sid */ }
 
@@ -558,18 +532,13 @@ router.get(
 );
 
 /* ===========================================================
-   COMPAT: FRONTEND EXPECTED SUBMIT ENDPOINTS
+   COMPAT: SUBMIT ENDPOINTS
    - POST /assignments/:assignmentId/submit   (requires studentId in body)
    - POST /students/:studentId/assignments/:assignmentId/submit
-   Accept both 'file' and 'files[]'
 =========================================================== */
 const multer = require('multer');
-
-// Use the same multer instance you use for submissions but accept any field name
-// If uploadSubmission is a multer instance, we can derive a handler that accepts any files:
 const uploadAny = uploadSubmission.any();
 
-/** Normalize files from req.files when it may contain 'file' or 'files[]' etc. */
 function collectSubmissionFiles(filesArr) {
   const files = Array.isArray(filesArr) ? filesArr : [];
   if (!files.length) return [];
@@ -581,7 +550,6 @@ function collectSubmissionFiles(filesArr) {
   }));
 }
 
-/** Core save function reused by both compat routes */
 async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
   // Validate assignment
   const aRef = firestore.collection('assignments').doc(assignmentId);
@@ -593,7 +561,6 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
   }
 
   const subRef = aRef.collection('submissions').doc(studentId);
-
   const payload = {
     studentId,
     text: (text || '').toString().trim(),
@@ -609,20 +576,18 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
   return { success: true, message: 'Submission saved.' };
 }
 
-// 1) POST /assignments/:assignmentId/submit  (studentId in body)
+// 1) POST /assignments/:assignmentId/submit
 router.post(
   '/assignments/:assignmentId/submit',
   uploadAny,
   asyncHandler(async (req, res) => {
     const { assignmentId } = req.params;
     const { studentId } = req.body;
-
     if (!studentId) {
       return res.status(400).json({ success: false, message: 'studentId is required.' });
     }
-
     const filesBlobs = collectSubmissionFiles(req.files);
-    const text = req.body.note || req.body.text || '';     // your UI sends "note"
+    const text = req.body.note || req.body.text || '';
     const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
     return res.json(result);
   })
@@ -634,7 +599,6 @@ router.post(
   uploadAny,
   asyncHandler(async (req, res) => {
     const { assignmentId, studentId } = req.params;
-
     const filesBlobs = collectSubmissionFiles(req.files);
     const text = req.body.note || req.body.text || '';
     const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
@@ -643,7 +607,7 @@ router.post(
 );
 
 /* ===========================================================
-   DELETE A STUDENT SUBMISSION (teacher/admin)
+   DELETE A STUDENT SUBMISSION
    DELETE /assignments/:id/submissions/:studentId
 =========================================================== */
 router.delete(
@@ -675,6 +639,5 @@ router.delete(
     return res.json({ success:true, message:'Submission deleted.' });
   })
 );
-
 
 module.exports = router;

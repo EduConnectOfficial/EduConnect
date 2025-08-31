@@ -29,16 +29,23 @@ async function getActiveEnrollmentsClassIds(userId) {
   return filterActiveClassIds(enrolled);
 }
 
+/** Keep only courses where archived !== true (missing archived = active). */
+function filterActiveCourses(courses) {
+  return (Array.isArray(courses) ? courses : []).filter(c => c && c.archived !== true);
+}
+
+
 /* ---------------------------------------------
    To-Do (assignments & quizzes due soon)
 ----------------------------------------------*/
 router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, items: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 
@@ -130,19 +137,22 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
 router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const start = new Date(String(req.query.start));
-  const end   = new Date(String(req.query.end));
+  const end = new Date(String(req.query.end));
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     return res.status(400).json({ success: false, events: [] });
   }
   const startMs = start.getTime();
-  const endMs   = end.getTime() + 86399999;
+  const endMs = end.getTime() + 86399999;
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, events: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
+
+  ;
 
   const events = [];
 
@@ -206,7 +216,7 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
   const userDoc = await firestore.collection('users').doc(userId).get();
   const prefs = {
     email: !!userDoc.data()?.notifyEmail,
-    sms:   !!userDoc.data()?.notifySMS
+    sms: !!userDoc.data()?.notifySMS
   };
 
   const items = [];
@@ -285,12 +295,14 @@ router.get('/students/:userId/library', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const q = (req.query.query || '').toString().toLowerCase();
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, modules: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
+
 
   const out = [];
   for (const ids of chunk(courseIds, 10)) {
@@ -339,10 +351,11 @@ router.get('/students/:userId/library', asyncHandler(async (req, res) => {
 router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, quizzes: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseIds = courses.map(c => c.id);
 
   const now = Date.now();
@@ -377,12 +390,14 @@ router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) =
 router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, assignments: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
+
   const now = Date.now();
   const out = [];
 
@@ -437,11 +452,13 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
   const subjectFilter = (req.query.subject || 'All').toString().toLowerCase();
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
-  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   if (!classIds.length) return res.json({ success: true, items: [], subjects: [] });
 
-  const courses   = await getCoursesForClassIds(classIds);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const courses = filterActiveCourses(coursesAll);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
+
 
   const items = [];
 
@@ -459,7 +476,7 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
         items.push({ date: new Date(at).toISOString(), subject, activity: g.assignmentTitle || 'Assignment', score: Math.round(g.grade) });
       }
     });
-  } catch {}
+  } catch { }
 
   // Quiz attempts
   try {
@@ -475,7 +492,7 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
         items.push({ date: new Date(at).toISOString(), subject, activity: 'Quiz', score: Math.round(pct) });
       }
     });
-  } catch {}
+  } catch { }
 
   const subjects = Array.from(new Set(Object.values(courseMap)));
   items.sort((a, b) => new Date(b.date) - new Date(a.date));
