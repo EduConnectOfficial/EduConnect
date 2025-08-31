@@ -18,6 +18,39 @@ function toTimestampOrNull(v) {
   return null;
 }
 
+/**
+ * Given classIds, returns { activeIds, archivedIds, missingIds } by reading classes in chunks.
+ */
+async function splitClassIdsByArchived(classIds) {
+  const activeIds = [];
+  const archivedIds = [];
+  const missingIds = [];
+
+  const chunk = (arr, size = 10) => {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  };
+
+  const classesCol = firestore.collection('classes');
+  for (const ids of chunk(classIds, 10)) {
+    const snap = await classesCol.where('__name__', 'in', ids).get();
+    const found = new Set();
+    snap.forEach(doc => {
+      found.add(doc.id);
+      const d = doc.data() || {};
+      if (d.archived === true) archivedIds.push(doc.id);
+      else activeIds.push(doc.id);
+    });
+    ids.forEach(id => {
+      if (!found.has(id)) missingIds.push(id);
+    });
+  }
+
+  return { activeIds, archivedIds, missingIds };
+}
+
+
 /* ===========================================================
    CREATE ASSIGNMENT
    POST /assignments
@@ -231,6 +264,10 @@ router.get(
    CONSOLIDATED STUDENT ASSIGNMENTS
    GET /students/:userId/assignments
 =========================================================== */
+/* ===========================================================
+   CONSOLIDATED STUDENT ASSIGNMENTS (archived-aware)
+   GET /students/:userId/assignments
+=========================================================== */
 router.get(
   '/students/:userId/assignments',
   asyncHandler(async (req, res) => {
@@ -244,17 +281,22 @@ router.get(
     const classIds = enrollSnap.docs.map(d => d.id);
     if (!classIds.length) return res.json({ success: true, assignments: [] });
 
-    // 2) courses assigned to those classes (array-contains-any in chunks)
-    const chunks = [];
-    for (let i = 0; i < classIds.length; i += 10) chunks.push(classIds.slice(i, i + 10));
+    // Keep only ACTIVE classIds (hide archived by default)
+    const { activeIds } = await splitClassIdsByArchived(classIds);
+    if (!activeIds.length) return res.json({ success: true, assignments: [] });
+
+    // 2) find courses assigned to those active classes (array-contains-any in chunks)
+    const classChunks = [];
+    for (let i = 0; i < activeIds.length; i += 10) classChunks.push(activeIds.slice(i, i + 10));
 
     const courseSeen = new Set();
     const courses = [];
-    for (const chunk of chunks) {
+    for (const chunk of classChunks) {
       const snap = await firestore
         .collection('courses')
         .where('assignedClasses', 'array-contains-any', chunk)
         .get();
+
       snap.forEach(doc => {
         if (!courseSeen.has(doc.id)) {
           courseSeen.add(doc.id);
@@ -264,7 +306,7 @@ router.get(
     }
     if (!courses.length) return res.json({ success: true, assignments: [] });
 
-    // 3) assignments where courseId in chunks
+    // 3) fetch assignments for those courses (in chunks of 10)
     const courseIds = courses.map(c => c.id);
     const aChunks = [];
     for (let i = 0; i < courseIds.length; i += 10) aChunks.push(courseIds.slice(i, i + 10));

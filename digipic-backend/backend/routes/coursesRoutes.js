@@ -174,6 +174,38 @@ async function cascadeDeleteByQuery(collectionName, field, value) {
   }
 }
 
+/**
+ * Given classIds, returns { activeIds, archivedIds, missingIds }
+ */
+async function splitClassIdsByArchived(classIds) {
+  const activeIds = [];
+  const archivedIds = [];
+  const missingIds = [];
+
+  const chunk = (arr, size = 10) => {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  };
+
+  const classesCol = firestore.collection('classes');
+  for (const ids of chunk(classIds, 10)) {
+    const snap = await classesCol.where('__name__', 'in', ids).get();
+    const found = new Set();
+    snap.forEach(doc => {
+      found.add(doc.id);
+      const d = doc.data() || {};
+      if (d.archived === true) archivedIds.push(doc.id);
+      else activeIds.push(doc.id);
+    });
+    ids.forEach(id => {
+      if (!found.has(id)) missingIds.push(id);
+    });
+  }
+
+  return { activeIds, archivedIds, missingIds };
+}
+
 /* ---------------------------------------
    Routes
 ---------------------------------------- */
@@ -192,6 +224,15 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
   assignedClasses = assignedClasses
     .filter(x => typeof x === 'string' && x.trim() !== '')
     .map(x => x.trim());
+
+    
+// Filter out archived/missing classes
+let skipped = { archived: [], missing: [] };
+if (assignedClasses.length) {
+  const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(assignedClasses);
+  skipped = { archived: archivedIds, missing: missingIds };
+  assignedClasses = activeIds;
+}
 
   const owner = String(uploadedBy).trim();
   const nextCourseNumber = await getNextCourseNumber(owner);
@@ -212,6 +253,7 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
     id: newDoc.id,
     courseNumber: nextCourseNumber,
     assignedClasses,
+     skipped
   });
 }));
 
@@ -345,6 +387,16 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
 // GET /api/classes/:id/courses
 router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
   const classId = req.params.id;
+  const includeArchived = String(req.query.archived || '').toLowerCase() === 'include';
+
+  const classDoc = await firestore.collection('classes').doc(classId).get();
+  if (!classDoc.exists) {
+    return res.status(404).json({ success: false, message: 'Class not found.' });
+  }
+  if (classDoc.data().archived === true && !includeArchived) {
+    return res.status(403).json({ success: false, message: 'Class is archived.' });
+  }
+
   const snap = await firestore
     .collection('courses')
     .where('assignedClasses', 'array-contains', classId)
@@ -353,5 +405,6 @@ router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
   const courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   return res.json({ success: true, courses });
 }));
+
 
 module.exports = router;

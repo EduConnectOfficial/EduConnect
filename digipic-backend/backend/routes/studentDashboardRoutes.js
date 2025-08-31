@@ -5,11 +5,39 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { chunk, ymd, toMillis } = require('../utils/common');
 const { getEnrollmentsClassIds, getCoursesForClassIds } = require('../utils/studentUtils');
 
-// ===== To-Do (assignments & quizzes due soon)
+/* ---------------------------------------------
+   ARCHIVE-AWARE HELPERS (local to this router)
+----------------------------------------------*/
+
+/** Keep only classIds whose class doc has archived !== true (missing archived = active). */
+async function filterActiveClassIds(classIds) {
+  if (!Array.isArray(classIds) || !classIds.length) return [];
+  const out = [];
+  for (const ids of chunk(classIds, 10)) {
+    const snap = await firestore.collection('classes').where('__name__', 'in', ids).get();
+    snap.forEach(d => {
+      const data = d.data() || {};
+      if (data.archived !== true) out.push(d.id);
+    });
+  }
+  return out;
+}
+
+/** Enrollments ➜ filter to active classIds only. */
+async function getActiveEnrollmentsClassIds(userId) {
+  const enrolled = await getEnrollmentsClassIds(userId);
+  return filterActiveClassIds(enrolled);
+}
+
+/* ---------------------------------------------
+   To-Do (assignments & quizzes due soon)
+----------------------------------------------*/
 router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  const classIds  = await getEnrollmentsClassIds(userId);
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, items: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
@@ -22,6 +50,7 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
 
   // Assignments
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let aSnap;
     try {
       aSnap = await firestore.collection('assignments')
@@ -59,6 +88,7 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
 
   // Quizzes
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let qSnap;
     try {
       qSnap = await firestore.collection('quizzes')
@@ -94,7 +124,9 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
   res.json({ success: true, items: items.slice(0, 20) });
 }));
 
-// ===== Calendar
+/* ---------------------------------------------
+   Calendar
+----------------------------------------------*/
 router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const start = new Date(String(req.query.start));
@@ -105,7 +137,9 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   const startMs = start.getTime();
   const endMs   = end.getTime() + 86399999;
 
-  const classIds  = await getEnrollmentsClassIds(userId);
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, events: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
@@ -114,6 +148,7 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
 
   // Assignments
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let aSnap;
     try {
       aSnap = await firestore.collection('assignments')
@@ -137,6 +172,7 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
 
   // Quizzes
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let qSnap;
     try {
       qSnap = await firestore.collection('quizzes')
@@ -161,7 +197,9 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   res.json({ success: true, events });
 }));
 
-// ===== Notifications + preferences
+/* ---------------------------------------------
+   Notifications + preferences
+----------------------------------------------*/
 router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
@@ -174,10 +212,10 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
   const items = [];
   const now = Date.now();
 
-  // Announcements
-  const enrollSnap = await firestore.collection('users').doc(userId).collection('enrollments').get();
-  const classIds = enrollSnap.docs.map(d => d.id);
+  // Announcements (only for active classes)
+  const classIds = await getActiveEnrollmentsClassIds(userId);
   for (const ids of chunk(classIds, 10)) {
+    if (!ids.length) continue;
     let snap;
     try {
       snap = await firestore.collection('announcements')
@@ -240,18 +278,23 @@ router.patch('/students/:userId/notification-preferences', asyncHandler(async (r
   res.json({ success: true });
 }));
 
-// ===== Library
+/* ---------------------------------------------
+   Library
+----------------------------------------------*/
 router.get('/students/:userId/library', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const q = (req.query.query || '').toString().toLowerCase();
 
-  const classIds  = await getEnrollmentsClassIds(userId);
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, modules: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 
   const out = [];
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let snap;
     try {
       snap = await firestore.collection('modules')
@@ -290,10 +333,15 @@ router.get('/students/:userId/library', asyncHandler(async (req, res) => {
   res.json({ success: true, modules: out.slice(0, 100) });
 }));
 
-// ===== Quizzes upcoming
+/* ---------------------------------------------
+   Quizzes upcoming
+----------------------------------------------*/
 router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) => {
   const { userId } = req.params;
-  const classIds  = await getEnrollmentsClassIds(userId);
+
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, quizzes: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseIds = courses.map(c => c.id);
 
@@ -301,6 +349,7 @@ router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) =
   const out = [];
 
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let snap;
     try {
       snap = await firestore.collection('quizzes')
@@ -322,10 +371,15 @@ router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) =
   res.json({ success: true, quizzes: out.slice(0, 50) });
 }));
 
-// ===== Open assignments for quick submit
+/* ---------------------------------------------
+   Open assignments for quick submit
+----------------------------------------------*/
 router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) => {
   const { userId } = req.params;
-  const classIds  = await getEnrollmentsClassIds(userId);
+
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, assignments: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
@@ -333,6 +387,7 @@ router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) =
   const out = [];
 
   for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
     let snap;
     try {
       snap = await firestore.collection('assignments')
@@ -359,7 +414,9 @@ router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) =
   res.json({ success: true, assignments: out.slice(0, 50) });
 }));
 
-// ===== Recent feedback
+/* ---------------------------------------------
+   Recent feedback
+----------------------------------------------*/
 router.get('/students/:userId/recent-feedback', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const snap = await firestore.collection('users').doc(userId)
@@ -371,14 +428,18 @@ router.get('/students/:userId/recent-feedback', asyncHandler(async (req, res) =>
   res.json({ success: true, items });
 }));
 
-// ===== Grades feed
+/* ---------------------------------------------
+   Grades feed
+----------------------------------------------*/
 router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const days = Math.max(1, parseInt(req.query.days || '30', 10));
   const subjectFilter = (req.query.subject || 'All').toString().toLowerCase();
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
-  const classIds  = await getEnrollmentsClassIds(userId);
+  const classIds  = await getActiveEnrollmentsClassIds(userId);
+  if (!classIds.length) return res.json({ success: true, items: [], subjects: [] });
+
   const courses   = await getCoursesForClassIds(classIds);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 

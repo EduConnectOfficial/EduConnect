@@ -241,6 +241,11 @@
   opacity: .85;
   color: #4A1A0C;
 }
+
+.btn-group{
+  flex-wrap: wrap !important;
+  gap: 10px;
+}
 /* ===== Mobile header: search + icon + username (no overlap) ===== */
 @media (max-width: 480px) {
   :root {

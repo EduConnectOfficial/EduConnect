@@ -19,13 +19,20 @@ router.get('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === GET /api/classes (filterable) ===
-// Optional query params: teacherId, schoolYear, semester
+// Optional query params: teacherId, schoolYear, semester, archived=(exclude|only|include)
 router.get('/api/classes', asyncHandler(async (req, res) => {
   let q = firestore.collection('classes');
 
   if (req.query.teacherId) q = q.where('teacherId', '==', req.query.teacherId);
   if (req.query.schoolYear) q = q.where('schoolYear', '==', req.query.schoolYear);
   if (req.query.semester) q = q.where('semester', '==', req.query.semester);
+
+  const archivedParam = String(req.query.archived || 'exclude'); // exclude | include | only
+  if (archivedParam === 'exclude') {
+    q = q.where('archived', '==', false);
+  } else if (archivedParam === 'only') {
+    q = q.where('archived', '==', true);
+  } // include => no archived filter
 
   q = q.orderBy('createdAt', 'desc');
 
@@ -42,6 +49,9 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
       semester: d.semester || null,
       students: d.students || 0,
       teacherId: d.teacherId,
+      archived: !!d.archived,
+      archivedAt: d.archivedAt || null,
+      archivedBy: d.archivedBy || null,
       createdAt: d.createdAt
     };
   });
@@ -81,6 +91,9 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
     schoolYear,
     semester,
     students: 0,
+    archived: false,
+    archivedAt: null,
+    archivedBy: null,
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   };
 
@@ -133,6 +146,51 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+// === ARCHIVE class ===
+// PATCH /api/classes/:id/archive   body: { by?: teacherId }
+router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { by } = req.body || {};
+  const ref = firestore.collection('classes').doc(id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+
+  const d = doc.data();
+  if (d.archived === true) {
+    return res.json({ success: true, already: true, message: 'Class already archived.' });
+  }
+
+  await ref.update({
+    archived: true,
+    archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+    archivedBy: by || d.teacherId || null
+  });
+
+  return res.json({ success: true, message: 'Class archived.' });
+}));
+
+// === UNARCHIVE class ===
+// PATCH /api/classes/:id/unarchive
+router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ref = firestore.collection('classes').doc(id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+
+  const d = doc.data();
+  if (d.archived !== true) {
+    return res.json({ success: true, already: true, message: 'Class is not archived.' });
+  }
+
+  await ref.update({
+    archived: false,
+    archivedAt: null,
+    archivedBy: null
+  });
+
+  return res.json({ success: true, message: 'Class unarchived.' });
+}));
+
 // === DELETE /api/classes/:id ===
 // Optional query param: ?cascade=true  -> also deletes subcollections
 router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
@@ -165,38 +223,44 @@ router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === ROSTER: GET /api/classes/:id/students ===
-// Always reflect the *current* user.active from the users collection.
+// Hidden when archived unless ?archived=include is passed.
 router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
-  const rosterRef = firestore.collection('classes').doc(req.params.id).collection('roster');
+  const classRef = firestore.collection('classes').doc(req.params.id);
+  const classDoc = await classRef.get();
+  if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+
+  const includeArchived = String(req.query.archived || '').toLowerCase() === 'include';
+  if (classDoc.data().archived === true && !includeArchived) {
+    return res.status(403).json({ success: false, message: 'Class is archived.' });
+  }
+
+  const rosterRef = classRef.collection('roster');
   const snap = await rosterRef.get();
 
   const base = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // Join each roster entry with its user doc (by studentId).
+  // Join each roster entry with its user doc (by studentId or userId)
   const students = await Promise.all(base.map(async (row) => {
-    let active = !!row.active; // fallback to what roster had
+    let active = !!row.active; // fallback
     let email = row.email || '';
     let fullName = row.fullName || '';
     let photoURL = row.photoURL || '';
 
     try {
       if (row.userId) {
-        // Fast path if you store userId in roster
         const uDoc = await firestore.collection('users').doc(row.userId).get();
         if (uDoc.exists) {
           const u = uDoc.data();
-          active = (u.active !== false); // default to true when missing
+          active = (u.active !== false);
           email = email || u.email || '';
           fullName = fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim();
           photoURL = photoURL || u.photoURL || '';
         }
       } else if (row.studentId) {
-        // Fallback: look up by studentId
         const q = await firestore.collection('users')
           .where('studentId', '==', String(row.studentId))
           .limit(1)
           .get();
-
         if (!q.empty) {
           const u = q.docs[0].data();
           active = (u.active !== false);
@@ -221,11 +285,16 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
   res.json({ success: true, students });
 }));
 
-
-
 // === ROSTER: POST /api/classes/:id/students (single enroll) ===
 router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classId = req.params.id;
+
+  const classDoc = await firestore.collection('classes').doc(classId).get();
+  if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+  if (classDoc.data().archived === true) {
+    return res.status(403).json({ success: false, message: 'Class is archived; enrollments are disabled.' });
+  }
+
   const { studentId } = req.body || {};
   if (!studentId) {
     return res.status(400).json({ success: false, message: 'studentId is required.' });
@@ -251,6 +320,13 @@ router.post(
   uploadBulk.single('file'),
   asyncHandler(async (req, res) => {
     const classId = req.params.id;
+
+    const classDoc = await firestore.collection('classes').doc(classId).get();
+    if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+    if (classDoc.data().archived === true) {
+      return res.status(403).json({ success: false, message: 'Class is archived; bulk enrollment is disabled.' });
+    }
+
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
 
     const preferredCol = String(req.body.column || 'studentId').trim().toLowerCase();
@@ -316,6 +392,11 @@ router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, r
   const studentId = req.params.studentId;
 
   const classRef = firestore.collection('classes').doc(classId);
+  const classDoc = await classRef.get();
+  if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+  if (classDoc.data().archived === true) {
+    return res.status(403).json({ success: false, message: 'Class is archived; modifications are disabled.' });
+  }
 
   // 1) Remove from roster
   await classRef.collection('roster').doc(studentId).delete();
@@ -381,7 +462,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
 
   // Helpers
   const lc = q.toLowerCase();
-  const cap = lc.replace(/^\p{L}/u, ch => ch.toUpperCase()); // capitalize first letter (unicode-safe-ish)
+  const cap = lc.replace(/^\p{L}/u, ch => ch.toUpperCase()); // capitalize first letter (unicode-ish)
   const candidates = Array.from(new Set([lc, cap, q]));      // try a few variants
 
   async function prefixRange(field, val, lim = 10) {
@@ -405,7 +486,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     ]);
   }
 
-  // Fallback to the original-cased fields (works if names are stored as "Juan", "Maria", etc.)
+  // Fallback to original-cased fields
   for (const p of candidates) {
     await Promise.all([
       prefixRange('firstName', p),
@@ -425,7 +506,6 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
 
   return res.json({ success: true, students });
 }));
-
 
 // === STUDENT: GET ENROLLMENTS ===
 // GET /api/students/:userId/enrollments?includeTeacher=true
