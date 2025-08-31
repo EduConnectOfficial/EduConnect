@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Sign Up</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="signup1.css" />
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="top-logo text-center my-4">
+      <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
+    </div>
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <h2>Create your<br><strong>Account</strong></h2>
+      <p>Share your photo work<br>and get projects!</p>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="form-box login-box">
+        <img src="/assets/signup_text.png" alt="Sign Up" class="img-fluid mb-4 justify-content-center"
+          style="max-width: 200px;" />
+
+        <form id="signupStep1Form" novalidate>
+          <!-- Username -->
+          <div class="mb-3 text-start">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" id="username" class="form-control" placeholder="Choose a username" required />
+            <div id="usernameTaken" class="small mt-1"></div>
+          </div>
+
+          <!-- First Name -->
+          <div class="mb-3 text-start">
+            <label for="firstName" class="form-label">First Name</label>
+            <input type="text" id="firstName" class="form-control" placeholder="Enter your first name" required />
+          </div>
+
+          <!-- Middle Name -->
+          <div class="mb-3 text-start">
+            <label for="middleName" class="form-label">Middle Name</label>
+            <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
+          </div>
+
+          <!-- Last Name -->
+          <div class="mb-3 text-start">
+            <label for="lastName" class="form-label">Last Name</label>
+            <input type="text" id="lastName" class="form-control" placeholder="Enter your last name" required />
+          </div>
+
+          <!-- Email -->
+          <div class="mb-3 text-start">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" id="email" class="form-control" placeholder="Enter your email address" required />
+            <div id="emailTaken" class="small mt-1"></div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3 text-start">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="Create a password" required />
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="mb-3 text-start">
+            <label for="confirmPassword" class="form-label">Confirm Password</label>
+            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password"
+              required />
+            <ul class="list-unstyled mt-2" id="passwordCriteria">
+              <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
+              <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
+              <li id="numberCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
+              <li id="specialCharCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special
+                character</li>
+              <li id="matchCheck"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
+            </ul>
+          </div>
+
+          <!-- Show/Hide Password -->
+          <div class="form-check text-start mb-3">
+            <input class="form-check-input" type="checkbox" id="togglePassword" />
+            <label class="form-check-label" for="togglePassword">Show Password</label>
+          </div>
+
+          <!-- Error Messages -->
+          <div id="passwordError" class="text-danger mb-2"></div>
+          <div id="signupError" class="text-danger mb-3"></div>
+
+          <!-- Submit -->
+          <button type="submit" id="submitBtn" class="btn login-btn w-100 mb-3" disabled>Submit</button>
+        </form>
+
+        <p class="options text-white">
+          Already have an account? <a href="../login/login.html">Login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS Script -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    const usernameInput = document.getElementById("username");
+    const usernameTakenDiv = document.getElementById("usernameTaken");
+    const emailInput = document.getElementById("email");
+    const emailTakenDiv = document.getElementById("emailTaken");
+    const submitBtn = document.getElementById("submitBtn");
+    const signupForm = document.getElementById("signupStep1Form");
+
+    const firstNameInput = document.getElementById("firstName");
+    const middleNameInput = document.getElementById("middleName");
+       const lastNameInput = document.getElementById("lastName");
+    const passwordInput = document.getElementById("password");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
+    const passwordErrorDiv = document.getElementById("passwordError");
+    const signupErrorDiv = document.getElementById("signupError");
+
+    const lengthCheck = document.getElementById("lengthCheck");
+    const uppercaseCheck = document.getElementById("uppercaseCheck");
+    const specialCharCheck = document.getElementById("specialCharCheck");
+    const numberCheck = document.getElementById("numberCheck");
+    const matchCheck = document.getElementById("matchCheck");
+
+    // Show/hide password
+    document.getElementById("togglePassword").addEventListener("change", () => {
+      const t = document.getElementById("togglePassword").checked ? "text" : "password";
+      passwordInput.type = t;
+      confirmPasswordInput.type = t;
+    });
+
+    // helper: set status text + color
+    function setStatus(el, { text = "", ok = null } = {}) {
+      el.textContent = text;
+      el.classList.remove("text-success", "text-danger");
+      if (ok === true) el.classList.add("text-success");
+      if (ok === false) el.classList.add("text-danger");
+    }
+
+    // enable submit only when all required are filled and not taken
+    function updateSubmitState() {
+      const userTaken = usernameTakenDiv.textContent.startsWith("❌");
+      const emailTaken = emailTakenDiv.textContent.startsWith("❌");
+      const requiredFilled =
+        usernameInput.value.trim() &&
+        firstNameInput.value.trim() &&
+        lastNameInput.value.trim() &&
+        emailInput.value.trim() &&
+        passwordInput.value.trim() &&
+        confirmPasswordInput.value.trim();
+      submitBtn.disabled = userTaken || emailTaken || !requiredFilled;
+    }
+
+    // debounce utility
+    function debounce(fn, ms = 400) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    // username availability
+    async function checkUsername() {
+      const u = usernameInput.value.trim();
+      if (!u) {
+        setStatus(usernameTakenDiv, { text: "", ok: null });
+        updateSubmitState();
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`);
+        const js = await res.json();
+        if (js.taken) {
+          setStatus(usernameTakenDiv, { text: "❌ Username already taken", ok: false });
+        } else {
+          setStatus(usernameTakenDiv, { text: "✅ Username available", ok: true });
+        }
+      } catch (e) {
+        console.error("Username check failed:", e);
+        setStatus(usernameTakenDiv, { text: "", ok: null });
+      } finally {
+        updateSubmitState();
+      }
+    }
+
+    // email availability
+    async function checkEmail() {
+      const e = emailInput.value.trim();
+      if (!e) {
+        setStatus(emailTakenDiv, { text: "", ok: null });
+        updateSubmitState();
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/check-email?email=${encodeURIComponent(e)}`);
+        const js = await res.json();
+        if (js.taken) {
+          setStatus(emailTakenDiv, { text: "❌ Email already taken", ok: false });
+        } else {
+          setStatus(emailTakenDiv, { text: "✅ Email available", ok: true });
+        }
+      } catch (err) {
+        console.error("Email check failed:", err);
+        setStatus(emailTakenDiv, { text: "", ok: null });
+      } finally {
+        updateSubmitState();
+      }
+    }
+
+    const checkUsernameDebounced = debounce(checkUsername, 400);
+    const checkEmailDebounced = debounce(checkEmail, 400);
+
+    usernameInput.addEventListener("input", checkUsernameDebounced);
+    usernameInput.addEventListener("blur", checkUsername);
+    emailInput.addEventListener("input", checkEmailDebounced);
+    emailInput.addEventListener("blur", checkEmail);
+
+    // password criteria (live)
+    function updateRequirement(el, cond) {
+      const icon = el.querySelector("i");
+      icon.classList.toggle("bi-check-circle", cond);
+      icon.classList.toggle("text-success", cond);
+      icon.classList.toggle("bi-x-circle", !cond);
+      icon.classList.toggle("text-danger", !cond);
+    }
+    function validatePasswordLive() {
+      const p = passwordInput.value;
+      updateRequirement(lengthCheck, p.length >= 8);
+      updateRequirement(uppercaseCheck, /[A-Z]/.test(p));
+      updateRequirement(numberCheck, /\d/.test(p));
+      updateRequirement(specialCharCheck, /[^A-Za-z0-9]/.test(p));
+      updateRequirement(matchCheck, p === confirmPasswordInput.value && p !== "");
+      updateSubmitState();
+    }
+    passwordInput.addEventListener("input", validatePasswordLive);
+    confirmPasswordInput.addEventListener("input", validatePasswordLive);
+
+    ["input", "blur"].forEach(evt => {
+      [usernameInput, firstNameInput, lastNameInput, emailInput, passwordInput, confirmPasswordInput]
+        .forEach(el => el.addEventListener(evt, updateSubmitState));
+    });
+
+    // submit
+    signupForm.addEventListener("submit", async e => {
+      e.preventDefault();
+
+      if (usernameTakenDiv.textContent.startsWith("❌") || emailTakenDiv.textContent.startsWith("❌")) {
+        signupErrorDiv.textContent = "Please fix the errors above before submitting.";
+        return;
+      }
+
+      const pw = passwordInput.value.trim();
+      const cp = confirmPasswordInput.value.trim();
+      if (pw.length < 8) { passwordErrorDiv.textContent = "Password must be at least 8 characters long."; return; }
+      if (!/[A-Z]/.test(pw)) { passwordErrorDiv.textContent = "Include at least one uppercase letter."; return; }
+      if (!/[^A-Za-z0-9]/.test(pw)) { passwordErrorDiv.textContent = "Include at least one special character."; return; }
+      if (!/\d/.test(pw)) { passwordErrorDiv.textContent = "Include at least one number."; return; }
+      if (pw !== cp) { passwordErrorDiv.textContent = "Passwords do not match."; return; }
+      passwordErrorDiv.textContent = "";
+      signupErrorDiv.textContent = "";
+
+      const payload = {
+        firstName: firstNameInput.value.trim(),
+        middleName: middleNameInput.value.trim(),
+        lastName: lastNameInput.value.trim(),
+        username: usernameInput.value.trim(),
+        email: emailInput.value.trim(),
+        password: pw,
+        active: true,
+        isITsupport: false,
+        isUser: true,
+        isAdmin: false,
+        isMobile: false,
+        isTeacher: true,
+        isStudent: false
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting...";
+
+      try {
+        const res = await fetch(`${API_BASE}/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const js = await res.json();
+
+        if (!res.ok) {
+          signupErrorDiv.textContent = js.error || "Signup failed.";
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit";
+          return;
+        }
+
+        // ✅ Do NOT store any IDs here. Only store pending email for verification step.
+        sessionStorage.setItem("pendingEmail", payload.email);
+        sessionStorage.setItem("pendingUserData", JSON.stringify({
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          username: payload.username
+        }));
+
+        alert("Verification code sent to your email!");
+        window.location.href = "/TEACHER/signUp/verification.html";
+      } catch (err) {
+        signupErrorDiv.textContent = "Could not connect to the server.";
+        console.error(err);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit";
+      }
+    });
+
+    // Initial state
+    submitBtn.disabled = true;
+  </script>
+
+</body>
+
+</html>

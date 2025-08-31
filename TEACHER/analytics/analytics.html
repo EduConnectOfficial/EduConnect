@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Analytics & Reporting</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Global & Page CSS -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="analytics.css" />
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input type="text" class="form-control" placeholder="Search..." />
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <section class="content px-4">
+        <h1 class="page-title">Analytics & Reporting</h1>
+
+        <!-- Filters -->
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <span class="muted">Class:</span>
+          <select id="classSelect" class="form-select" style="width:auto; min-width:220px;">
+            <option value="">All classes</option>
+          </select>
+
+          <span class="muted ms-3">View:</span>
+          <select id="viewSelect" class="form-select" style="width:auto; min-width:160px;">
+            <option value="quiz" selected>Quizzes</option>
+            <option value="assignment">Assignments</option>
+          </select>
+
+          <button id="refreshBtn" class="btn btn-outline-secondary btn-sm ms-2">
+            <i class="bi bi-arrow-repeat"></i> Refresh
+          </button>
+        </div>
+
+        <!-- Analytics Dashboard -->
+        <div class="subsection">
+          <h2 id="dashboardTitle">Quiz Analytics Dashboard</h2>
+          <div class="row gy-4">
+            <div class="col-md-6">
+              <div class="card chart-card">
+                <h6 class="chart-title" id="leftChartTitle">Average Quiz Score by Quiz</h6>
+                <canvas id="quizAvgChart" height="160"></canvas>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card chart-card">
+                <h6 class="chart-title" id="rightChartTitle">Quiz Attempts per Quiz</h6>
+                <canvas id="quizAttemptsChart" height="160"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="d-flex flex-wrap gap-3 mt-3 summary-cards">
+            <div class="card summary-card">
+              <h6 id="totalLabel">Total Quizzes</h6>
+              <p id="totalQuizzes">—</p>
+            </div>
+            <div class="card summary-card">
+              <h6 id="avgLabel">Average Quiz Score</h6>
+              <p id="avgQuizScore">—</p>
+            </div>
+            <div class="card summary-card">
+              <h6 id="midLabel">Pass Rate</h6>
+              <p id="passRate">—</p>
+            </div>
+            <div class="card summary-card">
+              <h6>Modules Completed</h6>
+              <p id="modulesCompleted">—</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Progress -->
+        <div class="subsection mt-5">
+          <h2 id="tableTitle">Student Quiz & Module Progress</h2>
+          <div class="table-responsive">
+            <table class="table table-striped" id="atRiskTable">
+              <thead class="table-light">
+                <tr id="tableHeadRow">
+                  <th>Student</th>
+                  <th>ID</th>
+                  <th>Avg Quiz Score</th>
+                  <th>Quizzes Taken</th>
+                  <th>On-time %</th>
+                  <th>Modules Completed</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="atRiskTbody">
+                <tr>
+                  <td colspan="8" class="text-center text-muted">Loading…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Export & Share -->
+        <div class="subsection mt-5 mb-5">
+          <h2>Export & Share</h2>
+          <button id="exportCsvBtn" class="btn btn-outline-primary me-2">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+          </button>
+          <button id="downloadPdfBtn" class="btn btn-outline-secondary">
+            <i class="bi bi-file-earmark-pdf"></i> Download PDF
+          </button>
+          <small class="d-block mt-2 text-muted">Exports reflect the current filter & view.</small>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(r => r.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sb = document.querySelector(".sidebar"), db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        })
+        .catch(() => { /* sidebar optional */ });
+    });
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <!-- Page Scripts -->
+  <script>
+    const API_BASE = 'http://localhost:5000';
+
+    // Auth guard
+    (function () {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
+      if (!u?.userId || !u?.isTeacher) {
+        window.location.href = "/TEACHER/login/login.html";
+        return;
+      }
+      window.currentUser = u;
+      const nameEl = document.getElementById('Username');
+      if (nameEl) nameEl.textContent = (u.username || 'Teacher').toString().trim();
+    })();
+
+    const teacherId =
+      new URLSearchParams(location.search).get('teacherId') ||
+      (window.currentUser && window.currentUser.userId) ||
+      localStorage.getItem('teacherId') ||
+      '';
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      location.href = "/TEACHER/login/login.html";
+    }
+
+    async function getJson(url) {
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+      return res.json();
+    }
+    async function getBlob(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+      return res.blob();
+    }
+    const fmtPct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
+
+    // Refs
+    const classSelectEl = document.getElementById('classSelect');
+    const viewSelectEl = document.getElementById('viewSelect');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const dashboardTitleEl = document.getElementById('dashboardTitle');
+    const leftChartTitleEl = document.getElementById('leftChartTitle');
+    const rightChartTitleEl = document.getElementById('rightChartTitle');
+    const totalLabelEl = document.getElementById('totalLabel');
+    const avgLabelEl = document.getElementById('avgLabel');
+    const midLabelEl = document.getElementById('midLabel');
+    const totalQuizzesEl = document.getElementById('totalQuizzes');
+    const avgQuizScoreEl = document.getElementById('avgQuizScore');
+    const passRateEl = document.getElementById('passRate');
+    const modulesCompletedEl = document.getElementById('modulesCompleted');
+    const tableHeadRow = document.getElementById('tableHeadRow');
+    const atRiskTbody = document.getElementById('atRiskTbody');
+
+    // ---- Label shortener (used for BOTH charts) ----
+    function cleanLabel(s, max = 28) {
+      if (!s) return '—';
+      let t = String(s)
+        .replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '')   // drop leading "Course 1: "
+        .replace(/\s*\([^)]*\)\s*$/,'')                      // drop trailing "(4 modules)"
+        .trim();
+      if (t.length > max) t = t.slice(0, max - 1) + '…';
+      return t;
+    }
+
+    // Charts
+    const charts = { left: null, right: null };
+    function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
+
+    // NOTE: pass FULL labels; we shorten for display but keep full titles in tooltips
+    function renderBar(key, id, fullLabels, values, lbl) {
+      destroyChart(key);
+      const displayLabels = (fullLabels || []).map(l => cleanLabel(l));
+      const ctx = document.getElementById(id);
+      charts[key] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: displayLabels, datasets: [{ label: lbl, data: values }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { autoSkip: false } }
+          }
+        }
+      });
+    }
+
+    function renderLine(key, id, fullLabels, values, lbl) {
+      destroyChart(key);
+      const displayLabels = (fullLabels || []).map(l => cleanLabel(l));
+      const ctx = document.getElementById(id);
+      charts[key] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: displayLabels, datasets: [{ label: lbl, data: values, fill: false }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { autoSkip: false } }
+          }
+        }
+      });
+    }
+
+    // Badge helper
+    function statusBadge(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'at risk') return '<span class="badge bg-danger">At Risk</span>';
+      if (s === 'on track') return '<span class="badge bg-success">On Track</span>';
+      return '<span class="badge bg-secondary">—</span>';
+    }
+
+    // Tables with View buttons
+    function renderQuizTable(rows) {
+      if (!rows?.length) {
+        atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return;
+      }
+      atRiskTbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.name || '—'}</td>
+          <td>${r.studentId || '—'}</td>
+          <td>${Number.isFinite(+r.avgQuizScore) ? Math.round(+r.avgQuizScore)+'%' : '—'}</td>
+          <td>${r.quizzesTaken ?? 0}/${r.totalQuizzes ?? ''}</td>
+          <td>${fmtPct(r.onTimePct)}</td>
+          <td>${r.modulesCompleted ?? 0}/${r.totalModules ?? ''}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td><button class="btn btn-sm btn-primary view-analytics" data-student="${encodeURIComponent(r.studentId || '')}">View</button></td>
+        </tr>`).join('');
+    }
+    function renderAssignmentTable(rows) {
+      if (!rows?.length) {
+        atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return;
+      }
+      atRiskTbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.name || '—'}</td>
+          <td>${r.studentId || '—'}</td>
+          <td>${Number.isFinite(+r.avgAssignmentScore) ? Math.round(+r.avgAssignmentScore)+'%' : '—'}</td>
+          <td>${r.assignmentsSubmitted ?? 0}/${r.totalAssignments ?? ''}</td>
+          <td>${fmtPct(r.onTimePct)}</td>
+          <td>${r.modulesCompleted ?? 0}/${r.totalModules ?? ''}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td><button class="btn btn-sm btn-primary view-analytics" data-student="${encodeURIComponent(r.studentId || '')}">View</button></td>
+        </tr>`).join('');
+    }
+
+    // Labels
+    function setModeLabels(mode) {
+      if (mode === 'assignment') {
+        dashboardTitleEl.textContent = 'Assignment Analytics Dashboard';
+        leftChartTitleEl.textContent = 'Average Assignment Score by Assignment';
+        rightChartTitleEl.textContent = 'Submissions per Assignment';
+        totalLabelEl.textContent = 'Total Assignments';
+        avgLabelEl.textContent = 'Average Assignment Score';
+        midLabelEl.textContent = 'On-time Rate';
+        tableHeadRow.innerHTML = `
+          <th>Student</th><th>ID</th><th>Avg Assignment Score</th><th>Assignments Submitted</th>
+          <th>On-time %</th><th>Modules Completed</th><th>Status</th><th>Actions</th>`;
+      } else {
+        dashboardTitleEl.textContent = 'Quiz Analytics Dashboard';
+        leftChartTitleEl.textContent = 'Average Quiz Score by Quiz';
+        rightChartTitleEl.textContent = 'Quiz Attempts per Quiz';
+        totalLabelEl.textContent = 'Total Quizzes';
+        avgLabelEl.textContent = 'Average Quiz Score';
+        midLabelEl.textContent = 'Pass Rate';
+        tableHeadRow.innerHTML = `
+          <th>Student</th><th>ID</th><th>Avg Quiz Score</th><th>Quizzes Taken</th>
+          <th>On-time %</th><th>Modules Completed</th><th>Status</th><th>Actions</th>`;
+      }
+    }
+
+    // Summaries
+    function setSummaryValuesForQuiz(summary, progress) {
+      const s = summary || {};
+      let avg = s.averageQuizScore != null ? +s.averageQuizScore : null;
+      if (avg == null && Array.isArray(progress) && progress.length) {
+        const nums = progress.map(r => +r.avgQuizScore).filter(n => Number.isFinite(n));
+        avg = nums.length ? Math.round(nums.reduce((a,b)=>a+b,0)/nums.length) : null;
+      }
+      totalQuizzesEl.textContent = s.totalQuizzes ?? '—';
+      avgQuizScoreEl.textContent = Number.isFinite(avg) ? `${avg}%` : '—';
+      passRateEl.textContent = Number.isFinite(+s.passRate) ? `${Math.round(+s.passRate)}%` : '—';
+      modulesCompletedEl.textContent = s.modulesCompleted ?? '—';
+    }
+    function setSummaryValuesForAssignment(summary) {
+      const s = summary || {};
+      totalQuizzesEl.textContent = s.totalAssignments ?? '—';
+      avgQuizScoreEl.textContent = Number.isFinite(+s.averageAssignmentScore) ? `${Math.round(+s.averageAssignmentScore)}%` : '—';
+      passRateEl.textContent = Number.isFinite(+s.onTimeRate) ? `${Math.round(+s.onTimeRate)}%` : '—';
+      modulesCompletedEl.textContent = s.modulesCompleted ?? '—';
+    }
+
+    // Loaders
+    async function loadClasses() {
+      const resp = await getJson(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
+      const classes = resp.classes || [];
+      classSelectEl.innerHTML = `<option value="">All classes</option>`;
+      classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id || c.classId;
+        opt.textContent = `${c.name} (${c.gradeLevel}-${c.section})`;
+        classSelectEl.appendChild(opt);
+      });
+    }
+    async function loadQuizAnalytics() {
+      setModeLabels('quiz');
+      const classId = classSelectEl.value || '';
+      const data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      const qLabels = data.byQuiz?.labels || [];
+      renderBar('left','quizAvgChart',qLabels,data.byQuiz?.avgScores||[],'Average Score (%)');
+      renderLine('right','quizAttemptsChart',qLabels,data.byQuiz?.attempts||[],'Attempts');
+      setSummaryValuesForQuiz(data.summary,data.progress);
+      renderQuizTable(data.progress||[]);
+    }
+    async function loadAssignmentAnalytics() {
+      setModeLabels('assignment');
+      const classId = classSelectEl.value || '';
+      const data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      const aLabels = data.byAssignment?.labels || [];
+      renderBar('left','quizAvgChart',aLabels,data.byAssignment?.avgScores||[],'Average Score (%)');
+      renderLine('right','quizAttemptsChart',aLabels,data.byAssignment?.submissions||[],'Submissions');
+      setSummaryValuesForAssignment(data.summary);
+      renderAssignmentTable(data.progress||[]);
+    }
+    async function loadAnalyticsView() {
+      if (viewSelectEl.value === 'assignment') await loadAssignmentAnalytics();
+      else await loadQuizAnalytics();
+    }
+
+    // Exports
+    async function exportCsv() {
+      const classId = classSelectEl.value || '';
+      const base = viewSelectEl.value === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
+      const blob = await getBlob(`${API_BASE}/api/teacher/${base}/csv?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      const link = document.createElement('a'); link.href=URL.createObjectURL(blob);
+      link.download = `${base}_${classId||'all'}.csv`; document.body.appendChild(link); link.click();
+      URL.revokeObjectURL(link.href); link.remove();
+    }
+    async function downloadPdf() {
+      const classId = classSelectEl.value || '';
+      const base = viewSelectEl.value === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
+      const blob = await getBlob(`${API_BASE}/api/teacher/${base}/pdf?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      const link = document.createElement('a'); link.href=URL.createObjectURL(blob);
+      link.download = `${base}_${classId||'all'}.pdf`; document.body.appendChild(link); link.click();
+      URL.revokeObjectURL(link.href); link.remove();
+    }
+
+    // Events
+    document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
+    document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
+    classSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
+    viewSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
+    refreshBtn.addEventListener('click',()=>loadAnalyticsView().catch(console.error));
+
+    // Delegate clicks for "View Analytics"
+    document.getElementById('atRiskTable').addEventListener('click', (e)=>{
+      const btn = e.target.closest('.view-analytics');
+      if (!btn) return;
+      const student = btn.dataset.student;
+      if (student) {
+        window.location.href = `/TEACHER/analytics/student.html?student=${student}&teacherId=${teacherId}`;
+      }
+    });
+
+    // Init
+    (async ()=>{ await loadClasses(); await loadAnalyticsView(); })();
+  </script>
+</body>
+</html>

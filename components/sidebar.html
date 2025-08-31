@@ -1,0 +1,175 @@
+<link rel="stylesheet" href="/components/sidebar.css" />
+
+<nav class="sidebar" role="navigation" aria-label="Teacher Sidebar Navigation">
+  <div class="sidebar-logo">Main Menu</div>
+
+  <ul class="sidebar-links">
+
+    <!-- Dashboard -->
+    <li>
+      <a href="/TEACHER/dashboard/dashboard.html">
+        <i class="bi bi-house-door-fill"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- Classes -->
+    <li class="sidebar-item has-submenu" id="classesDropdown">
+      <a class="submenu-toggle" href="#" aria-expanded="false">
+        <div class="menu-item">
+          <i class="bi bi-grid-1x2-fill"></i>
+          <span>Classes</span>
+        </div>
+        <i class="bi bi-chevron-down submenu-arrow"></i>
+      </a>
+      <ul class="submenu">
+        <li>
+          <a href="/TEACHER/classes/class_list.html">
+            <i class="bi bi-card-list"></i>
+            Class List
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Courses -->
+    <li class="sidebar-item has-submenu" id="coursesDropdown">
+      <a class="submenu-toggle" href="#" aria-expanded="false">
+        <div class="menu-item">
+          <i class="bi bi-journals"></i>
+          <span>Courses</span>
+        </div>
+        <i class="bi bi-chevron-down submenu-arrow"></i>
+      </a>
+      <ul class="submenu">
+        <li>
+          <a href="/TEACHER/courses/course_list.html">
+            <i class="bi bi-card-list"></i>
+            All Courses
+          </a>
+        </li>
+        <li>
+          <a href="/TEACHER/courses/course.html">
+            <i class="bi bi-file-earmark-plus-fill"></i>
+            New Course
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Modules -->
+    <li class="sidebar-item has-submenu" id="modulesDropdown">
+      <a class="submenu-toggle" href="#" aria-expanded="false">
+        <div class="menu-item">
+          <i class="bi bi-file-earmark-text-fill"></i>
+          <span>Modules</span>
+        </div>
+        <i class="bi bi-chevron-down submenu-arrow"></i>
+      </a>
+      <ul class="submenu">
+
+        <li>
+          <a href="/TEACHER/modules/select_Course.html">
+            <i class="bi bi-file-earmark-plus-fill"></i>
+            New Module
+          </a>
+
+        </li>
+      </ul>
+    </li>
+
+    <!-- Modules -->
+    <li class="sidebar-item has-submenu" id="modulesDropdown">
+      <a class="submenu-toggle" href="#" aria-expanded="false">
+        <div class="menu-item">
+          <i class="bi bi-file-earmark-text-fill"></i>
+          <span>Assignments</span>
+        </div>
+        <i class="bi bi-chevron-down submenu-arrow"></i>
+      </a>
+      <ul class="submenu">
+        <a href="/TEACHER/assignment/assignment_upload.html">
+          <i class="bi bi-file-earmark-plus-fill"></i>
+          New Assignment
+        </a>
+        <a href="/TEACHER/assignment/assignment_list.html">
+          <i class="bi bi-card-list"></i>
+          View Assignments
+        </a>
+    </li>
+  </ul>
+  </li>
+
+  <!-- Quizzes -->
+  <li class="sidebar-item has-submenu" id="quizzesDropdown">
+    <a class="submenu-toggle" href="#" aria-expanded="false">
+      <div class="menu-item">
+        <i class="bi bi-question-circle-fill"></i>
+        <span>Quizzes</span>
+      </div>
+      <i class="bi bi-chevron-down submenu-arrow"></i>
+    </a>
+    <ul class="submenu">
+      <li>
+        <a href="/TEACHER/quizzes/quiz_list.html">
+          <i class="bi bi-card-list"></i>
+          All Quizzes
+        </a>
+      </li>
+      <li>
+        <a href="/TEACHER/quizzes/quiz_essay.html">
+          <i class="bi bi-patch-check-fill"></i>
+          Essay Grading
+        </a>
+      </li>
+      <li>
+        <a href="/TEACHER/quizzes/quiz.html">
+          <i class="bi bi-patch-plus-fill"></i>
+          New Quiz
+        </a>
+      </li>
+    </ul>
+  </li>
+
+  <!-- Announcements -->
+  <li>
+    <a href="/TEACHER/announcements/announcements.html">
+      <i class="bi bi-megaphone-fill"></i>
+      <span>Announcements</span>
+    </a>
+  </li>
+
+  <!-- Analytics -->
+  <li>
+    <a href="/TEACHER/analytics/analytics.html">
+      <i class="bi bi-bar-chart-fill"></i>
+      <span>Analytics</span>
+    </a>
+  </li>
+
+  <!-- Forum -->
+  <li>
+    <a href="/TEACHER/forum/forum_list.html">
+      <i class="bi bi-chat-dots-fill"></i>
+      <span>Forum</span>
+    </a>
+  </li>
+  
+
+  <!-- Profile -->
+  <li>
+    <a href="/TEACHER/profile/profile.html">
+      <i class="bi bi-person-circle"></i>
+      <span>Profile</span>
+    </a>
+  </li>
+
+  </ul>
+
+  <div class="sidebar-footer p-3">
+    <a href="#" class="logout-btn" onclick="logoutUser()">
+      <i class="bi bi-box-arrow-right"></i>
+      Logout
+    </a>
+  </div>
+</nav>

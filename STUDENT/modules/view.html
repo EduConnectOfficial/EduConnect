@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Module Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Reuse student theme -->
+  <link rel="stylesheet" href="../courses/courses.css" />
+  <style>
+    .lesson-nav .btn { min-width: 110px; }
+    .attachment-item + .attachment-item { margin-top:.5rem; }
+    .video-embed { aspect-ratio: 16 / 9; width:100%; border:0; }
+    .viewer-card { background:#f8fafc; }
+    .lesson-pill { background:#eef2ff; color:#374151; }
+    .lesson-pill.active { background:#dbeafe; font-weight:600; }
+    .attachment-badge { background:#f1f5f9; color:#0f172a; }
+    .safe-pre { white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+       <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" id="lessonSearch" placeholder="Search lessons in this module..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h1 class="page-title brand mb-0" id="moduleTitle">Module</h1>
+          <div class="d-flex gap-2">
+            <a id="backToCourseBtn" class="btn btn-sm btn-amber-outline" href="#">
+              <i class="bi bi-arrow-left"></i> Back to Modules
+            </a>
+            <span id="completeBadge" class="badge text-bg-secondary align-self-center" style="display: flex; align-items: center; justify-content: center; min-width: 110px; min-height: 32px;">Not completed</span>
+            <button id="completeBtn" class="btn btn-sm btn-amber">
+              <i class="bi bi-check2-circle me-1"></i> Mark Module Complete
+            </button>
+          </div>
+        </div>
+
+        <!-- Module meta -->
+        <div class="ui-card card-themed mb-3" id="moduleMeta" style="display:none;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title">
+              <i class="bi bi-journal-text"></i>
+              <span id="metaTitle">—</span>
+            </h2>
+            <div class="text-name" id="metaCourse">Course: —</div>
+          </div>
+          <div class="row g-2">
+            <div class="col-12 col-md-8">
+              <div class="small text-light" id="metaLessons">Lessons: 0</div>
+            </div>
+            <div class="col-12 col-md-4 text-md-end">
+              <a id="quizBtn" class="btn btn-sm btn-amber-outline d-none">
+                <i class="bi bi-ui-checks-grid me-1"></i> Take Quiz
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Left: lessons list -->
+          <div class="col-12 col-lg-4">
+            <div class="card shadow border-0 rounded-4 viewer-card p-3">
+              <h5 class="mb-2">Lessons</h5>
+              <div id="lessonList" class="d-grid gap-2"></div>
+            </div>
+          </div>
+
+          <!-- Right: lesson viewer -->
+          <div class="col-12 col-lg-8">
+            <div class="card shadow border-0 rounded-4 viewer-card p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <span class="badge bg-primary me-2" id="moduleNumberBadge">Module #—</span>
+                  <span class="badge lesson-pill" id="lessonIndexBadge">Lesson —</span>
+                </div>
+                <div class="lesson-nav">
+                  <button id="prevLesson" class="btn btn-sm btn-amber-outline"><i class="bi bi-arrow-left"></i> Prev</button>
+                  <button id="nextLesson" class="btn btn-sm btn-amber-outline">Next <i class="bi bi-arrow-right"></i></button>
+                </div>
+              </div>
+
+              <h3 class="mt-3" id="lessonTitle">(No Title)</h3>
+              <div class="safe-pre text-secondary" id="lessonBody">(No Content)</div>
+
+              <hr class="my-3" />
+              <h6 class="mb-2">Attachments</h6>
+              <div id="attachments"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
+           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filePreviewContent" style="min-height:400px; text-align:center;"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page Logic -->
+  <script>
+    const API_BASE = 'http://localhost:5000';
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!user || !user.userId || !user.isStudent) {
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  // === Initials-only header display ===
+function initialsFrom(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (!s) return "";
+
+  // If email, take first + last token from local part
+  if (s.includes("@")) {
+    const local = s.split("@")[0];
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : local.slice(0, 2)
+    ).toUpperCase();
+  }
+
+  // Names or usernames: first + last token initials
+  const parts = s.split(/[\s\-]+/).filter(Boolean);
+  return (parts.length >= 2
+    ? parts[0][0] + parts[parts.length - 1][0]
+    : parts[0].slice(0, 2)
+  ).toUpperCase();
+}
+
+const userData = JSON.parse(localStorage.getItem("user") || "{}");
+const userId = userData.userId || userData.uid || userData.id || userData.email;
+
+if (!userId) {
+  window.location.href = "../login/login.html";
+} else {
+  const displayName = userData.fullName || userData.username || userData.email || "Student";
+  const initials = initialsFrom(displayName) || "?";
+  const el = document.getElementById("Username");
+  el.textContent = initials;
+  el.title = displayName;                 // tooltip with full name
+  el.setAttribute("aria-label", displayName);
+
+  if (!userData.uid) {
+    userData.uid = userId;
+    localStorage.setItem("user", JSON.stringify(userData));
+  }
+}
+
+
+    const params = new URLSearchParams(window.location.search);
+    const moduleId = params.get('moduleId');
+    const startIdx = parseInt(params.get('subIdx') || '0', 10) || 0;
+
+    let moduleDoc = null;
+    let currentIdx = 0;
+    let lessonCount = 0;
+    let courseId = null;
+
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    function isYouTube(url) {
+      return /youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\//i.test(url || '');
+    }
+    function ytEmbed(url) {
+      // best-effort id extraction
+      let id = null;
+      try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
+        if (u.searchParams.get('v')) id = u.searchParams.get('v');
+        const parts = u.pathname.split('/embed/');
+        if (!id && parts[1]) id = parts[1];
+      } catch {}
+      return id ? `https://www.youtube.com/embed/${id}` : url;
+    }
+
+    function filePreviewHtml(fileUrl) {
+      const ext = (fileUrl.split('.').pop() || '').toLowerCase();
+      if (['jpg','jpeg','png','gif','bmp','webp'].includes(ext)) {
+        return `<img src="${fileUrl}" alt="Preview" style="max-width:100%;max-height:70vh;" />`;
+      }
+      if (ext === 'pdf') {
+        return `
+          <embed src="${fileUrl}" type="application/pdf" width="100%" height="70vh" />
+          <div class="mt-2 text-center">
+            <a href="${fileUrl}" target="_blank" class="btn btn-primary">Open PDF in New Tab</a>
+            <div class="text-muted small mt-1">If the PDF does not display, your browser may block embedded PDFs.</div>
+          </div>
+        `;
+      }
+      return `<a href="${fileUrl}" target="_blank" class="btn btn-primary">Download File</a>`;
+    }
+
+    function openFilePreview(title, url) {
+      document.getElementById('filePreviewModalLabel').textContent = title || 'File Preview';
+      document.getElementById('filePreviewContent').innerHTML = filePreviewHtml(url);
+      new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    }
+
+    async function fetchModule() {
+      if (!moduleId) {
+        alert('No moduleId provided.');
+        window.location.href = '/STUDENT/courses/my_courses.html';
+        return;
+      }
+      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
+      if (!res.ok) throw new Error('Failed to load module');
+
+      moduleDoc = await res.json(); // { id, title, courseId, moduleSubTitles, moduleSubDescs, attachments[]... }
+      courseId = moduleDoc.courseId || null;
+
+      // Fill top meta
+      document.getElementById('moduleTitle').textContent = moduleDoc.title || 'Module';
+      document.getElementById('metaTitle').textContent = moduleDoc.title || '—';
+      document.getElementById('moduleNumberBadge').textContent = `Module #${moduleDoc.moduleNumber || ''}`;
+
+      // Back button to the course modules list
+      const back = document.getElementById('backToCourseBtn');
+      if (courseId) back.href = `/STUDENT/modules/list.html?id=${encodeURIComponent(courseId)}`;
+      else back.href = '/STUDENT/courses/my_courses.html';
+
+      // Lessons
+      const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
+      const descs = Array.isArray(moduleDoc.moduleSubDescs) ? moduleDoc.moduleSubDescs : [];
+      lessonCount = Math.max(subs.length, descs.length);
+      document.getElementById('metaLessons').textContent = `Lessons: ${lessonCount}`;
+      document.getElementById('moduleMeta').style.display = '';
+
+      // Build lesson list
+      const list = document.getElementById('lessonList');
+      list.innerHTML = '';
+      for (let i=0; i<lessonCount; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `btn btn-sm lesson-pill text-start ${i===startIdx ? 'active' : ''}`;
+        btn.textContent = `${i+1}. ${subs[i] || '(No Title)'}`;
+        btn.addEventListener('click', () => showLesson(i));
+        list.appendChild(btn);
+      }
+
+      // Optional: resolve course title for meta
+      try {
+        if (courseId) {
+          const cr = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
+          if (cr.ok) {
+            const c = await cr.json();
+            document.getElementById('metaCourse').textContent = `Course: ${c.title || '—'}`;
+          }
+        }
+      } catch {}
+
+      // Optional: find quiz for this module
+      try {
+        const qRes = await fetch(`${API_BASE}/quizzes`);
+        if (qRes.ok) {
+          const qJs = await qRes.json();
+          const found = (qJs.quizzes || []).find(q => q.moduleId === moduleId);
+          if (found) {
+            const quizBtn = document.getElementById('quizBtn');
+            quizBtn.classList.remove('d-none');
+            const go = `/STUDENT/quiz/quiz.html?quizId=${encodeURIComponent(found.id)}&moduleId=${encodeURIComponent(moduleId)}${courseId ? '&courseId='+encodeURIComponent(courseId) : ''}`;
+            quizBtn.href = go;
+          }
+        }
+      } catch {}
+
+      // Load completion state
+      await refreshCompletion();
+
+      // Show initial lesson
+      showLesson(startIdx < lessonCount ? startIdx : 0);
+    }
+
+    async function refreshCompletion() {
+      try {
+        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(user.email)}/modules/${encodeURIComponent(moduleId)}/isCompleted`);
+        const j = await r.json().catch(()=>({completed:false}));
+        const badge = document.getElementById('completeBadge');
+        const btn = document.getElementById('completeBtn');
+        if (j.completed) {
+          badge.className = 'badge text-bg-success';
+          badge.textContent = 'Completed';
+          btn.classList.add('btn-success');
+          btn.classList.remove('btn-amber');
+          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Completed';
+          btn.disabled = true;
+        } else {
+          badge.className = 'badge text-bg-secondary';
+          badge.textContent = 'Not completed';
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-amber');
+          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Module Complete';
+          btn.disabled = false;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    function showLesson(idx) {
+      currentIdx = Math.max(0, Math.min(idx, lessonCount - 1));
+
+      // mark active in list
+      document.querySelectorAll('#lessonList .lesson-pill').forEach((el, i) => {
+        el.classList.toggle('active', i === currentIdx);
+      });
+
+      // set badges
+      document.getElementById('lessonIndexBadge').textContent = `Lesson ${currentIdx + 1}`;
+
+      // titles & content
+      const subs = moduleDoc.moduleSubTitles || [];
+      const descs = moduleDoc.moduleSubDescs || [];
+      const title = subs[currentIdx] || '(No Title)';
+      const body  = descs[currentIdx] || '(No Content)';
+
+      document.getElementById('lessonTitle').textContent = title;
+      document.getElementById('lessonBody').textContent  = body; // pre-wrapped with CSS
+
+      // attachments for this lesson
+      const wrap = document.getElementById('attachments');
+      wrap.innerHTML = '';
+      const atts = Array.isArray(moduleDoc.attachments) ? moduleDoc.attachments.filter(a => a.lessonIdx === currentIdx) : [];
+
+      if (!atts.length) {
+        wrap.innerHTML = `<div class="text-muted">No attachments for this lesson.</div>`;
+      } else {
+        atts.forEach(att => {
+          const item = document.createElement('div');
+          item.className = 'attachment-item';
+
+          if (att.filePath) {
+            const full = `http://127.0.0.1:5000${att.filePath}`;
+            item.innerHTML = `
+              <span class="badge attachment-badge me-2">File</span>
+              <button class="btn btn-link p-0 text-decoration-none" type="button">${escapeHTML(att.description || 'Open file')}</button>
+            `;
+            item.querySelector('button').addEventListener('click', () => openFilePreview(title, full));
+          } else if (att.url) {
+            if (isYouTube(att.url)) {
+              item.innerHTML = `
+                <span class="badge attachment-badge me-2">Video</span>
+                <div class="ratio ratio-16x9 mt-1">
+                  <iframe class="video-embed" src="${ytEmbed(att.url)}" allowfullscreen></iframe>
+                </div>
+                <div class="small text-muted mt-1">${escapeHTML(att.videoDesc || '')}</div>
+              `;
+            } else {
+              item.innerHTML = `
+                <span class="badge attachment-badge me-2">Link</span>
+                <a href="${att.url}" target="_blank" class="text-decoration-none">${escapeHTML(att.videoDesc || att.url)}</a>
+              `;
+            }
+          }
+          wrap.appendChild(item);
+        });
+      }
+
+      // nav buttons
+      document.getElementById('prevLesson').disabled = currentIdx <= 0;
+      document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
+    }
+
+    async function markComplete() {
+      try {
+        const res = await fetch(`${API_BASE}/mark-module-complete`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: user.email, moduleId })
+        });
+        const js = await res.json().catch(()=>({success:false}));
+        if (!js.success) throw new Error(js.message || 'Failed to mark complete');
+        await refreshCompletion();
+        alert('✅ Module marked complete!');
+      } catch (e) {
+        console.error(e);
+        alert('❌ Could not mark complete.');
+      }
+    }
+
+    // Wiring
+    document.addEventListener('DOMContentLoaded', async () => {
+      // user label already set
+      document.getElementById('prevLesson').addEventListener('click', () => showLesson(currentIdx - 1));
+      document.getElementById('nextLesson').addEventListener('click', () => showLesson(currentIdx + 1));
+      document.getElementById('completeBtn').addEventListener('click', markComplete);
+
+      const searchTop = document.getElementById('lessonSearch');
+      searchTop.addEventListener('input', () => {
+        const q = searchTop.value.trim().toLowerCase();
+        const subs = moduleDoc?.moduleSubTitles || [];
+        const idx = subs.findIndex(s => (s || '').toLowerCase().includes(q));
+        if (q && idx >= 0) showLesson(idx);
+      });
+
+      try {
+        await fetchModule();
+      } catch (e) {
+        console.error(e);
+        alert('Failed to load module.');
+        window.location.href = '/STUDENT/courses/my_courses.html';
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

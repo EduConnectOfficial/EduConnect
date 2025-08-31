@@ -1,0 +1,631 @@
+  :root {
+    --bg: #f6f8fa;
+    --text: #1f2328;
+    --muted: #6a737d;
+    --card: #fff;
+    --border: #e5e7eb;
+    --brand-dark-1: #4A1A0C;
+    --brand-dark-2: #7A2810;
+    --brand-accent-1: #FF6A00;
+    --brand-accent-2: #B03C10;
+    --card-radius: 14px;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text)
+  }
+
+  .dashboard {
+    display: flex;
+    min-height: 100vh
+  }
+
+  .main {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+    transition: margin-left .3s ease, width .3s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg)
+  }
+
+  .sidebar:hover~.main {
+    margin-left: 220px;
+    width: calc(100% - 220px)
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    position: sticky;
+    top: 0;
+    z-index: 5
+  }
+
+  .logo-header {
+    height: 45px
+  }
+
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 500px;
+    margin: 0 20px
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    border: none;
+    border-radius: 999px;
+    outline: 0
+  }
+
+  .search-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d7dadf
+  }
+
+  .profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer
+  }
+
+  .profile-btn .username {
+    font-size: 14px
+  }
+
+  .upload-container {
+    padding: 60px
+  }
+
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
+    padding: 18px;
+  }
+
+  h2 {
+    margin: 0 0 12px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent
+  }
+
+  .btn-upload {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    border: none;
+    color: #fff
+  }
+
+  .btn-upload:hover {
+    filter: brightness(1.05);
+    color: #fff
+  }
+
+  .btn-amber-outline {
+    background: #fff;
+    color: var(--brand-accent-2);
+    border: 1px solid var(--brand-accent-2)
+  }
+
+  .btn-amber-outline:hover {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    color: #fff;
+    border-color: transparent
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--brand-accent-2);
+    box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
+  }
+
+  .form-check-input:focus {
+    box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
+  }
+
+  .form-check-input:checked {
+    background-color: var(--brand-accent-2);
+    border-color: var(--brand-accent-2)
+  }
+
+  .question-block {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: #fff
+  }
+
+  .q-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px
+  }
+
+  .q-type {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap
+  }
+
+  .chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .85rem;
+    cursor: pointer;
+    background: #fff
+  }
+
+  .chip.active {
+    border-color: var(--brand-accent-2);
+    background: linear-gradient(90deg, rgba(255, 106, 0, .1), rgba(176, 60, 16, .08))
+  }
+
+  .q-actions .btn {
+    padding: 2px 8px
+  }
+
+  .input-group-text {
+    min-width: 40px;
+    justify-content: center
+  }
+
+  .hint {
+    font-size: .85rem;
+    color: var(--muted)
+  }
+
+  #timerMinutes:disabled,
+  #gracePeriod:disabled,
+  #perPageInput:disabled {
+    background-color: #f8f9fa;
+  }
+
+  .logout-btn {
+    background: linear-gradient(to bottom, #FF6A00, #B03C10);
+    border: none;
+    padding: .6rem 1.5rem;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity .3s
+  }
+
+  .sidebar:hover .logout-btn {
+    opacity: 1
+  }
+
+  /* Builder pager */
+  .q-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: .5rem
+  }
+
+  .q-chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: .25rem .75rem;
+    background: #fff
+  }
+
+  .q-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center
+  }
+
+  .q-dots .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d7dadf;
+    opacity: .8
+  }
+
+  .q-dots .dot.active {
+    background: var(--brand-accent-1);
+    opacity: 1
+  }
+
+  .question-block {
+    display: none
+  }
+
+  .question-block.active {
+    display: block
+  }
+
+  /* Bulk import (CSV only) */
+  .import-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff
+  }
+
+  .import-title {
+    font-weight: 700
+  }
+
+  .preview-table {
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px
+  }
+
+  .preview-table table {
+    margin: 0
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace
+  }
+
+  .step {
+    font-weight: 700
+  }
+
+  .row-excluded {
+    opacity: .5
+  }
+   /* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }
+@media (max-width: 480px) {
+  /* Make buttons easy to tap and nicely spaced */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;           /* stack cleanly */
+    width: 100%;              /* full-width buttons */
+    min-height: 44px;         /* Apple HIG tap target */
+    padding: 0.9rem 1rem;     /* comfy padding */
+    font-size: 1rem;          /* avoid iOS zoom */
+    line-height: 1.2;
+    border-radius: 14px;      /* softer corners on small screens */
+    margin: 10px 0;           /* vertical gap between buttons */
+    text-align: center;
+  }
+
+  /* Icon + text alignment inside buttons */
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+
+  /* Button groups wrap nicely with spacing */
+  .btn-group,
+  .lesson-nav,
+  .content .d-flex,
+  .content .btn-toolbar {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  /* Specific: lesson prev/next should stack under title if tight */
+  .lesson-nav .btn {
+    min-width: unset;         /* let full-width rule apply */
+  }
+
+  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+  .content .d-flex.gap-2 {
+    gap: 10px !important;
+  }
+
+  /* Prevent tiny outline/ghost borders on gradient buttons */
+  .btn-amber,
+  .btn-amber-outline,
+  .back-btn,
+  .logout-btn {
+    border-width: 1px;
+  }
+}
+
+/* Tablet: keep buttons inline but add breathing room */
+@media (min-width: 481px) and (max-width: 1280px) {
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+  }
+
+  /* Lesson nav buttons keep reasonable width */
+  .lesson-nav .btn { min-width: 120px; }
+}
+/* --- Better container + card sizing across breakpoints --- */
+.upload-container { padding: 32px; }
+.form-card {
+  width: 100%;
+  max-width: 860px;          /* center the sheet on desktop */
+  margin: 0 auto;
+}
+@media (max-width: 480px) {
+  /* Layout */
+  .upload-container { padding: 12px !important; }
+  .form-card { padding: 14px !important; border-radius: 12px !important; max-width: 640px; }
+
+  /* Stack all grid columns */
+  .row.g-3 > [class*="col-"] { flex: 0 0 100% !important; max-width: 100% !important; }
+   /* CSV step buttons stack nicely */
+  .import-card .d-flex.flex-wrap.gap-2 > .btn { width: 100% !important; }
+
+  /* CSV "Preview & Validate" full width next to file picker */
+  .import-card .row.g-2 .col-12.col-md-4 .btn { width: 100% !important; }
+
+  /* Question toolbar: make pager & add button full width */
+  .q-toolbar { width: 100%; gap: 10px !important; flex-direction: column; align-items: stretch; }
+  .q-toolbar .btn-group { width: 100% !important; display: flex; gap: 10px; }
+  #qPrevBtn, #qNextBtn { flex: 1 1 0; min-height: 44px; font-size: 1rem; }
+  #addQuestionBtnTop { width: 100% !important; }
+
+  /* Bottom actions: stack Add Question + Upload Quiz */
+  .form-card .d-flex.justify-content-between { flex-wrap: wrap !important; gap: 10px !important; }
+  #addQuestionBtn, .form-card .btn.btn-upload { width: 100% !important; }
+
+  /* Inputs: larger tap targets */
+  .form-control, .form-select { font-size: 16px; min-height: 44px; }
+  .input-group-text { min-width: 44px; }
+
+  /* Question chips more tappable */
+  .chip { padding: 6px 12px; line-height: 1.2; }
+
+  /* Table preview: safe scroll on small screens */
+  .preview-table { max-height: 260px; overflow: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (min-width: 481px) and (max-width: 992px) {
+  .upload-container { padding: 20px !important; }
+  .form-card { max-width: 740px; }
+  .row.g-3 > [class*="col-md-6"], 
+  .row.g-3 > [class*="col-lg-6"] { flex: 0 0 100%; max-width: 100%; }
+
+  /* Make key actions wide without being full width */
+  .btn, .btn-upload, .btn-amber-outline { min-height: 44px; }
+  .q-toolbar .btn-group { gap: 8px; }
+  #qPrevBtn, #qNextBtn { min-width: 140px; }
+}
+
+/* --- Optional: make datetime pickers nicer everywhere --- */
+input[type="date"], input[type="time"], input[type="datetime-local"]{
+  min-height: 44px; font-size: 16px; line-height: 1.2;
+  padding-right: 3rem;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  width: 28px; height: 28px; cursor: pointer; opacity: .9;
+}
+/* ===== Essay Grading – mobile add-on ===== */
+
+/* General spacing */
+.content { padding: 16px; }
+.card    { border-radius: 14px; }
+.table-responsive { -webkit-overflow-scrolling: touch; }
+
+
+/* Header: compact on phones */
+@media (max-width: 576px) {
+  .header-top { padding: .6rem .8rem !important; gap: .5rem; }
+  .logo-header { display: none; }
+  .search-box { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .profile-btn { padding: 0 .5rem; border-radius: 999px; }
+}
+
+/* Filters card: stack neatly */
+@media (max-width: 576px) {
+  .card .row.g-2 > [class*="col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  #refreshBtn { width: 100%; min-height: 44px; }
+}
+
+/* Table: compact; hide a few columns on phones to avoid overflow
+   (keeps: Student, Quiz, Status, Submitted, Action) */
+.table { font-size: .96rem; }
+.table td, .table th { vertical-align: middle; }
+
+@media (max-width: 576px) {
+  .table td, .table th { padding: .55rem .6rem; white-space: nowrap; }
+  .table thead th:nth-child(2),
+  .table tbody td:nth-child(2), /* Course */
+  .table thead th:nth-child(3),
+  .table tbody td:nth-child(3), /* Module */
+  .table thead th:nth-child(5),
+  .table tbody td:nth-child(5)  /* Essay Items */ { display: none; }
+
+  /* Action button fills row width for easy tapping */
+  #essayTbody .btn.btn-sm { width: 100%; min-height: 44px; font-size: 1rem; }
+}
+
+/* Pager: stack & stretch */
+@media (max-width: 576px) {
+  .content .d-flex.justify-content-between.align-items-center.mt-2 {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .5rem;
+  }
+  .content .btn-group { width: 100%; }
+  .content .btn-group > .btn { flex: 1 1 0; min-height: 44px; }
+}
+
+/* Global buttons & inputs: comfy tap targets on phones */
+@media (max-width: 576px) {
+  .btn, .btn-sm, .btn-group .btn { width: 100%; min-height: 44px; font-size: 1rem; border-radius: 12px; }
+  .form-control, .form-select { font-size: 16px; min-height: 44px; }
+}
+
+/* Question list chips inside modal sidebar */
+.q-item { padding: .65rem .75rem; }
+@media (max-width: 576px) { .q-item { font-size: .95rem; } }
+
+/* Grading modal: fullscreen with sticky actions on phones */
+@media (max-width: 576px) {
+  #gradeModal .modal-dialog  { width: 100%; max-width: none; margin: 0; }
+  #gradeModal .modal-content { min-height: 100vh; border-radius: 0; }
+  #gradeModal .modal-body    { padding-bottom: 84px; } /* space for sticky buttons */
+
+  /* Make the existing action row sticky without changing HTML */
+  #gradeForm .d-flex.flex-wrap.gap-2.mt-3 {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    background: #fff; padding: .5rem 0;
+    border-top: 1px solid var(--border);
+    z-index: 2; gap: .5rem;
+  }
+  #gradeForm .d-flex.flex-wrap.gap-2.mt-3 .btn { width: 100%; }
+}
+
+/* Focus visibility for accessibility */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+  outline: 2px solid rgba(255,106,0,.45);
+  outline-offset: 1px;
+}

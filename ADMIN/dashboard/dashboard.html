@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Admin - Dashboard</title>
+
+  <!-- Icons & CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* smaller charts */
+    .chart-sm .chart-wrap{ height:180px; }
+    .chart-sm canvas{ width:100% !important; height:100% !important; }
+    @media (max-width:576px){ .chart-sm .chart-wrap{ height:160px; } }
+    .card-title{ font-size:.95rem; }
+    .stat-card .icon{ font-size:1.6rem; opacity:.9; }
+    .mini{ font-size:.85rem; color:#6a737d; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <!-- Sidebar loader -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/ADMIN/components/test.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+
+            const sidebar = document.querySelector(".sidebar");
+            const dashboard = document.querySelector(".dashboard");
+            if (sidebar && dashboard) {
+              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+            }
+
+            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+              toggle.addEventListener('click', e => {
+                e.preventDefault();
+                const parent = toggle.closest('.has-submenu');
+                parent.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', String(toggle.getAttribute('aria-expanded') !== 'true'));
+              });
+            });
+          })
+          .catch(err => console.error("Failed to load sidebar:", err));
+      });
+    </script>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+        <div class="search-box">
+          <input type="text" placeholder="Search..."/>
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <section class="content px-4">
+        <h2 class="mt-4 mb-3 fw-bold text-center">Admin Dashboard</h2>
+
+        <!-- Top Stats -->
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <div class="card stat-card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title mb-1">Total Users</h6>
+                  <div id="totalUsersCount" class="h3 mb-0">—</div>
+                </div>
+                <i class="bi bi-people icon text-primary"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title mb-1">Active</h6>
+                  <div id="activeUsersCount" class="h3 mb-0">—</div>
+                  <div id="activePct" class="mini">—</div>
+                </div>
+                <i class="bi bi-circle-fill icon text-success"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-md-4">
+            <div class="card stat-card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="card-title mb-1">Inactive</h6>
+                  <div id="inactiveUsersCount" class="h3 mb-0">—</div>
+                  <div id="inactivePct" class="mini">—</div>
+                </div>
+                <i class="bi bi-circle icon text-secondary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Role Stats (Admins removed; IT Support -> Super Admins) -->
+        <div class="row g-3 mt-1">
+          <div class="col-6 col-md-4">
+            <div class="card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="mini mb-1">Teachers</div>
+                  <div id="teachersCount" class="h4 mb-0">—</div>
+                </div>
+                <i class="bi bi-easel2-fill icon text-warning"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="mini mb-1">Students</div>
+                  <div id="studentsCount" class="h4 mb-0">—</div>
+                </div>
+                <i class="bi bi-mortarboard-fill icon text-info"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="card shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="mini mb-1">Super Admins</div>
+                  <div id="itCount" class="h4 mb-0">—</div>
+                </div>
+                <i class="bi bi-tools icon text-secondary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts (kept small) -->
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100 chart-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-2">Active vs Inactive</h6>
+                <div class="chart-wrap"><canvas id="activeInactiveChart"></canvas></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100 chart-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-2">Role Distribution</h6>
+                <div class="chart-wrap"><canvas id="roleDistributionChart"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Extra Analytics -->
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-lg-4">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-3">System Highlights</h6>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                  <span class="mini">Average Quiz Score</span>
+                  <span id="avgQuizScoreCard" class="fw-semibold">—</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                  <span class="mini">Top Course</span>
+                  <span id="topCourseCard" class="fw-semibold text-truncate" style="max-width: 55%;">—</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="mini">Most Completed Module</span>
+                  <span id="mostCompletedModuleCard" class="fw-semibold text-truncate" style="max-width: 55%;">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-8">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title mb-3">Teacher & Student Accounts</h6>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle text-center">
+                    <thead class="table-light">
+                      <tr>
+                        <th>#</th>
+                        <th>Username</th>
+                        <th>First</th>
+                        <th>Last</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sampleUsersBody">
+                      <tr><td colspan="7">Loading…</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="text-end">
+                  <a href="../access/user_access.html" class="btn btn-sm btn-outline-secondary">View All Users</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Header user name
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.username) {
+      window.location.href = "../login/login.html";
+    } else {
+      document.getElementById("Username").textContent = userData.username;
+    }
+
+    const API_BASE = "http://localhost:5000";
+    let activeInactiveChart, roleDistributionChart;
+
+    function maskEmail(email) {
+      if (!email || !email.includes("@")) return email;
+      const [localPart, domain] = email.split("@");
+      const domainParts = domain.split(".");
+      const maskedLocal = localPart[0] + "*".repeat(Math.max(localPart.length - 1, 0));
+      const domainName = domainParts.slice(0, -1).join(".");
+      const maskedDomainName = domainName ? domainName[0] + "*".repeat(Math.max(domainName.length - 1, 0)) : "";
+      const tld = domainParts[domainParts.length - 1] || "";
+      return maskedLocal + "@" + (maskedDomainName ? (maskedDomainName + ".") : "") + tld;
+    }
+
+    // ---- Dashboard stats from backend
+    async function loadDashboardStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/dashboard-stats`);
+        const data = await res.json();
+        if (!data?.success) throw new Error("stats not ok");
+
+        const s = data.stats || {};
+        const total = Number(s.totalUsers || 0);
+        const active = Number(s.activeUsers || 0);
+        const inactive = Number(s.inactiveUsers || 0);
+
+        document.getElementById("totalUsersCount").textContent = total;
+        document.getElementById("activeUsersCount").textContent = active;
+        document.getElementById("inactiveUsersCount").textContent = inactive;
+
+        const actPct = total ? Math.round((active/total)*100) : 0;
+        const inactPct = total ? Math.round((inactive/total)*100) : 0;
+        document.getElementById("activePct").textContent = `${actPct}% of total`;
+        document.getElementById("inactivePct").textContent = `${inactPct}% of total`;
+
+        // Highlights
+        document.getElementById("avgQuizScoreCard").textContent = (s.averageQuizScore ?? "—");
+        document.getElementById("topCourseCard").textContent = s.topCourse || "—";
+        document.getElementById("mostCompletedModuleCard").textContent = s.mostCompletedModule || "—";
+
+        // Chart: Active vs Inactive (small)
+        const ctx = document.getElementById("activeInactiveChart");
+        if (activeInactiveChart) activeInactiveChart.destroy();
+        activeInactiveChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: { labels: ['Active', 'Inactive'], datasets: [{ data: [active, inactive] }] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10 } } },
+            cutout: '60%',
+            layout: { padding: 6 }
+          }
+        });
+      } catch (err) {
+        console.error("🔥 dashboard-stats error:", err);
+      }
+    }
+
+    // ---- Role analytics: compute from /users
+    async function loadUsersAndBuild() {
+      try {
+        const res = await fetch(`${API_BASE}/users`);
+        const users = await res.json();
+
+        // Counters
+        let teachers = 0, students = 0, superAdmins = 0, active = 0, total = 0;
+        const teacherStudentSample = [];
+
+        users.forEach((u) => {
+          total++;
+          if (u.active !== false) active++;
+
+          // roles
+          const isTeacher = (u?.isTeacher === true) || Boolean(u?.teacherId);
+          const isStudent = (u?.isStudent === true) || Boolean(u?.studentId);
+          const isSuperAdmin = (u?.isITsupport === true) || (u?.isSuperAdmin === true);
+
+          if (isTeacher) teachers++;
+          if (isStudent) students++;
+          if (isSuperAdmin) superAdmins++;
+
+          // sample list (up to 12)
+          if ((isTeacher || isStudent) && teacherStudentSample.length < 12) {
+            let role = '—';
+            if (isTeacher && isStudent) role = 'Teacher & Student';
+            else if (isTeacher) role = 'Teacher';
+            else if (isStudent) role = 'Student';
+
+            teacherStudentSample.push({
+              username: u.username || '',
+              firstName: u.firstName || '',
+              lastName: u.lastName || '',
+              email: u.email || '',
+              active: (u.active !== false),
+              role
+            });
+          }
+        });
+
+        // Role cards
+        document.getElementById("teachersCount").textContent = teachers;
+        document.getElementById("studentsCount").textContent = students;
+        document.getElementById("itCount").textContent = superAdmins;
+
+        // Bar: Roles (Admins removed)
+        const ctx2 = document.getElementById("roleDistributionChart");
+        if (roleDistributionChart) roleDistributionChart.destroy();
+        roleDistributionChart = new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels: ['Teachers','Students','Super Admins'],
+            datasets: [{ label: 'Users', data: [teachers, students, superAdmins] }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            layout: { padding: 6 },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+                      x: { ticks: { font: { size: 11 } } } }
+          }
+        });
+
+        // Fill sample table
+        const tbody = document.getElementById("sampleUsersBody");
+        if (!teacherStudentSample.length) {
+          tbody.innerHTML = `<tr><td colspan="7">No Teacher/Student users found.</td></tr>`;
+        } else {
+          tbody.innerHTML = '';
+          teacherStudentSample.forEach((u, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${i+1}</td>
+              <td>${u.username}</td>
+              <td>${u.firstName}</td>
+              <td>${u.lastName}</td>
+              <td>${maskEmail(u.email)}</td>
+              <td><span class="badge ${u.active ? 'bg-success' : 'bg-secondary'}">${u.active ? 'Active' : 'Inactive'}</span></td>
+              <td>${u.role}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // If /api/dashboard-stats didn’t load, backfill active/inactive
+        const inactive = total - active;
+        if (document.getElementById("totalUsersCount").textContent === '—') {
+          document.getElementById("totalUsersCount").textContent = total;
+          document.getElementById("activeUsersCount").textContent = active;
+          document.getElementById("inactiveUsersCount").textContent = inactive;
+          const actPct = total ? Math.round((active/total)*100) : 0;
+          const inactPct = total ? Math.round((inactive/total)*100) : 0;
+          document.getElementById("activePct").textContent = `${actPct}% of total`;
+          document.getElementById("inactivePct").textContent = `${inactPct}% of total`;
+
+          const ctx = document.getElementById("activeInactiveChart");
+          if (activeInactiveChart) activeInactiveChart.destroy();
+          activeInactiveChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['Active','Inactive'], datasets: [{ data: [active, inactive] }] },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10 } } },
+              cutout: '60%',
+              layout: { padding: 6 }
+            }
+          });
+        }
+      } catch (err) {
+        console.error("❌ users fetch/build error:", err);
+      }
+    }
+
+    // boot
+    loadDashboardStats();
+    loadUsersAndBuild();
+  </script>
+
+  <script>
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/ADMIN/login/login.html";
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher - Graded Submissions</title>
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <!-- Global & Page CSS -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+
+  <style>
+    :root{
+      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
+    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+
+    .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
+    .logo-header{height:45px}
+    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
+    .search-box input{border-radius:30px}
+    .page-title{font-weight:700;margin:4px 0 18px}
+    .help-btn{color:#7a87a2}
+
+    .table thead th{background:#fafbfc;border-bottom:1px solid var(--border)}
+    .score-badge{font-size:.85rem;font-weight:600}
+    .whitespace-prewrap{white-space:pre-wrap}
+
+    .modal-header.brand {
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;
+      border-bottom:1px solid rgba(255,255,255,.15);
+    }
+    .file-list a { text-decoration:none; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input id="searchInput" type="text" class="form-control" placeholder="Search graded (student, title, module, class)…"/>
+          <i class="fas fa-search position-absolute" style="top:50%; right:15px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold">Teacher Name</span>
+        </button>
+      </header>
+
+      <section class="content container-fluid p-4 mt-4">
+        <h1 class="fw-bold mb-0">Assignment Graded Submissions</h1></section>
+
+      <!-- Page Content -->
+      <section class="content container-fluid py-3">
+        <!-- Title & Actions -->
+        <div class="row align-items-center mb-3">
+          <div class="col-md-6">
+            <div class="text-muted small" id="summaryText">—</div>
+          </div>
+          <div class="col-md-6 text-md-end mt-2 mt-md-0">
+            <button class="btn btn-outline-secondary me-2" id="viewUngradedBtn">
+              <i class="bi bi-inbox-fill"></i> View Ungraded
+            </button>
+            <button class="btn btn-link help-btn" onclick="window.open('/help/submissions.html','_blank')">
+              <i class="bi bi-question-circle"></i> Help
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <form id="filterForm" class="filter-bar mb-4">
+          <div class="row g-3">
+            <div class="col-sm-3">
+              <label for="filterClass" class="form-label">Class</label>
+              <select id="filterClass" class="form-select">
+                <option value="">All Classes</option>
+              </select>
+            </div>
+            <div class="col-sm-3">
+              <label for="filterModule" class="form-label">Module</label>
+              <select id="filterModule" class="form-select">
+                <option value="">All Modules</option>
+              </select>
+            </div>
+            <div class="col-sm-2">
+              <label for="filterGradedDate" class="form-label">Graded Date</label>
+              <input type="date" id="filterGradedDate" class="form-control"/>
+            </div>
+            <div class="col-sm-2">
+              <label for="filterScore" class="form-label">Min Score</label>
+              <input type="number" id="filterScore" class="form-control" placeholder="e.g. 75"/>
+            </div>
+            <div class="col-sm-2 d-flex align-items-end">
+              <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Graded Table -->
+        <div class="table-responsive">
+          <table class="table table-striped align-middle" id="gradedTable">
+            <thead class="table-light">
+              <tr>
+                <th>Student</th>
+                <th>Class</th>
+                <th>Module</th>
+                <th>Title</th>
+                <th>Submitted At</th>
+                <th>Graded At</th>
+                <th>Score</th>
+                <th>Feedback</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="feedbackTitle">Feedback</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="feedbackBody" class="whitespace-prewrap"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Submission Modal (Rich) -->
+  <div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header brand">
+          <h5 class="modal-title">
+            <i class="bi bi-file-earmark-text me-1"></i>
+            <span id="vmTitle">Submission</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+              <div class="small text-uppercase muted">Student</div>
+              <div class="fw-semibold" id="vmStudent">—</div>
+            </div>
+            <div>
+              <div class="small text-uppercase muted">Class</div>
+              <div id="vmClass">—</div>
+            </div>
+            <div>
+              <div class="small text-uppercase muted">Module</div>
+              <div id="vmModule">—</div>
+            </div>
+          </div>
+
+          <hr/>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="small text-uppercase muted">Submitted</div>
+              <div id="vmSubmitted">—</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-uppercase muted">Graded</div>
+              <div id="vmGraded">—</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-uppercase muted">Score</div>
+              <div id="vmScore">—</div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-uppercase muted">Feedback</div>
+              <div id="vmFeedback">—</div>
+            </div>
+          </div>
+
+          <hr/>
+
+          <div class="mb-2">
+            <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Files</div>
+            <ul id="vmFiles" class="file-list ps-3 mb-0"></ul>
+          </div>
+
+          <div class="mt-3">
+            <div class="fw-semibold mb-1"><i class="bi bi-chat-left-text"></i> Student Note</div>
+            <div id="vmNote" class="whitespace-prewrap">—</div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-danger" id="vmDeleteBtn">
+            <i class="bi bi-trash me-1"></i> Delete Submission
+          </button>
+          <div>
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(r => r.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sb = document.querySelector(".sidebar"),
+                db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        });
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Page Logic -->
+  <script>
+    const API = "http://localhost:5000";
+
+    // --- Auth ---
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!user || !user.userId || !user.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+    } else {
+      document.getElementById("Username").textContent = user.username || "Teacher";
+    }
+    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
+    window.logoutUser = logoutUser;
+
+    // URL params
+    const url = new URL(location.href);
+    const paramCourseId = url.searchParams.get('courseId') || '';
+    const paramAssignmentId = url.searchParams.get('assignmentId') || '';
+
+    // --- DOM refs ---
+    const elSearch = document.getElementById('searchInput');
+    const elForm   = document.getElementById('filterForm');
+    const elClass  = document.getElementById('filterClass');
+    const elModule = document.getElementById('filterModule');
+    const elDate   = document.getElementById('filterGradedDate');
+    const elScore  = document.getElementById('filterScore');
+    const elBody   = document.getElementById('tableBody');
+    const elSummary= document.getElementById('summaryText');
+    const btnUngraded = document.getElementById('viewUngradedBtn');
+
+    // View modal refs
+    const vm = {
+      modal: new bootstrap.Modal(document.getElementById('viewModal')),
+      title: document.getElementById('vmTitle'),
+      student: document.getElementById('vmStudent'),
+      class: document.getElementById('vmClass'),
+      module: document.getElementById('vmModule'),
+      submitted: document.getElementById('vmSubmitted'),
+      graded: document.getElementById('vmGraded'),
+      score: document.getElementById('vmScore'),
+      feedback: document.getElementById('vmFeedback'),
+      files: document.getElementById('vmFiles'),
+      note: document.getElementById('vmNote'),
+      deleteBtn: document.getElementById('vmDeleteBtn'),
+    };
+    let vmCurrent = null; // {assignmentId, studentId}
+
+    // --- Caches ---
+    const classNameById = new Map();
+    const assignmentMetaById = new Map(); // {title, points, moduleTitle, dueAt}
+
+    async function getClassName(classId){
+      if (!classId) return '—';
+      if (classNameById.has(classId)) return classNameById.get(classId);
+      try{
+        const resp = await fetch(`${API}/api/classes/${encodeURIComponent(classId)}`);
+        const js = await resp.json();
+        let label = '—';
+        if (resp.ok && js) {
+          const cls = js.class || js;
+          const parts = [cls.name || cls.title, cls.section].filter(Boolean);
+          label = parts.length ? parts.join(' • ') : (cls.name || cls.title || classId);
+        }
+        classNameById.set(classId, label);
+        return label;
+      }catch{
+        classNameById.set(classId, classId);
+        return classId;
+      }
+    }
+
+    // --- State ---
+    let allGraded = [];
+    let shown = [];
+
+    // --- Utils ---
+    function escapeHTML(str=''){
+      return String(str)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+    function tsToMs(ts){
+      if (!ts) return null;
+      const s = ts?._seconds ?? ts?.seconds;
+      const ns = ts?._nanoseconds ?? ts?.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s*1000) + Math.floor(ns/1e6);
+      if (typeof ts === 'number') return ts;
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d.getTime();
+    }
+    function toDate(v){
+      if (!v) return null;
+      if (v instanceof Date) return v;
+      const m = tsToMs(v);
+      return m ? new Date(m) : (isNaN(new Date(v)) ? null : new Date(v));
+    }
+    function fmtDate(dt){
+      if (!dt) return '—';
+      const d = (dt instanceof Date) ? dt : new Date(dt);
+      return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+    }
+    function toApiUrl(pathOrUrl){ return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
+
+    // --- Backend loaders ---
+    async function loadCoursesForTeacher(teacherId){
+      try{
+        const js = await fetch(`${API}/api/teacher/dashboard-stats?teacherId=${encodeURIComponent(teacherId)}`).then(r=>r.json());
+        if (js && Array.isArray(js.courses)) {
+          return js.courses.map(c => ({ id:c.id, title:c.title || c.name || 'Untitled' }));
+        }
+      }catch{}
+      try{
+        const all = await fetch(`${API}/courses`).then(r=>r.json());
+        const res = [];
+        for (const c of (Array.isArray(all) ? all : [])) {
+          try {
+            const full = await fetch(`${API}/courses/${c.id}`).then(r=>r.json());
+            if (full && full.uploadedBy === teacherId) {
+              res.push({ id:c.id, title: full.title || 'Untitled' });
+            }
+          }catch{}
+        }
+        return res;
+      }catch{ return []; }
+    }
+
+    async function loadAssignments(courseId){
+      try{
+        const js = await fetch(`${API}/api/courses/${courseId}/assignments`).then(r=>r.json());
+        const list = (js && js.success) ? (js.assignments || []) : [];
+        // Fill cache
+        list.forEach(a=>{
+          assignmentMetaById.set(a.id, {
+            title: a.title || 'Untitled',
+            points: (typeof a.points === 'number') ? a.points : null,
+            dueAt: a.dueAt || null,
+            moduleTitle: (typeof a.moduleNumber === 'number') ? `Module ${a.moduleNumber}` : '—'
+          });
+        });
+        return list;
+      }catch{ return []; }
+    }
+
+    async function loadGradedForAssignment(assignmentId){
+      try{
+        const resp = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`);
+        if (resp.ok){
+          const js = await resp.json();
+          if (js && js.success && Array.isArray(js.submissions)){
+            const meta = assignmentMetaById.get(assignmentId) || {};
+            return await Promise.all(
+              js.submissions
+                .filter(s => s && s.grade != null)
+                .map(async s => normalizeSubmission(s, assignmentId, meta))
+            );
+          }
+        }
+      }catch{}
+      return [];
+    }
+
+    function normalizeSubmission(s, assignmentId, meta){
+      const submittedAt = toDate(s?.submittedAt) || toDate(s?.createdAt) || null;
+      const gradedAt = toDate(s?.gradedAt) || toDate(s?.updatedAt) || null;
+      const moduleTitle = meta?.moduleTitle || s?.moduleTitle || '—';
+
+      return {
+        studentId: s?.studentId || '',
+        studentName: s?.studentName || s?.studentId || '',
+        className: s?.className || '—',
+        moduleTitle,
+        assignmentTitle: meta?.title || s?.assignmentTitle || 'Untitled',
+        submittedAt,
+        gradedAt,
+        dueAt: toDate(meta?.dueAt || s?.dueAt),
+        grade: (typeof s?.grade === 'number') ? s.grade : null, // points
+        maxPoints: (typeof meta?.points === 'number') ? meta.points : null,
+        feedback: s?.feedback || '',
+        assignmentId: assignmentId,
+        classId: s?.classId || '',
+        files: Array.isArray(s?.files) ? s.files : [],
+        text: s?.text || ''
+      };
+    }
+
+    // --- Filters & rendering ---
+    function populateFilters(list){
+      const classSet = new Set();
+      const moduleSet = new Set();
+      list.forEach(x => {
+        if (x.className && x.className !== '—') classSet.add(x.className);
+        if (x.moduleTitle && x.moduleTitle !== '—') moduleSet.add(x.moduleTitle);
+      });
+      elClass.innerHTML =
+        `<option value="">All Classes</option>` +
+        [...classSet].sort().map(v => `<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('');
+      elModule.innerHTML =
+        `<option value="">All Modules</option>` +
+        [...moduleSet].sort().map(v => `<option value="${escapeHTML(v)}">${escapeHTML(v)}</option>`).join('');
+    }
+
+    function applyFilters(){
+      const q = (elSearch.value || '').toLowerCase().trim();
+      const fClass = elClass.value;
+      const fModule = elModule.value;
+      const fDate = elDate.value; // yyyy-mm-dd
+      const minScore = Number(elScore.value);
+      const hasMin = !Number.isNaN(minScore) && elScore.value !== '';
+
+      shown = allGraded.filter(s => {
+        if (q){
+          const hay = `${s.studentName} ${s.assignmentTitle} ${s.moduleTitle} ${s.className}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        if (fClass && s.className !== fClass) return false;
+        if (fModule && s.moduleTitle !== fModule) return false;
+        if (fDate){
+          if (!s.gradedAt) return false;
+          const yyyy = s.gradedAt.getFullYear();
+          const mm = String(s.gradedAt.getMonth()+1).padStart(2,'0');
+          const dd = String(s.gradedAt.getDate()).padStart(2,'0');
+          if (`${yyyy}-${mm}-${dd}` !== fDate) return false;
+        }
+        if (hasMin && (s.grade == null || s.grade < minScore)) return false;
+        return true;
+      });
+
+      shown.sort((a,b)=> (b.gradedAt?.getTime()||0) - (a.gradedAt?.getTime()||0)
+                         || (b.submittedAt?.getTime()||0) - (a.submittedAt?.getTime()||0));
+
+      renderTable();
+      elSummary.textContent = `${shown.length} shown • ${allGraded.length} total graded`;
+    }
+
+    function renderScoreCell(s){
+      if (typeof s.grade === 'number'){
+        return (typeof s.maxPoints === 'number')
+          ? `<span class="badge bg-success score-badge">${s.grade} / ${s.maxPoints}</span>`
+          : `<span class="badge bg-success score-badge">${s.grade}</span>`;
+      }
+      return '<span class="text-muted">—</span>';
+    }
+
+    function renderTable(){
+      if (!shown.length){
+        elBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">No graded submissions found.</td></tr>`;
+        return;
+      }
+      elBody.innerHTML = shown.map(s => `
+        <tr data-assignment-id="${escapeHTML(s.assignmentId)}" data-student-id="${escapeHTML(s.studentId)}">
+          <td>${escapeHTML(s.studentName || s.studentId)}</td>
+          <td>${escapeHTML(s.className)}</td>
+          <td>${escapeHTML(s.moduleTitle)}</td>
+          <td>${escapeHTML(s.assignmentTitle)}</td>
+          <td>${fmtDate(s.submittedAt)}</td>
+          <td>${fmtDate(s.gradedAt)}</td>
+          <td>${renderScoreCell(s)}</td>
+          <td>
+            ${
+              s.feedback
+                ? `<button class="btn btn-sm btn-outline-primary feedback-btn">View</button>`
+                : `<span class="text-muted">—</span>`
+            }
+          </td>
+          <td class="text-center">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-outline-secondary view-btn">
+                <i class="bi bi-eye me-1"></i> View
+              </button>
+              <button class="btn btn-sm btn-danger delete-btn">
+                <i class="bi bi-trash me-1"></i> Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      document.querySelectorAll('.feedback-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const tr = e.target.closest('tr');
+          const aId = tr.getAttribute('data-assignment-id');
+          const sId = tr.getAttribute('data-student-id');
+          const item = shown.find(x => x.assignmentId === aId && x.studentId === sId);
+          openFeedback(item);
+        });
+      });
+
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const tr = e.target.closest('tr');
+          const aId = tr.getAttribute('data-assignment-id');
+          const sId = tr.getAttribute('data-student-id');
+          const item = shown.find(x => x.assignmentId === aId && x.studentId === sId);
+          openViewModal(item);
+        });
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const tr = e.target.closest('tr');
+          const aId = tr.getAttribute('data-assignment-id');
+          const sId = tr.getAttribute('data-student-id');
+          const item = shown.find(x => x.assignmentId === aId && x.studentId === sId);
+          deleteSubmission(item);
+        });
+      });
+    }
+
+    function openFeedback(item){
+      document.getElementById('feedbackTitle').textContent =
+        `${item.studentName || item.studentId} • ${item.assignmentTitle}`;
+      document.getElementById('feedbackBody').textContent = item.feedback || '—';
+      new bootstrap.Modal(document.getElementById('feedbackModal')).show();
+    }
+
+    // ---- Rich View Modal ----
+    function openViewModal(item){
+      if (!item) return;
+      vmCurrent = { assignmentId: item.assignmentId, studentId: item.studentId };
+
+      vm.title.textContent = item.assignmentTitle || 'Submission';
+      vm.student.textContent = item.studentName || item.studentId || '—';
+      vm.class.textContent = item.className || '—';
+      vm.module.textContent = item.moduleTitle || '—';
+      vm.submitted.textContent = fmtDate(item.submittedAt);
+      vm.graded.textContent = fmtDate(item.gradedAt);
+
+      vm.score.innerHTML =
+        (typeof item.grade === 'number')
+          ? (typeof item.maxPoints === 'number'
+              ? `<span class="badge bg-success score-badge">${item.grade} / ${item.maxPoints}</span>`
+              : `<span class="badge bg-success score-badge">${item.grade}</span>`)
+          : '<span class="text-muted">—</span>';
+
+      vm.feedback.textContent = item.feedback || '—';
+
+      // Files
+      vm.files.innerHTML = (item.files && item.files.length)
+        ? item.files.map(f => {
+            const name = escapeHTML(f.originalName || (f.filePath||'').split('/').pop() || 'file');
+            const href = f.filePath ? toApiUrl(f.filePath) : '#';
+            const sizeTxt = f.size ? ` (${Math.round(f.size/1024)} KB)` : '';
+            return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+          }).join('')
+        : `<li class="text-muted">—</li>`;
+
+      vm.note.textContent = item.text?.trim() || '—';
+
+      vm.modal.show();
+    }
+
+    async function deleteSubmission(item){
+      if (!item) return;
+      const who = item.studentName || item.studentId;
+      if (!confirm(`Delete submission for ${who}? This cannot be undone.`)) return;
+
+      try{
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(item.assignmentId)}/submissions/${encodeURIComponent(item.studentId)}`, {
+          method:'DELETE'
+        });
+        const js = await res.json().catch(()=>({success:false}));
+        if (!res.ok || js.success === false){
+          throw new Error(js?.message || `HTTP ${res.status}`);
+        }
+
+        // Remove locally
+        allGraded = allGraded.filter(x => !(x.assignmentId===item.assignmentId && x.studentId===item.studentId));
+        applyFilters();
+        // Close view modal if it was from there
+        try { bootstrap.Modal.getInstance(document.getElementById('viewModal'))?.hide(); } catch {}
+        alert('Submission deleted. The student can now submit again.');
+      }catch(err){
+        console.error(err);
+        alert('Failed to delete submission: ' + (err.message || 'Unknown error'));
+      }
+    }
+
+    // Delete from inside the modal
+    document.getElementById('vmDeleteBtn').addEventListener('click', () => {
+      if (!vmCurrent) return;
+      const item = shown.find(x => x.assignmentId === vmCurrent.assignmentId && x.studentId === vmCurrent.studentId);
+      deleteSubmission(item);
+    });
+
+    // --- Boot: load everything ---
+    async function boot(){
+      elBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>`;
+      elSummary.textContent = 'Loading…';
+
+      try{
+        let graded = [];
+        if (paramAssignmentId){
+          if (paramCourseId){
+            await loadAssignments(paramCourseId); // fills assignmentMetaById
+          }
+          graded = await loadGradedForAssignment(paramAssignmentId);
+        } else {
+          const courses = await loadCoursesForTeacher(user.userId);
+          for (const c of courses){
+            const assigns = await loadAssignments(c.id); // fills cache
+            for (const a of assigns){
+              const list = await loadGradedForAssignment(a.id);
+              graded.push(...list);
+            }
+          }
+        }
+
+        // Enrich missing class names if classId present (optional)
+        for (const g of graded){
+          if ((!g.className || g.className === '—') && g.classId){
+            g.className = await getClassName(g.classId);
+          }
+        }
+
+        allGraded = graded;
+        populateFilters(allGraded);
+        applyFilters();
+      }catch(err){
+        console.error(err);
+        elBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Failed to load graded submissions.</td></tr>`;
+        elSummary.textContent = 'Failed to load.';
+      }
+    }
+
+    // --- Events ---
+    elForm.addEventListener('submit', (e)=>{ e.preventDefault(); applyFilters(); });
+    elSearch.addEventListener('input', applyFilters);
+    btnUngraded.addEventListener('click', ()=>{
+      const params = new URLSearchParams();
+      if (paramCourseId) params.set('courseId', paramCourseId);
+      if (paramAssignmentId) params.set('assignmentId', paramAssignmentId);
+      window.location.href = `/TEACHER/assignment/grade_submission.html${params.toString() ? `?${params.toString()}` : ''}`;
+    });
+
+    // Go!
+    boot();
+  </script>
+</body>
+</html>

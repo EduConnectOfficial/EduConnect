@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Sidebar / shared -->
+  <link rel="stylesheet" href="../quiz/view.css" />
+  <style>
+    .quiz-pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      margin-top: .75rem;
+    }
+
+    .quiz-pager .info {
+      font-size: .9rem;
+      color: #6c757d;
+    }
+
+    .q-card.d-none {
+      display: none !important;
+    }
+
+    .timer.warn {
+      color: #b45309;
+    }
+
+    .timer.dead {
+      color: #b91c1c;
+    }
+
+    /* Question navigator */
+    .qnav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+      margin: .5rem 0 .25rem;
+    }
+
+    .qnav .qbtn {
+      position: relative;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      border-radius: .5rem;
+      padding: .25rem .5rem;
+      min-width: 36px;
+      text-align: center;
+      font-size: .85rem;
+      line-height: 1.1rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .qnav .qbtn.current {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 .15rem rgba(13, 110, 253, .15);
+    }
+
+    .qnav .qbtn.answered {
+      background: #e8f5e9;
+      border-color: #c8e6c9;
+    }
+
+    /* green-ish */
+    .qnav .qbtn.unanswered {
+      background: #fff7ed;
+      border-color: #ffedd5;
+    }
+
+    /* amber-ish */
+    .qnav .qbtn .flag-dot {
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      display: none;
+    }
+
+    .qnav .qbtn.flagged .flag-dot {
+      display: inline-block;
+    }
+
+    /* Flag control inside question card */
+    .flag-toggle {
+      cursor: pointer;
+      user-select: none;
+      gap: .35rem;
+    }
+
+    .flag-toggle .bi {
+      font-size: 1.1rem;
+    }
+
+    .flagged .bi {
+      color: #dc3545;
+    }
+
+    /* Review modal table */
+    .answer-ok {
+      color: #198754;
+      font-weight: 600;
+    }
+
+    .answer-missing {
+      color: #b91c1c;
+      font-weight: 600;
+    }
+
+    .review-row-flagged {
+      background: #fff5f5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Quiz</h1>
+
+        <div class="row justify-content-center">
+          <div class="col-12 col-md-10 col-lg-8">
+            <div class="ui-card card-themed mb-3">
+              <div class="quiz-shell">
+                <div class="quiz-head">
+                  <div>
+                    <h3 id="quizTitle" class="m-0">Loading quiz…</h3>
+                    <div id="quizDesc" class="muted small"></div>
+                  </div>
+                  <div class="d-flex flex-column align-items-end gap-2">
+                    <div class="pill"><span class="bi bi-stopwatch"></span> <span id="timerLabel"
+                        class="timer">--:--</span></div>
+                    <div class="pill"><span
+                        style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+                      <span id="statusText" class="small">In Progress</span></div>
+                  </div>
+                </div>
+
+                <div class="quiz-body">
+                  <div class="mb-2">
+                    <div class="progress">
+                      <div id="progressBar" class="progress-bar" style="width:0%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small mt-1">
+                      <span id="progressText" class="muted">0 / 0 answered</span>
+                      <a href="#" id="scrollTopLink" class="small">Go to top</a>
+                    </div>
+                  </div>
+
+                  <!-- Question Navigator -->
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="small text-muted">Click a number to jump</div>
+                    <div class="small text-muted"><span class="me-2"><span class="badge bg-success"> </span>
+                        answered</span><span class="me-2"><span class="badge bg-warning text-dark"> </span> not
+                        answered</span><span><i class="bi bi-flag-fill text-danger"></i> flagged</span></div>
+                  </div>
+                  <div id="qNavigator" class="qnav" aria-label="Question navigator"></div>
+
+                  <!-- Questions -->
+                  <div id="questionsArea"></div>
+                  <div id="noQuiz" class="alert alert-warning d-none">Quiz not found or has no questions.</div>
+                </div>
+
+                <div class="quiz-foot">
+                  <!-- Pager bottom -->
+                  <div id="pagerBottom" class="quiz-pager d-none">
+                    <button id="prevPageBottom" class="btn btn-outline-secondary btn-sm"><i
+                        class="bi bi-arrow-left"></i> Prev</button>
+                    <div class="info"><span id="pageNowBottom">1</span> / <span id="pageTotalBottom">1</span></div>
+                    <button id="nextPageBottom" class="btn btn-outline-secondary btn-sm">Next <i
+                        class="bi bi-arrow-right"></i></button>
+                  </div>
+
+                  <div class="small muted mt-2">Your answers are saved locally until you submit.</div>
+                  <div class="d-flex gap-2">
+                    <button id="reviewBtn" class="btn btn-outline-primary" type="button">
+                      <i class="bi bi-eye me-1"></i>Review Answers
+                    </button>
+                    <button id="submitBtn" class="btn btn-amber" type="button">
+                      <i class="bi bi-check2-circle me-1"></i>Submit Quiz
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div id="resultArea" class="mt-3 d-none"></div>
+
+              <!-- Result Modal -->
+              <div class="modal fade" id="resultModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+                aria-labelledby="resultModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="resultModalLabel">Quiz submitted</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="resultModalBody"></div>
+                    <div class="modal-footer">
+                      <a class="btn btn-secondary" href="/STUDENT/quiz/quiz.html">Back to quizzes</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /Result Modal -->
+
+              <!-- Review Answers Modal -->
+              <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="reviewModalLabel">Review Your Answers</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="alert alert-info small">
+                        Click any row to jump back and edit. <i class="bi bi-flag-fill text-danger ms-2"></i> shows
+                        flagged items.
+                      </div>
+                      <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                          <thead>
+                            <tr>
+                              <th style="width:72px;">#</th>
+                              <th>Question</th>
+                              <th style="width:220px;">Your answer</th>
+                              <th style="width:60px;">Flag</th>
+                            </tr>
+                          </thead>
+                          <tbody id="reviewTableBody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Keep Editing</button>
+                      <button id="confirmSubmitBtn" class="btn btn-amber">
+                        <i class="bi bi-check2-circle me-1"></i>Submit Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /Review Answers Modal -->
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ===== Config & helpers ===== */
+    const API = "http://localhost:5000";
+    function getParam(name) { const url = new URL(location.href); return url.searchParams.get(name); }
+    function fmtTimeLeft(ms) { const t = Math.max(0, Math.floor(ms / 1000)); const m = Math.floor(t / 60), s = t % 60; return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; }
+    function escapeHtml(s) { return typeof s === 'string' ? s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') : ''; }
+    function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+    function safeParseJSON(s, fallback = null) { try { return JSON.parse(s); } catch { return fallback; } }
+    function isValidOrder(arr, n) {
+      if (!Array.isArray(arr) || arr.length !== n) return false;
+      const seen = new Set();
+      for (const v of arr) {
+        if (!Number.isInteger(v) || v < 0 || v >= n || seen.has(v)) return false;
+        seen.add(v);
+      }
+      return true;
+    }
+
+    const quizId = getParam("id");
+    // === Build initials from username/fullName/email ===
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+
+      // Email → use local part
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : local.slice(0, 2)
+        ).toUpperCase();
+      }
+
+      // Name/username → first + last token
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2
+        ? parts[0][0] + parts[parts.length - 1][0]
+        : parts[0].slice(0, 2)
+      ).toUpperCase();
+    }
+
+    const UsernameEl = document.getElementById("Username");
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+
+    if (UsernameEl) {
+      const displayName = userData.fullName || userData.username || userData.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      UsernameEl.textContent = initials;
+      UsernameEl.title = displayName;                 // tooltip with full name
+      UsernameEl.setAttribute("aria-label", displayName);
+    }
+
+    let timerInterval = null, endAtMs = null, hardEndMs = null, timerStartedAt = null;
+    let hasSubmitted = false; // guard against double-submit
+    let quizObj = null;
+
+    let paginationEnabled = false;
+    let perPage = 1;
+    let backtrackingAllowed = true;
+    let orderIndices = [];
+    let currentPage = 0;
+    let totalPages = 1;
+
+    const storageKey = (extra = "") => `quizAnswers:${(userData.email || 'guest')}:${quizId}${extra}`;
+
+    /* One-time cleanup for bad old flags */
+    (() => {
+      try {
+        const k = storageKey(':flags');
+        const parsed = safeParseJSON(localStorage.getItem(k), {});
+        if (!(parsed && typeof parsed === 'object' && !Array.isArray(parsed))) {
+          localStorage.setItem(k, JSON.stringify({}));
+        }
+      } catch { }
+    })();
+
+    /* ===== Flag helpers (hardened) ===== */
+    function getFlags() {
+      // Always return a plain object, even if storage has "null", "[]", etc.
+      const parsed = safeParseJSON(localStorage.getItem(storageKey(':flags')), {});
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    }
+    function setFlag(origIdx, on) {
+      const f = getFlags();
+      if (on) f[String(origIdx)] = true; else delete f[String(origIdx)];
+      localStorage.setItem(storageKey(':flags'), JSON.stringify(f));
+      updateNavigator();
+    }
+    function isFlagged(origIdx) {
+      const f = getFlags();
+      return !!f[String(origIdx)];
+    }
+
+    /* ===== Core helpers ===== */
+    function isEssayQuestion(q) {
+      if (!q) return false;
+      if (q.isEssay === true) return true;
+      if ((q.type || '').toLowerCase() === 'essay') return true;
+      const choices = q.choices || {};
+      const nonEmpty = Object.entries(choices).filter(([, v]) => v && String(v).trim() !== '');
+      if (nonEmpty.length === 0) return true;
+      if (nonEmpty.length === 1) {
+        const only = String(nonEmpty[0][1] || '').toLowerCase();
+        if (only.includes('essay')) return true;
+      }
+      return false;
+    }
+
+    function getAnswerFor(origIdx) {
+      const q = quizObj?.questions?.[origIdx];
+      if (!q) return '';
+      if (isEssayQuestion(q)) {
+        const ta = document.querySelector(`textarea[name='essay_${origIdx}']`);
+        return ta ? ta.value.trim() : '';
+      }
+      const radios = document.querySelectorAll(`input[type='radio'][name='q_${origIdx}']`);
+      const checked = [...radios].find(r => r.checked);
+      return checked ? checked.value : '';
+    }
+
+    function setProgress() {
+      const total = (quizObj?.questions || []).length;
+      let answered = 0;
+      (quizObj?.questions || []).forEach((q, idx) => {
+        const isEssay = isEssayQuestion(q);
+        if (isEssay) {
+          const ta = document.querySelector(`textarea[name='essay_${idx}']`);
+          if (ta && ta.value.trim()) answered++;
+        } else {
+          const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+          if ([...radios].some(r => r.checked)) answered++;
+        }
+      });
+      const pct = total ? Math.round(answered / total * 100) : 0;
+      document.getElementById('progressBar').style.width = `${pct}%`;
+      document.getElementById('progressText').textContent = `${answered} / ${total} answered`;
+      updateNavigator();
+    }
+
+    function saveProgress() {
+      const answers = {};
+      (quizObj?.questions || []).forEach((q, idx) => {
+        const isEssay = isEssayQuestion(q);
+        if (isEssay) {
+          const ta = document.querySelector(`textarea[name='essay_${idx}']`);
+          answers[`essay_${idx}`] = ta ? ta.value : '';
+        } else {
+          const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+          const checked = [...radios].find(r => r.checked);
+          answers[`q_${idx}`] = checked ? checked.value : '';
+        }
+      });
+      localStorage.setItem(storageKey(), JSON.stringify(answers));
+    }
+
+    function restoreProgress() {
+      const raw = localStorage.getItem(storageKey());
+      if (!raw) return;
+      try {
+        const answers = JSON.parse(raw);
+        Object.entries(answers).forEach(([k, v]) => {
+          if (k.startsWith('q_') && v) {
+            const el = document.querySelector(`input[name='${k}'][value='${v}']`);
+            if (el) el.checked = true;
+          } else if (k.startsWith('essay_')) {
+            const ta = document.querySelector(`textarea[name='${k}']`);
+            if (ta) ta.value = v || '';
+          }
+        });
+      } catch { }
+    }
+
+    /* ===== Navigator (pager) ===== */
+    function updateNavigator() {
+  const nav=document.getElementById('qNavigator');
+  if (!quizObj){ nav.innerHTML=''; return; }
+  const n=orderIndices.length, flags=getFlags(); let html='';
+  for (let dispIdx=0;dispIdx<n;dispIdx++){
+    const origIdx=orderIndices[dispIdx], ans=getAnswerFor(origIdx);
+    const answered=!!ans, flagged=!!flags[String(origIdx)];
+    const pageIdx=paginationEnabled?Math.floor(dispIdx/perPage):0;
+    const locked=paginationEnabled && !backtrackingAllowed && pageIdx!==currentPage;
+    html+=`<button type="button" class="qbtn ${answered?'answered':'unanswered'} ${flagged?'flagged':''} ${pageIdx===currentPage?'current':''}" data-disp="${dispIdx}" ${locked?'disabled aria-disabled="true" title="Back-locked"':`title="Go to question ${dispIdx+1}"`}>${dispIdx+1}<span class="flag-dot"></span></button>`;
+  }
+  nav.innerHTML=html;
+  nav.querySelectorAll('.qbtn:not([disabled])').forEach(btn=>{
+    btn.addEventListener('click',()=>{ const disp=Number(btn.dataset.disp); if(Number.isInteger(disp)) jumpToQuestion(disp); });
+  });
+}
+
+    function jumpToQuestion(displayIndex){
+  if (paginationEnabled && !backtrackingAllowed){
+    const targetPage=Math.floor(displayIndex/Math.max(1,perPage));
+    if (targetPage!==currentPage){ alert("Backtracking is disabled."); return; }
+  }
+  if (!paginationEnabled){
+    const origIdx=orderIndices[displayIndex], el=document.querySelector(`.q-card[data-orig-index="${origIdx}"]`);
+    if(el) el.scrollIntoView({behavior:'smooth'}); return;
+  }
+  currentPage=Math.floor(displayIndex/Math.max(1,perPage));
+  renderVisiblePage();
+  setTimeout(()=>{const origIdx=orderIndices[displayIndex], el=document.querySelector(`.q-card[data-orig-index="${origIdx}"]`); if(el) el.scrollIntoView({behavior:'smooth'});},0);
+  localStorage.setItem(storageKey(':page'),String(currentPage));
+}
+
+    /* ===== Pagination helpers ===== */
+    function currentPageIsEssayOnly() {
+      if (!paginationEnabled) return false;
+      const start = currentPage * perPage;
+      const end = Math.min(orderIndices.length, start + perPage);
+      for (let pos = start; pos < end; pos++) {
+        const origIdx = orderIndices[pos];
+        const q = quizObj.questions[origIdx];
+        if (!isEssayQuestion(q)) return false;
+      }
+      return true;
+    }
+
+    function applyEssayPagerVisibility() {
+      const pager = document.getElementById('pagerBottom');
+      if (!paginationEnabled) {
+        pager.classList.add('d-none');
+        return;
+      }
+      // Always show pager (essay-only pages still show nav)
+      pager.classList.remove('d-none');
+    }
+
+    function updatePagerUI() {
+      document.getElementById('pageNowBottom').textContent = (currentPage + 1);
+      document.getElementById('pageTotalBottom').textContent = totalPages;
+      document.getElementById('prevPageBottom').disabled = !paginationEnabled || currentPage <= 0 || !backtrackingAllowed;
+      document.getElementById('nextPageBottom').disabled = !paginationEnabled || currentPage >= totalPages - 1;
+      updateNavigator();
+    }
+
+    function renderVisiblePage() {
+      if (!paginationEnabled) {
+        document.querySelectorAll('.q-card').forEach(el => el.classList.remove('d-none'));
+        updateNavigator();
+        return;
+      }
+      const start = currentPage * perPage;
+      const end = Math.min(orderIndices.length, start + perPage);
+      document.querySelectorAll('.q-card').forEach(el => el.classList.add('d-none'));
+      for (let pos = start; pos < end; pos++) {
+        const origIdx = orderIndices[pos];
+        const el = document.querySelector(`.q-card[data-orig-index="${origIdx}"]`);
+        if (el) el.classList.remove('d-none');
+      }
+      updatePagerUI();
+      applyEssayPagerVisibility();
+    }
+
+    function goPrev() {
+      if (!paginationEnabled) return;
+      if (!backtrackingAllowed || currentPage <= 0) return;
+      currentPage -= 1;
+      renderVisiblePage();
+      scrollTo({ top: 0, behavior: 'smooth' });
+      localStorage.setItem(storageKey(':page'), String(currentPage));
+    }
+    function goNext() {
+      if (!paginationEnabled) return;
+      if (currentPage >= totalPages - 1) return;
+      currentPage += 1;
+      renderVisiblePage();
+      scrollTo({ top: 0, behavior: 'smooth' });
+      localStorage.setItem(storageKey(':page'), String(currentPage));
+    }
+
+    /* ===== Load & render ===== */
+    async function loadQuiz() {
+      if (!quizId) {
+        document.getElementById('noQuiz').classList.remove('d-none');
+        document.getElementById('quizTitle').textContent = 'No quiz ID provided.';
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`);
+        const data = await res.json();
+
+        if (!data.success || !data.quiz || !Array.isArray(data.quiz.questions) || data.quiz.questions.length === 0) {
+          document.getElementById('noQuiz').classList.remove('d-none');
+          document.getElementById('quizTitle').textContent = 'Quiz not found or has no questions.';
+          return;
+        }
+
+        quizObj = data.quiz;
+        document.getElementById('quizTitle').textContent = quizObj.title || 'Untitled Quiz';
+        document.getElementById('quizDesc').textContent = quizObj.description || '';
+
+        const settings = quizObj.settings || {};
+        const shuffleQuestions = (typeof settings.shuffleQuestions === 'boolean') ? settings.shuffleQuestions : true;
+
+        const n = quizObj.questions.length;
+
+        let savedOrder = safeParseJSON(localStorage.getItem(storageKey(':order')), null);
+        if (!isValidOrder(savedOrder, n)) savedOrder = null;
+
+        orderIndices = savedOrder || Array.from({ length: n }, (_, i) => i);
+        if (!savedOrder && shuffleQuestions && n > 1) shuffle(orderIndices);
+        if (!savedOrder) localStorage.setItem(storageKey(':order'), JSON.stringify(orderIndices));
+
+        paginationEnabled = !!(settings.pagination && settings.pagination.enabled);
+        perPage = parseInt(settings.pagination?.perPage, 10);
+        if (!Number.isInteger(perPage) || perPage < 1) perPage = 1;
+        backtrackingAllowed = (typeof settings.backtrackingAllowed === 'boolean') ? settings.backtrackingAllowed : true;
+
+        const area = document.getElementById('questionsArea');
+        area.innerHTML = '';
+        orderIndices.forEach((origIdx, dispIdx) => {
+          const q = quizObj.questions[origIdx];
+          const div = document.createElement('div');
+          div.className = 'q-card';
+          div.dataset.origIndex = String(origIdx);
+
+          // flag UI
+          const flagged = isFlagged(origIdx);
+          const flagBtn = `
+        <button type="button" class="btn btn-sm ${flagged ? 'btn-outline-danger flagged' : 'btn-outline-secondary'} flag-toggle" data-orig="${origIdx}">
+          <i class="bi bi-flag-fill"></i> ${flagged ? 'Flagged' : 'Flag for review'}
+        </button>`;
+
+          const title = `
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="q-title mb-2">${dispIdx + 1}. ${escapeHtml(q.question || '')}</div>
+          <div>${flagBtn}</div>
+        </div>`;
+
+          let body = '';
+
+          const isEssay = isEssayQuestion(q);
+          if (isEssay) {
+            body = `
+          <textarea class="form-control" rows="4" placeholder="Type your answer..." name="essay_${origIdx}"></textarea>
+          <div class="form-text">This item is not auto-graded.</div>`;
+          } else {
+            const choices = q.choices || {};
+            const nonEmpty = Object.entries(choices).filter(([, v]) => v && String(v).trim() !== '');
+            body = '<div class="choices">' +
+              nonEmpty.map(([key, val]) =>
+                `<label><input type="radio" name="q_${origIdx}" value="${key}"><div><strong>${key}.</strong> ${escapeHtml(val)}</div></label>`
+              ).join('') +
+              '</div>';
+          }
+
+          div.innerHTML = title + body;
+          area.appendChild(div);
+
+          // flag toggle events
+          div.querySelector('.flag-toggle').addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const idx = Number(btn.dataset.orig);
+            const now = !btn.classList.contains('flagged');
+            setFlag(idx, now);
+            btn.classList.toggle('flagged', now);
+            btn.classList.toggle('btn-outline-danger', now);
+            btn.classList.toggle('btn-outline-secondary', !now);
+            btn.innerHTML = `<i class="bi bi-flag-fill"></i> ${now ? 'Flagged' : 'Flag for review'}`;
+            updateNavigator();
+          });
+
+          if (isEssay) {
+            div.querySelector(`textarea[name='essay_${origIdx}']`).addEventListener('input', () => { saveProgress(); setProgress(); });
+          } else {
+            div.querySelectorAll(`input[name='q_${origIdx}']`).forEach(r => {
+              r.addEventListener('change', () => { saveProgress(); setProgress(); });
+            });
+          }
+        });
+
+        restoreProgress();
+        setProgress();
+
+        // Timer & buttons
+        setupTimer(quizObj.settings || {});
+        document.getElementById('submitBtn').onclick = () => openReview();  // go through preview first
+        document.getElementById('reviewBtn').onclick = () => openReview();
+        document.getElementById('scrollTopLink').onclick = (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: 'smooth' }); };
+
+        // Pager buttons (bottom only)
+        document.getElementById('prevPageBottom').onclick = goPrev;
+        document.getElementById('nextPageBottom').onclick = goNext;
+
+        // Initialize pagination
+        currentPage = parseInt(localStorage.getItem(storageKey(':page')) || '0', 10) || 0;
+        totalPages = Math.max(1, Math.ceil(orderIndices.length / Math.max(1, perPage)));
+        renderVisiblePage();
+        updateNavigator();
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('noQuiz').classList.remove('d-none');
+        document.getElementById('quizTitle').textContent = 'Error loading quiz.';
+      }
+    }
+
+    /* ===== Timer ===== */
+    function setupTimer(settings) {
+      clearInterval(timerInterval);
+      const label = document.getElementById('timerLabel');
+      const status = document.getElementById('statusText');
+
+      // Stable start across reloads; sanitize weird values
+      const saved = Number(localStorage.getItem(storageKey(':startedAt')));
+      const now = Date.now();
+      timerStartedAt = Number.isFinite(saved) && saved > 1e9 ? saved : now; // reject 0 / tiny timestamps
+      if (!(Number.isFinite(saved) && saved > 1e9)) {
+        localStorage.setItem(storageKey(':startedAt'), String(timerStartedAt));
+      }
+
+      const minsRaw = Number(settings?.durationMinutes);
+      const grace = Number(settings?.graceSeconds || 0);
+      const allowTimer =
+        settings?.timerEnabled === true &&
+        Number.isFinite(minsRaw) &&
+        minsRaw >= 1;
+
+      if (!allowTimer) {
+        label.textContent = 'No limit';
+        label.classList.remove('warn', 'dead');
+        status.textContent = 'In Progress';
+        return;
+      }
+
+      const mins = minsRaw;
+      const graceMs = (Number.isFinite(grace) && grace > 0) ? grace * 1000 : 0;
+
+      // compute with persisted start
+      endAtMs = timerStartedAt + mins * 60 * 1000;
+      hardEndMs = endAtMs + graceMs;
+
+      // One-time recovery if we loaded with a stale startedAt that is already past hardEnd
+      const alreadyExpired = now >= hardEndMs;
+      const recoveredTag = storageKey(':recoveredTimer');
+      if (alreadyExpired && !localStorage.getItem(recoveredTag)) {
+        // Reset start ONCE to avoid instant auto-submit caused by stale localStorage
+        timerStartedAt = Date.now();
+        localStorage.setItem(storageKey(':startedAt'), String(timerStartedAt));
+        localStorage.setItem(recoveredTag, '1');
+        endAtMs = timerStartedAt + mins * 60 * 1000;
+        hardEndMs = endAtMs + graceMs;
+      }
+
+      function tick() {
+        const t = Date.now();
+        if (t < endAtMs) {
+          const left = endAtMs - t;
+          label.textContent = fmtTimeLeft(left);
+          label.classList.toggle('warn', left <= 60000);
+          label.classList.remove('dead');
+          status.textContent = left <= 60000 ? 'Ending soon…' : 'In Progress';
+        } else if (t < hardEndMs) {
+          label.textContent = 'Grace: ' + fmtTimeLeft(hardEndMs - t);
+          label.classList.add('warn');
+          label.classList.remove('dead');
+          status.textContent = 'Grace period';
+        } else {
+          label.textContent = 'Time up';
+          label.classList.add('dead');
+          status.textContent = 'Submitting…';
+          clearInterval(timerInterval);
+          if (!hasSubmitted) submitAndStore('timeout'); // only once
+        }
+      }
+      tick();
+      timerInterval = setInterval(tick, 500);
+    }
+
+    /* ===== Review (preview) ===== */
+    function openReview() {
+      // build table
+      const tbody = document.getElementById('reviewTableBody');
+      tbody.innerHTML = '';
+      orderIndices.forEach((origIdx, dispIdx) => {
+        const q = quizObj.questions[origIdx];
+        const isEssay = isEssayQuestion(q);
+        const ans = getAnswerFor(origIdx);
+        let answerLabel = '';
+        if (isEssay) {
+          answerLabel = ans ? '<span class="answer-ok">Written</span>' : '<span class="answer-missing">No text</span>';
+        } else {
+          if (ans) {
+            const val = String(q?.choices?.[ans] || ans);
+            answerLabel = `<span class="answer-ok">${escapeHtml(ans)}. ${escapeHtml(val)}</span>`;
+          } else {
+            answerLabel = '<span class="answer-missing">Not answered</span>';
+          }
+        }
+        const flagged = isFlagged(origIdx);
+
+        const tr = document.createElement('tr');
+        if (flagged) tr.classList.add('review-row-flagged');
+        tr.innerHTML = `
+      <td><span class="badge text-bg-secondary">${dispIdx + 1}</span></td>
+      <td>${escapeHtml(q.question || '')}</td>
+      <td>${answerLabel}</td>
+      <td class="text-center">${flagged ? '<i class="bi bi-flag-fill text-danger"></i>' : ''}</td>
+    `;
+
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click to jump to this question';
+        tr.addEventListener('click', () => {
+          const inst = bootstrap.Modal.getInstance(document.getElementById('reviewModal'));
+          if (inst) inst.hide();
+          setTimeout(() => jumpToQuestion(dispIdx), 250);
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      const modalEl = document.getElementById('reviewModal');
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+
+      // Confirm submit: close the review modal FIRST, then submit
+      const confirmBtn = document.getElementById('confirmSubmitBtn');
+      confirmBtn.onclick = () => {
+        confirmBtn.disabled = true; // guard
+        const onHidden = () => {
+          modalEl.removeEventListener('hidden.bs.modal', onHidden);
+          submitAndStore('manual');
+        };
+        modalEl.addEventListener('hidden.bs.modal', onHidden);
+        modal.hide();
+      };
+    }
+
+    /* ===== Submit & result ===== */
+    function computeScore() {
+      let score = 0, total = 0;
+      (quizObj?.questions || []).forEach((q, idx) => {
+        if (isEssayQuestion(q)) return;
+        total++;
+        const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+        const checked = [...radios].find(r => r.checked);
+        const correct = q.correctAnswer ?? q.correct;
+        if (checked && checked.value === correct) score++;
+      });
+      return { score, total };
+    }
+    function getAnswers() {
+      const answers = {};
+      (quizObj?.questions || []).forEach((q, idx) => {
+        if (isEssayQuestion(q)) {
+          const ta = document.querySelector(`textarea[name='essay_${idx}']`);
+          answers[`essay_${idx}`] = ta ? ta.value : '';
+        } else {
+          const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+          const checked = [...radios].find(r => r.checked);
+          answers[`q_${idx}`] = checked ? checked.value : '';
+        }
+      });
+      return answers;
+    }
+
+    async function submitAndStore(reason) {
+
+
+      if (hasSubmitted) return;
+      hasSubmitted = true;
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+
+      if (!userData || !userData.email) {
+        alert('You must be logged in to submit.');
+        hasSubmitted = false;
+        btn.disabled = false;
+        return;
+      }
+
+      saveProgress();
+      const { score, total } = computeScore();
+      const answers = getAnswers();
+
+      // compute stable time taken from persisted start time
+      const startedAt = Number(localStorage.getItem(storageKey(':startedAt'))) || timerStartedAt || Date.now();
+      const timeTakenSeconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+
+      const payload = {
+        email: userData.email,
+        quizId: quizObj.id,
+        score, total,
+        moduleId: quizObj.moduleId,
+        courseId: quizObj.courseId,
+        reason,
+        timeTakenSeconds,
+        answers
+      };
+
+      try {
+        const res = await fetch(`${API}/submit-quiz-score`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let out = null; try { out = JSON.parse(text); } catch { }
+        showResult(score, total, !!(out && out.success), reason, out?.attempts || null, out?.message || null);
+      } catch (err) {
+        console.error('Submit error:', err);
+        showResult(score, total, false, reason, null, 'Network/Server error while saving score.');
+      } finally {
+        document.querySelectorAll("input, textarea, button").forEach(el => { el.disabled = true; });
+        // clean up quiz-local keys
+        localStorage.removeItem(storageKey());
+        localStorage.removeItem(storageKey(':order'));
+        localStorage.removeItem(storageKey(':page'));
+        localStorage.removeItem(storageKey(':furthest'));
+        localStorage.removeItem(storageKey(':startedAt'));
+        localStorage.removeItem(storageKey(':recoveredTimer'));
+        localStorage.removeItem(storageKey(':flags'));
+      }
+    }
+
+    function showResult(score, total, ok, reason, attemptsInfo, message) {
+      const pct = total ? Math.round((score / total) * 100) : 0;
+
+      function attemptsLineHTML(info) {
+        if (!info) return '';
+        const allowedStr = (info.allowed == null) ? '&infin;' : String(info.allowed);
+        const leftStr = (info.left == null) ? '(unlimited)' : '(left: ' + info.left + ')';
+        return (
+          '<div class="small text-muted">' +
+          'Attempts used: ' + info.used + '/' + allowedStr + ' ' + leftStr +
+          '</div>'
+        );
+      }
+
+      const attemptsLine = attemptsLineHTML(attemptsInfo);
+      const msgLine = message
+        ? '<div class="small text-muted">' + escapeHtml(message) + '</div>'
+        : '';
+
+      const essayNote =
+        '<div class="small text-muted">' +
+        'Essay responses (if any) are not auto-graded. Your teacher will grade them separately.' +
+        '</div>';
+
+      const alertClass = ok ? 'alert-success' : 'alert-warning';
+
+      const bodyHtml =
+        '<div class="alert ' + alertClass + ' mb-0">' +
+        '<div><strong>Quiz submitted (' + escapeHtml(String(reason)) + ').</strong></div>' +
+        '<div>Auto-graded score: <strong>' + score + '/' + total + '</strong> (' + pct + '%).</div>' +
+        essayNote +
+        attemptsLine +
+        msgLine +
+        '</div>';
+
+      document.getElementById('resultModalLabel').textContent = ok ? 'Quiz submitted' : 'Submission issue';
+      document.getElementById('resultModalBody').innerHTML = bodyHtml;
+
+      const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+      modal.show();
+      scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ===== Boot ===== */
+    document.addEventListener('DOMContentLoaded', loadQuiz);
+  </script>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

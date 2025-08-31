@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Available Quizzes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Sidebar / shared -->
+  <link rel="stylesheet" href="../quiz/quiz.css" />
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Available Quizzes</h1>
+
+        <!-- Filters -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-question-circle"></i> Filter & Sort</h2>
+            <div class="ui-subtext">All quizzes are shown below. Use these controls to narrow or sort.</div>
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label class="form-label text-light">Course</label>
+              <select id="courseSelect" class="form-select">
+                <option value="">-- All Courses --</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label text-light">Module</label>
+              <select id="moduleSelect" class="form-select" disabled>
+                <option value="">-- All Modules --</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="row g-2">
+                <div class="col-12">
+                  <label class="form-label text-light">Search</label>
+                  <input id="quizSearch" type="search" class="form-control" placeholder="Search quizzes...">
+                </div>
+                <div class="col-6">
+                  <select id="statusFilter" class="form-select">
+                    <option value="All">All Status</option>
+                    <option value="Open">Open</option>
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <select id="sortBy" class="form-select">
+                    <option value="due">Sort: Due Date</option>
+                    <option value="az">Sort: A → Z</option>
+                    <option value="duration">Sort: Duration</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quiz Cards Grid -->
+        <div id="quizCards" class="row g-3"></div>
+        <div id="emptyState" class="d-none alert alert-warning text-center">No quizzes found.</div>
+        <div id="errorState" class="d-none alert alert-danger text-center">Could not load quizzes. Please try again.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score Modal -->
+  <div class="modal fade" id="scoreModal" tabindex="-1" aria-labelledby="scoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="scoreModalLabel">Quiz Results</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="scoreLoading" class="text-center py-4">
+            <div class="spinner-border" role="status" aria-hidden="true"></div>
+            <div class="mt-2">Loading…</div>
+          </div>
+
+          <div id="scoreEmpty" class="alert alert-warning d-none">No attempts yet.</div>
+          <div id="scoreError" class="alert alert-danger d-none">Could not load results.</div>
+
+          <div id="scoreContent" class="d-none">
+            <div class="d-flex flex-wrap gap-3 mb-3">
+              <div class="card p-2">
+                <div class="small text-muted">Best</div>
+                <div id="bestScore" class="fw-bold fs-5">—</div>
+              </div>
+              <div class="card p-2">
+                <div class="small text-muted">Latest</div>
+                <div id="latestScore" class="fw-bold fs-5">—</div>
+              </div>
+              <div class="card p-2">
+                <div class="small text-muted">Attempts</div>
+                <div id="attemptCount" class="fw-bold fs-5">0</div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Score</th>
+                    <th>Percent</th>
+                    <th>Time Taken</th>
+                  </tr>
+                </thead>
+                <tbody id="attemptsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Auth / Setup -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isStudent) {
+      window.location.href = "/STUDENT/login/login.html";
+    } else {
+     // === Initials-only header display ===
+function initialsFrom(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (!s) return "";
+
+  // If email, take first + last token from local part
+  if (s.includes("@")) {
+    const local = s.split("@")[0];
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : local.slice(0, 2)
+    ).toUpperCase();
+  }
+
+  // Names or usernames: first + last token initials
+  const parts = s.split(/[\s\-]+/).filter(Boolean);
+  return (parts.length >= 2
+    ? parts[0][0] + parts[parts.length - 1][0]
+    : parts[0].slice(0, 2)
+  ).toUpperCase();
+}
+
+const userData = JSON.parse(localStorage.getItem("user") || "{}");
+const userId = userData.userId || userData.uid || userData.id || userData.email;
+
+if (!userId) {
+  window.location.href = "../login/login.html";
+} else {
+  const displayName = userData.fullName || userData.username || userData.email || "Student";
+  const initials = initialsFrom(displayName) || "?";
+  const el = document.getElementById("Username");
+  el.textContent = initials;
+  el.title = displayName;                 // tooltip with full name
+  el.setAttribute("aria-label", displayName);
+
+  if (!userData.uid) {
+    userData.uid = userId;
+    localStorage.setItem("user", JSON.stringify(userData));
+  }
+}
+
+    }
+  </script>
+
+  <!-- Main App -->
+  <script>
+    const courseSelect = document.getElementById("courseSelect");
+    const moduleSelect = document.getElementById("moduleSelect");
+    const quizCards   = document.getElementById("quizCards");
+    const emptyState  = document.getElementById("emptyState");
+    const errorState  = document.getElementById("errorState");
+    const quizSearch  = document.getElementById("quizSearch");
+    const statusFilter= document.getElementById("statusFilter");
+    const sortBy      = document.getElementById("sortBy");
+
+    let allQuizzes = [];
+    let currentCourseId = "";
+    let currentModuleId = "";
+
+    const enrolledCourseIds = new Set();
+    const attemptsCache     = new Map(); // quizId -> { used, allowed, left, lock }
+
+    const coursesById       = new Map(); // courseId -> course
+    const modulesByCourse   = new Map(); // courseId -> Map(moduleId -> module)
+
+    // ---------- Helpers ----------
+    const ts = (obj) => {
+      if (!obj) return null;
+      if (obj instanceof Date) return obj;
+      if (typeof obj === 'string' || typeof obj === 'number') return new Date(obj);
+      if (obj && typeof obj.toDate === 'function') return obj.toDate();
+      if (typeof obj.seconds === 'number')   return new Date(obj.seconds * 1000);
+      if (typeof obj._seconds === 'number')  return new Date(obj._seconds * 1000);
+      return null;
+    };
+    const fmt      = (v) => { const d = ts(v); return d ? d.toLocaleString() : "—"; };
+    const fmtDate  = (v) => { const d = ts(v); return d ? d.toLocaleDateString() : "—"; };
+    const isNum    = v => (typeof v === 'number' && !Number.isNaN(v));
+    const toNum    = v => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
+    const num      = (v, def = 0) => (typeof v === 'number' && !isNaN(v)) ? v : def;
+    const fmtTime  = (sec) => {
+      if (sec == null) return "—";
+      const s = Math.max(0, parseInt(sec, 10));
+      const m = Math.floor(s / 60), ss = s % 60;
+      return `${m}m ${ss}s`;
+    };
+    function isEssayQuestion(q){
+      if (!q) return false;
+      if (q.isEssay === true) return true;
+      if ((q.type || '').toLowerCase() === 'essay') return true;
+      const choices = q.choices || {};
+      const nonEmpty = Object.values(choices).filter(v => v && String(v).trim() !== '');
+      return nonEmpty.length === 0;
+    }
+
+    // ---------- Data loaders ----------
+    async function loadCourses() {
+      courseSelect.innerHTML = `<option value="">-- All Courses --</option>`;
+      enrolledCourseIds.clear();
+      coursesById.clear();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`);
+        const js = await res.json();
+        const list = Array.isArray(js?.courses) ? js.courses : [];
+
+        list.forEach(c => {
+          if (!c?.id) return;
+          enrolledCourseIds.add(c.id);
+          coursesById.set(c.id, c);
+
+          const code = c.courseNumber ?? c.code ?? c.number ?? c.classCode ?? null;
+          const title = c.title || "Untitled Course";
+          const label = code ? `${code} — ${title}` : title;
+
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = label;
+          courseSelect.appendChild(opt);
+        });
+
+      } catch (e) {
+        console.error("Courses fetch failed", e);
+        errorState.classList.remove("d-none");
+      }
+    }
+
+    async function loadModules(courseId) {
+      moduleSelect.innerHTML = '<option value="">-- All Modules --</option>';
+      moduleSelect.disabled = !courseId;
+      if (!courseId) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
+        const js = await res.json();
+        const modules = Array.isArray(js?.modules) ? js.modules : (Array.isArray(js) ? js : []);
+
+        // cache modules by course
+        const map = new Map();
+        modules.forEach(m => { if (m?.id) map.set(m.id, m); });
+        modulesByCourse.set(courseId, map);
+
+        modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+        modules.forEach(m => {
+          if (!m?.id) return;
+          const label = (typeof m.moduleNumber === 'number')
+            ? `Module ${m.moduleNumber}: ${m.title || "Untitled Module"}`
+            : (m.title || "Untitled Module");
+
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = label;
+          moduleSelect.appendChild(opt);
+        });
+      } catch (e) {
+        console.warn("Modules fetch failed", e);
+      }
+    }
+
+    async function ensureModulesForCourse(courseId){
+      if (!courseId || modulesByCourse.has(courseId)) return;
+      try{
+        const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
+        const js = await res.json();
+        const modules = Array.isArray(js?.modules) ? js.modules : (Array.isArray(js) ? js : []);
+        const map = new Map();
+        modules.forEach(m => { if (m?.id) map.set(m.id, m); });
+        modulesByCourse.set(courseId, map);
+      }catch(e){
+        modulesByCourse.set(courseId, new Map()); // avoid refetch loop
+      }
+    }
+
+    async function ensureModulesForCourses(courseIds){
+      const uniq = [...new Set(courseIds)].filter(Boolean);
+      await Promise.all(uniq.map(ensureModulesForCourse));
+    }
+
+    async function loadQuizzes() {
+      try {
+        const res = await fetch(`${API_BASE}/quizzes`);
+        const data = await res.json();
+        allQuizzes = (data?.success && Array.isArray(data.quizzes)) ? data.quizzes : [];
+      } catch (e) {
+        allQuizzes = [];
+        console.error("Quizzes fetch failed", e);
+      }
+    }
+
+    function statusOf(quiz) {
+      const now = Date.now();
+      const openAt = ts(quiz.openAt) ? ts(quiz.openAt).getTime() : null;
+      const dueAt  = ts(quiz.dueAt)  ? ts(quiz.dueAt).getTime()  : null;
+      if (openAt && now < openAt) return "Upcoming";
+      if (dueAt && now > dueAt)   return "Closed";
+      return "Open";
+    }
+
+    async function ensureAttemptStatus(quizIds) {
+      const missing = quizIds.filter(id => !attemptsCache.has(id));
+      if (!missing.length) return;
+
+      try {
+        const params = new URLSearchParams();
+        params.set('quizIds', missing.join(','));
+        const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/quiz-attempts?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const js = await res.json();
+        const data = js?.data || {};
+        Object.keys(data).forEach(qid => attemptsCache.set(qid, data[qid]));
+      } catch (err) {
+        console.warn('Attempt status fetch failed:', err.message);
+        missing.forEach(qid => attemptsCache.set(qid, { used: 0, allowed: null, left: null, lock: false }));
+      }
+    }
+
+    async function fetchQuizResults(quizId) {
+      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/quiz-results?quizId=${encodeURIComponent(quizId)}`;
+      const res = await fetch(url);
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+      return normalizeResults(JSON.parse(text || '{}'));
+    }
+
+    function normalizeResults(js) {
+      let raw = [];
+      if (Array.isArray(js?.attempts)) raw = js.attempts;
+      else if (Array.isArray(js?.results)) raw = js.results;
+      else if (Array.isArray(js?.data))    raw = js.data;
+      else if (Array.isArray(js))          raw = js;
+
+      const attempts = raw.map((r, i) => {
+        const autoScore     = toNum(r.autoScore)     ?? toNum(r.scoreAuto)   ?? null;
+        const autoTotal     = toNum(r.autoTotal)     ?? toNum(r.totalAuto)   ?? null;
+        const autoPercent   = toNum(r.autoPercent)   ?? null;
+
+        const gradedScore   = toNum(r.gradedScore)   ?? null;
+        const gradedTotal   = toNum(r.gradedTotal)   ?? null;
+        const gradedPercent = toNum(r.gradedPercent) ?? null;
+
+        const score =
+          toNum(r.score) ??
+          gradedScore ??
+          toNum(r.lastScore?.score) ??
+          autoScore ?? null;
+
+        const total =
+          toNum(r.total) ??
+          gradedTotal ??
+          toNum(r.lastScore?.total) ??
+          autoTotal ?? null;
+
+        const percent =
+          toNum(r.percent) ??
+          gradedPercent ??
+          autoPercent ??
+          (isNum(score) && isNum(total) && total > 0 ? Math.round((score / total) * 100) : null);
+
+        return {
+          n: r.attempt ?? r.n ?? (i + 1),
+          submittedAt: r.submittedAt ?? r.createdAt ?? r.timestamp ?? null,
+          timeTakenSeconds: r.timeTakenSeconds ?? r.durationSeconds ?? r.time ?? null,
+          reason: r.reason || 'manual',
+          score: isNum(score) ? score : null,
+          total: isNum(total) ? total : null,
+          percent: isNum(percent) ? percent : null,
+
+          autoScore, autoTotal, autoPercent,
+          gradedScore, gradedTotal, gradedPercent
+        };
+      });
+
+      const latest = attempts.length ? attempts[attempts.length - 1] : null;
+      let best = null;
+      attempts.forEach(a => {
+        if (!isNum(a.percent)) return;
+        if (!best || a.percent > best.percent) best = a;
+      });
+
+      if (!best && isNum(js?.bestPercent)) {
+        best = {
+          n: '-',
+          submittedAt: null,
+          score: toNum(js?.lastScore?.score) ?? null,
+          total: toNum(js?.lastScore?.total) ?? null,
+          percent: toNum(js.bestPercent)
+        };
+      }
+      if (!latest && js?.lastScore) {
+        const lp = toNum(js.lastScore.percent);
+        latest = {
+          n: '-',
+          submittedAt: null,
+          score: toNum(js.lastScore.score) ?? null,
+          total: toNum(js.lastScore.total) ?? null,
+          percent: isNum(lp) ? lp : null
+        };
+      }
+
+      return { attempts, best, latest };
+    }
+
+    // ---------- Render ----------
+    async function renderQuizzes() {
+      quizCards.innerHTML = "";
+      errorState.classList.add("d-none");
+
+      // start with ALL quizzes from enrolled courses
+      let list = allQuizzes.filter(qz => enrolledCourseIds.has(qz.courseId));
+
+      // optional filters
+      if (currentCourseId) {
+        list = list.filter(qz => qz.courseId === currentCourseId);
+      }
+      if (currentModuleId) {
+        list = list.filter(qz => qz.moduleId === currentModuleId);
+      }
+
+      const q = (quizSearch.value || "").toLowerCase();
+      if (q) {
+        list = list.filter(qz =>
+          (qz.title || "").toLowerCase().includes(q) ||
+          (qz.description || "").toLowerCase().includes(q)
+        );
+      }
+
+      const st = statusFilter.value;
+      if (st !== "All") {
+        list = list.filter(qz => statusOf(qz) === st);
+      }
+
+      // sort
+      if (sortBy.value === "az") {
+        list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+      } else if (sortBy.value === "duration") {
+        list.sort((a, b) => num(a.durationMinutes) - num(b.durationMinutes));
+      } else {
+        list.sort((a, b) => {
+          const ad = ts(a.dueAt) ? ts(a.dueAt).getTime() : Number.POSITIVE_INFINITY;
+          const bd = ts(b.dueAt) ? ts(b.dueAt).getTime() : Number.POSITIVE_INFINITY;
+          return ad - bd;
+        });
+      }
+
+      if (!list.length) {
+        emptyState.classList.remove("d-none");
+        emptyState.textContent = "No quizzes found.";
+        return;
+      } else {
+        emptyState.classList.add("d-none");
+      }
+
+      // make sure we have modules for the courses shown so we can print module names
+      const listCourseIds = list.map(q => q.courseId);
+      await ensureModulesForCourses(listCourseIds);
+
+      // attempt & lock info
+      await ensureAttemptStatus(list.map(q => q.id));
+
+      // render cards
+      list.forEach(quiz => {
+        const created = ts(quiz.createdAt);
+        const due     = ts(quiz.dueAt);
+        const status  = statusOf(quiz);
+        const qs = Array.isArray(quiz.questions) ? quiz.questions.length
+                  : (quiz.totalQuestions || quiz.questionCount || 0);
+        const dur = num(quiz.durationMinutes);
+        const diff = quiz.difficulty || "—";
+
+        const course = coursesById.get(quiz.courseId);
+        const courseCode = course?.courseNumber ?? course?.code ?? course?.number ?? course?.classCode ?? null;
+        const courseTitle = course?.title || quiz.courseTitle || quiz.courseName || "Untitled Course";
+        const courseLabel = courseCode ? `${courseCode} — ${courseTitle}` : courseTitle;
+
+        const modMap = modulesByCourse.get(quiz.courseId);
+        const mod    = modMap ? modMap.get(quiz.moduleId) : null;
+        const moduleTitle = mod?.title || quiz.moduleTitle || quiz.moduleName || "Untitled Module";
+        const moduleLabel = (typeof mod?.moduleNumber === 'number')
+          ? `Module ${mod.moduleNumber}: ${moduleTitle}`
+          : moduleTitle;
+
+        const allowed = quiz.attemptsAllowed ?? null;
+        const aStat = attemptsCache.get(quiz.id) || { used: 0, allowed, left: null, lock: false };
+        const effAllowed = (aStat.allowed === undefined) ? allowed : aStat.allowed;
+        const used = aStat.used ?? 0;
+        const left = (effAllowed == null) ? null : Math.max(0, (aStat.left ?? (effAllowed - used)));
+        const locked = (effAllowed != null) && (left === 0);
+
+        const attemptsLabel = (effAllowed == null)
+          ? "Unlimited attempts"
+          : `Attempts: ${used}/${effAllowed}`;
+
+        const startDisabled = (status !== "Open") || locked;
+        const lockBadge = locked ? `<span class="badge text-bg-danger ms-1">Max attempts</span>` : "";
+
+        const hasAutoQuestions = Array.isArray(quiz.questions) && quiz.questions.some(q => !isEssayQuestion(q));
+        const essayOnly = Array.isArray(quiz.questions) && quiz.questions.length > 0 && !hasAutoQuestions;
+
+        // View Score disabled if no attempts or essay-only (until teacher grades)
+        const viewDisabled = (used === 0) || essayOnly;
+        const viewTitle = essayOnly
+          ? 'Scores will be visible after a teacher grades your essay.'
+          : 'No attempts yet';
+
+        const col = document.createElement("div");
+        col.className = "col-12 col-md-6 col-xl-4";
+        col.innerHTML = `
+          <div class="quiz-card h-100">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h3 class="quiz-title">${quiz.title || "Untitled Quiz"}</h3>
+                <div class="quiz-meta">
+                  Created: ${created ? fmtDate(created) : "—"} • Status:
+                  <span class="badge ${status === 'Open' ? 'text-bg-success' : status === 'Upcoming' ? 'text-bg-info' : 'text-bg-secondary'}">${status}</span>
+                  ${lockBadge}
+                  ${essayOnly ? `<span class="badge text-bg-warning ms-1">Essay-only</span>` : ``}
+                </div>
+              </div>
+              <span class="badge-soft"><i class="bi bi-bar-chart"></i>${diff}</span>
+            </div>
+
+            <p class="mt-2">${quiz.description ? quiz.description : ""}</p>
+
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <span class="badge-soft"><i class="bi bi-book"></i> ${courseLabel}</span>
+              <span class="badge-soft"><i class="bi bi-journal-text"></i> ${moduleLabel}</span>
+              <span class="badge-soft"><i class="bi bi-list-ol"></i> ${qs} questions</span>
+              <span class="badge-soft"><i class="bi bi-stopwatch"></i> ${dur || "—"} min</span>
+              <span class="badge-soft"><i class="bi bi-repeat"></i> ${attemptsLabel}</span>
+              <span class="badge-soft"><i class="bi bi-calendar-event"></i> Due: ${due ? fmtDate(due) : "—"}</span>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-sm btn-outline-primary ${viewDisabled ? 'disabled' : ''}"
+                      ${viewDisabled ? `tabindex="-1" aria-disabled="true" title="${viewTitle}"` : ''}
+                      data-action="view-score"
+                      data-quiz-id="${quiz.id}"
+                      data-quiz-title="${(quiz.title || '').replace(/"/g, '&quot;')}">
+                <i class="bi bi-graph-up"></i> View Score
+              </button>
+
+              <a class="btn btn-sm btn-amber ${startDisabled ? 'disabled' : ''}"
+                 ${startDisabled ? 'tabindex="-1" aria-disabled="true" title="You have no attempts left for this quiz."' : ''}
+                 href="${startDisabled ? '#' : `/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}`}">
+                 Start
+              </a>
+            </div>
+
+            <div class="mt-2 small text-muted">
+              Timed quizzes auto-submit when time is up.
+              ${essayOnly ? '<br>Scores for this quiz will appear after your essay is graded.' : ''}
+            </div>
+          </div>
+        `;
+        quizCards.appendChild(col);
+      });
+    }
+
+    // ---------- Events ----------
+    courseSelect.addEventListener("change", async function () {
+      currentCourseId = this.value;
+      currentModuleId = "";
+      moduleSelect.value = "";
+      await loadModules(currentCourseId);
+      renderQuizzes();
+    });
+
+    moduleSelect.addEventListener("change", function () {
+      currentModuleId = this.value;
+      renderQuizzes();
+    });
+
+    quizSearch.addEventListener("input", () => renderQuizzes());
+    statusFilter.addEventListener("change", () => renderQuizzes());
+    sortBy.addEventListener("change", () => renderQuizzes());
+
+    // View Score modal
+    quizCards.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-action="view-score"]');
+      if (!btn || btn.classList.contains('disabled')) return;
+
+      const quizId = btn.getAttribute('data-quiz-id');
+      const title  = btn.getAttribute('data-quiz-title') || 'Quiz Results';
+
+      // Reset modal
+      document.getElementById('scoreModalLabel').textContent = title;
+      document.getElementById('scoreLoading').classList.remove('d-none');
+      document.getElementById('scoreEmpty').classList.add('d-none');
+      document.getElementById('scoreError').classList.add('d-none');
+      document.getElementById('scoreContent').classList.add('d-none');
+      document.getElementById('attemptsTbody').innerHTML = '';
+      document.getElementById('bestScore').textContent = '—';
+      document.getElementById('latestScore').textContent = '—';
+      document.getElementById('attemptCount').textContent = '0';
+
+      const scoreModal = new bootstrap.Modal(document.getElementById('scoreModal'));
+      scoreModal.show();
+
+      try {
+        const res = await fetchQuizResults(quizId);
+        document.getElementById('scoreLoading').classList.add('d-none');
+
+        if (!res.attempts || res.attempts.length === 0) {
+          document.getElementById('scoreEmpty').classList.remove('d-none');
+          return;
+        }
+
+        if (isNum(res.best?.percent))   document.getElementById('bestScore').textContent = `${res.best.percent}%`;
+        if (isNum(res.latest?.percent)) document.getElementById('latestScore').textContent = `${res.latest.percent}%`;
+        document.getElementById('attemptCount').textContent = String(res.attempts.length);
+
+        const rowsHtml = res.attempts.map(a => {
+          const hasAuto   = (a.autoTotal   != null && a.autoTotal   > 0);
+          const hasGraded = (a.gradedTotal != null && a.gradedTotal > 0);
+
+          let score, total;
+          if (hasAuto || hasGraded) {
+            const autoScore   = (a.autoScore   ?? 0);
+            const gradedScore = (a.gradedScore ?? 0);
+            const autoTotal   = (hasAuto   ? a.autoTotal   : 0);
+            const gradedTotal = (hasGraded ? a.gradedTotal : 0);
+            score = autoScore + gradedScore;
+            total = autoTotal + gradedTotal;
+          } else if (typeof a.score === 'number' && typeof a.total === 'number') {
+            score = a.score;
+            total = a.total;
+          } else {
+            score = null;
+            total = null;
+          }
+
+          const scoreCell = (score != null && total != null) ? `${score}/${total}` : '—';
+
+          return `
+            <tr>
+              <td>${a.n ?? ''}</td>
+              <td>${fmt(a.submittedAt)}</td>
+              <td>${scoreCell}</td>
+              <td>${typeof a.percent === 'number' ? `${a.percent}%` : '—'}</td>
+              <td>${fmtTime(a.timeTakenSeconds)}</td>
+            </tr>
+          `;
+        }).join('');
+
+        document.getElementById('attemptsTbody').innerHTML = rowsHtml;
+        document.getElementById('scoreContent').classList.remove('d-none');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('scoreLoading').classList.add('d-none');
+        document.getElementById('scoreError').classList.remove('d-none');
+      }
+    });
+
+    // ---------- Boot ----------
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        await loadCourses();
+        await loadQuizzes();
+        renderQuizzes(); // shows ALL quizzes by default
+      } catch {
+        errorState.classList.remove("d-none");
+      }
+    });
+  </script>
+
+  <!-- Small-screen tweak -->
+  <style>
+    @media (max-width: 768px) {
+      .form-select, .form-control { text-align: center; }
+    }
+  </style>
+
+  <!-- Bootstrap bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+</body>
+</html>

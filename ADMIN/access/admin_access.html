@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Admin - Teacher Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="/ADMIN/access/access.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <!-- Sidebar + Dropdown Logic -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/ADMIN/components/test.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+
+            const sidebar = document.querySelector(".sidebar");
+            const dashboard = document.querySelector(".dashboard");
+            if (sidebar && dashboard) {
+              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+            }
+
+            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+              toggle.addEventListener('click', e => {
+                e.preventDefault();
+                const parent = toggle.closest('.has-submenu');
+                parent.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', String(toggle.getAttribute('aria-expanded') !== 'true'));
+              });
+            });
+          })
+          .catch(err => console.error("Failed to load sidebar:", err));
+      });
+    </script>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Dashboard Section -->
+      <section class="content px-4">
+        <h2 class="mt-4 mb-3 fw-bold text-center">Teacher Management List</h2>
+        <div class="container-fluid px-4">
+          <!-- ✅ Alert -->
+          <div id="teacherAlert" class="alert alert-success d-none" role="alert"></div>
+
+          <div class="table-responsive shadow bg-white rounded p-4" style="max-width: 100%; width: 100%;">
+            <table class="table table-bordered align-middle text-center w-100">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Username</th>
+                  <th>First Name</th>
+                  <th>Middle Name</th>
+                  <th>Last Name</th>
+                  <th>Email</th>
+                  <th>Teacher Role</th>
+                  <th>Access</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody">
+                <tr><td colspan="8">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal fade" id="teacherConfirmModal" tabindex="-1" aria-labelledby="teacherConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="teacherConfirmModalLabel">Confirm Teacher Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="teacherModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="confirmTeacherBtn" type="button" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<!-- Make sure this is above any script that uses bootstrap.Modal -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const API_BASE = 'http://localhost:5000/api/users';
+
+  // tiny fetch helper with JSON/content-type checks
+  async function getJSON(url, options = {}) {
+    const res = await fetch(url, options);
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`HTTP ${res.status}: ${body.slice(0,120)}`);
+    }
+    if (!ct.includes('application/json')) {
+      const body = await res.text();
+      throw new Error(`Expected JSON but got "${ct}". Body: ${body.slice(0,120)}`);
+    }
+    return res.json();
+  }
+
+  const tableBody     = document.getElementById("userTableBody");
+  const teacherAlert  = document.getElementById("teacherAlert");
+  let selectedUser = null;
+  let selectedRow  = null;
+  let newTeacherStatus = false;
+
+  // use page's maskEmail if present; otherwise a safe fallback
+  const safeMaskEmail = (window.maskEmail) || function (email) {
+    if (!email || !email.includes("@")) return email;
+    const [local, domain] = email.split("@");
+    const parts = domain.split(".");
+    const maskedLocal = local[0] + "*".repeat(Math.max(local.length - 1, 0));
+    const dn = parts.slice(0, -1).join(".");
+    const maskedDn = dn ? (dn[0] + "*".repeat(Math.max(dn.length - 1, 0))) : "";
+    const tld = parts[parts.length - 1] || "";
+    return maskedLocal + "@" + (maskedDn ? maskedDn + "." : "") + tld;
+  };
+
+  async function loadTeachers() {
+    try {
+      // Try filtered endpoint first (if your backend supports role=teacher)
+      let payload;
+      try {
+        payload = await getJSON(`${API_BASE}?role=teacher`);
+      } catch {
+        // Fallback to all users
+        payload = await getJSON(API_BASE);
+      }
+
+      let users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
+      if (!users.length) {
+        tableBody.innerHTML = `<tr><td colspan="8">No users found.</td></tr>`;
+        return;
+      }
+
+      // Show regular users and current/potential teachers; hide IT support only accounts
+      users = users.filter(u =>
+        (u?.isUser === true || u?.isTeacher === true || Boolean(u?.teacherId)) &&
+        !u?.isITsupport
+      );
+
+      if (!users.length) {
+        tableBody.innerHTML = `<tr><td colspan="8">No teacher-eligible users found.</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = "";
+      users.forEach((user, i) => {
+        const isTeacher = (user.isTeacher === true) || Boolean(user.teacherId);
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${user.username || ""}</td>
+          <td>${user.firstName || ""}</td>
+          <td>${user.middleName || ""}</td>
+          <td>${user.lastName || ""}</td>
+          <td>${safeMaskEmail(user.email || "")}</td>
+          <td><span class="badge ${isTeacher ? 'bg-primary' : 'bg-secondary'} status-badge">
+            ${isTeacher ? 'Teacher' : 'User'}
+          </span></td>
+          <td>
+            <button class="btn btn-sm ${isTeacher ? 'btn-danger' : 'btn-success'} toggle-btn">
+              ${isTeacher ? 'Revoke' : 'Grant'}
+            </button>
+          </td>
+        `;
+
+        const toggleButton = row.querySelector(".toggle-btn");
+        toggleButton.addEventListener("click", () => {
+          selectedUser = user;
+          selectedRow  = row;
+          newTeacherStatus = !((user.isTeacher === true) || Boolean(user.teacherId));
+
+          const action = newTeacherStatus ? "grant" : "revoke";
+          document.getElementById("teacherModalBody").textContent =
+            `Are you sure you want to ${action} teacher access to ${user.username}?`;
+
+          // reset confirm button handlers by cloning
+          const old = document.getElementById("confirmTeacherBtn");
+          const fresh = old.cloneNode(true);
+          old.parentNode.replaceChild(fresh, old);
+
+          fresh.addEventListener("click", async () => {
+            try {
+              fresh.disabled = true;
+              toggleButton.disabled = true;
+
+              const result = await getJSON(
+                `${API_BASE}/${encodeURIComponent(selectedUser.userId)}/teacher`,
+                {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ isTeacher: newTeacherStatus })
+                }
+              );
+
+              if (result?.success && result.user) {
+                // sync from server
+                selectedUser.isTeacher = !!result.user.isTeacher;
+                selectedUser.teacherId = result.user.teacherId || null;
+
+                const nowTeacher = selectedUser.isTeacher === true;
+
+                const badge = selectedRow.querySelector(".status-badge");
+                badge.textContent = nowTeacher ? "Teacher" : "User";
+                badge.className   = `badge ${nowTeacher ? 'bg-primary' : 'bg-secondary'} status-badge`;
+
+                toggleButton.textContent = nowTeacher ? "Revoke" : "Grant";
+                toggleButton.className   = `btn btn-sm ${nowTeacher ? 'btn-danger' : 'btn-success'} toggle-btn`;
+
+                bootstrap.Modal.getInstance(document.getElementById("teacherConfirmModal")).hide();
+
+                teacherAlert.textContent = `Successfully ${nowTeacher ? "granted" : "revoked"} teacher access for ${selectedUser.username}.`;
+                teacherAlert.classList.remove("d-none");
+                setTimeout(() => teacherAlert.classList.add("d-none"), 3000);
+              } else {
+                alert(result?.message || "Failed to update teacher status.");
+              }
+            } catch (err) {
+              console.error("❌ Teacher status update failed:", err);
+              alert("Server error while updating teacher access.");
+            } finally {
+              fresh.disabled = false;
+              toggleButton.disabled = false;
+            }
+          });
+
+          new bootstrap.Modal(document.getElementById("teacherConfirmModal")).show();
+        });
+
+        tableBody.appendChild(row);
+      });
+    } catch (err) {
+      console.error("❌ Failed to load users:", err);
+      tableBody.innerHTML = `<tr><td colspan="8">Error loading users.</td></tr>`;
+    }
+  }
+
+  loadTeachers();
+</script>
+ <script>
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/ADMIN/login/login.html";
+    }
+  </script>
+  <script>
+  // Fill the profile username beside the icon
+  (function populateUsername() {
+    try {
+      const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
+      let data = null;
+
+      if (raw) {
+        try { data = JSON.parse(raw); } catch { /* raw might not be JSON */ }
+      }
+
+      // best-effort resolution
+      let username =
+        (data && (data.username || `${data.firstName ?? ""} ${data.lastName ?? ""}`.trim() || (data.email?.split("@")[0] ?? ""))) ||
+        "";
+
+      // if still empty, fall back to raw string (e.g., someone stored just the username)
+      if (!username && typeof raw === "string") username = raw;
+
+      const el = document.getElementById("Username");
+      if (el) {
+        el.textContent = username || "User";
+        el.title = username || "User";
+      }
+    } catch (e) {
+      console.error("Failed to populate username:", e);
+    }
+  })();
+</script>
+
+</body>
+</html>

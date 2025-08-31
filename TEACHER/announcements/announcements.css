@@ -1,0 +1,426 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
+
+/* RESET */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ROOT */
+html, body {
+  width: 100%; height: 100%;
+  font-family: 'Raleway', sans-serif;
+  background: #e6ebeb; color: #222;
+  overflow-x: hidden;
+}
+
+
+
+/* DASHBOARD LAYOUT */
+.dashboard { display: flex; }
+
+/* SIDEBAR WRAPPER */
+#sidebar-container { flex-shrink: 0; }
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: 70px; height: 100vh;
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  padding: 2rem 1rem;
+  box-shadow: 4px 0 15px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  transition: width .3s ease;
+  z-index: 10;
+}
+/* expand on hover of its container */
+#sidebar-container:hover .sidebar {
+  width: 280px;
+}
+
+/* LOGO */
+.sidebar-logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #f8e7d0;
+  text-align: center;
+  margin-bottom: 2rem;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s ease;
+  user-select: none;
+}
+#sidebar-container:hover .sidebar-logo {
+  opacity: 1;
+}
+
+/* NAV LINKS */
+.sidebar-links {
+  list-style: none;
+  flex-grow: 1;
+}
+.sidebar-links li {
+  margin: 1rem 0;
+}
+.sidebar-links a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff6dd;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  transition: background .3s, color .3s;
+  cursor: pointer;
+}
+.sidebar-links a i {
+  font-size: 1.2rem;
+  min-width: 24px;
+  text-align: center;
+}
+.sidebar-links a span {
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+/* reveal text on expand */
+#sidebar-container:hover .sidebar-links a span {
+  opacity: 1;
+}
+.sidebar-links a:hover {
+  background: rgba(255,255,255,0.1);
+  color: #FFD580;
+}
+
+/* SUBMENU */
+.has-submenu > a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.submenu {
+  list-style: none;
+  padding-left: 1.5rem;
+  margin-top: 0.3rem;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .4s ease;
+}
+.has-submenu.open .submenu {
+  max-height: 500px; /* big enough */
+}
+.submenu-arrow {
+  transition: transform .3s ease;
+}
+.has-submenu.open > a .submenu-arrow {
+  transform: rotate(180deg);
+}
+
+/* LOGOUT BUTTON */
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+.logout-btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s ease, color .3s;
+  user-select: none;
+  cursor: pointer;
+}
+#sidebar-container:hover .logout-btn {
+  opacity: 1;
+}
+.logout-btn:hover {
+  opacity: .85;
+  color: #4A1A0C;
+}
+
+/* MAIN CONTENT */
+/* MAIN CONTENT */
+.main {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+  transition: margin-left .3s ease, width .3s ease;
+  min-height: 100vh;
+}
+
+/* shift main over when sidebar expands */
+#sidebar-container:hover + .main {
+  margin-left: 280px;
+  width: calc(100% - 280px);
+}
+
+/* HEADER */
+/* Header */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.logo-header { height: 45px; }
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 20px;
+}
+.search-box input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 30px;
+  border: none;
+  outline: none;
+}
+.search-box i {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  color: #999;
+}
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+.profile-btn .username {
+  font-size: 14px;
+}
+
+/* CONTENT AREA */
+.content {
+  padding: 2rem 3rem;
+}
+.content h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* --- your existing table, cards and chart styles go below here --- */
+/* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }
+@media (max-width: 480px) {
+  /* Make buttons easy to tap and nicely spaced */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;           /* stack cleanly */
+    width: 100%;              /* full-width buttons */
+    min-height: 44px;         /* Apple HIG tap target */
+    padding: 0.9rem 1rem;     /* comfy padding */
+    font-size: 1rem;          /* avoid iOS zoom */
+    line-height: 1.2;
+    border-radius: 14px;      /* softer corners on small screens */
+    margin: 10px 0;           /* vertical gap between buttons */
+    text-align: center;
+  }
+
+  /* Icon + text alignment inside buttons */
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+
+  /* Button groups wrap nicely with spacing */
+  .btn-group,
+  .lesson-nav,
+  .content .d-flex,
+  .content .btn-toolbar {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  /* Specific: lesson prev/next should stack under title if tight */
+  .lesson-nav .btn {
+    min-width: unset;         /* let full-width rule apply */
+  }
+
+  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+  .content .d-flex.gap-2 {
+    gap: 10px !important;
+  }
+
+  /* Prevent tiny outline/ghost borders on gradient buttons */
+  .btn-amber,
+  .btn-amber-outline,
+  .back-btn,
+  .logout-btn {
+    border-width: 1px;
+  }
+}
+
+/* Tablet: keep buttons inline but add breathing room */
+@media (min-width: 481px) and (max-width: 1280px) {
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+  }
+
+  /* Lesson nav buttons keep reasonable width */
+  .lesson-nav .btn { min-width: 120px; }
+  /* Mobile datetime split UI */
+.dt-hidden{
+  position:absolute !important;
+  width:1px; height:1px; margin:0; padding:0;
+  opacity:0; pointer-events:none;
+}
+.dt-split{
+  display:grid; grid-template-columns:1fr 1fr; gap:.5rem;
+  margin-top:.25rem;
+}
+.dt-split .form-control{ min-height:44px; font-size:16px; }
+
+/* Stack date/time on very small screens */
+@media (max-width:576px){ .dt-split{ grid-template-columns:1fr; } }
+
+}
+/* Hard-hide the original datetime fields */
+.dt-hidden{ display:none !important; }
+
+/* Split UI layout */
+.dt-split{
+  display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-top:.25rem;
+}
+@media (max-width:576px){ .dt-split{ grid-template-columns:1fr; } }
+.dt-split .form-control{ min-height:44px; font-size:16px; }
+

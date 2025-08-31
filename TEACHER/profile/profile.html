@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Profile Management</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Base dashboard styles -->
+  <link rel="stylesheet" href="profile.css" />
+
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --accent-1: #FF6A00;
+      --accent-2: #B03C10;
+      --radius: 14px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text) }
+
+    .dashboard { display: flex; min-height: 100vh }
+
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px) }
+
+    
+    .logo-header { height: 44px }
+
+    .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 20px }
+    .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100% }
+    .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf }
+
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer
+    }
+    .profile-btn .username { font-size: 14px }
+
+    .content { padding: 24px }
+
+    .ui-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, .08)
+    }
+    .ui-card.section { padding: 18px }
+
+    .btn-amber { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border: none }
+    .btn-amber:hover { filter: brightness(1.06); color: #fff }
+
+    .btn-amber-outline { background: #fff; color: var(--accent-2); border: 1px solid var(--accent-2) }
+    .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border-color: transparent }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent-2) !important;
+      box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
+    }
+
+    .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none }
+    .modal-content { border-radius: 12px; border: 1px solid var(--border) }
+    .modal-footer { border-top: 1px solid var(--border) }
+
+    /* Read-only look for Teacher ID */
+    #teacherId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input type="text" class="form-control" placeholder="Search..." />
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Profile Section -->
+      <section class="content">
+        <div class="ui-card section mb-3">
+          <h2 class="fw-bold mb-3">Profile Management</h2>
+
+          <form id="profileForm" class="row g-4" enctype="multipart/form-data">
+            <div class="col-12 text-center">
+              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120"
+                   height="120" style="object-fit:cover;" alt="Profile Picture"
+                   onerror="this.src='/assets/default-avatar.png'" />
+              <div class="d-flex justify-content-center">
+                <input type="file" id="profilePic" name="profilePic"
+                       accept="image/png, image/jpeg, image/webp" class="form-control w-auto" />
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label for="firstName" class="form-label">First Name</label>
+              <input type="text" id="firstName" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+              <label for="middleName" class="form-label">Middle Name</label>
+              <input type="text" id="middleName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label for="lastName" class="form-label">Last Name</label>
+              <input type="text" id="lastName" class="form-control" required />
+            </div>
+
+            <!-- Teacher ID (readonly) -->
+            <div class="col-md-6">
+              <label for="teacherId" class="form-label">Teacher ID (readonly)</label>
+              <input type="text" id="teacherId" class="form-control" readonly aria-readonly="true" />
+            </div>
+
+            <div class="col-md-6">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" id="username" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+              <label for="email" class="form-label">Email (readonly)</label>
+              <input type="email" id="email" class="form-control" readonly />
+            </div>
+
+            <div class="col-12 text-end">
+              <button type="submit" class="btn btn-amber">Update Profile</button>
+              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal"
+                      data-bs-target="#changePasswordModal">Change Password</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel"
+             aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <form id="changePasswordForm">
+                  <div class="mb-3">
+                    <label for="currentPassword" class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="currentPassword" required />
+                  </div>
+                  <div class="mb-3">
+                    <label for="newPassword" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPassword" required minlength="8" />
+                  </div>
+                  <div class="mb-3">
+                    <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" required minlength="8" />
+                  </div>
+                  <ul class="list-unstyled mt-2" id="pwCriteria">
+                    <li id="pwLength"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
+                    <li id="pwUpper"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
+                    <li id="pwNumber"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
+                    <li id="pwSpecial"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
+                    <li id="pwMatch"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
+                  </ul>
+                  <div class="form-check text-start mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleChangePw" />
+                    <label class="form-check-label" for="toggleChangePw">Show Password</label>
+                  </div>
+                  <div id="changePasswordMsg" class="mb-2" style="display:none;" aria-live="polite"></div>
+                  <button type="submit" class="btn btn-amber">Change Password</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- Sidebar Loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Profile Logic -->
+  <script>
+    const SERVER_BASE = "http://localhost:5000";
+    const API = `${SERVER_BASE}/api`;
+
+    // ===== Auth + Guards =====================================================
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.userId) {
+      window.location.href = "../login/login.html";
+    }
+    const userId = encodeURIComponent(userData.userId);
+
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
+
+    async function getJSON(url, options = {}) {
+      const res = await fetch(url, options);
+      if (res.status === 401) { logoutUser(); throw new Error("Unauthorized"); }
+      const ct = res.headers.get("content-type") || "";
+      const txt = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt.slice(0, 200)}`);
+      if (!ct.includes("application/json")) throw new Error(`Expected JSON, got: ${ct}`);
+      return JSON.parse(txt);
+    }
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // ===== Photo preview + validation ========================================
+    const profilePicInput = document.getElementById("profilePic");
+    const profilePreview = document.getElementById("profilePreview");
+    const MAX_MB = 5;
+    const VALID_TYPES = ["image/png", "image/jpeg", "image/webp"];
+    let previewUrl;
+
+    function resetPreviewURL() { if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; } }
+
+    profilePicInput.addEventListener("change", () => {
+      const f = profilePicInput.files[0];
+      if (!f) return;
+      if (!VALID_TYPES.includes(f.type)) {
+        alert("Please choose a PNG, JPG, or WEBP image.");
+        profilePicInput.value = ""; return;
+      }
+      if (f.size > MAX_MB * 1024 * 1024) {
+        alert(`Image is too large. Max ${MAX_MB}MB.`);
+        profilePicInput.value = ""; return;
+      }
+      resetPreviewURL();
+      previewUrl = URL.createObjectURL(f);
+      profilePreview.src = previewUrl;
+    });
+
+    window.addEventListener("beforeunload", resetPreviewURL);
+
+    // ===== Teacher ID (read-only) ============================================
+    function resolveTeacherId(u) { return u.teacherId || u.empId || u.facultyId || u.idNumber || ""; }
+    function lockTeacherId(v) {
+      const el = document.getElementById("teacherId");
+      if (el) {
+        el.value = v || "";
+        el.setAttribute("readonly", "true");
+        el.setAttribute("aria-readonly", "true");
+      }
+    }
+
+    // ===== Load user ==========================================================
+    let liveUser = null;
+    (async () => {
+      try {
+        const resp = await getJSON(`${API}/users/${userId}`, { headers: authHeaders() });
+        if (!resp.success || !resp.user) throw new Error("User not found");
+        liveUser = resp.user;
+
+        document.getElementById("firstName").value = liveUser.firstName || '';
+        document.getElementById("middleName").value = liveUser.middleName || '';
+        document.getElementById("lastName").value = liveUser.lastName || '';
+        document.getElementById("username").value = liveUser.username || '';
+        document.getElementById("email").value = liveUser.email || '';
+        document.getElementById("Username").textContent = liveUser.username || '';
+
+        // Teacher ID
+        lockTeacherId(resolveTeacherId(liveUser));
+
+        if (liveUser.photoURL) {
+          profilePreview.src = `${SERVER_BASE}${liveUser.photoURL}?t=${Date.now()}`;
+          userData.photoURL = liveUser.photoURL;
+          userData.username = liveUser.username;
+          localStorage.setItem("user", JSON.stringify(userData));
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      }
+    })();
+
+    // ===== Update profile (Change Photo) =====================================
+    const profileForm = document.getElementById("profileForm");
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = profileForm.querySelector('button[type="submit"]');
+      const oldText = submitBtn.textContent;
+      submitBtn.disabled = true; submitBtn.textContent = "Updating…";
+
+      const fd = new FormData();
+      fd.append("firstName", document.getElementById("firstName").value);
+      fd.append("middleName", document.getElementById("middleName").value);
+      fd.append("lastName", document.getElementById("lastName").value);
+      fd.append("username", document.getElementById("username").value);
+      // DO NOT append teacherId or email (server is source of truth)
+      if (profilePicInput.files.length) fd.append("profilePic", profilePicInput.files[0]);
+
+      try {
+        const res = await fetch(`${API}/users/${userId}/profile`, {
+          method: "POST",
+          headers: authHeaders(),  // don't set Content-Type with FormData
+          body: fd
+        });
+        if (res.status === 401) { logoutUser(); return; }
+
+        const ct = res.headers.get("content-type") || "";
+        const text = await res.text();
+        const out = ct.includes("application/json") ? JSON.parse(text) : { success: false, message: text };
+
+        if (res.ok && out.success) {
+          alert("✅ Profile updated successfully!");
+
+          if (out.updatedUser?.username) {
+            userData.username = out.updatedUser.username;
+            document.getElementById("Username").textContent = out.updatedUser.username;
+          }
+          if (out.updatedUser?.photoURL) {
+            resetPreviewURL();
+            profilePreview.src = `${SERVER_BASE}${out.updatedUser.photoURL}?t=${Date.now()}`;
+            userData.photoURL = out.updatedUser.photoURL;
+          }
+          // Re-lock teacher ID if server echoed it
+          if (out.updatedUser) {
+            lockTeacherId(resolveTeacherId(out.updatedUser) || document.getElementById("teacherId").value);
+          }
+          localStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          alert(out.message || "❌ Failed to update profile.");
+        }
+      } catch (err) {
+        console.error("Profile update failed:", err);
+        alert("❌ Profile update failed. See console for details.");
+      } finally {
+        submitBtn.disabled = false; submitBtn.textContent = oldText;
+      }
+    });
+
+    // ===== Change password + auto re-login ===================================
+    const newPw = document.getElementById("newPassword");
+    const confirmPw = document.getElementById("confirmPassword");
+    const msg = document.getElementById("changePasswordMsg");
+
+    function tick(el, ok) {
+      const i = el.querySelector('i');
+      i.classList.toggle('bi-check-circle', ok);
+      i.classList.toggle('text-success', ok);
+      i.classList.toggle('bi-x-circle', !ok);
+      i.classList.toggle('text-danger', !ok);
+    }
+    function livePw() {
+      const p = newPw.value;
+      tick(document.getElementById('pwLength'), p.length >= 8);
+      tick(document.getElementById('pwUpper'), /[A-Z]/.test(p));
+      tick(document.getElementById('pwNumber'), /\d/.test(p));
+      tick(document.getElementById('pwSpecial'), /[^A-Za-z0-9]/.test(p));
+      tick(document.getElementById('pwMatch'), p === confirmPw.value && p !== '');
+    }
+    newPw.addEventListener('input', livePw);
+    confirmPw.addEventListener('input', livePw);
+
+    document.getElementById('toggleChangePw').addEventListener('change', function () {
+      const t = this.checked ? 'text' : 'password';
+      document.getElementById('currentPassword').type = t;
+      newPw.type = t; confirmPw.type = t;
+    });
+
+    function persistAuth(obj) {
+      const user = obj?.user || obj?.data?.user || obj?.data || obj;
+      const token = obj?.token || obj?.accessToken || obj?.jwt || obj?.data?.token || null;
+      if (user) localStorage.setItem("user", JSON.stringify({ ...user, token }));
+      if (token) localStorage.setItem("authToken", token);
+    }
+
+    async function smartLogin({ email, username, password }) {
+      const clean = v => (typeof v === "string" ? v.trim() : v);
+      email = clean(email);
+      username = clean(username);
+
+      const bodies = [];
+      if (email) { bodies.push({ email, password }, { identifier: email, password }); }
+      if (username) { bodies.push({ username, password }, { identifier: username, password }); }
+
+      const routes = [
+        `${API}/login`, `${API}/auth/login`,
+        `${SERVER_BASE}/api/login`, `${SERVER_BASE}/api/auth/login`,
+        `${SERVER_BASE}/login`, `${SERVER_BASE}/auth/login`,
+      ];
+      const creds = ["include", "omit"];
+
+      for (const url of routes) {
+        for (const body of bodies) {
+          for (const credentials of creds) {
+            try {
+              const r = await fetch(url, {
+                method: "POST", credentials,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+              });
+              const text = await r.text();
+              let json = {};
+              try { json = JSON.parse(text); } catch {}
+              const okUser = json?.user || json?.data?.user || (json?.success && (json?.user || json?.data));
+              if (r.ok && okUser) { persistAuth(json); return json; }
+            } catch {}
+          }
+        }
+      }
+      throw new Error("All re-login attempts failed.");
+    }
+
+    const pwForm = document.getElementById("changePasswordForm");
+    pwForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = pwForm.querySelector('button[type="submit"]');
+      const currentPassword = document.getElementById("currentPassword").value;
+      const newPassword = newPw.value;
+      const confirmPassword = confirmPw.value;
+
+      msg.style.display = "none"; msg.textContent = ""; msg.style.color = "var(--bs-danger)";
+      const old = btn.textContent; btn.disabled = true; btn.textContent = "Changing…";
+
+      // client checks
+      if (newPassword.length < 8) return doneErr("New password must be at least 8 characters.");
+      if (!/[A-Z]/.test(newPassword)) return doneErr("New password must contain at least 1 uppercase letter.");
+      if (!/\d/.test(newPassword)) return doneErr("New password must contain at least 1 number.");
+      if (!/[^A-Za-z0-9]/.test(newPassword)) return doneErr("New password must contain at least 1 special character.");
+      if (newPassword !== confirmPassword) return doneErr("New passwords do not match.");
+
+      try {
+        const response = await fetch(`${API}/users/${userId}/change-password`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        if (response.status === 401) { logoutUser(); return; }
+
+        const ct = response.headers.get("content-type") || "";
+        const text = await response.text();
+        const result = ct.includes("application/json") ? JSON.parse(text) : { success: false, error: "Non-JSON response" };
+
+        if (!response.ok || !result.success) {
+          return doneErr(result.error || `HTTP ${response.status}`);
+        }
+
+        // re-login using latest identity
+        const latestEmail = (liveUser?.email) || document.getElementById('email').value || userData.email || null;
+        const latestUsername = (liveUser?.username) || document.getElementById('username').value || userData.username || null;
+
+        try {
+          await smartLogin({ email: latestEmail, username: latestUsername, password: newPassword });
+          msg.style.color = "green";
+          msg.textContent = "Password changed!";
+          msg.style.display = "block";
+
+          setTimeout(() => {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("changePasswordModal")).hide();
+            pwForm.reset();
+            msg.textContent = ""; msg.style.display = "none";
+          }, 900);
+        } catch {
+          doneErr("Password changed, but automatic login failed. Please sign in again.", false);
+        }
+      } catch (err) {
+        console.error("Change password error:", err);
+        doneErr(err.message || "Unexpected error.");
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
+
+      function doneErr(t, show = true) {
+        msg.textContent = t; if (show) msg.style.display = "block";
+        btn.disabled = false; btn.textContent = old;
+      }
+    });
+  </script>
+</body>
+</html>

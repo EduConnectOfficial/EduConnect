@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher - Announcements Board</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <!-- Global -->
+  <link rel="stylesheet" href="../announcements/announcements.css"/>
+
+  <!-- Theme styles for this page -->
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+
+    /* Header */
+   
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
+    .profile-btn{color:#fff}
+
+    /* Page */
+    .content{padding:24px}
+    .page-title{font-weight:800;font-size:1.6rem;margin:0;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      -webkit-background-clip:text;background-clip:text}
+
+    /* Cards */
+    .card-shell{
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+      box-shadow:0 10px 24px rgba(0,0,0,.08)
+    }
+    .card-shell .card-head{
+      padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.06);
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-top-left-radius:var(--radius);border-top-right-radius:var(--radius)
+    }
+    .card-shell .card-body{padding:16px}
+
+    /* Buttons */
+    .btn-amber{
+      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
+      color:#fff;border:none
+    }
+    .btn-amber:hover{filter:brightness(1.06);color:#fff}
+    .help-btn{color:var(--brand-accent-1)!important}
+    .help-btn:hover{color:var(--brand-accent-2)!important}
+
+    /* Filter bar */
+    .filter-bar{
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;
+      box-shadow:0 10px 24px rgba(0,0,0,.06)
+    }
+    #filterClasses[multiple], #announcementClasses[multiple], #editClasses[multiple]{min-height:110px}
+    .form-label{font-weight:600}
+
+    /* Table */
+    .table-card{
+      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+      box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden
+    }
+    .table-card thead th{
+      background:linear-gradient(90deg,rgba(74,26,12,.06),rgba(122,40,16,.06));
+      font-weight:700;color:#3b3b3b;border-bottom:1px solid var(--border)
+    }
+    .table-striped>tbody>tr:nth-of-type(odd)>*{background-color:#fafbfc}
+    .table tbody tr:hover td{background:#fffaf6}
+
+    /* Badges (status) */
+    .badge.bg-success{background:linear-gradient(90deg,#2db974,#1f995c)!important}
+    .badge.bg-secondary{background:linear-gradient(90deg,#8b8f98,#6e737b)!important}
+    .badge.bg-dark{background:linear-gradient(90deg,#3a3a3a,#171717)!important}
+    .badge.bg-light.text-dark{background:linear-gradient(90deg,#fff3e6,#ffe6cc)!important;color:#7A2810!important;border:1px solid rgba(176,60,16,.25)}
+    .bi-exclamation-circle-fill{vertical-align:-.125em}
+
+    /* Modals */
+    .modal-header{
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:none
+    }
+    .modal-content{border-radius:12px;border:1px solid var(--border)}
+    .modal-footer{border-top:1px solid var(--border)}
+    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input id="searchBox" type="text" class="form-control" placeholder="Search..."/>
+
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+
+      <!-- Content -->
+      <section class="content">
+        <div class="row align-items-center mb-3">
+          <div class="col-md-6">
+            <h1 class="page-title mb-0">Announcements Board</h1>
+          </div>
+          <div class="col-md-6 text-md-end mt-2 mt-md-0">
+            <button class="btn btn-amber" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
+              <i class="bi bi-bell-plus"></i> New Announcement
+            </button>
+            
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <form id="announcementFilterForm" class="filter-bar mb-4">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label for="filterClasses" class="form-label">Class</label>
+              <select id="filterClasses" multiple class="form-select"></select>
+            </div>
+            <div class="col-sm-4">
+              <label for="filterStatus" class="form-label">Status</label>
+              <select id="filterStatus" class="form-select">
+                <option value="">All</option>
+                <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="expired">Expired</option>
+                <option value="important">Important</option>
+              </select>
+            </div>
+            <div class="col-sm-4 d-flex align-items-end">
+              <button type="submit" class="btn btn-amber w-100">Apply Filters</button>
+            </div>
+          </div>
+        </form>
+
+        <!-- Table -->
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0" id="announcementTable">
+              <thead class="table-light">
+                <tr>
+                  <th>Title</th>
+                  <th>Classes</th>
+                  <th>Publish At</th>
+                  <th>Expires At</th>
+                  <th>Status</th>
+                  <th>Important</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Create Modal -->
+  <div class="modal fade" id="createAnnouncementModal" tabindex="-1" aria-labelledby="createAnnouncementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="createAnnouncementForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="createAnnouncementLabel">New Announcement</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="announcementTitle" class="form-label">Title</label>
+                <input type="text" id="announcementTitle" class="form-control" required/>
+              </div>
+              <div class="col-md-6">
+                <label for="announcementClasses" class="form-label">Classes</label>
+                <select id="announcementClasses" multiple class="form-select" required></select>
+              </div>
+              <div class="col-md-6">
+                <label for="publishAt" class="form-label">Publish At</label>
+                <input type="datetime-local" id="publishAt" class="form-control" required/>
+              </div>
+              <div class="col-md-6">
+                <label for="expiresAt" class="form-label">Expires At</label>
+                <input type="datetime-local" id="expiresAt" class="form-control"/>
+              </div>
+              <div class="col-12">
+                <label for="announcementContent" class="form-label">Content</label>
+                <textarea id="announcementContent" class="form-control" rows="4" required></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="announcementImportant"/>
+                  <label class="form-check-label" for="announcementImportant">Mark as <strong>Important</strong></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-amber">Create</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editAnnouncementModal" tabindex="-1" aria-labelledby="editAnnouncementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="editAnnouncementForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editAnnouncementLabel">Edit Announcement</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editAnnouncementId"/>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="editTitle" class="form-label">Title</label>
+                <input type="text" id="editTitle" class="form-control" required/>
+              </div>
+              <div class="col-md-6">
+                <label for="editClasses" class="form-label">Classes</label>
+                <select id="editClasses" multiple class="form-select" required></select>
+              </div>
+              <div class="col-md-6">
+                <label for="editPublishAt" class="form-label">Publish At</label>
+                <input type="datetime-local" id="editPublishAt" class="form-control" required/>
+              </div>
+              <div class="col-md-6">
+                <label for="editExpiresAt" class="form-label">Expires At</label>
+                <input type="datetime-local" id="editExpiresAt" class="form-control"/>
+              </div>
+              <div class="col-12">
+                <label for="editContent" class="form-label">Content</label>
+                <textarea id="editContent" class="form-control" rows="4" required></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="editImportant"/>
+                  <label class="form-check-label" for="editImportant">Important</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-amber">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html").then(r=>r.text()).then(html=>{
+        document.getElementById("sidebar-container").innerHTML = html;
+        const sb=document.querySelector(".sidebar"),db=document.querySelector(".dashboard");
+        if (sb && db){
+          sb.addEventListener("mouseenter",()=>db.classList.add("sidebar-expanded"));
+          sb.addEventListener("mouseleave",()=>db.classList.remove("sidebar-expanded"));
+        }
+        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t=>{
+          t.addEventListener('click',e=>{
+            e.preventDefault();
+            const p=t.closest('.has-submenu');
+            p.classList.toggle('open');
+            t.setAttribute('aria-expanded', p.classList.contains('open'));
+          });
+        });
+      });
+    });
+  </script>
+
+  <!-- Main JS (unchanged, already matched to your backend) -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // Auth
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const TEACHER_ID = userData.userId || "";
+    if (!TEACHER_ID || !userData.isTeacher) {
+      alert("Unauthorized. Please log in as a teacher.");
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    document.getElementById("Username").textContent = userData.username || "";
+
+    // State
+    let CLASS_LIST = [];
+    let CLASS_MAP = {};
+    let ANNOUNCEMENTS = [];
+    let FILTER = { status:"", classIds:[] };
+
+    // Utils
+    const fmtDT = (ts) => {
+      if (!ts) return "";
+      if (typeof ts === "number") return new Date(ts).toLocaleString();
+      if (ts?._seconds) return new Date(ts._seconds*1000).toLocaleString();
+      if (ts?.seconds) return new Date(ts.seconds*1000).toLocaleString();
+      return new Date(ts).toLocaleString();
+    };
+    const toLocalInputValue = (millis) => {
+      if (!millis) return "";
+      const d = new Date(millis);
+      const pad = n => String(n).padStart(2,"0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    const fromInputToMillis = (val) => val ? new Date(val).getTime() : null;
+
+    async function loadClasses() {
+      const res = await fetch(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`);
+      const js = await res.json();
+      if (!js.success) throw new Error("Failed to load classes");
+      CLASS_LIST = js.classes.map(c => ({
+        id: c.id,
+        label: `${c.name} - Grade ${c.gradeLevel} Section ${c.section}`
+      }));
+      CLASS_MAP = Object.fromEntries(CLASS_LIST.map(c => [c.id, c.label]));
+
+      const filterSel = document.getElementById("filterClasses");
+      const createSel = document.getElementById("announcementClasses");
+      const editSel   = document.getElementById("editClasses");
+      [filterSel, createSel, editSel].forEach(sel => {
+        sel.innerHTML = "";
+        CLASS_LIST.forEach(c=>{
+          const o=document.createElement("option");
+          o.value=c.id; o.textContent=c.label;
+          sel.appendChild(o);
+        });
+      });
+    }
+
+    async function loadAnnouncements() {
+      const params = new URLSearchParams();
+      params.set("teacherId", TEACHER_ID);
+      if (FILTER.status) params.set("status", FILTER.status);
+      if (FILTER.classIds.length) params.set("classIds", FILTER.classIds.join(","));
+
+      const res = await fetch(`${API_BASE}/api/announcements?${params.toString()}`);
+      const js = await res.json();
+      if (!js.success) throw new Error("Failed to load announcements");
+      ANNOUNCEMENTS = js.announcements || [];
+      renderTable();
+    }
+
+    document.getElementById("searchBox").addEventListener("input", ()=> renderTable());
+
+    function renderTable() {
+      const q = (document.getElementById("searchBox").value || "").toLowerCase();
+      const tbody = document.querySelector("#announcementTable tbody");
+      tbody.innerHTML = "";
+
+      let list = ANNOUNCEMENTS.slice();
+      if (q) {
+        list = list.filter(a =>
+          (a.title||"").toLowerCase().includes(q) ||
+          (a.content||"").toLowerCase().includes(q)
+        );
+      }
+
+      if (!list.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="7" class="text-center text-muted py-4">No announcements found.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      list.forEach(a=>{
+        const classesText = (a.classIds || []).map(id => CLASS_MAP[id] || id).join(", ");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="fw-semibold">${a.title}</td>
+          <td>${classesText || '—'}</td>
+          <td>${fmtDT(a.publishAt?.toMillis ? a.publishAt.toMillis() : a.publishAt)}</td>
+          <td>${fmtDT(a.expiresAt?.toMillis ? a.expiresAt.toMillis() : a.expiresAt)}</td>
+          <td><span class="badge ${badgeClass(a.status)}">${a.status || ''}</span></td>
+          <td>${a.important ? '<i class="bi bi-exclamation-circle-fill text-danger"></i>' : ''}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-primary me-2" data-action="edit" data-id="${a.id}">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" data-action="archive" data-id="${a.id}">Archive</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll('button[data-action]').forEach(btn=>{
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        btn.onclick = () => {
+          if (action === 'edit') openEdit(id);
+          else if (action === 'archive') archiveAnnouncement(id);
+        };
+      });
+    }
+
+    function badgeClass(status) {
+      switch (status) {
+        case 'published': return 'bg-success';
+        case 'scheduled': return 'bg-secondary';
+        case 'expired':   return 'bg-dark';
+        default:          return 'bg-light text-dark';
+      }
+    }
+
+    document.getElementById("createAnnouncementForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const title     = document.getElementById("announcementTitle").value.trim();
+      const content   = document.getElementById("announcementContent").value.trim();
+      const classes   = Array.from(document.getElementById("announcementClasses").selectedOptions).map(o=>o.value);
+      const publishAt = fromInputToMillis(document.getElementById("publishAt").value);
+      const expiresAt = fromInputToMillis(document.getElementById("expiresAt").value);
+      const important = document.getElementById("announcementImportant").checked;
+
+      if (!title || !content || !TEACHER_ID || !classes.length) {
+        alert("Missing fields: title, content, teacherId, classes[] are required.");
+        return;
+      }
+
+      const payload = { title, content, classes, publishAt, expiresAt, important, teacherId: TEACHER_ID };
+
+      const res = await fetch(`${API_BASE}/api/announcements`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      const js = await res.json();
+      if (!js.success) {
+        alert(js.message || "Failed to create announcement");
+        return;
+      }
+      bootstrap.Modal.getInstance(document.getElementById("createAnnouncementModal")).hide();
+      e.target.reset();
+      await loadAnnouncements();
+    });
+
+    function openEdit(id) {
+      const a = ANNOUNCEMENTS.find(x=>x.id===id);
+      if (!a) return;
+
+      document.getElementById("editAnnouncementId").value = a.id;
+      document.getElementById("editTitle").value = a.title || "";
+      document.getElementById("editContent").value = a.content || "";
+      document.getElementById("editImportant").checked = !!a.important;
+
+      const editSel = document.getElementById("editClasses");
+      Array.from(editSel.options).forEach(opt => {
+        opt.selected = Array.isArray(a.classIds) ? a.classIds.includes(opt.value) : false;
+      });
+
+      const pubMs = a.publishAt?.toMillis ? a.publishAt.toMillis() : (typeof a.publishAt === 'number' ? a.publishAt : null);
+      const expMs = a.expiresAt?.toMillis ? a.expiresAt.toMillis() : (typeof a.expiresAt === 'number' ? a.expiresAt : null);
+      document.getElementById("editPublishAt").value = toLocalInputValue(pubMs || Date.now());
+      document.getElementById("editExpiresAt").value = toLocalInputValue(expMs);
+
+      new bootstrap.Modal(document.getElementById("editAnnouncementModal")).show();
+    }
+
+    document.getElementById("editAnnouncementForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const id        = document.getElementById("editAnnouncementId").value;
+      const title     = document.getElementById("editTitle").value.trim();
+      const content   = document.getElementById("editContent").value.trim();
+      const classes   = Array.from(document.getElementById("editClasses").selectedOptions).map(o=>o.value);
+      const publishAt = fromInputToMillis(document.getElementById("editPublishAt").value);
+      const expiresAt = fromInputToMillis(document.getElementById("editExpiresAt").value);
+      const important = document.getElementById("editImportant").checked;
+
+      if (!title || !content || !classes.length) {
+        alert("Please complete the required fields.");
+        return;
+      }
+
+      const payload = { title, content, classes, publishAt, expiresAt, important };
+      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      const js = await res.json();
+      if (!js.success) {
+        alert(js.message || "Failed to update announcement");
+        return;
+      }
+      bootstrap.Modal.getInstance(document.getElementById("editAnnouncementModal")).hide();
+      await loadAnnouncements();
+    });
+
+    async function archiveAnnouncement(id) {
+      if (!confirm("Archive this announcement? It will be marked expired.")) return;
+      const now = Date.now();
+      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ expiresAt: now })
+      });
+      const js = await res.json();
+      if (!js.success) {
+        alert(js.message || "Failed to archive announcement");
+        return;
+      }
+      await loadAnnouncements();
+    }
+
+    document.getElementById("announcementFilterForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const classIds = Array.from(document.getElementById("filterClasses").selectedOptions).map(o=>o.value);
+      const status   = document.getElementById("filterStatus").value.trim();
+      FILTER = { status, classIds };
+      await loadAnnouncements();
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    (async function init(){
+      try {
+        await loadClasses();
+        await loadAnnouncements();
+      } catch (e) {
+        console.error(e);
+        alert("Failed to initialize announcements page.");
+      }
+    })();
+  </script>
+<script>
+/* ===== Mobile-friendly <input type="datetime-local"> enhancer ===== */
+(function enhanceDateTimeForMobile(){
+  const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  if (!isTouch) return; // keep native picker for non-touch devices
+
+  // Build a split UI (date + time) next to a hidden original datetime-local
+  function makeSplitById(id) {
+    const original = document.getElementById(id);
+    if (!original) return null;
+
+    // hide original but keep it in the form so existing code keeps reading .value
+    original.classList.add('dt-hidden');
+
+    // split container placed right after the original input
+    const wrap = document.createElement('div');
+    wrap.className = 'dt-split';
+    original.insertAdjacentElement('afterend', wrap);
+
+    // inputs
+    const date = document.createElement('input');
+    date.type = 'date';
+    date.className = 'form-control';
+    date.id = id + '__date';
+
+    const time = document.createElement('input');
+    time.type = 'time';
+    time.className = 'form-control';
+    time.id = id + '__time';
+    time.step = 60; // minutes
+
+    wrap.append(date, time);
+
+    // seed from original value, if any
+    function seedFromOriginal(){
+      if (!original.value) { date.value = ''; time.value = ''; return; }
+      const d = new Date(original.value);
+      if (isNaN(d)) { date.value=''; time.value=''; return; }
+      date.value = d.toISOString().slice(0,10);
+      time.value = String(d.getHours()).padStart(2,'0') + ':' +
+                   String(d.getMinutes()).padStart(2,'0');
+    }
+    seedFromOriginal();
+
+    return { original, date, time, wrap, seedFromOriginal };
+  }
+
+  // Create both pairs (create & edit modals)
+  const C_PUB = makeSplitById('publishAt');
+  const C_EXP = makeSplitById('expiresAt');
+  const E_PUB = makeSplitById('editPublishAt');
+  const E_EXP = makeSplitById('editExpiresAt');
+
+  if (!C_PUB && !C_EXP && !E_PUB && !E_EXP) return;
+
+  function toLocalDatetimeValue(dateVal, timeVal){
+    if (!dateVal || !timeVal) return '';
+    const [hh, mm] = String(timeVal).split(':').map(Number);
+    const d = new Date(dateVal);
+    if (isNaN(d)) return '';
+    d.setHours(hh || 0, mm || 0, 0, 0);
+    // "YYYY-MM-DDTHH:MM"
+    const y  = d.getFullYear();
+    const mo = String(d.getMonth()+1).padStart(2,'0');
+    const da = String(d.getDate()).padStart(2,'0');
+    const h  = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${y}-${mo}-${da}T${h}:${mi}`;
+  }
+
+  function syncPair(pub, exp){
+    // write composed values back into hidden originals
+    if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
+    if (exp) exp.original.value = toLocalDatetimeValue(exp.date.value, exp.time.value);
+
+    // constraint: expires >= publish
+    if (pub && exp) exp.date.min = pub.date.value || '';
+  }
+
+  function wire(pub, exp){
+    ['input','change'].forEach(ev=>{
+      if (pub) { pub.date.addEventListener(ev, ()=>syncPair(pub,exp));
+                 pub.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
+      if (exp) { exp.date.addEventListener(ev, ()=>syncPair(pub,exp));
+                 exp.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
+    });
+    syncPair(pub, exp);
+  }
+
+  // wire up both modal forms
+  wire(C_PUB, C_EXP);
+  wire(E_PUB, E_EXP);
+
+  // Ensure values are ready before each submit
+  const createForm = document.getElementById('createAnnouncementForm');
+  const editForm   = document.getElementById('editAnnouncementForm');
+  if (createForm) createForm.addEventListener('submit', ()=>syncPair(C_PUB, C_EXP), true);
+  if (editForm)   editForm.addEventListener('submit',   ()=>syncPair(E_PUB, E_EXP), true);
+
+  // When the Edit modal is opened, seed the split inputs from whatever
+  // value your code just put into the hidden originals.
+  const editModal = document.getElementById('editAnnouncementModal');
+  if (editModal){
+    editModal.addEventListener('shown.bs.modal', ()=>{
+      if (E_PUB) { E_PUB.seedFromOriginal(); }
+      if (E_EXP) { E_EXP.seedFromOriginal(); }
+      syncPair(E_PUB, E_EXP);
+    });
+  }
+})();
+</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>EduConnect Teacher – Upload Assignment</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="./ass_upload.css" rel="stylesheet"/>
+
+  <style>
+   </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+        <div class="search-box position-relative">
+          <input type="text" id="searchBox" class="form-control" placeholder="Search assignments..."/>
+          <i class="fas fa-search position-absolute"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none"">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Assignment Upload</h1>
+
+        <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1000px;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-clipboard-plus"></i> Create Assignment</h2>
+            <div class="ui-subtext">Pick a course, then its module, add details & files.</div>
+          </div>
+
+          <form id="assignmentForm" class="px-1" enctype="multipart/form-data" novalidate>
+            <!-- Row: Course / Module -->
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Course</label>
+                <select id="courseSelect" class="form-select" required>
+                  <option value="">Loading courses…</option>
+                </select>
+                <div id="courseHelp" class="hint mt-1">Shows courses you uploaded. If empty, create a course first.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Module</label>
+                <select id="moduleSelect" class="form-select" required disabled>
+                  <option value="">Select a course first…</option>
+                </select>
+                <div id="moduleHelp" class="hint mt-1"></div>
+              </div>
+            </div>
+
+            <!-- Row: Title / Points -->
+            <div class="row g-3 mt-1">
+              <div class="col-md-8">
+                <label class="form-label">Title</label>
+                <input id="title" type="text" class="form-control" placeholder="Assignment title" required/>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Points</label>
+                <input id="points" type="number" min="0" step="1" class="form-control" placeholder="e.g., 100"/>
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="mt-3">
+              <label class="form-label">Instructions / Content</label>
+              <textarea id="content" class="form-control" rows="5" placeholder="Describe the task, rubric, submission format…" required></textarea>
+            </div>
+
+            <!-- Dates -->
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label class="form-label">Publish At</label>
+                <input id="publishAt" type="datetime-local" class="form-control"/>
+                <div class="hint mt-1">If empty, it will publish immediately.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Due At</label>
+                <input id="dueAt" type="datetime-local" class="form-control"/>
+              </div>
+            </div>
+
+            <!-- Files -->
+            <div class="mt-3">
+              <label class="form-label">Attachments (optional)</label>
+              <input id="files" type="file" class="form-control" multiple/>
+              <div id="fileList" class="small-muted mt-1"></div>
+            </div>
+
+            <!-- Error / debug -->
+            <div id="formError" class="text-danger mt-3" style="min-height:1.2rem;"></div>
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <a href="/TEACHER/dashboard/dashboard.html" class="btn btn-amber-outline">← Dashboard</a>
+              <button id="submitBtn" type="submit" class="btn btn-amber">
+                <span class="submit-text">Create Assignment</span>
+                <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sb = document.querySelector(".sidebar");
+          const db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page Logic -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // ==== Auth guard (teacher-only) ====
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    document.getElementById("Username").textContent = userData.username || "";
+    const TEACHER_ID = userData.userId;
+
+    // ==== DOM refs ====
+    const courseSelect = document.getElementById("courseSelect");
+    const moduleSelect = document.getElementById("moduleSelect");
+    const moduleHelp   = document.getElementById("moduleHelp");
+    const form         = document.getElementById("assignmentForm");
+    const formError    = document.getElementById("formError");
+    const fileInput    = document.getElementById("files");
+    const fileList     = document.getElementById("fileList");
+    const submitBtn    = document.getElementById("submitBtn");
+    const spinner      = submitBtn.querySelector(".spinner-border");
+    const submitText   = submitBtn.querySelector(".submit-text");
+
+    // ==== utils ====
+    const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const toMillis = v => v ? new Date(v).getTime() : null;
+
+    async function fetchFirst(urls, opts) {
+      for (const u of urls) {
+        try {
+          const res = await fetch(u, opts);
+          if (res.ok) return res;
+        } catch (_) { /* try next */ }
+      }
+      // last attempt (returns last response or throws)
+      return fetch(urls[0], opts);
+    }
+
+    // ==== load courses (tries /api/courses then /courses) ====
+    async function loadCourses() {
+      courseSelect.innerHTML = `<option value="">Loading courses…</option>`;
+      moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
+      moduleSelect.disabled = true;
+
+      try {
+        const courseUrls = [
+          `${API_BASE}/api/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`,
+          `${API_BASE}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`,
+        ];
+        const res = await fetchFirst(courseUrls);
+        const data = await res.json();
+
+        const courses = Array.isArray(data) ? data
+                        : Array.isArray(data.courses) ? data.courses
+                        : [];
+
+        courses.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+
+        if (!courses.length) {
+          courseSelect.innerHTML = `<option value="" selected disabled>No courses yet — create one first</option>`;
+          return;
+        }
+
+        courseSelect.innerHTML =
+          `<option value="">Select a course…</option>` +
+          courses.map(c => `<option value="${esc(c.id)}">${esc(c.title || 'Untitled')}${c.courseNumber ? ` (#${esc(c.courseNumber)})` : ''}</option>`).join('');
+      } catch (err) {
+        console.error("loadCourses failed:", err);
+        courseSelect.innerHTML = `<option value="" selected disabled>(Failed to load)</option>`;
+      }
+    }
+
+    // ==== load modules for a course (tries /api/courses/:id/modules then /courses/:id/modules) ====
+    async function loadModules(courseId) {
+      moduleSelect.innerHTML = `<option value="">Loading…</option>`;
+      moduleSelect.disabled = true;
+      moduleHelp.textContent = "";
+
+      if (!courseId) {
+        moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
+        return;
+      }
+
+      try {
+        const modUrls = [
+          `${API_BASE}/api/courses/${encodeURIComponent(courseId)}/modules`,
+          `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`,
+        ];
+        const res = await fetchFirst(modUrls);
+        const data = await res.json();
+
+        const mods = Array.isArray(data) ? data
+                   : Array.isArray(data.modules) ? data.modules
+                   : [];
+
+        const sorted = mods.sort((a,b) => (a.moduleNumber||0) - (b.moduleNumber||0));
+
+        if (!sorted.length) {
+          moduleSelect.innerHTML = `<option value="" selected disabled>No modules in this course</option>`;
+          moduleHelp.textContent = "Add modules to this course before creating assignments.";
+          return;
+        }
+
+        moduleSelect.innerHTML = `<option value="">Select a module…</option>`;
+        sorted.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
+          moduleSelect.appendChild(opt);
+        });
+        moduleSelect.disabled = false;
+      } catch (err) {
+        console.error("loadModules failed:", err);
+        moduleSelect.innerHTML = `<option value="">Failed to load modules</option>`;
+        moduleHelp.textContent = "Please reload the page or check your server.";
+      }
+    }
+
+    // ==== file list preview ====
+    fileInput.addEventListener("change", () => {
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) { fileList.textContent = ""; return; }
+      fileList.innerHTML = files.map(f => `${esc(f.name)} (${Math.round(f.size/1024)} KB)`).join("<br/>");
+    });
+
+    // ==== course -> modules linkage ====
+    courseSelect.addEventListener("change", (e) => loadModules(e.target.value));
+
+    // ==== submit ====
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      formError.textContent = "";
+
+      const courseId = courseSelect.value.trim();
+      const moduleId = moduleSelect.value.trim();
+      const title    = document.getElementById("title").value.trim();
+      const content  = document.getElementById("content").value.trim();
+      const pointsV  = document.getElementById("points").value;
+      const points   = pointsV ? parseInt(pointsV, 10) : null;
+
+      if (!courseId || !moduleId || !title || !content) {
+        formError.textContent = "Please complete Course, Module, Title and Content.";
+        return;
+      }
+
+      const publishAtVal = document.getElementById("publishAt").value;
+      const dueAtVal     = document.getElementById("dueAt").value;
+
+      const fd = new FormData();
+      fd.append("teacherId", TEACHER_ID);
+      fd.append("courseId", courseId);
+      fd.append("moduleId", moduleId);
+      fd.append("title", title);
+      fd.append("content", content);
+      if (points !== null && !Number.isNaN(points)) fd.append("points", String(points));
+      if (publishAtVal) fd.append("publishAt", String(toMillis(publishAtVal)));
+      if (dueAtVal)     fd.append("dueAt", String(toMillis(dueAtVal)));
+
+      Array.from(fileInput.files || []).forEach(f => fd.append("files", f));
+
+      // UI lock
+      submitBtn.disabled = true;
+      spinner.classList.remove("visually-hidden");
+      submitText.textContent = "Creating…";
+
+      try {
+        const res = await fetch(`${API_BASE}/api/assignments`, { method: "POST", body: fd });
+        const raw = await res.text();
+        let js = {};
+        try { js = JSON.parse(raw); } catch { /* leave js empty */ }
+
+        if (!res.ok || js.success === false) {
+          const msg = (js && (js.message || js.error)) || `HTTP ${res.status} – ${raw.slice(0,200)}`;
+          formError.textContent = msg || "Failed to create assignment.";
+          return;
+        }
+
+        alert("✅ Assignment created!");
+        // Go to course's assignment list
+        window.location.href = `/TEACHER/assignment/assignment_list.html?courseId=${encodeURIComponent(courseId)}`;
+      } catch (err) {
+        console.error(err);
+        formError.textContent = "Server error while creating assignment.";
+      } finally {
+        submitBtn.disabled = false;
+        spinner.classList.add("visually-hidden");
+        submitText.textContent = "Create Assignment";
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // ==== boot ====
+    (async function init(){
+      await loadCourses();
+    })();
+  </script>
+<script>
+(function enhanceDateTimeForMobile(){
+  const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  if (!isTouch) return; // desktop/tablet with mouse -> keep native datetime-local
+
+  // Build a split UI (date + time) next to a hidden original datetime-local
+  function makeSplit(id) {
+    const original = document.getElementById(id);
+    if (!original) return null;
+
+    // Hide original but keep in DOM so existing JS keeps working
+    original.classList.add('dt-hidden');
+
+    // Insert split container after the original field
+    const wrap = document.createElement('div');
+    wrap.className = 'dt-split';
+    original.insertAdjacentElement('afterend', wrap);
+
+    // Create inputs
+    const date = document.createElement('input');
+    date.type = 'date';
+    date.className = 'form-control';
+    date.id = id + '__date';
+
+    const time = document.createElement('input');
+    time.type = 'time';
+    time.className = 'form-control';
+    time.id = id + '__time';
+    time.step = 60; // 1-minute steps
+
+    wrap.append(date, time);
+
+    // If original has value, prefill split inputs
+    if (original.value) {
+      const d = new Date(original.value);
+      if (!isNaN(d)) {
+        date.value = d.toISOString().slice(0,10);
+        time.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }
+    }
+
+    return { original, date, time, wrap };
+  }
+
+  const pub = makeSplit('publishAt');
+  const due = makeSplit('dueAt');
+
+  if (!pub && !due) return;
+
+  function toLocalDatetimeValue(dateVal, timeVal){
+    if (!dateVal || !timeVal) return '';
+    const [hh, mm] = timeVal.split(':').map(Number);
+    const d = new Date(dateVal);
+    if (isNaN(d)) return '';
+    d.setHours(hh || 0, mm || 0, 0, 0);
+    // produce "YYYY-MM-DDTHH:MM" for input[type=datetime-local]
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const da = String(d.getDate()).padStart(2,'0');
+    const h = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${y}-${m}-${da}T${h}:${mi}`;
+  }
+
+  function syncOriginals(){
+    if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
+    if (due) due.original.value = toLocalDatetimeValue(due.date.value, due.time.value);
+    // keep constraint: Due date cannot be before Publish date
+    if (pub && due) {
+      due.date.min = pub.date.value || '';
+    }
+  }
+
+  // Live sync while picking
+  ['input','change'].forEach(ev => {
+    if (pub){ pub.date.addEventListener(ev, syncOriginals); pub.time.addEventListener(ev, syncOriginals); }
+    if (due){ due.date.addEventListener(ev, syncOriginals); due.time.addEventListener(ev, syncOriginals); }
+  });
+
+  // Ensure values are ready BEFORE your existing submit handler runs
+  const form = document.getElementById('assignmentForm');
+  if (form) form.addEventListener('submit', syncOriginals, true); // capture phase
+
+  // Initial constraint set
+  syncOriginals();
+})();
+</script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

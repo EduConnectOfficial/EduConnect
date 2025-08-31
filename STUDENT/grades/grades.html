@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Grades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Shared student styles (keep yours) -->
+  <link rel="stylesheet" href="../grades/grades.css"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    body { background:#f6f8fb; }
+    .ui-card { border:none; border-radius:16px; box-shadow:0 1px 8px rgba(0,0,0,.08); background:#fff; padding:16px 18px; }
+    .ui-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .ui-card-title { font-size:1.1rem; font-weight:700; margin:0; display:flex; gap:8px; align-items:center; }
+    .metric { font-size:1.3rem; font-weight:700; }
+    .subtle { color:#6b7280; }
+    .table thead th { background:#fafafa; }
+    /* Fixed chart canvas heights to avoid growth */
+    .chart-wrap { height:260px; }
+    .chart-wrap canvas { width:100% !important; height:260px !important; display:block; }
+    .page-title.brand { margin-bottom:10px; }
+    .btn-amber { background:#ffb200; border:0; color:#000; }
+    .btn-amber:hover { filter:brightness(0.95); }
+    .btn-amber-outline { color:#ffb200; border:1px solid #ffb200; }
+    .badge-pill { border-radius:999px; padding:.35rem .65rem; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <div class="d-flex align-items-center justify-content-between">
+          <h1 class="page-title brand">My Analytics</h1>
+          <div class="d-flex gap-2">
+            <button id="downloadPdf" class="btn btn-amber-outline">
+              <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+            </button>
+            <button id="exportCsv" class="btn btn-amber">
+              <i class="bi bi-filetype-csv me-1"></i> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Header metrics -->
+        <div class="ui-card mb-3">
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <div class="subtle">Student</div>
+              <div id="s_name" class="metric">—</div>
+              <div id="s_id" class="subtle small mt-1">—</div>
+            </div>
+            <div class="col-4 col-md-2">
+              <div class="subtle">Avg Quiz</div>
+              <div id="s_avg_quiz" class="metric">—</div>
+            </div>
+            <div class="col-4 col-md-2">
+              <div class="subtle">Avg Assignment</div>
+              <div id="s_avg_asg" class="metric">—</div>
+            </div>
+            <div class="col-4 col-md-2">
+              <div class="subtle">Modules Completed</div>
+              <div id="s_modules" class="metric">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="ui-card">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-bar-chart"></i>Quizzes (Best % per Quiz)</h2>
+              </div>
+              <div class="chart-wrap"><canvas id="quizChart"></canvas></div>
+              <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Quiz</th><th>Best %</th><th>Attempts</th><th>Last Attempt</th>
+                    </tr>
+                  </thead>
+                  <tbody id="quizTbody">
+                    <tr><td colspan="4" class="text-center text-muted">Loading…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="ui-card">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-clipboard2-check"></i>Assignments</h2>
+              </div>
+              <div class="chart-wrap"><canvas id="assignChart"></canvas></div>
+              <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Assignment</th><th>Grade</th><th>Graded At</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assignTbody">
+                    <tr><td colspan="3" class="text-center text-muted">Loading…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Essay submissions -->
+        <div class="ui-card mt-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-journals"></i>Essay Submissions</h2>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Quiz</th><th>Question #</th><th>Status</th><th>Score</th><th>Submitted</th>
+                </tr>
+              </thead>
+              <tbody id="essayTbody">
+                <tr><td colspan="5" class="text-center text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Completed modules -->
+        <div class="ui-card mt-3 mb-4">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-mortarboard"></i>Completed Modules</h2>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Course</th><th>Module</th><th>Percent</th><th>Completed At</th>
+                </tr>
+              </thead>
+              <tbody id="modTbody">
+                <tr><td colspan="4" class="text-center text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div> <!-- /content -->
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Auth + Header initials -->
+  <script>
+    // Redirect to login if no user info
+    const USER = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
+      window.location.href = "../login/login.html";
+    }
+
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0,2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length-1][0] : parts[0].slice(0,2)).toUpperCase();
+    }
+
+    (function setHeaderName(){
+      const displayName = USER.fullName || USER.username || USER.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      if (el) {
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+      if (!USER.uid) {
+        USER.uid = USER.userId || USER.id || USER.email;
+        localStorage.setItem("user", JSON.stringify(USER));
+      }
+    })();
+
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+
+  <!-- Page JS -->
+  <script>
+    const API_BASE = 'http://localhost:5000';
+
+    const el = (id) => document.getElementById(id);
+    const pct = (n) => (Number.isFinite(+n) ? Math.round(+n) + '%' : '—');
+    const dt = (ts) => {
+      if (!ts) return '—';
+      const ms = ts?._seconds ? ts._seconds * 1000 : (typeof ts === 'number' ? ts : Date.parse(ts));
+      return Number.isFinite(ms) ? new Date(ms).toLocaleString() : '—';
+    };
+
+    let quizChart, assignChart;
+
+    function destroy(c) { try { c && c.destroy && c.destroy(); } catch {} }
+
+    function renderBar(canvasId, labels, values, label, key) {
+      const ctx = document.getElementById(canvasId);
+      if (key === 'quiz') destroy(quizChart);
+      if (key === 'assign') destroy(assignChart);
+
+      const inst = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label, data: values }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+        }
+      });
+
+      if (key === 'quiz') quizChart = inst;
+      if (key === 'assign') assignChart = inst;
+    }
+
+    function getStudentKey() {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      return u.userId || u.studentId || u.uid || u.id || u.email || '';
+    }
+
+    async function getJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    }
+
+    async function load() {
+      const student = getStudentKey();
+      const url = `${API_BASE}/api/student/analytics?student=${encodeURIComponent(student)}`;
+      const data = await getJson(url);
+
+      // Header
+      el('s_name').textContent = data.profile?.name || 'Student';
+      el('s_id').textContent = data.profile?.studentId || '—';
+      el('s_avg_quiz').textContent = pct(data.summary?.averageQuizScore);
+      el('s_avg_asg').textContent = pct(data.summary?.averageAssignmentGrade);
+      el('s_modules').textContent =
+        (data.summary?.modulesCompleted != null && data.summary?.totalModules != null)
+          ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
+          : (data.summary?.modulesCompleted ?? '—');
+
+      /* ----- Quizzes ----- */
+      const qrows = data.quizzes?.perQuiz || [];
+      if (!qrows.length) {
+        el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
+        renderBar('quizChart', ['No data'], [0], 'Best %', 'quiz');
+      } else {
+        el('quizTbody').innerHTML = qrows.map(r => `
+          <tr>
+            <td>${r.title || r.quizId}</td>
+            <td>${pct(r.bestPercent)}</td>
+            <td>${r.attemptsUsed ?? 0}</td>
+            <td>${dt(r.lastSubmittedAt)}</td>
+          </tr>
+        `).join('');
+        renderBar('quizChart', qrows.map(r=>r.title || r.quizId), qrows.map(r=>r.bestPercent || 0), 'Best %', 'quiz');
+      }
+
+      /* ----- Assignments ----- */
+      const arows = data.assignments?.grades || [];
+      if (!arows.length) {
+        el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
+        renderBar('assignChart', ['No data'], [0], 'Grade %', 'assign');
+      } else {
+        el('assignTbody').innerHTML = arows.map(a => `
+          <tr>
+            <td>${a.assignmentTitle || a.assignmentId}</td>
+            <td>${pct(a.grade)}</td>
+            <td>${dt(a.gradedAt)}</td>
+          </tr>
+        `).join('');
+        renderBar('assignChart', arows.map(a=>a.assignmentTitle || a.assignmentId), arows.map(a=>a.grade || 0), 'Grade %', 'assign');
+      }
+
+      /* ----- Essays ----- */
+      const erows = data.essays?.submissions || [];
+      el('essayTbody').innerHTML = erows.length
+        ? erows.map(e => `
+          <tr>
+            <td>${e.quizTitle || e.quizId || ''}</td>
+            <td>${e.questionIndex != null ? (e.questionIndex + 1) : '—'}</td>
+            <td><span class="badge ${e.status === 'graded' || e.status === 'GRADED' ? 'bg-success' : 'bg-secondary'} badge-pill">${(e.status || 'pending').toUpperCase()}</span></td>
+            <td>${e.score != null ? `${e.score}/${e.maxScore ?? 10}` : '—'}</td>
+            <td>${dt(e.createdAt)}</td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
+
+      /* ----- Modules ----- */
+      const mrows = data.modules?.completed || [];
+      el('modTbody').innerHTML = mrows.length
+        ? mrows.map(m => `
+          <tr>
+            <td>${m.courseTitle || m.courseId || ''}</td>
+            <td>${m.moduleTitle || m.moduleId || ''}</td>
+            <td>${pct(m.percent)}</td>
+            <td>${dt(m.completedAt)}</td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="4" class="text-center text-muted">No modules completed</td></tr>';
+    }
+
+    /* Exports */
+    async function exportCsv() {
+      const student = getStudentKey();
+      const url = `${API_BASE}/api/student/analytics/csv?student=${encodeURIComponent(student)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('CSV error');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `student_analytics_${student}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      } catch (e) {
+        console.error(e);
+        alert('CSV export failed.');
+      }
+    }
+
+    async function downloadPdf() {
+      const student = getStudentKey();
+      const url = `${API_BASE}/api/student/analytics/pdf?student=${encodeURIComponent(student)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('PDF error');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `student_analytics_${student}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      } catch (e) {
+        console.error(e);
+        alert('PDF download failed.');
+      }
+    }
+
+    document.getElementById('exportCsv').addEventListener('click', exportCsv);
+    document.getElementById('downloadPdf').addEventListener('click', downloadPdf);
+
+    // Go!
+    load().catch(err => {
+      console.error(err);
+      alert('Failed to load analytics. Please try again later.');
+    });
+  </script>
+</body>
+</html>

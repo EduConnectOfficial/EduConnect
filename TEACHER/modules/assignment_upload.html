@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>EduConnect Teacher – Upload Assignment</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <style>
+    /* ===== Your Theme (as given) ===== */
+    :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #fff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --brand-accent-1: #FF6A00;
+      --brand-accent-2: #B03C10;
+      --card-radius: 14px;
+    }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+    .dashboard { display: flex; min-height: 100vh; }
+    .main { margin-left: 70px; width: calc(100% - 70px); transition: margin-left .3s ease, width .3s ease; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg); }
+    .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px); }
+
+    /* Header */
+    .header-top {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem;
+      background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+      color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,.1); position: sticky; top: 0; z-index: 10;
+    }
+    .logo-header { height: 45px; }
+    .search-box { position: relative; flex: 1; max-width: 500px; margin: 0 20px; }
+    .search-box input { width: 100%; padding: 10px 14px; border-radius: 30px; border: none; outline: none; }
+    .search-box i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #999; }
+    .profile-btn { background: none; border: none; font-size: 1.8rem; color: #fff; cursor: pointer; display:flex; align-items:center; gap:8px; }
+    .profile-btn .username { font-size: 14px; }
+
+    .content { padding: 24px; }
+    .page-title { font-weight: 700; font-size: 1.6rem; text-align: center; margin: 4px 0 18px; }
+    .page-title.brand { background: linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+    /* Cards */
+    .ui-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .ui-card.card-themed { border-radius: var(--card-radius); border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 24px rgba(0,0,0,.10); overflow: hidden; }
+    .ui-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .ui-card.card-themed .ui-card-head { margin:-16px -16px 12px -16px; padding:12px 16px; background: linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9; border-bottom:1px solid rgba(255,255,255,.1); }
+    .ui-card-title { font-size:1rem; font-weight:700; margin:0; display:flex; gap:8px; align-items:center; }
+    .ui-card.card-themed .ui-card-title i { color:#FFD8A9; }
+    .ui-card.card-themed > :not(.ui-card-head) { color:#1f2328; }
+    .ui-subtext { font-size:.9rem; color: var(--muted); }
+
+    /* Brand buttons */
+    .btn-amber { background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2)); color:#fff; border:none; }
+    .btn-amber:hover { filter:brightness(1.05); color:#fff; }
+    .btn-amber-outline { background:#fff; color:var(--brand-accent-2); border:1px solid var(--brand-accent-2); }
+    .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2)); color:#fff; border-color:transparent; }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--brand-accent-2);
+      box-shadow: 0 0 0 .2rem rgba(255,106,0,.18);
+    }
+
+    /* Helper */
+    .hint { color: var(--muted); font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search…"/>
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" onclick="logoutUser()">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Assignment Upload</h1>
+
+        <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1000px;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-clipboard-plus"></i> Create Assignment</h2>
+            <div class="ui-subtext">Pick a course, then its module, add details & files.</div>
+          </div>
+
+          <form id="assignmentForm" class="px-1" enctype="multipart/form-data">
+            <!-- Row: Course / Module -->
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Course</label>
+                <select id="courseSelect" class="form-select" required>
+                  <option value="">Select a course…</option>
+                </select>
+                <div class="hint mt-1">Shows courses you uploaded. If empty, create a course first.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Module</label>
+                <select id="moduleSelect" class="form-select" required disabled>
+                  <option value="">Select a module…</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Row: Title / Points -->
+            <div class="row g-3 mt-1">
+              <div class="col-md-8">
+                <label class="form-label">Title</label>
+                <input id="title" type="text" class="form-control" placeholder="Assignment title" required/>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Points</label>
+                <input id="points" type="number" min="0" step="1" class="form-control" placeholder="e.g., 100"/>
+              </div>
+            </div>
+
+            <!-- Content -->
+            <div class="mt-3">
+              <label class="form-label">Instructions / Content</label>
+              <textarea id="content" class="form-control" rows="5" placeholder="Describe the task, rubric, submission format…" required></textarea>
+            </div>
+
+            <!-- Dates -->
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label class="form-label">Publish At</label>
+                <input id="publishAt" type="datetime-local" class="form-control"/>
+                <div class="hint mt-1">If empty, it will publish immediately.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Due At</label>
+                <input id="dueAt" type="datetime-local" class="form-control"/>
+              </div>
+            </div>
+
+            <!-- Files -->
+            <div class="mt-3">
+              <label class="form-label">Attachments (optional)</label>
+              <input id="files" type="file" class="form-control" multiple/>
+              <div class="hint mt-1">PDF, images, docs, slides, videos (same types as module uploads).</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <a href="/TEACHER/dashboard/dashboard.html" class="btn btn-amber-outline">← Dashboard</a>
+              <button type="submit" class="btn btn-amber">Create Assignment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page Logic -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // Auth (teacher-only)
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    document.getElementById("Username").textContent = userData.username || "";
+    const TEACHER_ID = userData.userId;
+
+    // DOM
+    const courseSelect = document.getElementById("courseSelect");
+    const moduleSelect = document.getElementById("moduleSelect");
+    const form = document.getElementById("assignmentForm");
+
+    // Load courses (filter by uploadedBy when available)
+    async function loadCourses() {
+      const res = await fetch(`${API_BASE}/courses`);
+      const list = await res.json();
+
+      let courses = Array.isArray(list) ? list : [];
+      // if uploadedBy is present, filter; otherwise show all (so teacher can still pick)
+      if (courses.length && 'uploadedBy' in courses[0]) {
+        courses = courses.filter(c => c.uploadedBy === TEACHER_ID);
+      }
+      courses.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+
+      courseSelect.innerHTML = '<option value="">Select a course…</option>';
+      courses.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.title} ${c.courseNumber ? '(#' + c.courseNumber + ')' : ''}`;
+        courseSelect.appendChild(opt);
+      });
+    }
+
+    // Load modules for a course
+    async function loadModules(courseId) {
+      moduleSelect.innerHTML = '<option value="">Loading…</option>';
+      moduleSelect.disabled = true;
+      if (!courseId) { moduleSelect.innerHTML = '<option value="">Select a course first…</option>'; return; }
+
+      try {
+        const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
+        const mods = await res.json();
+        const sorted = (Array.isArray(mods) ? mods : []).sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+
+        moduleSelect.innerHTML = '<option value="">Select a module…</option>';
+        sorted.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `Module ${m.moduleNumber || ''}: ${m.title || 'Untitled'}`;
+          moduleSelect.appendChild(opt);
+        });
+        moduleSelect.disabled = false;
+      } catch (err) {
+        console.error(err);
+        moduleSelect.innerHTML = '<option value="">Failed to load modules</option>';
+      }
+    }
+
+    courseSelect.addEventListener('change', e => loadModules(e.target.value));
+
+    // Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const courseId = courseSelect.value;
+      const moduleId = moduleSelect.value;
+      const title    = document.getElementById('title').value.trim();
+      const content  = document.getElementById('content').value.trim();
+      const pointsRaw= document.getElementById('points').value;
+      const points   = pointsRaw ? parseInt(pointsRaw, 10) : null;
+
+      if (!courseId || !moduleId || !title || !content) {
+        alert('Please complete Course, Module, Title and Content.');
+        return;
+      }
+
+      const publishAtVal = document.getElementById('publishAt').value;
+      const dueAtVal     = document.getElementById('dueAt').value;
+
+      const fd = new FormData();
+      fd.append('teacherId', TEACHER_ID);
+      fd.append('courseId', courseId);
+      fd.append('moduleId', moduleId);
+      fd.append('title', title);
+      fd.append('content', content);
+      if (points !== null && !Number.isNaN(points)) fd.append('points', String(points));
+      if (publishAtVal) fd.append('publishAt', String(new Date(publishAtVal).getTime()));
+      if (dueAtVal) fd.append('dueAt', String(new Date(dueAtVal).getTime()));
+
+      const files = document.getElementById('files').files;
+      Array.from(files).forEach(f => fd.append('files', f));
+
+      try {
+        const res = await fetch(`${API_BASE}/api/assignments`, { method: 'POST', body: fd });
+        const js = await res.json().catch(()=>({success:false}));
+        if (!res.ok || !js.success) {
+          alert(js.message || 'Failed to create assignment.');
+          return;
+        }
+        alert('✅ Assignment created!');
+        form.reset();
+        moduleSelect.innerHTML = '<option value="">Select a course first…</option>';
+        moduleSelect.disabled = true;
+      } catch (err) {
+        console.error(err);
+        alert('Server error while creating assignment.');
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // Boot
+    (async function init(){
+      try { await loadCourses(); }
+      catch(e){ console.error(e); alert('Failed to load courses.'); }
+    })();
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

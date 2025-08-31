@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DigiPic IT - Confirm Password</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="signup1.css" />
+
+</head>
+
+<body>
+
+  <!-- Logo -->
+  <div class="top-logo">
+    <img src="/assets/digipic_logo.png" alt="Digipic Logo" class="logo" />
+  </div>
+
+  <!-- Centered Form -->
+  <div class="login-container">
+    <div class="login-box text-center">
+      <img src="/assets/signup_text.png" alt="Set Password" class="img-fluid mb-4" style="max-width: 200px;" />
+
+      <!-- Inside your form -->
+      <form id="passwordForm">
+
+        <div class="mb-3 text-start">
+          <label for="confirmPassword" class="form-label">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm your password"
+            required />
+        </div>
+        <div class="mb-3 text-start">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="Enter your password" required />
+          <small class="requirement-note">
+            • Minimum 8 characters<br>
+            • At least 1 uppercase letter<br>
+            • At least 1 special character
+          </small>
+        </div>
+        <!-- Show Password -->
+        <div class="form-check text-start mb-3">
+          <input class="form-check-input" type="checkbox" id="togglePassword" />
+          <label class="form-check-label" for="togglePassword">Show Password</label>
+        </div>
+
+        <div id="passwordError" class="error-message"></div>
+        <button type="submit" class="btn login-btn w-100 mb-3">Create Account</button>
+         <p class="options">
+        Already have an account? <a href="/login/login.html">Login</a>
+      </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Password Validation & Show Toggle Script -->
+  <script>
+    const passwordInput = document.getElementById("password");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
+    const togglePassword = document.getElementById("togglePassword");
+
+    togglePassword.addEventListener("change", function () {
+      const type = this.checked ? "text" : "password";
+      passwordInput.type = type;
+      confirmPasswordInput.type = type;
+    });
+
+    document.getElementById("passwordForm").addEventListener("submit", function (e) {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+      const errorDiv = document.getElementById("passwordError");
+      const regexUppercase = /[A-Z]/;
+      const regexSpecial = /[^A-Za-z0-9]/;
+
+      let errorMessage = "";
+
+      if (password.length < 8) {
+        errorMessage = "Password must be at least 8 characters long.";
+      } else if (!regexUppercase.test(password)) {
+        errorMessage = "Password must include at least one uppercase letter.";
+      } else if (!regexSpecial.test(password)) {
+        errorMessage = "Password must include at least one special character.";
+      } else if (password !== confirmPassword) {
+        errorMessage = "Passwords do not match.";
+      }
+
+      if (errorMessage) {
+        e.preventDefault();
+        errorDiv.textContent = errorMessage;
+      } else {
+        errorDiv.textContent = "";
+        // window.location.href = "dashboard.html";
+      }
+    });
+  </script>
+</body>
+
+</html>

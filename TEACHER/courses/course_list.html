@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EduConnect Teacher - Course List</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Your existing styles (kept) -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="course_list.css" />
+
+  <!-- Page theme overrides -->
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
+      --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+
+    /* Header */
+   
+    .logo-header{height:44px}
+    .search-box{max-width:520px; width:100%; position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
+    .profile-btn{color:#fff}
+
+    /* Page */
+    .content{padding:24px}
+    h2.page-title{
+      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      -webkit-background-clip:text;background-clip:text
+    }
+
+    /* Cards */
+    .course-card{
+      border:1px solid var(--border); border-radius:var(--radius);
+      background:var(--card); box-shadow:0 10px 24px rgba(0,0,0,.08);
+      display:flex; flex-direction:column; padding:14px; height:100%;
+      transition:transform .07s ease, box-shadow .2s ease;
+    }
+    .course-card:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
+    .course-title{margin:0 0 4px; font-weight:700}
+    .badge-soft{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px solid rgba(176,60,16,.25); border-radius:999px;
+      padding:2px 10px; font-size:.75rem; color:var(--brand-accent-2);
+      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
+    }
+    .course-meta{color:var(--muted); font-size:.9rem}
+    .course-actions .btn{min-width:90px}
+
+    /* Buttons */
+    .btn-amber{
+      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
+      color:#fff; border:none;
+    }
+    .btn-amber:hover{filter:brightness(1.06); color:#fff}
+    .btn-outline-danger{border-radius:10px}
+
+    /* Modal theme */
+    .modal-header{
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9; border-bottom:none;
+    }
+    .modal-content{border-radius:12px;border:1px solid var(--border)}
+    .modal-footer{border-top:1px solid var(--border)}
+    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <!-- Sidebar + Dropdown Logic -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/components/sidebar.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+
+            const sidebar = document.querySelector(".sidebar");
+            const dashboard = document.querySelector(".dashboard");
+            if (sidebar && dashboard) {
+              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+            }
+
+            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+              toggle.addEventListener('click', e => {
+                e.preventDefault();
+                const parent = toggle.closest('.has-submenu');
+                parent.classList.toggle('open');
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!expanded));
+              });
+            });
+          })
+          .catch(err => console.error("Failed to load sidebar:", err));
+      });
+    </script>
+
+    <!-- Main Content -->
+    <div class="main">
+       <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input id="searchBox" type="text" placeholder="Search my courses..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn btn">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="dashboardUsername" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <section class="content">
+        <h2 class="page-title">COURSE MANAGEMENT – LIST OF UPLOADED COURSES</h2>
+        <div id="courseList" class="row g-4"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editCourseModal" tabindex="-1" aria-labelledby="editCourseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form id="editCourseForm" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editCourseModalLabel">Edit Course</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editCourseId" />
+          <div class="mb-3">
+            <label for="editTitle" class="form-label">Title</label>
+            <input type="text" class="form-control" id="editTitle" required />
+          </div>
+          <div class="mb-3">
+            <label for="editCategory" class="form-label">Category</label>
+            <input type="text" class="form-control" id="editCategory" required />
+          </div>
+          <div class="mb-3">
+            <label for="editDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editDescription" rows="3"></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Assign to Classes</label>
+            <div id="editAssignedClassesContainer" class="row g-2"></div>
+            <div class="text-muted mt-1" style="font-size:13px;">
+              Check/uncheck to assign or remove classes for this course.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-amber">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const API = 'http://127.0.0.1:5000';
+
+    // auth redirect
+    const userData = JSON.parse(localStorage.getItem("user") || '{}');
+    if (!userData.username) location.href = "../login/login.html";
+    document.getElementById("dashboardUsername").textContent = userData.username;
+
+    // state
+    let allCourses = [];
+
+    // load list (ONLY my courses)
+    async function loadCourses() {
+      try {
+        const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}`);
+        const payload = await res.json();
+        const courses = Array.isArray(payload) ? payload : (payload.courses || []);
+        allCourses = courses.slice();
+        renderCourses(allCourses);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load courses");
+      }
+    }
+
+    function renderCourses(courses) {
+      const list = document.getElementById("courseList");
+      list.innerHTML = '';
+      courses.sort((a, b) => (a.courseNumber || 0) - (b.courseNumber || 0));
+
+      courses.forEach(c => {
+        const col = document.createElement('div');
+        col.className = 'col-sm-6 col-lg-4 col-xxl-3';
+        col.innerHTML = `
+          <div class="course-card">
+            <div>
+              <h5 class="course-title">${escapeHtml(c.title || 'Untitled')}</h5>
+              <div class="mb-2">
+                <span class="badge-soft"><i class="bi bi-collection"></i> Course #${c.courseNumber || '—'}</span>
+              </div>
+              <p class="mb-1"><strong>Category:</strong> ${escapeHtml(c.category || '—')}</p>
+              <p class="course-meta mb-0">${escapeHtml(c.description || 'No description provided.')}</p>
+            </div>
+            <div class="course-actions d-flex justify-content-between pt-3 mt-3">
+              <button class="btn btn-sm btn-amber edit-btn" data-id="${c.id}">
+                <i class="bi bi-pencil-square me-1"></i>Edit
+              </button>
+              <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${c.id}">
+                <i class="bi bi-trash3 me-1"></i>Delete
+              </button>
+            </div>
+          </div>`;
+        list.appendChild(col);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
+    }
+
+    loadCourses();
+
+    // live search
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      const filtered = !q ? allCourses : allCourses.filter(c =>
+        (c.title || '').toLowerCase().includes(q) ||
+        (c.category || '').toLowerCase().includes(q) ||
+        String(c.courseNumber || '').toLowerCase().includes(q)
+      );
+      renderCourses(filtered);
+    });
+
+    // click handler
+    document.getElementById("courseList").addEventListener("click", async e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = btn.dataset.id;
+
+      if (btn.classList.contains("edit-btn")) {
+        // fetch single course
+        let course;
+        try {
+          const r = await fetch(`${API}/courses/${id}`);
+          const j = await r.json();
+          course = j.course || j;
+        } catch {
+          return alert("Failed to load course");
+        }
+
+        // populate
+        document.getElementById("editCourseId").value = course.id;
+        document.getElementById("editTitle").value   = course.title || '';
+        document.getElementById("editCategory").value= course.category || '';
+        document.getElementById("editDescription").value = course.description || '';
+
+        // load all classes for checkboxes (teacher's own)
+        const cont = document.getElementById("editAssignedClassesContainer");
+        cont.innerHTML = '';
+        try {
+          const r2 = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(userData.userId)}`);
+          const { success, classes } = await r2.json();
+          if (success && Array.isArray(classes)) {
+            classes.forEach(cls => {
+              const col = document.createElement('div');
+              col.className = 'col-12';
+              const label = document.createElement('label');
+              label.className = 'form-check-label d-flex align-items-center';
+              const chk = document.createElement('input');
+              chk.type = 'checkbox';
+              chk.className = 'form-check-input me-2';
+              chk.value = cls.id;
+              if (Array.isArray(course.assignedClasses) &&
+                  course.assignedClasses.map(x => String(x)).includes(String(cls.id))) {
+                chk.checked = true;
+              }
+              label.append(chk, document.createTextNode(`${cls.name} (${cls.gradeLevel}-${cls.section})`));
+              col.appendChild(label);
+              cont.appendChild(col);
+            });
+          } else {
+            cont.innerHTML = '<div class="text-danger">No classes found.</div>';
+          }
+        } catch {
+          cont.innerHTML = '<div class="text-danger">Error loading classes.</div>';
+        }
+
+        new bootstrap.Modal(document.getElementById("editCourseModal")).show();
+      }
+
+      if (btn.classList.contains("delete-btn")) {
+        if (!confirm("Delete this course?")) return;
+        try {
+          const r = await fetch(`${API}/courses/${id}`, { method:'DELETE' });
+          const j = await r.json();
+          if (j.success) {
+            await loadCourses();
+          } else {
+            alert("Delete failed: " + (j.message || 'Unknown error'));
+          }
+        } catch {
+          alert("Server error");
+        }
+      }
+    });
+
+    // save edits
+    document.getElementById("editCourseForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const cid = document.getElementById("editCourseId").value;
+      const payload = {
+        title: document.getElementById("editTitle").value.trim(),
+        category: document.getElementById("editCategory").value.trim(),
+        description: document.getElementById("editDescription").value.trim(),
+        assignedClasses: Array.from(
+          document.querySelectorAll("#editAssignedClassesContainer input:checked")
+        ).map(x => x.value)
+      };
+      try {
+        const r = await fetch(`${API}/courses/${cid}`, {
+          method:'PUT',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const j = await r.json();
+        if (j.success) {
+          alert("Course updated successfully!");
+          bootstrap.Modal.getInstance(document.getElementById("editCourseModal")).hide();
+          await loadCourses();
+        } else {
+          alert("Update failed: " + (j.message || 'Unknown error'));
+        }
+      } catch {
+        alert("Server error");
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      window.location.href="/ADMIN/login/login.html";
+    }
+  </script>
+</body>
+</html>

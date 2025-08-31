@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "digipicdb",
+  "private_key_id": "9129e25ab29295d43c63fc8ddc1540389e81f4ce",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9gwFkMHrFycEg\nFIrwhQ3NIG2QZ7LU13CSYb2bVVexXhzzrDe+0k4pSQdeCwsfQidXMcMGsV4rCN27\nClaKPaYvdAPjlrMEGT5CMvwU8qCMYNyp2hFdqjF4ftbj9jvtqfqfyv2XsWlQcSlL\n4txl3IW9NcCJ45ZjWkzA0tvp8e+TNs6aWhueBLq6Rga6PCLRxlsHPdzJAJLIugfg\n+wxqqr8E2+ixd1xBZV52GHLS6F75n88G3KT4d0p/wz7xCD6CP0GimQsMgk+spzXP\nPHxgQnpYS4sbgNTsUaR5fu6Jo4cSO3fvRrr+ywxxvOOqOrTTe+3AUdCLzr2oGqRH\nUoNrFqErAgMBAAECggEAIjDwn1Lf06+C2HbcWminBMtE+Ti8WwpDlSVtQAk1uRpx\nvsTjidoHoAs8+QqlBw64alLgDOUTSFBhMM28r1RQF1+nE/isc6DaSrdII79il/Eh\n3sMpPuzl4AeCXb6fMVHplcrZ1fR8O7cu7DIR8Y7H0ktQYZBeIa65ClEAvESaJMT+\nb0EpfOECzgnZ52CdPRP4FQpwlcL+OYREjmbzIfX8tgX+wbZ0OScpjJGaEnXffXME\nnDEACf1k08xig8i9OxYyrMN2xyKSw8j2ze8oJJySFXEfBANf05orSG62y7HCdAxz\n20Kp8urS7LFYJg9twxSWGF2nPWuMRaLhEDaWuqlVAQKBgQD756HvxNu8ywzoaGbF\nNDAGm4j65RgSEvQbUspOUbJHXHaRxYX/055RL4KKoCKbyKl9DRo5JBXzdAUVABka\nqMVNVwG9eLHmRpicz3A+8LwIIuivvxNUSw9ydKxsSw+tZBrFN08cKQioV74gzX1A\nYuEDPG9QmgkB2tAmGde5AQLROQKBgQDAl7U178vQOnelva/aX+Y9XMGT8VdE2yHD\n95j6351jpvOcuvxRWiHA+914kKbjrqf8ba/L5RBOA2cTxFl3mVDHizLEKv6d6nrL\nxdFN+1/ZZXfkQbO9y03/YtSanU9M6Qqz7/H3DLxgINS9gXgW2o6Xycd87vDTVRqK\n7ZLjrO8ZgwKBgB6hZtaB6HpHcnVcJIr8Mo7LINfpPYkNFvOvmHv3gScePiixjP6z\nm7+heE0k9bBdsQZMrpCeK7EjvW51SZgtR3iFCOgiIfevQ+Vlb++nVCXlIMgmAtKw\nIdu4BjNQ2UIrNvoeJJd3Ad9+c9cHRaCrpVLAaYSyhj/cfIz1fX64ecA5AoGBAJgu\nCBEzhv/lgy9iwHa0elCYX5mQBR4ybO7VUXtCgLICdNKuabu6lZtRKUIgQs777l8n\nKNbbDFQomiVjbDJ14f+avSWGt6R+aENl7ypIbAdzBxZE2EsrP1mCdW4qyUODjWJ7\nQd2toZfvuUp46DRexHeqCEhu4bqLr6qBaSUgO9oTAoGAFX9zC9o3Fp84NqMDnJPS\nwdRfJco0id9zi+8b4FHccqIS+1IV45T/GE2QU6ubgbKZvJhBrop7hVvxqUwb69A1\nP6h9CVmH7FBMoDNQkFF1bXP/Fwt8ScBlh4l2V7NdTMq+w8Bl3XfaecRgw5OGLPZ4\npHqx2NsnccufxM1M4TlcDrY=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@digipicdb.iam.gserviceaccount.com",
+  "client_id": "105177848565297364019",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40digipicdb.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

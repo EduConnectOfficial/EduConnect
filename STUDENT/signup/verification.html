@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Student - Verify Code</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="signup1.css"/>
+
+  <style>
+    .otp-container{display:flex;justify-content:center;gap:10px;margin-bottom:1rem}
+    .otp-input{width:42px;height:52px;text-align:center;font-size:1.4rem;border:1px solid #ced4da;border-radius:8px}
+    .otp-input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.25)}
+    .disabled-link{pointer-events:none;opacity:.6;text-decoration:none}
+    .muted{opacity:.85}
+    /* optional: red border when invalid */
+    .is-invalid{border-color:#dc3545}
+    /* ensure modal text is black */
+    #feedbackModal .modal-body{color:#000 !important}
+  </style>
+</head>
+
+<body>
+  <!-- Top Logo -->
+  <div class="top-logo text-center my-4">
+    <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
+  </div>
+
+  <!-- Verification Form -->
+  <div class="login-container">
+    <div class="login-box text-center">
+      <h4 class="mb-2">Enter Verification Code</h4>
+      <p id="sentTo" class="mb-3 text-white muted"></p>
+
+      <form id="verifyCodeForm" novalidate autocomplete="one-time-code">
+        <div class="otp-container">
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" autocomplete="one-time-code"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+        </div>
+
+        <div id="verificationError" class="text-danger mb-3"></div>
+
+        <button id="verifyBtn" type="submit" class="btn login-btn w-100 mb-2">
+          Verify
+        </button>
+
+        <div class="d-flex justify-content-center gap-2 align-items-center">
+          <span class="text-white">Didn't receive the code?</span>
+          <a href="#" id="resendCode" class="">Resend</a>
+          <span id="resendTimer" class="text-white-50 small"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="feedbackModalLabel">Notification</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="feedbackModalBody"><!-- Message injected here --></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" id="feedbackModalOkBtn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    const inputs = Array.from(document.querySelectorAll(".otp-input"));
+    const verifyForm = document.getElementById("verifyCodeForm");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const verificationError = document.getElementById("verificationError");
+    const resendLink = document.getElementById("resendCode");
+    const resendTimer = document.getElementById("resendTimer");
+    const sentTo = document.getElementById("sentTo");
+
+    const email = sessionStorage.getItem("pendingEmail");
+
+    // Show masked email target
+    if (email) {
+      const masked = email.replace(/(^.).*(@.*$)/, (_, a, b) => a + "••••" + b);
+      sentTo.textContent = `We sent a 6-digit code to ${masked}. Please enter it below.`;
+    } else {
+      sentTo.textContent = "We sent a 6-digit code to your email. Please enter it below.";
+    }
+
+    const joinCode = () => inputs.map(i => i.value.trim()).join("");
+
+    // Helper: set invalid style on inputs
+    function setInvalid(isInvalid) {
+      inputs.forEach(i => i.classList.toggle("is-invalid", isInvalid));
+    }
+
+    // Helper: Bootstrap feedback modal (accepts HTML)
+    function showModalHTML(html, { title = "Notification", redirectTo = null } = {}) {
+      const titleEl = document.getElementById("feedbackModalLabel");
+      const bodyEl = document.getElementById("feedbackModalBody");
+      const okBtn = document.getElementById("feedbackModalOkBtn");
+      const modalEl = document.getElementById("feedbackModal");
+      const modal = new bootstrap.Modal(modalEl);
+
+      titleEl.textContent = title;
+      bodyEl.innerHTML = html; // <-- allow formatted content
+
+      okBtn.onclick = () => {
+        if (redirectTo) window.location.href = redirectTo;
+      };
+
+      modalEl.addEventListener("hidden.bs.modal", function onHidden() {
+        modalEl.removeEventListener("hidden.bs.modal", onHidden);
+        if (redirectTo) window.location.href = redirectTo;
+      });
+
+      modal.show();
+    }
+
+    // Input behavior: digits-only, auto-advance, backspace to previous, robust paste
+    inputs.forEach((input, i) => {
+      input.addEventListener("beforeinput", (e) => {
+        if (e.inputType === "insertText" && !/^\d$/.test(e.data)) e.preventDefault();
+      });
+
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "").slice(0, 1);
+        if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
+        verificationError.textContent = "";
+        setInvalid(false);
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowLeft" && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowRight" && i < inputs.length - 1) inputs[i + 1].focus();
+      });
+
+      input.addEventListener("paste", (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData("text") || "";
+        const digits = text.replace(/\D/g, "").slice(0, 6);
+        if (digits.length) {
+          e.preventDefault();
+          inputs.forEach((x, idx) => (x.value = digits[idx] || ""));
+          inputs[Math.min(digits.length, 5)].focus();
+        }
+      });
+    });
+
+    // Resend cooldown handling
+    let cooldown = 0;
+    let timerId = null;
+    function setResendState(active) {
+      if (active) {
+        resendLink.classList.remove("disabled-link");
+        resendLink.setAttribute("aria-disabled", "false");
+        resendLink.tabIndex = 0;
+        resendTimer.textContent = "";
+      } else {
+        resendLink.classList.add("disabled-link");
+        resendLink.setAttribute("aria-disabled", "true");
+        resendLink.tabIndex = -1;
+      }
+    }
+    function startCooldown(seconds = 60) {
+      if (timerId) clearInterval(timerId);
+      cooldown = seconds;
+      setResendState(false);
+      updateTimer();
+      timerId = setInterval(updateTimer, 1000);
+    }
+    function updateTimer() {
+      if (cooldown <= 0) {
+        clearInterval(timerId);
+        timerId = null;
+        resendTimer.textContent = "";
+        setResendState(true);
+        return;
+      }
+      resendTimer.textContent = `(${cooldown}s)`;
+      cooldown -= 1;
+    }
+
+    // Submit verification
+    verifyForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const code = joinCode();
+
+      if (!/^\d{6}$/.test(code)) {
+        verificationError.textContent = "Please enter a valid 6-digit code.";
+        setInvalid(true);
+        inputs[0].focus();
+        return;
+      }
+      if (!email) {
+        verificationError.textContent = "Email not found. Please register again.";
+        setInvalid(true);
+        return;
+      }
+
+      verificationError.textContent = "";
+      setInvalid(false);
+      verifyBtn.disabled = true;
+      const prevHTML = verifyBtn.innerHTML;
+      verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying...`;
+
+      try {
+        const res = await fetch(`${API_BASE}/verify-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          const userIdResp    = data.userId    || (data.user && data.user.userId);
+          const studentIdResp = data.studentId || (data.user && data.user.studentId);
+
+          if (userIdResp)    sessionStorage.setItem("verifiedUserId", userIdResp);
+          if (studentIdResp) sessionStorage.setItem("studentId", studentIdResp);
+
+          // Cleanup (pre-redirect)
+          sessionStorage.removeItem("pendingEmail");
+          sessionStorage.removeItem("pendingUserData");
+
+          // Build EXACT layout:
+          // User verified and registered successfully.
+          //
+          // Your User ID:
+          // <value>
+          //
+          // Your Student ID:
+          // <value>
+          const lines = [];
+          lines.push(`<p class="mb-3">User verified and registered successfully.</p>`);
+          if (userIdResp) {
+            lines.push(`<div class="mb-2"><div class="fw-semibold">Your User ID:</div><div><code class="bg-light px-2 py-1 d-inline-block">${userIdResp}</code></div></div>`);
+          } else {
+            lines.push(`<div class="mb-2"><div class="fw-semibold">Your User ID:</div><div><em>—</em></div></div>`);
+          }
+          if (studentIdResp) {
+            lines.push(`<div class="mb-1"><div class="fw-semibold">Your Student ID:</div><div><code class="bg-light px-2 py-1 d-inline-block">${studentIdResp}</code></div></div>`);
+          } else {
+            lines.push(`<div class="mb-1"><div class="fw-semibold">Your Student ID:</div><div><em>—</em></div></div>`);
+          }
+
+          const successHTML = lines.join("");
+
+          // Show modal with formatted HTML, then redirect to login when closed
+          showModalHTML(successHTML, { title: "Success", redirectTo: "/STUDENT/login/login.html" });
+
+        } else {
+          verificationError.textContent = data.error || "Invalid or expired code.";
+          setInvalid(true);
+          if (!timerId) startCooldown(30); // brief cooldown to discourage spamming
+        }
+      } catch (err) {
+        console.error(err);
+        verificationError.textContent = "Failed to connect to server.";
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = prevHTML;
+      }
+    });
+
+    // Resend code
+    let resendInFlight = false;
+    document.getElementById("resendCode").addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (resendLink.classList.contains("disabled-link") || resendInFlight) return;
+      if (!email) {
+        verificationError.textContent = "Missing email from session.";
+        return;
+      }
+      try {
+        resendInFlight = true;
+        setResendState(false);
+        const res = await fetch(`${API_BASE}/resend-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showModalHTML(`<p class="mb-0">New verification code sent to your email.</p>`, { title: "Code Resent" });
+          inputs.forEach(i => i.value = "");
+          inputs[0].focus();
+          startCooldown(60);
+        } else {
+          setResendState(true);
+          showModalHTML(`<p class="mb-0">${data.error || "Could not resend code."}</p>`, { title: "Resend Failed" });
+        }
+      } catch (error) {
+        console.error(error);
+        setResendState(true);
+        showModalHTML(`<p class="mb-0">Server error while resending verification code.</p>`, { title: "Server Error" });
+      } finally {
+        resendInFlight = false;
+      }
+    });
+
+    // Initial focus + initial cooldown
+    window.addEventListener("DOMContentLoaded", () => {
+      inputs[0].focus();
+      startCooldown(30);
+    });
+  </script>
+</body>
+</html>

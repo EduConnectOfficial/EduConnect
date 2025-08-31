@@ -1,0 +1,828 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Raleway', sans-serif;
+  background: #e6ebeb;
+  color: #222;
+  overflow-x: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 70px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  padding: 2rem 1rem;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 10;
+  transition: width 0.3s ease;
+  overflow: hidden;
+}
+
+.sidebar:hover {
+  width: 220px;
+}
+
+.sidebar .logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #f8e7d0;
+  margin-bottom: 2rem;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar:hover .logo {
+  opacity: 1;
+}
+
+.sidebar .nav-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar .nav-links li {
+  margin: 20px 0;
+}
+
+.sidebar .nav-links a {
+  color: #fff6dd;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: 0.3s;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+}
+
+.sidebar .nav-links a i {
+  min-width: 24px;
+  text-align: center;
+}
+
+.sidebar .nav-links a span {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar:hover .nav-links a span {
+  opacity: 1;
+}
+
+.sidebar .nav-links a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFD580;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: auto;
+}
+
+.sidebar:hover .sidebar-footer {
+  align-items: center;
+}
+
+.logout-btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+  opacity: 0;
+  text-decoration: none;
+  /* ✅ add this line */
+  display: inline-block;
+}
+
+
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
+
+.logout-btn:hover {
+  opacity: 0.85;
+  color: #4A1A0C;
+  /* New text color on hover */
+}
+
+/* Main Content */
+.main {
+  margin-left: 70px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 70px);
+  min-height: 100vh;
+  background: #e6ebeb;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar:hover~.main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+}
+
+/* Header */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+
+  /* force gradient as an image */
+  background-image: linear-gradient(to bottom, #4A1A0C, #7A2810) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+
+  /* make sure no solid color is sitting on top */
+  background-color: transparent !important;
+
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.logo-header {
+  height: 45px;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 20px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 30px;
+  border: none;
+  outline: none;
+}
+
+.search-box i {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+}
+
+/* Content Area */
+.content {
+  flex: 1;
+  padding: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.content h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Widgets Section */
+.widgets {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
+  width: 100%;
+  max-width: 1400px;
+}
+
+.title-name h2{
+    font-family: 'Raleway', sans-serif;
+    font-weight: 700;
+    color: #4A1A0C;
+}
+
+/* Card Design */
+.card {
+  flex: 1 1 45%;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810) !important;
+}
+
+.card-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #FFD8A9;
+}
+
+.card-text {
+  font-size: 1rem;
+  color: #FFD8A9;
+}
+
+/* Accent color reused for glow */
+:root { --glow-accent: #ff5a27; }
+
+/* Base state (keeps your border & light bg) */
+.border-primary.bg-light {
+  border: 2px solid var(--glow-accent) !important;
+  background-color: #f8f9fa !important;
+  box-shadow:
+    0 0 0 3px rgba(255, 90, 39, 0.18),   /* outer halo */
+    0 10px 24px rgba(255, 90, 39, 0.20), /* colored soft shadow */
+    0 4px 12px rgba(0, 0, 0, 0.06);      /* natural depth */
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+
+/* Hover: slightly brighter + lift */
+.border-primary.bg-light:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 4px rgba(255, 90, 39, 0.22),
+    0 14px 30px rgba(255, 90, 39, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* Optional: pulsing glow (add .glow to the card if you want animation) */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px rgba(255, 90, 39, 0.20),
+      0 14px 30px rgba(255, 90, 39, 0.26),
+      0 8px 18px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(255, 90, 39, 0.12),
+      0 16px 36px rgba(255, 90, 39, 0.30),
+      0 8px 18px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.class-card.border-primary.bg-light.glow {
+  animation: glowPulse 1.8s ease-in-out infinite;
+}
+
+
+.dark-card {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #FFD8A9;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.dark-card h3,
+.dark-card p {
+  color: #FFD8A9;
+}
+
+/* upload */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Raleway', sans-serif;
+  background: #e6ebeb;
+  color: #222;
+  overflow-x: hidden;
+}
+
+.main {
+  margin-left: 70px;
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 70px);
+  min-height: 100vh;
+  background: #e6ebeb;
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-header {
+  width: 100%;
+  padding: 1rem 2rem;
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.upload-header .logo-header {
+  height: 45px;
+}
+
+.upload-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 3rem;
+}
+
+.form-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem 3rem;
+  max-width: 1200px;
+  /* increased from 600px */
+  width: 100%;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-control,
+.form-label {
+  font-size: 1.05rem;
+}
+
+textarea.form-control {
+  min-height: 130px;
+}
+
+.form-card h2 {
+  font-weight: bold;
+  color: #4A1A0C;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-control,
+.form-label {
+  font-size: 1rem;
+  color: #333 !important;
+}
+
+.btn-upload {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+}
+
+.btn-upload:hover {
+  opacity: 0.85;
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 1rem;
+  text-align: center;
+  text-decoration: none;
+  color: #4A1A0C;
+  font-weight: 500;
+}
+
+.back-link i {
+  margin-right: 6px;
+}
+
+.back-btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.back-btn:hover {
+  opacity: 0.85;
+  color: #4A1A0C;
+  /* New text color on hover */
+}
+
+.form-label {
+  color: #f8e7d0;
+}
+
+.form-select {
+  font-size: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.btn-secondary {
+  background: linear-gradient(to bottom, #C95C2D, #A34723);
+
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+}
+
+.btn-secondary:hover {
+  opacity: 0.85;
+  color: #ffd580;
+}
+
+.custom-card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 5px 6px rgba(0, 0, 0, 0.212);
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+.profile-btn .username {
+  font-size: 14px;
+}
+/* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }
+@media (max-width: 480px) {
+  /* Make buttons easy to tap and nicely spaced */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;           /* stack cleanly */
+    width: 100%;              /* full-width buttons */
+    min-height: 44px;         /* Apple HIG tap target */
+    padding: 0.9rem 1rem;     /* comfy padding */
+    font-size: 1rem;          /* avoid iOS zoom */
+    line-height: 1.2;
+    border-radius: 14px;      /* softer corners on small screens */
+    margin: 10px 0;           /* vertical gap between buttons */
+    text-align: center;
+  }
+
+  /* Icon + text alignment inside buttons */
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+
+  /* Button groups wrap nicely with spacing */
+  .btn-group,
+  .lesson-nav,
+  .content .d-flex,
+  .content .btn-toolbar {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  /* Specific: lesson prev/next should stack under title if tight */
+  .lesson-nav .btn {
+    min-width: unset;         /* let full-width rule apply */
+  }
+
+  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+  .content .d-flex.gap-2 {
+    gap: 10px !important;
+  }
+
+  /* Prevent tiny outline/ghost borders on gradient buttons */
+  .btn-amber,
+  .btn-amber-outline,
+  .back-btn,
+  .logout-btn {
+    border-width: 1px;
+  }
+}
+
+/* Tablet: keep buttons inline but add breathing room */
+@media (min-width: 481px) and (max-width: 1280px) {
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+  }
+
+  /* Lesson nav buttons keep reasonable width */
+  .lesson-nav .btn { min-width: 120px; }
+}
+/* =========================
+   .card – MOBILE & TABLET FRIENDLY
+   Paste at the end of your CSS
+   ========================= */
+
+/* Tablet (≤1280px) */
+@media (max-width: 1280px) {
+  .widgets { gap: 20px; padding: 0 16px; }
+
+  .card {
+    flex: 1 1 100%;
+    max-width: 820px;
+    padding: 1.25rem;
+    border-radius: 14px;
+  }
+
+  .card-title { font-size: 1.25rem; }
+}
+
+/* Mobile (≤480px) */
+@media (max-width: 480px) {
+  /* tighter page padding for small screens */
+  .content { padding: 1rem; }
+
+  /* stack cards vertically, full width */
+  .widgets {
+    flex-direction: column;
+    gap: 14px;
+    padding: 0;
+  }
+
+  .card {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15);
+  }
+
+  .card + .card { margin-top: 12px; }
+
+  .card-title {
+    font-size: 1.1rem;
+    line-height: 1.25;
+    text-align: center;
+    margin-bottom: .75rem;
+    color: #FFD8A9; /* keeps your brand look */
+  }
+
+  .card-text {
+    font-size: .95rem;
+    line-height: 1.45;
+    color: #FFD8A9;
+  }
+
+  /* media inside cards scales nicely */
+  .card img,
+  .card video,
+  .card iframe {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+  }
+
+  /* forms & controls inside cards are thumb-friendly */
+  .card input[type="text"],
+  .card input[type="email"],
+  .card input[type="number"],
+  .card input[type="search"],
+  .card select,
+  .card textarea {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* buttons inside cards become full-width */
+  .card .btn,
+  .card .btn-group .btn {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 8px;
+    border-radius: 12px;
+  }
+
+  /* tables inside card become horizontally scrollable */
+  .card .table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+    padding-bottom: 4px;
+  }
+  .card .table thead th,
+  .card .table tbody td {
+    white-space: nowrap;
+  }
+}
+ /* Make the form card truly full width & thumb-friendly */
+  .form-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15) !important;
+  }
+  .form-card h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  /* Inputs & buttons: good tap targets */
+  .form-card .form-control,
+  .form-card .form-select {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  .btn-upload,
+  .btn-secondary {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+    margin-top: 10px;
+    font-size: 1rem;
+  }
+
+  /* Assigned Classes section:
+     - make grid go 1 column
+     - let the pill span full width and not break words vertically */
+  #assignedClassesContainer > [class^="col-"],
+  #assignedClassesContainer > [class*=" col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Style the class chip/pill (works with your dark gradient card) */
+  .class-card,
+  .assigned-class,
+  .class-pill {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+    white-space: nowrap !important;      /* prevent vertical wrapping */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  /* Make inner text ellipsize instead of stacking */
+  .class-card * {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* If you render the class grid as a .row, give it spacing */
+  #assignedClassesContainer.row { row-gap: 10px; }
+
+  /* If you also use .card elsewhere on this page, keep it full width */
+  .card {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,.15) !important;
+  }

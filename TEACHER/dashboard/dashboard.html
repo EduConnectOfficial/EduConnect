@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher - Dashboard</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <!-- Shared theme -->
+  <link rel="stylesheet" href="dashboard.css"/>
+
+  <style>
+    :root{
+      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
+    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+
+    .card h6{opacity:.85}
+    .skeleton{background:linear-gradient(90deg,#eee,#f5f5f5,#eee);background-size:200% 100%;animation:sh 1.2s infinite}
+    @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+    /* Chart holders */
+    .chart-card{min-height:260px}
+    .chart-holder{position:relative;height:240px}
+    .chart-holder canvas{position:absolute;inset:0;width:100% !important;height:100% !important}
+    /* dedicated holder so we can cap dynamic height for quiz chart */
+    #quizPerfHolder{position:relative; height:280px; max-height:420px; min-height:220px;}
+    #quizPerfHolder canvas{position:absolute; inset:0; width:100% !important; height:100% !important;}
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input type="text" class="form-control" placeholder="Search..."/>
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <section class="content px-4">
+        <h1 class="mt-4 mb-3 fw-bold">Teacher Dashboard</h1>
+
+        <!-- Summary Cards -->
+        <div id="summaryRow" class="d-flex flex-wrap gap-3 mb-4">
+          <div class="card flex-fill bg-primary text-white p-3">
+            <h6>Total Classes</h6>
+            <h2 id="statClasses" class="skeleton" style="min-width:80px;min-height:32px"></h2>
+          </div>
+          <div class="card flex-fill bg-success text-white p-3">
+            <h6>Total Students</h6>
+            <h2 id="statStudents" class="skeleton" style="min-width:80px;min-height:32px"></h2>
+          </div>
+          <div class="card flex-fill bg-info text-white p-3">
+            <h6>Modules Published</h6>
+            <h2 id="statModules" class="skeleton" style="min-width:80px;min-height:32px"></h2>
+          </div>
+          <div class="card flex-fill bg-warning text-dark p-3">
+            <h6>Quizzes Created</h6>
+            <h2 id="statQuizzes" class="skeleton" style="min-width:80px;min-height:32px"></h2>
+          </div>
+          <div class="card flex-fill bg-danger text-white p-3">
+            <h6>Pending Submissions</h6>
+            <h2 id="statPending" class="skeleton" style="min-width:80px;min-height:32px"></h2>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="d-flex flex-wrap gap-2 mb-5">
+          <button class="btn btn-outline-primary" onclick="location.href='/TEACHER/classes/class_list.html'">
+            <i class="bi bi-file-earmark-plus-fill"></i> Create Class
+          </button>
+          <button class="btn btn-outline-success" onclick="location.href='/TEACHER/modules/select_Course.html'">
+            <i class="bi bi-file-earmark-plus-fill"></i> New Module
+          </button>
+          <button class="btn btn-outline-info" onclick="location.href='/TEACHER/quizzes/quiz.html'">
+            <i class="bi bi-patch-plus-fill"></i> New Quiz
+          </button>
+          <button class="btn btn-outline-warning" onclick="location.href='/TEACHER/announcements/announcements.html'">
+            <i class="bi bi-megaphone-fill"></i> Post Announcement
+          </button>
+        </div>
+
+        <!-- My Classes (Manage removed) -->
+        <h2 class="mb-3">My Classes</h2>
+        <div class="table-responsive mb-5">
+          <table class="table table-striped" id="classesOverview">
+            <thead class="table-light">
+              <tr>
+                <th>Class</th>
+                <th>Students</th>
+                <th>Avg. Grade</th>
+                <th>Completion %</th>
+                <th>Next Due</th>
+              </tr>
+            </thead>
+            <tbody id="classesTbody">
+              <tr><td colspan="5" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Recent Submissions -->
+        <h2 class="mb-3">Recent Submissions</h2>
+        <div class="table-responsive mb-5">
+          <table class="table table-striped" id="recentSubmissions">
+            <thead class="table-light">
+              <tr>
+                <th>Student</th>
+                <th>Class</th>
+                <th>Title</th>
+                <th>Submitted At</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="subsTbody">
+              <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Performance Insights -->
+        <h2 class="mb-3">Performance Insights</h2>
+        <div class="row gy-4 mb-5">
+          <!-- Quiz Performance (Avg % per Quiz) -->
+          <div class="col-md-4">
+            <div class="card p-3 chart-card">
+              <h6 id="quizPerfTitle">Quiz Performance (Avg % per Quiz)</h6>
+              <div id="quizPerfHolder">
+                <canvas id="quizPerfChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Keep original format for Module Completion Rate -->
+          <div class="col-md-4">
+            <div class="card p-3 chart-card">
+              <h6>Module Completion Rate</h6>
+              <div class="chart-holder">
+                <canvas id="completionRateChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Keep original format for Time on Task -->
+          <div class="col-md-4">
+            <div class="card p-3 chart-card">
+              <h6>Time on Task</h6>
+              <div class="chart-holder">
+                <canvas id="timeOnTaskChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Schedule -->
+        <h2 class="mb-3">Upcoming Schedule</h2>
+        <ul class="list-group mb-5" id="upcomingSchedule">
+          <li class="list-group-item text-muted">Loading…</li>
+        </ul>
+
+        <!-- Recent Announcements -->
+        <h2 class="mb-3">Recent Announcements</h2>
+        <ul class="list-group mb-5" id="announcementsSnapshot">
+          <li class="list-group-item text-muted">Loading…</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              toggle.setAttribute('aria-expanded', parent.classList.contains('open'));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Dashboard Logic -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // ---- Auth guard: use username only ----
+    (function () {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const u = stored.user || stored;
+
+      if (!u?.userId || !u?.isTeacher) {
+        window.location.href = "/TEACHER/login/login.html";
+        return;
+      }
+      window.currentUser = u;
+
+      const displayName = (u.username || "Teacher").toString().trim();
+      window.addEventListener("DOMContentLoaded", () => {
+        const nameEl = document.getElementById("Username");
+        if (nameEl) nameEl.textContent = displayName;
+      });
+    })();
+
+    function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // DOM refs
+    const elStatClasses  = document.getElementById('statClasses');
+    const elStatStudents = document.getElementById('statStudents');
+    const elStatModules  = document.getElementById('statModules');
+    const elStatQuizzes  = document.getElementById('statQuizzes');
+    const elStatPending  = document.getElementById('statPending');
+
+    const classesTbody = document.getElementById('classesTbody');
+    const subsTbody    = document.getElementById('subsTbody');
+    const ulSchedule   = document.getElementById('upcomingSchedule');
+    const ulAnn        = document.getElementById('announcementsSnapshot');
+
+    // Keep one Chart instance per canvas id
+    const charts = {};
+
+    function num(v){ return (typeof v === 'number' && !Number.isNaN(v)) ? v : 0; }
+
+    function renderStats(stats={}){
+      elStatClasses.textContent  = num(stats.totalClasses);
+      elStatClasses.classList.remove('skeleton');
+      elStatStudents.textContent = num(stats.totalStudents);
+      elStatStudents.classList.remove('skeleton');
+      elStatModules.textContent  = num(stats.modulesPublished);
+      elStatModules.classList.remove('skeleton');
+      elStatQuizzes.textContent  = num(stats.quizzesCreated);
+      elStatQuizzes.classList.remove('skeleton');
+      elStatPending.textContent  = num(stats.pendingSubmissions);
+      elStatPending.classList.remove('skeleton');
+    }
+
+    // Manage column REMOVED
+    function renderClasses(rows=[]){
+      if (!rows.length){
+        classesTbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No classes yet.</td></tr>`;
+        return;
+      }
+      classesTbody.innerHTML = rows.map(c => {
+        const name = c.name || 'Class';
+        const students = c.studentCount ?? 0;
+        const avg = (c.avgGrade ?? 0) + '%';
+        const comp = (c.completionRate ?? 0) + '%';
+        const nextDue = c.nextDue || '—';
+        return `
+          <tr>
+            <td>${escapeHTML(name)}</td>
+            <td>${students}</td>
+            <td>${avg}</td>
+            <td>${comp}</td>
+            <td>${escapeHTML(nextDue)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderSubmissions(items=[]){
+      if (!items.length){
+        subsTbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No recent submissions.</td></tr>`;
+        return;
+      }
+      subsTbody.innerHTML = items.map(s => {
+        const statusBadge = statusToBadge(s.status);
+        const at = fmtDT(s.submittedAt);
+        return `
+          <tr>
+            <td>${escapeHTML(s.studentName || 'Student')}</td>
+            <td>${escapeHTML(s.className || '—')}</td>
+            <td>${escapeHTML(s.title || '—')}</td>
+            <td>${at}</td>
+            <td>${statusBadge}</td>
+            <td><a class="btn btn-sm btn-success" href="/TEACHER/assignment/grade_submission.html?assignmentId=${encodeURIComponent(s.assignmentId||'')}&courseId=${encodeURIComponent(s.courseId||'')}">Grade</a></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderSchedule(items=[]){
+      if (!items.length){
+        ulSchedule.innerHTML = `<li class="list-group-item text-muted">Nothing upcoming.</li>`;
+        return;
+      }
+      ulSchedule.innerHTML = items.map(i => `<li class="list-group-item">${escapeHTML(i.date || '')} – ${escapeHTML(i.title || '')}</li>`).join('');
+    }
+
+    function renderAnnouncements(items=[]){
+      if (!items.length){
+        ulAnn.innerHTML = `<li class="list-group-item text-muted">No announcements yet.</li>`;
+        return;
+      }
+      ulAnn.innerHTML = items.map(a => {
+        const when = a.publishedAt ? fmtDate(a.publishedAt) : '—';
+        const scope = a.className ? `(${escapeHTML(a.className)})` : '(All Classes)';
+        return `<li class="list-group-item"><strong>${escapeHTML(a.title||'Announcement')}</strong> ${scope}<br/><small>Published: ${when}</small></li>`;
+      }).join('');
+    }
+
+    function statusToBadge(status){
+      const map = {
+        ungraded:'<span class="badge bg-danger">Ungraded</span>',
+        late:'<span class="badge bg-warning text-dark">Late</span>',
+        graded:'<span class="badge bg-success">Graded</span>',
+        submitted:'<span class="badge bg-primary">Submitted</span>'
+      };
+      return map[String(status||'').toLowerCase()] || '<span class="badge bg-secondary">—</span>';
+    }
+
+    function fmtDT(v){
+      if (!v) return '—';
+      const ms = toMillis(v);
+      return ms ? new Date(ms).toLocaleString() : '—';
+      function toMillis(x){
+        if (typeof x === 'number') return x;
+        if (x && typeof x.toMillis === 'function') return x.toMillis();
+        if (x && x._seconds) return x._seconds * 1000;
+        const d = new Date(x); return isNaN(d.getTime()) ? null : d.getTime();
+      }
+    }
+    function fmtDate(v){
+      const ms = fmtToMs(v);
+      return ms ? new Date(ms).toLocaleDateString() : '—';
+      function fmtToMs(x){
+        if (typeof x === 'number') return x;
+        if (x && typeof x.toMillis === 'function') return x.toMillis();
+        if (x && x._seconds) return x._seconds * 1000;
+        const d = new Date(x); return isNaN(d.getTime()) ? null : d.getTime();
+      }
+    }
+    function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+
+    // Chart helpers
+    function upsertChart(canvasId, type, data, options){
+      if (charts[canvasId]) charts[canvasId].destroy();
+      const el = document.getElementById(canvasId);
+      if (!el) return null;
+      charts[canvasId] = new Chart(el, { type, data, options: options || { responsive:true, maintainAspectRatio:false } });
+      return charts[canvasId];
+    }
+
+    // --- Quiz chart label cleaner + height cap ---
+    function cleanQuizLabel(s, max=28){
+      if (!s) return '—';
+      let t = String(s)
+        .replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '')
+        .replace(/\s*\([^)]*\)\s*$/,'')
+        .trim();
+      if (t.length > max) t = t.slice(0, max-1) + '…';
+      return t;
+    }
+    function setQuizHolderHeight(nLabels){
+      const holder = document.getElementById('quizPerfHolder');
+      if (!holder) return;
+      // ~36px per bar, bounded
+      const h = Math.max(220, Math.min(420, (nLabels * 36) + 40));
+      holder.style.height = h + 'px';
+    }
+
+    // --- Render Quiz Performance chart from /api/teacher/quiz-analytics ---
+    async function renderQuizChart(teacherId) {
+      const titleEl = document.getElementById('quizPerfTitle');
+      try {
+        const url = `${API_BASE}/api/teacher/quiz-analytics?teacherId=${encodeURIComponent(teacherId)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        const fullLabels = data?.byQuiz?.labels || [];
+        const values     = data?.byQuiz?.avgScores || [];
+        const displayLabels = fullLabels.map(l => cleanQuizLabel(l));
+
+        titleEl.textContent = fullLabels.length
+          ? 'Quiz Performance (Avg % per Quiz)'
+          : 'Quiz Performance (no data)';
+
+        setQuizHolderHeight((fullLabels.length || 3));
+
+        upsertChart('quizPerfChart', 'bar', {
+          labels: displayLabels.length ? displayLabels : ['No quizzes'],
+          datasets: [{
+            label: 'Average Score (%)',
+            data: values.length ? values : [0]
+          }]
+        }, {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 6, right: 8, top: 4, bottom: 4 } },
+          scales: {
+            x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' }, grid: { drawBorder: false } },
+            y: {
+              grid: { display: false },
+              ticks: { autoSkip: false, font: { size: 11 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => fullLabels[items[0].dataIndex] || items[0].label,
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%`
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('quiz-analytics failed; using sample', e);
+        const fullLabels = [
+          'Course 1: The Foundation of Photography (4 modules)',
+          'Lesson 1 (Exposure & the Exposure Triangle)',
+          'Unit 1: Nature and Elements of Communication'
+        ];
+        const values = [80, 52, 93];
+        const displayLabels = fullLabels.map(l => cleanQuizLabel(l));
+
+        titleEl.textContent = 'Quiz Performance (sample)';
+        setQuizHolderHeight(displayLabels.length);
+
+        upsertChart('quizPerfChart', 'bar', {
+          labels: displayLabels,
+          datasets: [{ label:'Average Score (%)', data: values }]
+        }, {
+          indexAxis:'y',
+          responsive:true,
+          maintainAspectRatio:false,
+          layout:{ padding:{ left:6, right:8, top:4, bottom:4 }},
+          scales:{ x:{ beginAtZero:true, max:100, ticks:{ callback:v=>v+'%' } }, y:{ grid:{ display:false }, ticks:{ autoSkip:false, font:{ size:11 } } } },
+          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ title:(items)=>fullLabels[items[0].dataIndex] } } }
+        });
+      }
+    }
+
+    // Render the other two charts (original formats) from dashboard-stats
+    function renderCharts(chartsData={}){
+      const cr = chartsData.completionRate    || { labels:[], datasets:[{ label:'% Completion', data:[] }] };
+      const tt = chartsData.timeOnTask        || { labels:[], datasets:[{ label:'Minutes', data:[] }] };
+
+      upsertChart('completionRateChart', 'line', cr, { responsive:true, maintainAspectRatio:false });
+      upsertChart('timeOnTaskChart',     'bar',  tt, { responsive:true, maintainAspectRatio:false });
+    }
+
+    // Fetch + render everything
+    async function loadDashboard(){
+      try{
+        if (!window.currentUser?.userId) throw new Error("Missing currentUser.userId");
+        const url = `${API_BASE}/api/teacher/dashboard-stats?teacherId=${encodeURIComponent(window.currentUser.userId)}`;
+        const res = await fetch(url);
+        const js  = await res.json();
+
+        if (!res.ok || !js.success){
+          throw new Error(js.message || 'Failed to load dashboard data');
+        }
+
+        renderStats(js.stats || {});
+        renderClasses(js.classes || []);
+        renderSubmissions(js.submissions || []);
+        renderCharts(js.chartsData || {});
+        renderSchedule(js.schedule || []);
+        renderAnnouncements(js.announcements || []);
+
+        // Quiz chart (separate endpoint)
+        await renderQuizChart(window.currentUser.userId);
+      }catch(err){
+        console.error(err);
+        renderStats({});
+        classesTbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Failed to load classes.</td></tr>`;
+        subsTbody.innerHTML    = `<tr><td colspan="6" class="text-center text-danger py-4">Failed to load submissions.</td></tr>`;
+        ulSchedule.innerHTML   = `<li class="list-group-item text-danger">Failed to load schedule.</li>`;
+        ulAnn.innerHTML        = `<li class="list-group-item text-danger">Failed to load announcements.</li>`;
+        renderCharts({});
+        await renderQuizChart(window.currentUser?.userId || '');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

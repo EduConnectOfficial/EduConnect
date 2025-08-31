@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher – Quizzes</title>
+
+  <!-- Bootstrap / Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="quiz.list.css" />
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input id="searchBox" type="text" class="form-control" placeholder="Search quizzes…" />
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Quizzes</h1>
+
+        <!-- Controls block -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-ui-checks-grid"></i> Your Course Quizzes</h2>
+            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.
+            </div>
+          </div>
+
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5 col-xl-4">
+              <label class="form-label">Course</label>
+              <select id="courseSelect" class="form-select" aria-label="Filter by course">
+                <option value="">All courses</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4 col-xl-3">
+              <label class="form-label">Module</label>
+              <select id="moduleSelect" class="form-select" aria-label="Filter by module" disabled>
+                <option value="">All modules</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3 col-xl-3">
+              <label class="form-label">Sort</label>
+              <select id="sortBy" class="form-select" aria-label="Sort quizzes">
+                <option value="due" selected>Nearest due date</option>
+                <option value="new">Newest first</option>
+                <option value="az">Title A → Z</option>
+              </select>
+            </div>
+            <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
+              <button id="newQuizBtn" class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" onclick="goCreateQuiz()">
+                <i class="bi bi-plus-circle me-1"></i>Create Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="quizGrid" class="row g-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page logic -->
+  <script>
+    const API = "http://localhost:5000";
+
+    // Auth (teacher-only)
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    document.getElementById("Username").textContent = userData.username || "";
+    const TEACHER_ID = userData.userId;
+
+    // DOM
+    const elCourse = document.getElementById('courseSelect');
+    const elModule = document.getElementById('moduleSelect');
+    const elGrid = document.getElementById('quizGrid');
+    const elSort = document.getElementById('sortBy');
+    const elSearch = document.getElementById('searchBox');
+
+    // State
+    let coursesList = [];              // [{id,title,courseNumber,label}]
+    const courseMap = new Map();       // id -> {title, courseNumber, label}
+    let masterQuizzes = [];            // ALL quizzes across teacher's courses (preloaded)
+    let filtered = [];
+    let currentCourseId = '';
+    let currentModuleId = '';
+    const moduleCache = new Map();     // moduleId -> { title, moduleNumber }
+
+    // Utils
+    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
+    function goCreateQuiz() { window.location.href = "/TEACHER/quizzes/quiz.html"; }
+    function escapeHTML(str = '') { return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    function preview(text, n = 140) { const t = (text || '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; }
+    function tsToMs(ts) {
+      if (!ts) return null;
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      if (typeof ts === 'number') return ts;
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d.getTime();
+    }
+
+    // Button spinner helper
+    function withSpinner(btnEl) {
+      if (!btnEl || !(btnEl instanceof HTMLElement)) return () => { };
+      const original = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Working…';
+      return () => { btnEl.disabled = false; btnEl.innerHTML = original; };
+    }
+
+    // Load courses
+    async function loadCourses() {
+      const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
+      const courses = await res.json(); // plain array
+      courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      coursesList = courses.map((c, idx) => {
+        const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
+        const title = c.title || c.name || 'Untitled';
+        const label = `#${n} — ${title}`;
+        courseMap.set(c.id, { title, courseNumber: n, label });
+        return { id: c.id, title, courseNumber: n, label };
+      });
+
+      const opts = ['<option value="">All courses</option>'];
+      coursesList.forEach(c => opts.push(`<option value="${c.id}">${escapeHTML(c.label)}</option>`));
+      elCourse.innerHTML = opts.join('');
+    }
+
+    // Fetch module meta and cache it
+    async function getModuleMeta(moduleId) {
+      if (!moduleId) return null;
+      if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
+      try {
+        const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`);
+        const js = await r.json();
+        const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null, courseId: js.courseId } : null;
+        moduleCache.set(moduleId, meta);
+        return meta;
+      } catch {
+        moduleCache.set(moduleId, null);
+        return null;
+      }
+    }
+
+    // Populate module selector for a chosen course
+    async function populateModuleFilterForCourse(courseId) {
+      elModule.disabled = !courseId;
+      if (!courseId) {
+        elModule.innerHTML = `<option value="">All modules</option>`;
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules`);
+        const js = await res.json();
+        const mods = Array.isArray(js) ? js : (js.modules || []);
+        mods.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+        elModule.innerHTML = `<option value="">All modules</option>` +
+          mods.map(m => `<option value="${m.id}">Module ${m.moduleNumber ?? ''}: ${escapeHTML(m.title || 'Untitled')}</option>`).join('');
+        elModule.disabled = false;
+      } catch {
+        elModule.innerHTML = `<option value="">(Failed to load modules)</option>`;
+        elModule.disabled = true;
+      }
+    }
+
+    // PRELOAD: all quizzes (only for teacher's courses)
+    async function preloadAllQuizzes() {
+      elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading quizzes…</div></div>`;
+      try {
+        const res = await fetch(`${API}/quizzes?includeArchived=1`);
+        const data = await res.json();
+        const all = Array.isArray(data.quizzes) ? data.quizzes : [];
+        const visible = all.filter(q => q.archived !== true && q.isArchived !== true);
+
+
+        // Only keep quizzes whose courseId is one of teacher's courses
+        const allowedCourseIds = new Set(coursesList.map(c => c.id));
+        const mine = all.filter(q => allowedCourseIds.has(q.courseId));
+
+        // hydrate with module meta for labels
+        const uniqueModuleIds = [...new Set(mine.map(q => q.moduleId).filter(Boolean))];
+        await Promise.all(uniqueModuleIds.map(getModuleMeta));
+
+        masterQuizzes = mine.map(q => {
+          const m = q.moduleId ? moduleCache.get(q.moduleId) : null;
+          return {
+            ...q,
+            _archived: !!q.archived,
+            _dueMs: tsToMs(q.dueAt),
+            _createdMs: tsToMs(q.createdAt) ?? 0,
+            _course: courseMap.get(q.courseId) || null,
+            _module: m
+          };
+        });
+
+        // Default: all courses/modules, sort by nearest due
+        currentCourseId = '';
+        currentModuleId = '';
+        elCourse.value = '';
+        elModule.innerHTML = `<option value="">All modules</option>`;
+        elModule.disabled = true;
+        elSort.value = 'due';
+        elSearch.value = '';
+        applyFilters();
+      } catch (e) {
+        console.error(e);
+        elGrid.innerHTML = `<div class="col-12"><div class="empty text-center text-danger">Failed to load quizzes.</div></div>`;
+      }
+    }
+
+    // Apply search/sort/filter to preloaded list
+    function applyFilters() {
+      const q = (elSearch.value || '').toLowerCase().trim();
+
+      // base = all
+      let list = masterQuizzes.slice();
+
+      // filter course
+      if (currentCourseId) {
+        list = list.filter(z => z.courseId === currentCourseId);
+      }
+      // filter module (only if a course is chosen)
+      if (currentCourseId && currentModuleId) {
+        list = list.filter(z => z.moduleId === currentModuleId);
+      }
+
+      // search
+      if (q) {
+        list = list.filter(z => {
+          const hay = `${z.title || ''} ${z.description || ''} ${(z._course?.title) || ''} ${(z._module?.title) || ''}`.toLowerCase();
+          return hay.includes(q);
+        });
+      }
+
+      // sort
+      const s = elSort.value;
+      if (s === 'az') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      else if (s === 'due') list.sort((a, b) => (a._dueMs ?? Infinity) - (b._dueMs ?? Infinity));
+      else list.sort((a, b) => (b._createdMs ?? 0) - (a._createdMs ?? 0));
+
+      filtered = list;
+      renderGrid();
+    }
+
+    function fmtModule(meta) {
+      if (!meta) return '—';
+      const n = meta.moduleNumber;
+      const t = (meta.title || '').trim();
+      if (n != null && t) return `Module ${n} • ${t}`;
+      if (n != null) return `Module ${n}`;
+      return t || '—';
+    }
+
+    // Archive / Unarchive
+    async function setArchive(id, on, btnEl) {
+      const restore = withSpinner(btnEl);
+      try {
+        const res = await fetch(`${API}/quizzes/${id}/archive`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archived: !!on })
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || !j.success) {
+          alert(j.message || 'Archive endpoint not found on server. Please add PATCH /quizzes/:id/archive.');
+          return;
+        }
+        await preloadAllQuizzes();
+      } catch (e) {
+        console.error(e);
+        alert('Server error while updating archive state.');
+      } finally {
+        restore();
+      }
+    }
+
+    // DELETE (with cascade)
+    async function deleteQuiz(id, btnEl) {
+      const warn = `Delete this quiz?
+
+This will PERMANENTLY remove:
+• the quiz and its questions
+• ALL student attempts/scores for this quiz
+• ANY essay submissions linked to this quiz
+
+This cannot be undone. Continue?`;
+      if (!confirm(warn)) return;
+
+      const restore = withSpinner(btnEl);
+      try {
+        const res = await fetch(`${API}/quizzes/${id}`, { method: 'DELETE' });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j.success) {
+          alert(j.message || 'Quiz deleted (all related scores removed).');
+          await preloadAllQuizzes();
+        } else {
+          alert(j.message || 'Failed to delete quiz.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Server error while deleting the quiz.');
+      } finally {
+        restore();
+      }
+    }
+
+    function renderGrid() {
+      if (!filtered.length) {
+        elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No quizzes found.</div></div>`;
+        return;
+      }
+
+      elGrid.innerHTML = filtered.map((qz, idx) => {
+        const s = qz.settings || {};
+        const hasTimer = !!s.timerEnabled;
+        const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
+        const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
+        const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
+
+        const randTxt = (s.shuffleQuestions === false) ? 'Fixed order' : 'Randomized';
+        const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
+        const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
+
+        const courseBadge = qz._course ? `<span class="badge-course"><i class="bi bi-book me-1"></i>${escapeHTML(qz._course.label)}</span>` : '';
+        const moduleBadge = qz._module ? `<span class="badge-module"><i class="bi bi-box me-1"></i>${escapeHTML(fmtModule(qz._module))}</span>` : '';
+
+        const archivedBadge = qz._archived ? `<span class="badge-archived ms-2"><i class="bi bi-archive me-1"></i>Archived</span>` : '';
+
+        // Buttons: Primary = Unpublish/Archive OR Publish; Secondary = Delete; Tertiary = Edit
+        const primaryLabel = qz._archived ? 'Publish' : 'Unpublish / Archive';
+        const primaryIcon = qz._archived ? 'bi-upload' : 'bi-archive';
+        const primaryTitle = qz._archived
+          ? 'Publish: make this quiz visible to students again'
+          : 'Unpublish/Archive: hide from students but keep for you';
+
+        return `
+          <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+            <div class="quiz-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center">
+                  <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
+                  ${archivedBadge}
+                </div>
+                <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
+              </div>
+
+              <div class="mb-2 d-flex flex-wrap gap-1">${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}</div>
+
+              <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
+
+              <div class="d-flex flex-wrap gap-1 mb-2">
+                <span class="badge-soft"><i class="bi bi-shuffle"></i>${randTxt}</span>
+                <span class="badge-soft"><i class="bi bi-grid-1x2"></i>${pageTxt}</span>
+                <span class="badge-soft"><i class="bi bi-arrow-left-right"></i>${backTxt}</span>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between small-muted">
+                <span><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueTxt}</span>
+                <span>Attempts: ${attemptsTxt}</span>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 mt-3">
+                <button class="btn btn-sm btn-secondary" title="${primaryTitle}"
+                        onclick="setArchive('${qz.id}', ${!qz._archived}, this)">
+                  <i class="bi ${primaryIcon} me-1"></i>${primaryLabel}
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="openEdit('${qz.id}')">
+                  <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-danger"
+                        title="Also removes all student scores/attempts for this quiz"
+                        onclick="deleteQuiz('${qz.id}', this)">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // EDIT SUPPORT
+    let quizzesById = {};
+    function rebuildQuizMap(){ quizzesById = {}; masterQuizzes.forEach(q => quizzesById[q.id] = q); }
+
+    function openEdit(id){
+      rebuildQuizMap();
+      const quiz = quizzesById[id];
+      if (!quiz) return alert('Quiz not found.');
+
+      document.getElementById('titleEdit').value = quiz.title || '';
+      document.getElementById('descEdit').value  = quiz.description || '';
+
+      if (quiz.dueAt?.seconds || quiz.dueAt?._seconds) {
+        const secs = quiz.dueAt.seconds ?? quiz.dueAt._seconds;
+        const d = new Date(secs * 1000);
+        document.getElementById('dueAtEdit').value = d.toISOString().slice(0,16);
+      } else {
+        document.getElementById('dueAtEdit').value = "";
+      }
+
+      document.getElementById('attemptsEdit').value =
+        (quiz.attemptsAllowed==null || quiz.attemptsAllowed===0) ? 0 : quiz.attemptsAllowed;
+
+      const s = quiz.settings || {};
+      const timerEnabledEl = document.getElementById('timerEnabledEdit');
+      const timerMinutesEl = document.getElementById('timerMinutesEdit');
+      const graceSecondsEl = document.getElementById('graceSecondsEdit');
+      timerEnabledEl.checked = !!s.timerEnabled;
+      timerMinutesEl.disabled = !timerEnabledEl.checked;
+      graceSecondsEl.disabled = !timerEnabledEl.checked;
+      timerMinutesEl.value = timerEnabledEl.checked ? (s.durationMinutes || '') : '';
+      graceSecondsEl.value = timerEnabledEl.checked ? (s.graceSeconds || 0) : '';
+      timerEnabledEl.onchange = () => {
+        const on = timerEnabledEl.checked;
+        timerMinutesEl.disabled = !on;
+        graceSecondsEl.disabled = !on;
+        if (!on){ timerMinutesEl.value = ''; graceSecondsEl.value = ''; }
+      };
+
+      // Behavior
+      const shuffleEl = document.getElementById('shuffleEdit');
+      const pageEnabledEl = document.getElementById('paginationEnabledEdit');
+      const perPageEl = document.getElementById('perPageEdit');
+      const backtrackEl = document.getElementById('backtrackEdit');
+
+      shuffleEl.checked = (s.shuffleQuestions !== false);
+      pageEnabledEl.checked = !!(s.pagination && s.pagination.enabled);
+      perPageEl.disabled = !pageEnabledEl.checked;
+      perPageEl.value = pageEnabledEl.checked ? (s.pagination?.perPage || 1) : 1;
+      backtrackEl.checked = (s.backtrackingAllowed !== false);
+      pageEnabledEl.onchange = () => {
+        perPageEl.disabled = !pageEnabledEl.checked;
+        if (!pageEnabledEl.checked) perPageEl.value = 1;
+      };
+
+      // Questions
+      const body = document.getElementById('editQuizBody');
+      body.innerHTML = '';
+      (quiz.questions || []).forEach((qq, i) => {
+        body.innerHTML += `
+          <div class="mb-3 border p-3 rounded">
+            <label class="form-label">Question ${i+1}</label>
+            <input type="text" name="question${i}" class="form-control" value="${escapeHTML(qq.question||'')}" required>
+
+            <div class="mt-2">
+              <label class="form-label">Choices</label>
+              ${['A','B','C','D'].map(L => `
+                <input type="text" name="${L}${i}" class="form-control mb-1" placeholder="${L}" value="${escapeHTML(qq.choices?.[L]||'')}" ${L==='A'||L==='B'?'required':''}>
+              `).join('')}
+            </div>
+
+            <label class="form-label mt-2">Correct Answer</label>
+            <select name="correct${i}" class="form-select">
+              ${['A','B','C','D'].map(L => `<option value="${L}" ${qq.correctAnswer===L?'selected':''}>${L}</option>`).join('')}
+            </select>
+          </div>
+        `;
+      });
+
+      document.getElementById('editQuizForm').dataset.quizId = id;
+      new bootstrap.Modal(document.getElementById('editQuizModal')).show();
+    }
+
+    async function deleteQuiz(id){
+      if (!confirm('Delete this quiz?')) return;
+      try{
+        const res = await fetch(`${API}/quizzes/${id}`, { method:'DELETE' });
+        const j = await res.json();
+        if (j.success) {
+          alert('Deleted.');
+          await preloadAllQuizzes();
+        } else {
+          alert(j.message || 'Failed to delete quiz.');
+        }
+      }catch(e){
+        console.error(e);
+        alert('Server error.');
+      }
+    }
+
+    // Events
+    elCourse.addEventListener('change', async () => {
+      currentCourseId = elCourse.value || '';
+      currentModuleId = '';
+      await populateModuleFilterForCourse(currentCourseId);
+      applyFilters();
+    });
+    elModule.addEventListener('change', () => {
+      currentModuleId = elModule.value || '';
+      applyFilters();
+    });
+    elSort.addEventListener('change', applyFilters);
+    elSearch.addEventListener('input', applyFilters);
+
+    // Boot
+    (async function init(){
+      try{
+        await loadCourses();
+        await preloadAllQuizzes();  // show everything immediately
+      }catch(e){
+        console.error(e);
+      }
+    })();
+  </script>
+
+  <!-- Edit Modal -->
+  <div class="modal fade" id="editQuizModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="editQuizForm">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Quiz</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row g-3 mb-2">
+              <div class="col-md-6">
+                <label class="form-label">Title</label>
+                <input type="text" id="titleEdit" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Description</label>
+                <input type="text" id="descEdit" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Due Date &amp; Time</label>
+                <input type="datetime-local" id="dueAtEdit" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Attempts Allowed</label>
+                <div class="input-group">
+                  <input type="number" id="attemptsEdit" min="0" step="1" class="form-control" placeholder="0 = unlimited">
+                  <span class="input-group-text">0 = unlimited</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timer -->
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label fw-bold mb-0"><i class="bi bi-stopwatch me-1"></i> Timer</label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="timerEnabledEdit">
+                  <label class="form-check-label" for="timerEnabledEdit">Enable</label>
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                  <label class="form-label">Time Limit (minutes)</label>
+                  <input type="number" id="timerMinutesEdit" class="form-control" min="1" step="1" placeholder="e.g., 30" disabled>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Grace (seconds)</label>
+                  <input type="number" id="graceSecondsEdit" class="form-control" min="0" step="1" placeholder="e.g., 10" disabled>
+                </div>
+              </div>
+              <div class="form-text mt-1">Auto-submits after time + grace.</div>
+            </div>
+
+            <!-- Behavior -->
+            <div class="border rounded p-3 mb-3">
+              <label class="form-label fw-bold mb-2"><i class="bi bi-gear me-1"></i> Behavior</label>
+
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="shuffleEdit">
+                    <label class="form-check-label" for="shuffleEdit">Randomize questions (default)</label>
+                  </div>
+                  <div class="form-text">Off = keep original order.</div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="paginationEnabledEdit">
+                    <label class="form-check-label" for="paginationEnabledEdit">Enable pagination</label>
+                  </div>
+                  <div class="input-group mt-1">
+                    <span class="input-group-text">Per page</span>
+                    <input type="number" class="form-control" id="perPageEdit" min="1" step="1" value="1" disabled>
+                  </div>
+                  <div class="form-text">Show N questions per page.</div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="backtrackEdit">
+                    <label class="form-check-label" for="backtrackEdit">Allow backtracking</label>
+                  </div>
+                  <div class="form-text">Off = students cannot go back.</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="editQuizBody"></div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit submit handler -->
+  <script>
+    document.getElementById('editQuizForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const quizId = form.dataset.quizId;
+      if (!quizId) return;
+
+      const fd = new FormData(form);
+      const qs = [];
+      let i = 0;
+      while (fd.has(`question${i}`)) {
+        qs.push({
+          question: fd.get(`question${i}`) || '',
+          choices: { A: fd.get(`A${i}`)||'', B: fd.get(`B${i}`)||'', C: fd.get(`C${i}`)||'', D: fd.get(`D${i}`)||'' },
+          correctAnswer: fd.get(`correct${i}`) || 'A'
+        });
+        i++;
+      }
+
+      const timerEnabled = document.getElementById('timerEnabledEdit').checked;
+      const settings = timerEnabled ? {
+        timerEnabled: true,
+        durationMinutes: parseInt(document.getElementById('timerMinutesEdit').value, 10),
+        graceSeconds: parseInt(document.getElementById('graceSecondsEdit').value || '0', 10)
+      } : { timerEnabled: false };
+
+      settings.shuffleQuestions = document.getElementById('shuffleEdit').checked;
+      const pagOn = document.getElementById('paginationEnabledEdit').checked;
+      const per = parseInt(document.getElementById('perPageEdit').value || '1', 10);
+      settings.pagination = { enabled: pagOn, perPage: (Number.isInteger(per) && per > 0) ? per : 1 };
+      settings.backtrackingAllowed = document.getElementById('backtrackEdit').checked;
+
+      const title = document.getElementById('titleEdit').value.trim();
+      const description = document.getElementById('descEdit').value.trim();
+      const dueAt = document.getElementById('dueAtEdit').value;
+      const attemptsAllowed = parseInt(document.getElementById('attemptsEdit').value || '0', 10);
+
+      try {
+        const res = await fetch(`${API}/quizzes/${quizId}`, {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            title, description, questions: qs, settings,
+            dueAt, attemptsAllowed: Number.isInteger(attemptsAllowed) ? attemptsAllowed : 0
+          })
+        });
+        const j = await res.json();
+        if (j.success) {
+          alert('Quiz updated.');
+          bootstrap.Modal.getInstance(document.getElementById('editQuizModal')).hide();
+          await preloadAllQuizzes();   // refresh full list so filters still work
+        } else {
+          alert(j.message || 'Failed to update quiz.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Server error.');
+      }
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html> 

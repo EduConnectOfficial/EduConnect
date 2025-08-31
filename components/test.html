@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sidebar with Hover Expand + Dropdown</title>
+
+  <!-- Bootstrap Icons only --> 
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/components/test.css" />
+  <link rel="stylesheet" href="/components/sidebar.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <nav class="sidebar" role="navigation" aria-label="Main Sidebar Navigation">
+      <div class="logo">Main Menu</div>
+
+      <ul class="nav-links">
+        <li>
+          <a href="/ADMIN/dashboard/dashboard.html">
+            <i class="bi bi-house-door-fill"></i>
+            <span>Dashboard</span>
+          </a>
+        </li>
+
+       <!-- Course Dropdown -->
+<li class="dropdown" id="courseDropdown">
+  <a aria-expanded="false" href="#" tabindex="0">
+    <i class="bi bi-folder-plus"></i>
+    <span>Course</span>
+    <i class="bi bi-chevron-down dropdown-icon"></i>
+  </a>
+  <ul class="dropdown-menu">
+    <li><a href="/ADMIN/courseManagement/course.html"><i class="bi bi-file-earmark-plus"></i> Add Course</a></li>
+    <li><a href="/ADMIN/courseManagement/course_list.html"><i class="bi bi-card-list"></i> Course List</a></li>
+  </ul>
+</li>
+
+<!-- Quiz Dropdown -->
+<li class="dropdown" id="quizDropdown">
+  <a aria-expanded="false" href="#" tabindex="0">
+    <i class="bi bi-journal-text"></i>
+    <span>Quiz</span>
+    <i class="bi bi-chevron-down dropdown-icon"></i>
+  </a>
+  <ul class="dropdown-menu">
+    <li><a href="/Modules/list.html"><i class="bi bi-layers"></i> Select Course</a></li>
+    <li><a href="/Modules/list.html"><i class="bi bi-journal-richtext"></i> Module List</a></li>
+    <li><a href="/quiz/add.html"><i class="bi bi-patch-plus"></i> Add Quiz</a></li>
+    <li><a href="/quiz/list.html"><i class="bi bi-ui-checks"></i> Quiz List</a></li>
+  </ul>
+</li>
+
+      </ul>
+
+      <div class="sidebar-footer">
+        <a href="../login/login.html" class="logout-btn">Logout</a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main">
+      <header class="header-top">
+        <img src="/assets/digipic_logo.png" alt="DigiPic Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="bi bi-search"></i>
+        </div>
+        <button class="profile-btn">
+          <i class="bi bi-person-circle"></i>
+        </button>
+      </header>
+
+      <section class="content">
+        <h2 class="mt-4 mb-3 fw-bold">USER ANALYTICS</h2>
+        <div class="analytics-cards">
+          <div class="analytics-card bg-primary text-white">
+            <h5>Total Users</h5>
+            <h2>9</h2>
+            <p>100% vs last</p>
+          </div>
+          <div class="analytics-card bg-success text-white">
+            <h5>Active Users</h5>
+            <h2>2</h2>
+            <p>100% vs last</p>
+          </div>
+          <div class="analytics-card bg-warning text-dark">
+            <h5>Inactive Users</h5>
+            <h2>3</h2>
+            <p>100% vs last</p>
+          </div>
+        </div>
+
+        <h2 class="mt-5">Platform Insights</h2>
+        <div class="widgets">
+          <div class="card dark-card">
+            <h3>Top Course</h3>
+            <p>“Photography Basics”</p>
+            <p>Completion Rate: 78%</p>
+          </div>
+          <div class="card dark-card">
+            <h3>Most Completed Module</h3>
+            <p>“Lighting & Composition”</p>
+            <p>Users Completed: 653</p>
+          </div>
+          <div class="card dark-card">
+            <h3>Average Quiz Score</h3>
+            <p>87%</p>
+          </div>
+          <div class="card dark-card">
+            <h3>Daily Active Users</h3>
+            <p>394</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Sidebar + Dropdown Toggle Logic -->
+  <script>
+    document.querySelectorAll('.dropdown > a').forEach(anchor => {
+      anchor.addEventListener('click', e => {
+        e.preventDefault();
+        const parentLi = anchor.parentElement;
+
+        // Toggle dropdown open/close class
+        parentLi.classList.toggle('open');
+
+        // Toggle aria-expanded attribute
+        const isExpanded = anchor.getAttribute('aria-expanded') === 'true';
+        anchor.setAttribute('aria-expanded', !isExpanded);
+      });
+    });
+  </script>
+
+  <!-- Auth Check -->
+  <script>
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.username) {
+      window.location.href = "../login/login.html";
+    }
+  </script>
+</body>
+</html>

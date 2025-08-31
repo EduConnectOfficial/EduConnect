@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Sidebar styles -->
+  <link rel="stylesheet" href="../settings/setting.css" />
+
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Account Settings</h1>
+
+        <div class="row g-3 justify-content-center">
+          <div class="col-12 col-xl-10">
+
+            <!-- SECURITY -->
+            <div class="ui-card card-themed mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-shield-lock"></i>Security Controls</h2>
+                <div class="ui-subtext">Change your password and manage 2FA.</div>
+              </div>
+              <form id="securityForm">
+                <div class="row g-3">
+                  <div class="col-12 col-md-4">
+                    <label for="currentPass" class="form-label settings-label">Current Password</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" id="currentPass" required />
+                      <button class="btn btn-amber-outline" type="button" data-toggle="pw" data-target="#currentPass"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label for="newPass" class="form-label settings-label">New Password</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" id="newPass" required />
+                      <button class="btn btn-amber-outline" type="button" data-toggle="pw" data-target="#newPass"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="form-text">Use at least 8 characters, with a mix of letters & numbers.</div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label for="confirmPass" class="form-label settings-label">Confirm New Password</label>
+                    <div class="input-group">
+                      <input type="password" class="form-control" id="confirmPass" required />
+                      <button class="btn btn-amber-outline" type="button" data-toggle="pw" data-target="#confirmPass"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" id="twoFactorSwitch">
+                      <label class="form-check-label" for="twoFactorSwitch">Enable Two-Factor Authentication</label>
+                    </div>
+                  </div>
+
+                  <div id="twoFAOptions" class="col-12 d-none">
+                    <div class="row g-3">
+                      <div class="col-12 col-md-4">
+                        <label class="form-label settings-label">2FA Method</label>
+                        <select id="twoFAMethod" class="form-select">
+                          <option value="app">Authenticator App</option>
+                          <option value="sms">SMS</option>
+                          <option value="email">Email</option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-md-8">
+                        <label class="form-label settings-label">Verification Code</label>
+                        <div class="input-group">
+                          <input id="twoFACode" type="text" class="form-control" placeholder="Enter 6-digit code"/>
+                          <button class="btn btn-amber-outline" type="button" id="sendCodeBtn">Send Code</button>
+                        </div>
+                        <div class="form-text">Enter the code sent to your chosen method to verify.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 d-flex justify-content-end gap-2">
+                    <button class="btn btn-amber-outline" type="button" id="securityResetBtn">Reset</button>
+                    <button class="btn btn-amber" type="submit">Save Security Settings</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- NOTIFICATIONS -->
+            <div class="ui-card card-themed mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-bell"></i>Notification Preferences</h2>
+                <div class="ui-subtext">Choose how you want to receive updates.</div>
+              </div>
+              <div class="row g-3">
+                <div class="col-12 col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="notifInApp" checked>
+                    <label class="form-check-label settings-label" for="notifInApp">In-App Notifications</label>
+                  </div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="notifEmail">
+                    <label class="form-check-label settings-label" for="notifEmail">Email Updates</label>
+                  </div>
+                </div>
+                
+                <div class="col-12 d-flex justify-content-end">
+                  <button class="btn btn-amber" id="saveNotifBtn">Save Notification Settings</button>
+                </div>
+              </div>
+            </div>
+
+            
+          </div>
+        </div>
+
+      </div> <!-- /content -->
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Auth Check -->
+  <script>
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.email) {
+      window.location.href = "../login/login.html";
+    } else {
+      document.getElementById("Username").textContent = userData.username;
+    }
+  </script>
+
+  <!-- Settings Logic (localStorage demo; swap with backend later) -->
+  <script>
+    // ----- UTIL -----
+    function togglePassword(btn){
+      const input = document.querySelector(btn.getAttribute('data-target'));
+      if(!input) return;
+      if(input.type === 'password'){ input.type = 'text'; btn.innerHTML = '<i class="bi bi-eye-slash"></i>'; }
+      else { input.type = 'password'; btn.innerHTML = '<i class="bi bi-eye"></i>'; }
+    }
+
+    // ----- PROFILE FORM -----
+    const defaultSettings = {
+      profile: { fullName:'', userName:'', email:'', phone:'', avatar:'' },
+      security: { twoFA:false, twoFAMethod:'app' },
+      notifications: { inApp:true, email:false, sms:false },
+      language: 'en'
+    };
+
+    function loadSettings(){
+      const saved = JSON.parse(localStorage.getItem('studentSettings') || 'null') || defaultSettings;
+      // Profile
+      document.getElementById('fullName').value = saved.profile.fullName || (JSON.parse(localStorage.getItem('user'))?.username || '');
+      document.getElementById('userName').value = saved.profile.userName || (JSON.parse(localStorage.getItem('user'))?.username || '');
+      document.getElementById('email').value = saved.profile.email || (JSON.parse(localStorage.getItem('user'))?.email || '');
+      document.getElementById('phone').value = saved.profile.phone || '';
+      if(saved.profile.avatar){
+        setAvatar(saved.profile.avatar);
+      }
+      // Security
+      document.getElementById('twoFactorSwitch').checked = !!saved.security.twoFA;
+      document.getElementById('twoFAMethod').value = saved.security.twoFAMethod || 'app';
+      document.getElementById('twoFAOptions').classList.toggle('d-none', !saved.security.twoFA);
+      // Notifications
+      document.getElementById('notifInApp').checked = saved.notifications.inApp ?? true;
+      document.getElementById('notifEmail').checked = !!saved.notifications.email;
+      document.getElementById('notifSMS').checked = !!saved.notifications.sms;
+      // Language
+      document.getElementById(saved.language === 'fil' ? 'langFIL' : 'langEN').checked = true;
+    }
+
+    function saveSettings(partial){
+      const cur = JSON.parse(localStorage.getItem('studentSettings') || 'null') || defaultSettings;
+      const next = {...cur, ...partial};
+      localStorage.setItem('studentSettings', JSON.stringify(next));
+    }
+
+    // avatar preview
+    function setAvatar(dataUrl){
+      const wrap = document.getElementById('avatarWrap');
+      wrap.innerHTML = `<img src="${dataUrl}" alt="Avatar" class="avatar">`;
+    }
+
+    // ----- EVENTS -----
+    document.addEventListener('click', (e)=>{
+      if(e.target.matches('[data-toggle="pw"], [data-toggle="pw"] *')){
+        const btn = e.target.closest('[data-toggle="pw"]');
+        togglePassword(btn);
+      }
+    });
+
+    document.getElementById('avatarInput').addEventListener('change', (e)=>{
+      const file = e.target.files?.[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ()=> {
+        setAvatar(reader.result);
+        const cur = JSON.parse(localStorage.getItem('studentSettings') || 'null') || defaultSettings;
+        cur.profile.avatar = reader.result;
+        localStorage.setItem('studentSettings', JSON.stringify(cur));
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const profile = {
+        fullName: document.getElementById('fullName').value.trim(),
+        userName: document.getElementById('userName').value.trim(),
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value.trim(),
+        avatar: (JSON.parse(localStorage.getItem('studentSettings')||'null')?.profile?.avatar)||''
+      };
+      saveSettings({ profile });
+      alert('Profile saved.');
+    });
+
+    // Security
+    document.getElementById('twoFactorSwitch').addEventListener('change', (e)=>{
+      const enabled = e.target.checked;
+      document.getElementById('twoFAOptions').classList.toggle('d-none', !enabled);
+      const cur = JSON.parse(localStorage.getItem('studentSettings') || 'null') || defaultSettings;
+      cur.security.twoFA = enabled;
+      localStorage.setItem('studentSettings', JSON.stringify(cur));
+    });
+
+    document.getElementById('sendCodeBtn').addEventListener('click', ()=>{
+      // demo only
+      alert('Verification code sent (demo).');
+    });
+
+    document.getElementById('securityResetBtn').addEventListener('click', ()=>{
+      document.getElementById('currentPass').value = '';
+      document.getElementById('newPass').value = '';
+      document.getElementById('confirmPass').value = '';
+      document.getElementById('twoFACode').value = '';
+    });
+
+    document.getElementById('securityForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const newPass = document.getElementById('newPass').value;
+      const confirm = document.getElementById('confirmPass').value;
+      if(newPass !== confirm){ alert('Passwords do not match.'); return; }
+      // save 2FA method selection
+      const cur = JSON.parse(localStorage.getItem('studentSettings') || 'null') || defaultSettings;
+      cur.security.twoFAMethod = document.getElementById('twoFAMethod').value;
+      localStorage.setItem('studentSettings', JSON.stringify(cur));
+      alert('Security settings saved. (Connect to backend for real updates.)');
+    });
+
+    // Notifications
+    document.getElementById('saveNotifBtn').addEventListener('click', ()=>{
+      const notifications = {
+        inApp: document.getElementById('notifInApp').checked,
+        email: document.getElementById('notifEmail').checked,
+        sms: document.getElementById('notifSMS').checked,
+      };
+      saveSettings({ notifications });
+      alert('Notification settings saved.');
+    });
+
+    // Language
+    document.getElementById('saveLangBtn').addEventListener('click', ()=>{
+      const lang = document.getElementById('langFIL').checked ? 'fil' : 'en';
+      saveSettings({ language: lang });
+      alert('Language saved. (Apply i18n strings on next load.)');
+    });
+
+    // Boot
+    document.addEventListener('DOMContentLoaded', loadSettings);
+    loadSettings();
+  </script>
+  <script>
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

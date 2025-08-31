@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@json2csv/plainjs": "^7.0.6",
+    "dayjs": "^1.11.13",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "pdfkit": "^0.17.1",
+    "xlsx": "^0.18.5"
+  }
+}

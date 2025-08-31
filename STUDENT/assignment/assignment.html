@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>EduConnect Student – Assignments</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="../assignment/assignment.css" />
+
+  <style>
+    :root {
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --card-radius:14px;
+    }
+    html, body { height:100%; margin:0; background:var(--bg); color:var(--text); }
+    .dashboard { display:flex; min-height:100vh; }
+    .main { margin-left:70px; width:calc(100% - 70px); transition:margin-left .3s ease,width .3s ease; display:flex; flex-direction:column; min-height:100vh; background:var(--bg); }
+    .sidebar:hover ~ .main { margin-left:220px; width:calc(100% - 220px); }
+
+    .header-top {
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:1rem 2rem; background:linear-gradient(to bottom,#4A1A0C,#7A2810);
+      color:#fff; box-shadow:0 4px 8px rgba(0,0,0,.1); position:sticky; top:0; z-index:10;
+    }
+    .logo-header { height:45px; }
+    .search-box { position:relative; flex:1; max-width:500px; margin:0 20px; }
+    .search-box input { width:100%; padding:10px 14px; border-radius:30px; border:none; outline:none; }
+    .search-box i { position:absolute; right:15px; top:50%; transform:translateY(-50%); color:#999; }
+    .profile-btn { background:none; border:none; font-size:1.8rem; color:#fff; cursor:pointer; display:flex; align-items:center; gap:8px; }
+    .profile-btn .username { font-size:14px; }
+
+    .content { padding:24px; }
+    .page-title { font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
+    .page-title.brand { background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+    .ui-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    .ui-card.card-themed { border-radius:var(--card-radius); border:1px solid rgba(0,0,0,.06); box-shadow:0 10px 24px rgba(0,0,0,.10); overflow:hidden; }
+    .ui-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .ui-card.card-themed .ui-card-head {
+      margin:-16px -16px 12px -16px; padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9; border-bottom:1px solid rgba(255,255,255,.1);
+    }
+    .ui-card-title { font-size:1rem; font-weight:700; margin:0; display:flex; gap:8px; align-items:center; }
+    .ui-card.card-themed .ui-card-title i { color:#FFD8A9; }
+    .ui-card.card-themed > :not(.ui-card-head) { color:#1f2328; }
+    .ui-subtext { font-size:.9rem; color:var(--muted); }
+
+    .btn-amber { background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border:none; }
+    .btn-amber:hover { filter:brightness(1.05); color:#fff; }
+    .btn-amber-outline { background:#fff; color:var(--brand-accent-2); border:1px solid var(--brand-accent-2); }
+    .btn-amber-outline:hover { background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border-color:transparent; }
+    .form-control:focus, .form-select:focus { border-color:var(--brand-accent-2); box-shadow:0 0 0 .2rem rgba(255,106,0,.18); }
+
+    .assignment-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px; height:100%; box-shadow:0 8px 18px rgba(0,0,0,.08); }
+    .badge-soft { display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(176,60,16,.25); border-radius:999px; padding:2px 8px; font-size:.75rem; color:var(--brand-accent-2); background:linear-gradient(90deg, rgba(255,106,0,.12), rgba(176,60,16,.12)); }
+    .muted { color:var(--muted); }
+
+    .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+    .st-open { background:#22c55e; }
+    .st-closed { background:#ef4444; }
+    .st-submitted { background:#3b82f6; }
+    .st-graded { background:#a855f7; }
+
+    .hint { color:var(--muted); font-size:.9rem; }
+    .attachment-list a { text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" id="searchBox" placeholder="Search assignments…"/>
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">My Assignments</h1>
+
+        <!-- Controls -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-clipboard-check"></i> Assigned Work</h2>
+            <div class="ui-subtext">Filter by course or status to focus your work.</div>
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label class="form-label">Course</label>
+              <select id="filterCourse" class="form-select">
+                <option value="All">All Courses</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Status</label>
+              <select id="filterStatus" class="form-select">
+                <option value="all">All</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="submitted">Submitted</option>
+                <option value="graded">Graded</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label">Sort</label>
+              <select id="sortBy" class="form-select">
+                <option value="dueAsc">Due Date ↑</option>
+                <option value="dueDesc">Due Date ↓</option>
+                <option value="title">Title A–Z</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-2 text-md-end">
+              <button id="refreshBtn" class="btn btn-amber w-100"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submission Success Modal -->
+<div class="modal fade" id="submissionSuccessModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810); color:#FFD8A9;">
+        <h5 class="modal-title"><i class="bi bi-check2-circle me-2"></i>Assignment submitted</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Your assignment was submitted successfully. You can verify the status in the list.
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+        <!-- Grid -->
+        <div id="assignmentsGrid" class="row g-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details-only Modal -->
+  <div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Assignment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="modalMeta" class="mb-2 muted"></div>
+          <div id="modalContent" class="mb-3"></div>
+
+          <!-- Attachments (if any) -->
+          <div id="modalAttachments" class="mt-3"></div>
+        </div>
+
+        <div class="modal-footer">
+          <span id="modalDueBadge" class="badge-soft me-auto px-2"></span>
+          <button type="button" class="btn btn-amber-outline" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page Logic -->
+  <script>
+  // ========= Config =========
+  const API_BASE = "http://localhost:5000";
+
+  // ========= Auth guard (student) =========
+  const userData = JSON.parse(localStorage.getItem("user") || "{}");
+  if (!userData?.userId || !userData?.isStudent) {
+    window.location.href = "/STUDENT/login/login.html";
+  }
+  // === Initials-only header name ===
+function initialsFrom(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (!s) return "";
+
+  // If it's an email, use the local part (e.g., jane.doe -> JD)
+  if (s.includes("@")) {
+    const local = s.split("@")[0];
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : local.slice(0, 2)
+    ).toUpperCase();
+  }
+
+  // Names/usernames: first + last token initials
+  const parts = s.split(/[\s\-]+/).filter(Boolean);
+  return (parts.length >= 2
+    ? parts[0][0] + parts[parts.length - 1][0]
+    : parts[0].slice(0, 2)
+  ).toUpperCase();
+}
+
+// Apply initials to the header
+(() => {
+  const el = document.getElementById("Username");
+  if (!el) return;
+  const displayName = userData.fullName || userData.username || userData.email || "";
+  const initials = initialsFrom(displayName) || "?";
+  el.textContent = initials;
+  el.title = displayName;                 // tooltip with full name
+  el.setAttribute("aria-label", displayName);
+})();
+
+
+  // ========= DOM refs =========
+  const grid = document.getElementById("assignmentsGrid");
+  const filterCourse = document.getElementById("filterCourse");
+  const filterStatus = document.getElementById("filterStatus");
+  const sortBy = document.getElementById("sortBy");
+  const searchBox = document.getElementById("searchBox");
+
+  const modalEl = document.getElementById('assignmentModal');
+  let assignmentModal = null;
+  document.addEventListener('DOMContentLoaded', () => {
+    assignmentModal = new bootstrap.Modal(modalEl);
+  });
+
+  // ========= State =========
+  let courses = [];     // { id, title }
+  let assignments = []; // normalized items from API
+
+  // ========= Utils =========
+  function toApiUrl(pathOrUrl) {
+    // If it's already absolute (http/https), keep as-is; else join with API_BASE
+    return /^https?:\/\//i.test(String(pathOrUrl))
+      ? String(pathOrUrl)
+      : API_BASE + String(pathOrUrl || "");
+  }
+
+  const fmtDateTime = (ms) => {
+    if (!ms) return '—';
+    try { return new Date(ms).toLocaleString(); } catch { return '—'; }
+  };
+
+  const escapeHTML = (s='') => String(s)
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+
+  function computeStatus(a) {
+    const now = Date.now();
+    const pub = a.publishAt || 0;
+    const due = a.dueAt || null;
+
+    if (a.mySubmission?.graded) return 'graded';
+    if (a.mySubmission) return 'submitted';
+
+    if (pub && now < pub) return 'closed';
+    if (due && now > due) return 'closed';
+    return 'open';
+  }
+
+  // ========= Data loaders =========
+  async function loadCourses() {
+    const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`);
+    const js = await res.json();
+    const list = Array.isArray(js.courses) ? js.courses : [];
+    courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
+    filterCourse.innerHTML = `<option value="All">All Courses</option>` +
+      courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+  }
+
+  async function tryLoadAssignmentsDirect() {
+    // Preferred: backend returns consolidated list for this student
+    const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/assignments`);
+    if (!res.ok) return null;
+    const js = await res.json().catch(()=>null);
+    if (!js || !js.success || !Array.isArray(js.assignments)) return null;
+    return js.assignments;
+  }
+
+  async function loadAssignmentsViaCourses() {
+    // Fallback: query per-course assignments
+    const all = [];
+    for (const c of courses) {
+      try {
+        const res = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(c.id)}/assignments`);
+        if (!res.ok) continue;
+        const js = await res.json();
+        const list = Array.isArray(js.assignments) ? js.assignments : Array.isArray(js) ? js : [];
+        list.forEach(a => {
+          all.push({
+            id: a.id,
+            title: a.title || 'Untitled',
+            content: a.content || '',
+            courseId: c.id,
+            courseTitle: c.title,
+            moduleId: a.moduleId || null,
+            moduleNumber: a.moduleNumber || null,
+            publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt) : null,
+            dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt) : null,
+            points: a.points ?? null,
+            mySubmission: a.mySubmission || null,
+            attachments: Array.isArray(a.attachments) ? a.attachments : []
+          });
+        });
+      } catch { /* ignore */ }
+    }
+    return all;
+  }
+
+  async function loadAll() {
+    await loadCourses();
+
+    let list = await tryLoadAssignmentsDirect();
+    if (!list) list = await loadAssignmentsViaCourses();
+
+    assignments = (list || []).map(a => ({
+      ...a,
+      publishAt: a.publishAt && a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt || null,
+      dueAt: a.dueAt && a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt || null,
+      attachments: Array.isArray(a.attachments) ? a.attachments : []
+    }));
+
+    renderGrid();
+  }
+
+  // ========= Render =========
+  function renderGrid() {
+    const q = (searchBox.value || '').toLowerCase();
+    const courseFilter = filterCourse.value;
+    const statusFilter = filterStatus.value;
+
+    let list = assignments.slice()
+      .filter(a => courseFilter === 'All' ? true : a.courseId === courseFilter)
+      .filter(a => {
+        const hay = `${a.title} ${a.content} ${a.courseTitle || ''}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .map(a => ({...a, status: computeStatus(a)}));
+
+    if (statusFilter !== 'all') {
+      list = list.filter(a => a.status === statusFilter);
+    }
+
+    if (sortBy.value === 'dueAsc') {
+      list.sort((a,b) => (a.dueAt||Infinity) - (b.dueAt||Infinity));
+    } else if (sortBy.value === 'dueDesc') {
+      list.sort((a,b) => (b.dueAt||0) - (a.dueAt||0));
+    } else if (sortBy.value === 'title') {
+      list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+    }
+
+    grid.innerHTML = '';
+    if (!list.length) {
+      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No assignments found.</div></div>`;
+      return;
+    }
+
+    list.forEach(a => {
+      const col = document.createElement('div');
+      col.className = 'col-12 col-md-6 col-xl-4';
+      const dueTxt = a.dueAt ? fmtDateTime(a.dueAt) : 'No due date';
+      const statusBadge = (() => {
+        const map = { open:'st-open', closed:'st-closed', submitted:'st-submitted', graded:'st-graded' };
+        const cls = map[a.status] || 'st-open';
+        const label = a.status.charAt(0).toUpperCase() + a.status.slice(1);
+        return `<span class="status-dot ${cls}"></span>${label}`;
+      })();
+
+      col.innerHTML = `
+        <div class="assignment-card h-100 d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="badge-soft mb-2"><i class="bi bi-journal-text"></i> ${escapeHTML(a.courseTitle || 'Course')}</div>
+              <h5 class="mb-1">${escapeHTML(a.title)}</h5>
+              <div class="muted small">
+                ${a.moduleNumber ? `Module #${a.moduleNumber} • ` : ''}Due: <strong>${dueTxt}</strong>
+              </div>
+            </div>
+            <div class="muted small text-end">${statusBadge}</div>
+          </div>
+
+          <p class="mt-2 mb-3" style="min-height:48px;">${escapeHTML(a.content).slice(0,160)}${a.content && a.content.length>160 ? '…' : ''}</p>
+
+          <div class="mt-auto d-flex gap-2">
+            <button class="btn btn-sm btn-amber" data-action="view" data-id="${a.id}">
+              <i class="bi bi-eye me-1"></i>View
+            </button>
+            <button class="btn btn-sm btn-amber-outline" data-action="submit" data-id="${a.id}">
+              <i class="bi bi-upload me-1"></i>Submit
+            </button>
+          </div>
+        </div>
+      `;
+      grid.appendChild(col);
+    });
+
+    // Wire actions
+    grid.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        const a = assignments.find(x => x.id === id);
+        if (!a) return;
+
+        if (action === 'view') {
+          openAssignmentModal(a);
+        } else if (action === 'submit') {
+          window.location.href = '/STUDENT/assignment/assignment_view.html?id=' + encodeURIComponent(a.id);
+        }
+      });
+    });
+  }
+
+  // ========= Modal (details only) =========
+  function openAssignmentModal(a) {
+    document.getElementById('modalTitle').textContent = a.title || 'Assignment';
+    const meta = `${a.courseTitle || 'Course'} • ${a.moduleNumber ? 'Module #'+a.moduleNumber+' • ' : ''}Due: ${fmtDateTime(a.dueAt)}`;
+    document.getElementById('modalMeta').textContent = meta;
+    document.getElementById('modalContent').innerHTML = `<div style="white-space:pre-wrap">${escapeHTML(a.content || '')}</div>`;
+    document.getElementById('modalDueBadge').textContent = a.dueAt ? `Due ${fmtDateTime(a.dueAt)}` : 'No due date';
+
+    // Attachments (links & uploaded files)
+    const attWrap = document.getElementById('modalAttachments');
+    const atts = Array.isArray(a.attachments) ? a.attachments : [];
+    if (!atts.length) {
+      attWrap.innerHTML = '';
+    } else {
+      const items = atts.map(x => {
+        if (x.url) {
+          const safe = escapeHTML(x.url);
+          return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${safe}" target="_blank" rel="noopener">${safe}</a></li>`;
+        } else if (x.filePath) {
+          const rel = String(x.filePath);                         // e.g. /uploads/assignments/1755...png
+          const href = escapeHTML(toApiUrl(rel));                 // prefix with API host
+          const name = escapeHTML(x.originalName || rel.split('/').pop());
+          const sizeTxt = x.size ? ` (${Math.round(x.size/1024)} KB)` : '';
+          return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+        }
+        return '';
+      }).join('');
+
+      attWrap.innerHTML = `
+        <div class="mt-2">
+          <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Attachments</div>
+          <ul class="attachment-list ps-3 mb-0">${items}</ul>
+        </div>`;
+    }
+
+    assignmentModal.show();
+  }
+
+  // ========= Controls =========
+  document.getElementById('refreshBtn').addEventListener('click', loadAll);
+  filterCourse.addEventListener('change', renderGrid);
+  filterStatus.addEventListener('change', renderGrid);
+  sortBy.addEventListener('change', renderGrid);
+  searchBox.addEventListener('input', renderGrid);
+
+  function logoutUser() {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/STUDENT/login/login.html";
+  }
+
+  // ========= Boot =========
+  (async function init(){
+    try { await loadAll(); }
+    catch (e) {
+      console.error(e);
+      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load assignments.</div></div>`;
+    }
+  })();
+</script>
+
+<script>
+  // Show success modal if redirected with ?submitted=1
+  (function(){
+    const p = new URLSearchParams(location.search);
+    if (p.get("submitted") === "1"){
+      const m = new bootstrap.Modal(document.getElementById("submissionSuccessModal"));
+      m.show();
+      // Clean the URL after showing the modal
+      const url = new URL(location.href);
+      url.searchParams.delete("submitted");
+      window.history.replaceState({}, "", url.toString());
+    }
+  })();
+</script>
+
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

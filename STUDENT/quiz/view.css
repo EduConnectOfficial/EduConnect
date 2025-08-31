@@ -1,0 +1,623 @@
+  :root {
+    --bg: #f6f8fa;
+    --text: #1f2328;
+    --muted: #6a737d;
+    --card: #fff;
+    --border: #e5e7eb;
+    --brand-dark-1: #4A1A0C;
+    --brand-dark-2: #7A2810;
+    --brand-accent-1: #FF6A00;
+    --brand-accent-2: #B03C10;
+    --card-radius: 14px;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .dashboard {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .main {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+    transition: margin-left .3s ease, width .3s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+
+  .sidebar:hover~.main {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+  }
+
+  /* Header (kept) */
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .logo-header {
+    height: 45px;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 500px;
+    margin: 0 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  .search-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9aa2a8;
+  }
+
+  .profile-btn {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .profile-btn .username {
+    font-size: 14px;
+  }
+
+  .content {
+    padding: 24px;
+  }
+
+  .page-title {
+    font-weight: 700;
+    font-size: 1.6rem;
+    text-align: center;
+    margin: 4px 0 18px;
+  }
+
+  .page-title.brand {
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Section card */
+  .ui-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .ui-card.card-themed {
+    border-radius: var(--card-radius);
+    border: 1px solid rgba(0, 0, 0, .06);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .10);
+    overflow: hidden;
+  }
+
+  .ui-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    margin: -16px -16px 12px -16px;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    color: #FFD8A9;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+  }
+
+  .ui-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .ui-card.card-themed .ui-card-title i {
+    color: #FFD8A9;
+  }
+
+  .ui-card.card-themed .ui-subtext {
+    color: #f1e8d9;
+  }
+
+  .ui-card.card-themed> :not(.ui-card-head) {
+    color: #1f2328;
+  }
+
+  .ui-subtext {
+    font-size: .9rem;
+    color: var(--muted);
+  }
+
+  /* Quiz cards */
+  .quiz-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    height: 100%;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
+  }
+
+  .quiz-title {
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .quiz-meta {
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
+  .badge-soft {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(176, 60, 16, .25);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: .75rem;
+    color: var(--brand-accent-2);
+    background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+  }
+
+  /* Buttons */
+  .btn-amber {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    color: #fff;
+    border: none;
+  }
+
+  .btn-amber:hover {
+    filter: brightness(1.05);
+    color: #fff;
+  }
+
+  .btn-amber-outline {
+    background: #fff;
+    color: var(--brand-accent-2);
+    border: 1px solid var(--brand-accent-2);
+  }
+
+  .btn-amber-outline:hover {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--brand-accent-2);
+    box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18);
+  }
+
+  .logout-btn {
+    background: linear-gradient(to bottom, #FF6A00, #B03C10);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 20px;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, color 0.3s ease;
+    user-select: none;
+    text-align: center;
+  }
+
+  .sidebar:hover .logout-btn {
+    opacity: 1;
+  }
+
+  .logout-btn:hover {
+    opacity: 0.85;
+    color: #4A1A0C;
+  }
+
+  /* Header */
+  .header-top {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .logo-header {
+    height: 45px;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 500px;
+    margin: 0 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 30px;
+    border: none;
+    outline: none;
+  }
+
+  .search-box i {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+  }
+
+  .profile-btn {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #fff;
+    cursor: pointer;
+  }
+   .text-light{
+    color: #4A1A0C !important;
+ }
+
+ /* Cards / shells */
+.page-title.brand {
+  color: #5c2a16;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.quiz-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.quiz-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 10px;
+}
+
+.quiz-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quiz-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Pills / timer */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff3ec;
+  color: #7a2810;
+  border: 1px solid #ffd9c9;
+  font-weight: 600;
+  font-size: .9rem;
+}
+
+.timer.warn {
+  color: #b42318;
+}
+
+.timer.dead {
+  color: #6b7280;
+}
+
+/* Progress */
+.progress {
+  height: 8px;
+  background: #eef0f3;
+}
+
+.progress-bar {
+  background: var(--accent);
+}
+
+/* ================================
+   Question blocks
+   ================================ */
+.q-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.q-title {
+  font-weight: 700;
+}
+
+/* ===== Multiple choice EXACT to your markup =====
+   <div class="choices">
+     <label>
+       <input type="radio">
+       <div><strong>A.</strong> Text…</div>
+     </label>
+   </div>
+*/
+.choices {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.choices>label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1.35;
+  user-select: none;
+}
+
+.choices>label>input[type="radio"] {
+  margin-top: 2px;
+  /* aligns circle with first text line */
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.choices>label>div {
+  flex: 1 1 auto;
+  word-wrap: break-word;
+  white-space: normal;
+}
+
+.choices>label:hover {
+  border-color: #d9dbe1;
+}
+
+.choices>label:has(> input[type="radio"]:focus-visible) {
+  outline: 3px solid rgba(168, 74, 42, .25);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.choices>label:has(> input[type="radio"]:checked) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: 0 0 0 3px rgba(168, 74, 42, .15);
+}
+
+/* Essay textarea */
+.q-card textarea.form-control {
+  border-radius: 12px;
+}
+
+/* Alerts & modal polish */
+.alert {
+  border-radius: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-top {
+    border-radius: 0;
+  }
+
+  .search-box {
+    display: none;
+  }
+
+  .q-card {
+    border-radius: 12px;
+  }
+
+  .choices>label {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+}
+
+
+/* === Mobile-first button ergonomics === */
+@media (max-width: 480px) {
+  /* Make buttons easy to tap and nicely spaced */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;           /* stack cleanly */
+    width: 100%;              /* full-width buttons */
+    min-height: 44px;         /* Apple HIG tap target */
+    padding: 0.9rem 1rem;     /* comfy padding */
+    font-size: 1rem;          /* avoid iOS zoom */
+    line-height: 1.2;
+    border-radius: 14px;      /* softer corners on small screens */
+    margin: 10px 0;           /* vertical gap between buttons */
+    text-align: center;
+  }
+
+  /* Icon + text alignment inside buttons */
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+
+  /* Button groups wrap nicely with spacing */
+  .btn-group,
+  .lesson-nav,
+  .content .d-flex,
+  .content .btn-toolbar {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  /* Specific: lesson prev/next should stack under title if tight */
+  .lesson-nav .btn {
+    min-width: unset;         /* let full-width rule apply */
+  }
+
+  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+  .content .d-flex.gap-2 {
+    gap: 10px !important;
+  }
+
+  /* Prevent tiny outline/ghost borders on gradient buttons */
+  .btn-amber,
+  .btn-amber-outline,
+  .back-btn,
+  .logout-btn {
+    border-width: 1px;
+  }
+}
+
+/* Tablet: keep buttons inline but add breathing room */
+@media (min-width: 481px) and (max-width: 1280px) {
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+  }
+
+  /* Lesson nav buttons keep reasonable width */
+  .lesson-nav .btn { min-width: 120px; }
+}
+/* ===============================
+   📱 MOBILE (≤480px)
+   =============================== */
+
+
+  /* Header compaction */
+  .header-top{ padding: .6rem .8rem !important; }
+  .logo-header{ display: none !important; } /* save space on phones */
+
+  /* Page padding / cards */
+  .content{ padding: 12px !important; }
+  .ui-card{ padding: 12px !important; border-radius: 14px; }
+  .quiz-shell{ gap: 12px; }
+  .quiz-head{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 10px;
+  }
+  .pill{ padding: 4px 8px; font-size: .85rem; }
+
+  /* Choices: larger tap targets */
+  .choices > label{
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .choices > label > input[type="radio"]{
+    transform: scale(1.1);
+  }
+
+  /* Pager: tidy 3-column grid + sticky bottom on long pages */
+  .quiz-pager{
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+    margin-top: .5rem;
+  }
+  .quiz-pager .btn{
+    width: 100%;
+    min-height: 44px; /* comfy */
+  }
+  .quiz-pager .info{
+    min-width: 64px;
+    text-align: center;
+  }
+  #pagerBottom.quiz-pager{
+    position: sticky;
+    bottom: 0;
+    left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    padding: .5rem;
+    z-index: 4;
+  }
+
+  /* Footer actions: stack full width */
+  .quiz-foot{
+    flex-direction: column;
+    align-items: stretch;
+    gap: .5rem;
+  }
+  .quiz-foot .d-flex{ flex-direction: column !important; gap: .5rem !important; }
+  .quiz-foot .btn{ width: 100%; }

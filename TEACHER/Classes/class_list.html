@@ -1,0 +1,461 @@
+<!-- class_list.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher - Class List</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+
+  <link rel="stylesheet" href="class_list.css"/>
+
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <div class="main">
+      <!-- Header -->
+       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input id="tableSearch" type="text" class="form-control" placeholder="Search classes..."/>
+          <i class="fas fa-search position-absolute" style="top:50%; right:15px; transform:translateY(-50%);"></i>
+        </div>
+       <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Page Content -->
+      <section class="content">
+        <div class="toolbar-card">
+          <h1 class="page-title mb-0">My Classes</h1>
+          <div class="d-flex align-items-center gap-2">
+            <span id="classCountPill" class="meta-pill d-none"><i class="bi bi-people"></i><span id="classCount">0</span> classes</span>
+            <button class="btn btn-amber" data-bs-toggle="modal" data-bs-target="#createClassModal">
+              <i class="bi bi-plus-lg me-1"></i> Add Class
+            </button>
+          </div>
+        </div>
+
+        <div class="ui-card p-2">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0" id="classListTable">
+             <thead>
+              <tr>
+                <th>Class Name</th>
+                <th>Grade Level</th>
+                <th>Section</th>
+                <th>School Year</th>
+                <th>Semester</th>
+                <th>Students</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="classListBody">
+              <!-- Rows loaded dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Create Class Modal -->
+  <div class="modal fade" id="createClassModal" tabindex="-1" aria-labelledby="createClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="createClassForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="createClassModalLabel">Create New Class</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="classNameInput" class="form-label">Class Name</label>
+              <input type="text" class="form-control" id="classNameInput" placeholder="e.g. STEM-11A" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="gradeLevelInput" class="form-label">Grade Level</label>
+              <select class="form-select" id="gradeLevelInput" required>
+                <option value="">Select grade</option>
+                <option>11</option>
+                <option>12</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="sectionInput" class="form-label">Section</label>
+              <input type="text" class="form-control" id="sectionInput" placeholder="e.g. A" required>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label for="schoolYearInput" class="form-label">School Year</label>
+                <select id="schoolYearInput" class="form-select" required></select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="semesterInput" class="form-label">Semester</label>
+                <select id="semesterInput" class="form-select" required>
+                  <option value="">Select semester</option>
+                  <option value="1st Semester">1st Semester</option>
+                  <option value="2nd Semester">2nd Semester</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-amber">Create Class</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Class Modal -->
+  <div class="modal fade" id="editClassModal" tabindex="-1" aria-labelledby="editClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editClassForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editClassModalLabel">Edit Class</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            <input type="hidden" id="editClassId">
+
+            <div class="mb-3">
+              <label for="editClassNameInput" class="form-label">Class Name</label>
+              <input type="text" class="form-control" id="editClassNameInput" placeholder="e.g. STEM-11A" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="editGradeLevelInput" class="form-label">Grade Level</label>
+              <select class="form-select" id="editGradeLevelInput" required>
+                <option value="">Select grade</option>
+                <option>11</option>
+                <option>12</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="editSectionInput" class="form-label">Section</label>
+              <input type="text" class="form-control" id="editSectionInput" placeholder="e.g. A" required>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label for="editSchoolYearInput" class="form-label">School Year</label>
+                <select id="editSchoolYearInput" class="form-select" required></select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="editSemesterInput" class="form-label">Semester</label>
+                <select id="editSemesterInput" class="form-select" required>
+                  <option value="">Select semester</option>
+                  <option value="1st Semester">1st Semester</option>
+                  <option value="2nd Semester">2nd Semester</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-amber">Save Changes</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API_BASE = 'http://localhost:5000';
+
+    // ===== Helpers =====
+    function currentSchoolYearRange(offsetYears = 0) {
+      // PH assumption: SY runs Aug -> next year
+      const now = new Date();
+      const y = now.getFullYear() + offsetYears;
+      const m = now.getMonth(); // 0=Jan ... 7=Aug
+      if (m >= 7) return [y, y + 1];
+      return [y - 1, y];
+    }
+
+    function getDefaultSchoolYear() {
+      const [a, b] = currentSchoolYearRange();
+      return `${a}-${b}`;
+    }
+
+    function getDefaultSemester() {
+      // Rough guide: Aug–Dec = 1st; Jan–May = 2nd; Jun–Jul -> default 1st
+      const m = new Date().getMonth();
+      if (m >= 7 && m <= 11) return '1st Semester';
+      if (m >= 0 && m <= 4)  return '2nd Semester';
+      return '1st Semester';
+    }
+
+    function buildSchoolYearOptions(selectEl, span = 3) {
+      selectEl.innerHTML = '<option value="">Select school year</option>';
+      const result = [];
+      for (let i = -span; i <= span; i++) {
+        const [a, b] = currentSchoolYearRange(i);
+        result.push(`${a}-${b}`);
+      }
+      Array.from(new Set(result))
+        .sort((x, y) => parseInt(y.split('-')[0]) - parseInt(x.split('-')[0]))
+        .forEach(sy => {
+          const opt = document.createElement('option');
+          opt.value = sy;
+          opt.textContent = sy;
+          selectEl.appendChild(opt);
+        });
+    }
+
+    function filterTable() {
+      const q = (document.getElementById('tableSearch').value || '').toLowerCase();
+      const rows = document.querySelectorAll('#classListBody tr');
+      rows.forEach(tr => {
+        const txt = tr.innerText.toLowerCase();
+        tr.style.display = txt.includes(q) ? '' : 'none';
+      });
+    }
+
+    // Sidebar loader
+    async function loadSidebar() {
+      try {
+        const res = await fetch('/components/sidebar.html');
+        const html = await res.text();
+        document.getElementById('sidebar-container').innerHTML = html;
+
+        const sidebar = document.querySelector('.sidebar');
+        const dashboard = document.querySelector('.dashboard');
+        if (sidebar && dashboard) {
+          sidebar.addEventListener('mouseenter', () => dashboard.classList.add('sidebar-expanded'));
+          sidebar.addEventListener('mouseleave', () => dashboard.classList.remove('sidebar-expanded'));
+        }
+
+        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+          toggle.addEventListener('click', e => {
+            e.preventDefault();
+            const parent = toggle.closest('.has-submenu');
+            parent.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', parent.classList.contains('open'));
+          });
+        });
+      } catch (err) {
+        console.error('Failed to load sidebar:', err);
+      }
+    }
+
+    // Load classes
+    async function loadClasses(teacherId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.classes)) {
+          document.getElementById('classListBody').innerHTML = '';
+          data.classes.forEach(appendRow);
+          // Show total count
+          document.getElementById('classCount').textContent = String(data.classes.length);
+          document.getElementById('classCountPill').classList.remove('d-none');
+        }
+      } catch (err) {
+        console.error('Error loading classes:', err);
+      }
+    }
+
+    // Append a class row
+    function appendRow(c) {
+      const tbody = document.getElementById('classListBody');
+      const tr = document.createElement('tr');
+      tr.dataset.id = c.id;
+
+      tr.innerHTML = `
+        <td>${c.name}</td>
+        <td>${c.gradeLevel}</td>
+        <td>${c.section}</td>
+        <td>${c.schoolYear || ''}</td>
+        <td>${c.semester || ''}</td>
+        <td>${(typeof c.students === 'number' ? c.students : (c.studentsCount || 0))}</td>
+        <td class="text-center">
+          <div class="btn-group">
+            <button class="btn btn-sm btn-amber manage-btn"><i class="bi bi-tools me-1"></i>Manage</button>
+            <button class="btn btn-sm btn-outline-secondary roster-btn"><i class="bi bi-people me-1"></i>Roster</button>
+            <button class="btn btn-sm btn-outline-danger delete-btn"><i class="bi bi-trash3 me-1"></i>Delete</button>
+          </div>
+        </td>`;
+
+      tbody.appendChild(tr);
+
+      // Manage -> open edit modal
+      tr.querySelector('.manage-btn').addEventListener('click', () => {
+        document.getElementById('editClassId').value = c.id;
+        document.getElementById('editClassNameInput').value = c.name;
+        document.getElementById('editGradeLevelInput').value = c.gradeLevel;
+        document.getElementById('editSectionInput').value = c.section;
+
+        const sySel = document.getElementById('editSchoolYearInput');
+        buildSchoolYearOptions(sySel);
+        sySel.value = c.schoolYear || getDefaultSchoolYear();
+
+        const semSel = document.getElementById('editSemesterInput');
+        semSel.value = c.semester || getDefaultSemester();
+
+        new bootstrap.Modal(document.getElementById('editClassModal')).show();
+      });
+
+      // Roster -> redirect
+      tr.querySelector('.roster-btn').addEventListener('click', () => {
+        window.location.href = `/TEACHER/Classes/roster.html?classId=${encodeURIComponent(c.id)}`;
+      });
+
+      // Delete -> confirm + call API + remove row
+      tr.querySelector('.delete-btn').addEventListener('click', async () => {
+        const confirmMsg = `Delete class "${c.name}"? This cannot be undone.`;
+        if (!confirm(confirmMsg)) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(c.id)}?cascade=true`, {
+            method: 'DELETE'
+          });
+          const out = await res.json();
+          if (res.ok && out.success) {
+            tr.remove();
+            // update count
+            const cnt = document.querySelectorAll('#classListBody tr').length;
+            document.getElementById('classCount').textContent = String(cnt);
+          } else {
+            alert(out.message || 'Failed to delete class.');
+          }
+        } catch (err) {
+          console.error('Delete error:', err);
+          alert('Failed to delete class.');
+        }
+      });
+    }
+
+    // Create class
+    document.getElementById('createClassForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('classNameInput').value.trim();
+      const gradeLevel = document.getElementById('gradeLevelInput').value;
+      const section = document.getElementById('sectionInput').value.trim();
+      const schoolYear = document.getElementById('schoolYearInput').value;
+      const semester = document.getElementById('semesterInput').value;
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.userId) return;
+
+      if (!schoolYear || !semester) {
+        alert('Please select School Year and Semester.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/classes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, gradeLevel, section, schoolYear, semester, teacherId: user.userId })
+        });
+        const result = await res.json();
+        if (res.ok && result.success && result.class) {
+          appendRow(result.class);
+          // update count
+          const cnt = document.querySelectorAll('#classListBody tr').length;
+          document.getElementById('classCount').textContent = String(cnt);
+          document.getElementById('classCountPill').classList.remove('d-none');
+
+          e.target.reset();
+          bootstrap.Modal.getInstance(document.getElementById('createClassModal')).hide();
+        } else {
+          alert(result.message || 'Failed to create class.');
+        }
+      } catch (err) {
+        console.error('Error creating class:', err);
+      }
+    });
+
+    // Edit class
+    document.getElementById('editClassForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = document.getElementById('editClassId').value;
+      const name = document.getElementById('editClassNameInput').value.trim();
+      const gradeLevel = document.getElementById('editGradeLevelInput').value;
+      const section = document.getElementById('editSectionInput').value.trim();
+      const schoolYear = document.getElementById('editSchoolYearInput').value;
+      const semester = document.getElementById('editSemesterInput').value;
+
+      if (!schoolYear || !semester) {
+        alert('Please select School Year and Semester.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, gradeLevel, section, schoolYear, semester })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          // Simple refresh to reflect edits
+          window.location.reload();
+        } else {
+          alert(result.message || 'Error updating class.');
+        }
+      } catch (err) {
+        alert('Error updating class.');
+      }
+    });
+
+    // Init
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.isTeacher) return window.location.href = '/TEACHER/login/login.html';
+
+      document.querySelector('.username').textContent = user.username;
+
+      // Prefill SY + Semester when opening Create modal
+      const createModalEl = document.getElementById('createClassModal');
+      createModalEl.addEventListener('show.bs.modal', () => {
+        const sySel = document.getElementById('schoolYearInput');
+        buildSchoolYearOptions(sySel);
+        sySel.value = getDefaultSchoolYear();
+
+        const semSel = document.getElementById('semesterInput');
+        semSel.value = getDefaultSemester();
+      });
+
+      // Table search
+      document.getElementById('tableSearch').addEventListener('input', filterTable);
+
+      await loadSidebar();
+      await loadClasses(user.userId);
+    });
+
+    function logoutUser() {
+      localStorage.removeItem('user');
+      window.location.href = '/TEACHER/login/login.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+:root{
+  --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+  --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;
+  --radius:14px;
+}
+
+.card{
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow:0 10px 24px rgba(0,0,0,.06);
+}
+
+.quiz-q, .student-ans{
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.5;
+}
+
+.quiz-q{
+  font-weight: 600;
+}
+
+.student-ans{
+  background: #fafafa;
+  border:1px dashed var(--border);
+  border-radius:12px;
+  padding:12px;
+}
+
+.table td, .table th{
+  vertical-align: middle;
+}
+
+.muted{ color: var(--muted); }

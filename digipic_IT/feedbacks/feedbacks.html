@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Admin - Bug Reports</title>
+
+  <!-- Styles & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/digipic_IT/feedbacks/feedback.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+<div class="dashboard">
+  <!-- Sidebar -->
+  <div id="sidebar-container"></div>
+
+  <div class="main">
+    <header class="header-top">
+      <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+      <div class="search-box">
+        <input type="text" placeholder="Search..." />
+        <i class="fas fa-search"></i>
+      </div>
+      <button class="profile-btn">
+        <i class="fas fa-user-circle"></i>
+        <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+      </button>
+    </header>
+
+    <!-- Section Title -->
+    <section class="title-name px-4 pt-4">
+      <h2 class="fw-bold text-dark">Bug Report Inbox</h2>
+      <p class="text-muted">View all submitted issues, suggestions, and system-related reports from users.</p>
+    </section>
+
+    <!-- Filter Controls -->
+    <div class="px-4 d-flex justify-content-between align-items-center search-controls">
+      <select id="statusFilter" class="form-select" style="max-width: 200px;">
+        <option value="all">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="resolved">Resolved</option>
+        <option value="open">Open</option>
+      </select>
+    </div>
+
+    <!-- Report Table -->
+    <section class="content px-4 pb-4">
+      <div class="card account-table-container shadow-sm">
+        <div class="account-header">
+          <h3><i class="bi bi-exclamation-circle-fill me-2"></i> Reports Received</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered align-middle bg-white mb-0">
+            <thead class="digipic-header text-center">
+              <tr>
+                <th>#</th>
+                <th>Bug Title</th>
+                <th>Sender</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="feedbackTable">
+              <tr><td colspan="7" class="text-center">Loading reports...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Bug Report Modal -->
+<div class="modal fade" id="viewBugModal" tabindex="-1" aria-labelledby="viewBugModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewBugModalLabel">Bug Report Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="bugDetailsBody"><!-- Filled dynamically --></div>
+      <div class="modal-footer flex-column flex-md-row gap-2">
+        <textarea id="itReply" class="form-control" placeholder="Add IT response..." rows="2"></textarea>
+        <div class="w-100 d-flex justify-content-end gap-2">
+          <button id="reopenBtn" class="btn btn-warning d-none" type="button">Reopen</button>
+          <button id="markResolvedBtn" class="btn btn-success d-none" type="button">Mark as Resolved</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar Logic -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    fetch("/digipic_IT/components/test.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("sidebar-container").innerHTML = html;
+        const sidebar = document.querySelector(".sidebar");
+        const dashboard = document.querySelector(".dashboard");
+        if (sidebar && dashboard) {
+          sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+          sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+        }
+        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+          toggle.addEventListener('click', e => {
+            e.preventDefault();
+            const parent = toggle.closest('.has-submenu');
+            parent.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', String(!(toggle.getAttribute('aria-expanded') === 'true')));
+          });
+        });
+      })
+      .catch(err => console.error("Failed to load sidebar:", err));
+
+    // header user
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.username) {
+      window.location.href = "../login/login.html";
+    } else {
+      document.getElementById("Username").textContent = userData.username;
+    }
+  });
+</script>
+
+<!-- Bug Report JS -->
+<script>
+const API_BASE = "http://localhost:5000/api";
+const BACKEND_BASE = "http://localhost:5000"; // used for screenshot base
+
+let currentBugId = null;
+let allBugs = [];
+
+/* Helpers */
+function toDisplayDate(v) {
+  if (!v) return "";
+  // supports Firestore Timestamp-like {_seconds} or admin.Timestamp via toMillis()
+  if (v._seconds) return new Date(v._seconds * 1000).toLocaleString();
+  if (typeof v?.toMillis === "function") return new Date(v.toMillis()).toLocaleString();
+  const n = Number(v);
+  if (!Number.isNaN(n)) return new Date(n).toLocaleString();
+  return new Date(v).toLocaleString();
+}
+
+function titleCase(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderBugTable(list) {
+  const table = document.getElementById("feedbackTable");
+  table.innerHTML = "";
+
+  if (!Array.isArray(list) || !list.length) {
+    table.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No reports found.</td></tr>';
+    return;
+  }
+
+  list.forEach((bug, index) => {
+    const row = document.createElement("tr");
+
+    const statusLc = String(bug.status || "Pending").toLowerCase();
+    let badgeClass = "badge-pending";
+    if (statusLc === "resolved") badgeClass = "badge-resolved";
+    else if (statusLc === "open") badgeClass = "badge-open";
+
+    const dateStr = toDisplayDate(bug.createdAt);
+    const sender = bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous";
+    const typeDisplay = titleCase(bug.severity || "Bug");
+    const bugTitle = (bug.title && String(bug.title).trim()) ? bug.title : "No Title";
+
+    row.innerHTML = `
+      <td class="text-center">${index + 1}</td>
+      <td>${bugTitle}</td>
+      <td>${sender}</td>
+      <td>${dateStr}</td>
+      <td>${typeDisplay}</td>
+      <td class="text-center"><span class="badge badge-status ${badgeClass}">${bug.status || "Pending"}</span></td>
+      <td class="text-primary" style="cursor: pointer;">View</td>
+    `;
+
+    row.addEventListener("click", () => showBugModal(bug));
+    table.appendChild(row);
+  });
+}
+
+function showBugModal(bug) {
+  currentBugId = bug.id;
+
+  const statusLc = String(bug.status || "Pending").toLowerCase();
+  const badgeClass = statusLc === "resolved" ? "badge-resolved"
+                  : statusLc === "open" ? "badge-open"
+                  : "badge-pending";
+
+  const dateStr = toDisplayDate(bug.createdAt);
+  const sender = bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous";
+
+  // Screenshot
+  let screenshotHtml = "<em>No screenshot provided.</em>";
+  let localScreenshotUrl = null;
+  try { if (bug.id) localScreenshotUrl = localStorage.getItem(`bugScreenshotUrl_${bug.id}`); } catch {}
+  if (localScreenshotUrl) {
+    screenshotHtml = `<img src="${localScreenshotUrl}" class="img-fluid mt-2 border rounded" style="max-height: 300px;"/>`;
+  } else if (bug.screenshotPath && /\.(jpe?g|png|gif|webp)$/i.test(bug.screenshotPath)) {
+    const imgSrc = bug.screenshotPath.startsWith('/uploads/')
+      ? BACKEND_BASE + bug.screenshotPath
+      : bug.screenshotPath;
+    screenshotHtml = `<img src="${imgSrc}" class="img-fluid mt-2 border rounded" style="max-height: 300px;"/>`;
+  }
+
+  const bugTitle = (bug.title && String(bug.title).trim()) ? bug.title : "No Title";
+  document.getElementById("viewBugModalLabel").textContent = bugTitle;
+  document.getElementById("bugDetailsBody").innerHTML = `
+    <p><strong>Bug Title:</strong> ${bugTitle}</p>
+    <p><strong>Sender:</strong> ${sender}</p>
+    <p><strong>Submitted:</strong> ${dateStr}</p>
+    <p><strong>Severity:</strong> ${bug.severity || "Bug"}</p>
+    <p><strong>Status:</strong> <span class="badge badge-status ${badgeClass}">${bug.status || "Pending"}</span></p>
+    <p><strong>Message:</strong></p>
+    <div class="bg-light border rounded p-2">${bug.description || "No message."}</div>
+    <p class="mt-3"><strong>Screenshot:</strong><br>${screenshotHtml}</p>
+  `;
+
+  document.getElementById("itReply").value = bug.reply || "";
+
+  // Toggle action buttons based on status
+  document.getElementById("markResolvedBtn").classList.toggle("d-none", statusLc === "resolved");
+  document.getElementById("reopenBtn").classList.toggle("d-none", statusLc !== "resolved");
+
+  new bootstrap.Modal(document.getElementById("viewBugModal")).show();
+}
+
+function updateBugStatus(status) {
+  if (!currentBugId) return;
+  const reply = document.getElementById("itReply").value.trim();
+  fetch(`${API_BASE}/bug-reports/${currentBugId}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, reply })
+  })
+    .then(res => res.json())
+    .then(result => {
+      if (result.success) location.reload();
+      else alert("Failed to update status.");
+    })
+    .catch(err => {
+      console.error("Status update failed:", err);
+      alert("Server error.");
+    });
+}
+
+document.getElementById("markResolvedBtn").addEventListener("click", () => updateBugStatus("Resolved"));
+document.getElementById("reopenBtn").addEventListener("click", () => updateBugStatus("Pending"));
+
+document.getElementById("statusFilter").addEventListener("change", applyFilters);
+
+function applyFilters() {
+  const statusVal = document.getElementById("statusFilter").value; // all|pending|resolved|open
+
+  const filtered = allBugs.filter(bug => {
+    const bugStatusLc = String(bug.status || "pending").toLowerCase();
+    return statusVal === "all" || bugStatusLc === statusVal;
+  });
+
+  renderBugTable(filtered);
+}
+
+/* --- Robust fetch + normalization for your backend shape --- */
+async function fetchJSON(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    headers: { "Accept": "application/json", ...(options.headers || {}) },
+    ...options
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = JSON.parse(text); } catch { /* non-JSON */ }
+  if (!res.ok) {
+    console.error("Fetch failed", res.status, text);
+    throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+  }
+  return json;
+}
+
+function normalizeBugs(raw) {
+  // Unwrap common container keys
+  let list = [];
+  if (Array.isArray(raw)) list = raw;
+  else if (Array.isArray(raw?.reports)) list = raw.reports;        // <- your backend
+  else if (Array.isArray(raw?.bugs)) list = raw.bugs;              // fallback
+  else if (Array.isArray(raw?.data)) list = raw.data;
+  else if (Array.isArray(raw?.items)) list = raw.items;
+  else if (Array.isArray(raw?.result)) list = raw.result;
+  else if (raw?.success && Array.isArray(raw?.payload)) list = raw.payload;
+
+  // Last resort: first array value found
+  if (!list.length && raw && typeof raw === "object") {
+    const firstArray = Object.values(raw).find(v => Array.isArray(v));
+    if (firstArray) list = firstArray;
+  }
+
+  // Normalize fields the UI expects
+  return list.map(b => {
+    const id = b.id || b._id || b.reportId || b.ticketId || b.key;
+    const title = b.title || b.subject || b.summary || "";
+    const description = b.description || b.message || b.details || b.body || "";
+    const createdAt = b.createdAt || b.created_at || b.timestamp || b.created || b.date;
+    const createdBy = b.createdBy || b.sender || b.user || b.author || b.reporter || "Anonymous";
+    const severity = b.severity || b.type || b.category || "Bug";
+    const status = b.status || b.state || "Pending";
+    const screenshotPath = b.screenshotPath || b.screenshot || b.screenshotUrl || b.attachment || b.imageUrl;
+
+    return { id, title, description, createdAt, createdBy, severity, status, screenshotPath, ...b };
+  });
+}
+
+/* Initial load */
+(async function loadBugReports() {
+  try {
+    const data = await fetchJSON(`${API_BASE}/bug-reports`);
+    allBugs = normalizeBugs(data);
+    renderBugTable(allBugs);
+  } catch (err) {
+    console.error("❌ Failed to load bug reports:", err);
+    document.getElementById("feedbackTable").innerHTML =
+      `<tr><td colspan="7" class="text-center text-danger">Failed to load reports.</td></tr>`;
+  }
+})();
+</script>
+
+<script>
+  function logoutUser() {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/digipic_IT/login/login.html";
+  }
+</script>
+
+<!-- Bootstrap bundle (provides window.bootstrap) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

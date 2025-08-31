@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Quiz </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand1:#4A1A0C; --brand2:#7A2810; --accent:#FF6A00;
+      --card:#fff; --border:#e5e7eb; --muted:#6c757d
+    }
+    body{background:#f6f8fa}
+    .header-top{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:12px 20px;color:#fff;
+      background:linear-gradient(to bottom,var(--brand1),var(--brand2));
+    }
+    .brand-title{font-weight:700;letter-spacing:.3px}
+    .main{max-width:880px;margin:24px auto;padding:0 16px}
+    .quiz-shell{
+      background:var(--card);border:1px solid var(--border);border-radius:14px;
+      box-shadow:0 10px 24px rgba(0,0,0,.06)
+    }
+    .quiz-head{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:start;justify-content:space-between}
+    .quiz-body{padding:18px}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:#fff}
+    .timer{font-weight:700}.timer.warn{color:#b45309}.timer.dead{color:#b91c1c}
+    .muted{color:var(--muted)}
+    .q-card{border:1px dashed var(--border);border-radius:12px;padding:14px;margin-bottom:14px;background:#fff}
+    .q-title{font-weight:700}
+    .choices label{display:flex;gap:8px;align-items:start;margin-bottom:8px}
+    .quiz-foot{padding:16px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .btn-amber{background:linear-gradient(to bottom,#FF6A00,#B03C10);color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.05);color:#fff}
+    .btn-amber-outline{background:#fff;border:1px solid #B03C10;color:#B03C10}
+    .btn-amber-outline:hover{background:linear-gradient(to bottom,#FF6A00,#B03C10);color:#fff}
+    .progress{height:10px}
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header-top">
+    <div class="brand-title">DigiPic</div>
+    <div class="small d-flex align-items-center gap-2">
+      <span id="Username"></span>
+      <button id="logoutBtn" class="btn btn-sm btn-light" type="button">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="quiz-shell">
+      <div class="quiz-head">
+        <div>
+          <h3 id="quizTitle" class="m-0">Loading quiz…</h3>
+          <div id="quizDesc" class="muted small"></div>
+        </div>
+        <div class="d-flex flex-column align-items-end gap-2">
+          <div class="pill">
+            <span class="bi bi-stopwatch"></span>
+            <span id="timerLabel" class="timer">--:--</span>
+          </div>
+          <div class="pill">
+            <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+            <span id="statusText" class="small">In Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="quiz-body">
+        <div class="mb-2">
+          <div class="progress"><div id="progressBar" class="progress-bar" style="width:0%"></div></div>
+          <div class="d-flex justify-content-between small mt-1">
+            <span id="progressText" class="muted">0 / 0 answered</span>
+            <a href="#" id="scrollTopLink" class="small">Go to top</a>
+          </div>
+        </div>
+
+        <div id="questionsArea"></div>
+        <div id="noQuiz" class="alert alert-warning d-none">Quiz not found or has no questions.</div>
+      </div>
+
+      <div class="quiz-foot">
+        <div class="small muted">Your answers are saved locally until you submit.</div>
+        <div class="d-flex gap-2">
+          <button id="saveBtn" class="btn btn-amber-outline" type="button">
+            <i class="bi bi-save me-1"></i>Save Progress
+          </button>
+          <button id="submitBtn" class="btn btn-amber" type="button">
+            <i class="bi bi-check2-circle me-1"></i>Submit Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="resultArea" class="mt-3 d-none"></div>
+  </main>
+
+<script>
+/* ===== Config & helpers ===== */
+const API = "http://localhost:5000";
+function getParam(name){ const url=new URL(location.href); return url.searchParams.get(name); }
+function fmtTimeLeft(ms){ const t=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(t/60), s=t%60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+function escapeHtml(s){ return typeof s==='string'? s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') : ''; }
+const quizId = getParam("id");
+const UsernameEl = document.getElementById("Username");
+const logoutBtn = document.getElementById("logoutBtn");
+const userData = JSON.parse(localStorage.getItem("user")||"{}");
+if (userData && (userData.username||userData.email)) { UsernameEl.textContent = userData.username || userData.email; }
+if (logoutBtn) { logoutBtn.onclick = ()=>{ localStorage.clear(); sessionStorage.clear(); location.href="/STUDENT/login/login.html"; }; }
+
+/* ===== State ===== */
+let timerInterval = null, endAtMs = null, hardEndMs = null;
+let quizObj = null;
+const storageKey = (extra="") => `quizAnswers:${(userData.email||'guest')}:${quizId}${extra}`;
+
+/* ===== UI helpers ===== */
+function setProgress(){
+  const total = (quizObj?.questions||[]).length;
+  let answered = 0;
+  (quizObj?.questions||[]).forEach((q, idx) => {
+    const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+    if (radios.length) {
+      if ([...radios].some(r => r.checked)) answered++;
+    } else {
+      const ta = document.querySelector(`textarea[name='essay_${idx}']`);
+      if (ta && ta.value.trim()) answered++;
+    }
+  });
+  const pct = total? Math.round(answered/total*100) : 0;
+  document.getElementById('progressBar').style.width = `${pct}%`;
+  document.getElementById('progressText').textContent = `${answered} / ${total} answered`;
+}
+function saveProgress(){
+  const answers = {};
+  (quizObj?.questions||[]).forEach((q, idx) => {
+    const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+    if (radios.length) {
+      const checked = [...radios].find(r => r.checked);
+      answers[`q_${idx}`] = checked ? checked.value : '';
+    } else {
+      const ta = document.querySelector(`textarea[name='essay_${idx}']`);
+      answers[`essay_${idx}`] = ta ? ta.value : '';
+    }
+  });
+  localStorage.setItem(storageKey(), JSON.stringify(answers));
+}
+function restoreProgress(){
+  const raw = localStorage.getItem(storageKey());
+  if (!raw) return;
+  try{
+    const answers = JSON.parse(raw);
+    Object.entries(answers).forEach(([k,v])=>{
+      if (k.startsWith('q_') && v){
+        const el = document.querySelector(`input[name='${k}'][value='${v}']`);
+        if (el) el.checked = true;
+      } else if (k.startsWith('essay_')){
+        const ta = document.querySelector(`textarea[name='${k}']`);
+        if (ta) ta.value = v || '';
+      }
+    });
+  }catch{}
+}
+
+/* ===== Core: load & render ===== */
+async function loadQuiz(){
+  if (!quizId) {
+    document.getElementById('noQuiz').classList.remove('d-none');
+    document.getElementById('quizTitle').textContent = 'No quiz ID provided.';
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`);
+    const data = await res.json();
+
+    if (!data.success || !data.quiz || !Array.isArray(data.quiz.questions) || data.quiz.questions.length === 0) {
+      document.getElementById('noQuiz').classList.remove('d-none');
+      document.getElementById('quizTitle').textContent = 'Quiz not found or has no questions.';
+      return;
+    }
+
+    quizObj = data.quiz; // keep for grading
+    document.getElementById('quizTitle').textContent = quizObj.title || 'Untitled Quiz';
+    document.getElementById('quizDesc').textContent = quizObj.description || '';
+
+    const area = document.getElementById('questionsArea'); area.innerHTML = '';
+    quizObj.questions.forEach((q, idx) => {
+      const div = document.createElement('div');
+      div.className = 'q-card';
+      const title = `<div class="q-title mb-2">${idx+1}. ${escapeHtml(q.question || '')}</div>`;
+      let body = '';
+
+      const choices = q.choices || {};
+      const nonEmpty = Object.entries(choices).filter(([,v])=> v && String(v).trim() !== '');
+      const isEssay = nonEmpty.length === 0;
+
+      if (isEssay){
+        body = `
+          <textarea class="form-control" rows="4" placeholder="Type your answer..." name="essay_${idx}"></textarea>
+          <div class="form-text">This item is not auto-graded.</div>`;
+      } else {
+        body = `<div class="choices">` +
+          nonEmpty.map(([key,val]) =>
+            `<label><input type="radio" name="q_${idx}" value="${key}"><div><strong>${key}.</strong> ${escapeHtml(val)}</div></label>`
+          ).join('') +
+          `</div>`;
+      }
+      div.innerHTML = title + body;
+      area.appendChild(div);
+
+      // listeners for progress/save
+      if (isEssay){
+        div.querySelector(`textarea[name='essay_${idx}']`).addEventListener('input', ()=>{ saveProgress(); setProgress(); });
+      } else {
+        div.querySelectorAll(`input[name='q_${idx}']`).forEach(r=>{
+          r.addEventListener('change', ()=>{ saveProgress(); setProgress(); });
+        });
+      }
+    });
+
+    restoreProgress();
+    setProgress();
+
+    // Timer
+    setupTimer(quizObj.settings || {});
+
+    // Buttons
+    document.getElementById('saveBtn').onclick = ()=>{ saveProgress(); alert('Progress saved locally.'); };
+    document.getElementById('submitBtn').onclick = ()=>submitQuiz('manual');
+    document.getElementById('scrollTopLink').onclick = (e)=>{ e.preventDefault(); scrollTo({top:0,behavior:'smooth'}); };
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('noQuiz').classList.remove('d-none');
+    document.getElementById('quizTitle').textContent = 'Error loading quiz.';
+  }
+}
+
+/* ===== Timer ===== */
+function setupTimer(settings){
+  clearInterval(timerInterval);
+  const label = document.getElementById('timerLabel');
+  const status = document.getElementById('statusText');
+
+  if (!settings || !settings.timerEnabled) {
+    label.textContent = 'No limit';
+    status.textContent = 'In Progress';
+    return;
+  }
+
+  const mins = Number(settings.durationMinutes || 0);
+  const grace = Number(settings.graceSeconds || 0);
+  const now = Date.now();
+  endAtMs = now + mins*60*1000;
+  hardEndMs = endAtMs + grace*1000;
+
+  function tick(){
+    const t = Date.now();
+    if (t < endAtMs){
+      const left = endAtMs - t;
+      label.textContent = fmtTimeLeft(left);
+      label.classList.toggle('warn', left <= 60000);
+      status.textContent = left <= 60000 ? 'Ending soon…' : 'In Progress';
+    } else if (t < hardEndMs){
+      label.textContent = 'Grace: ' + fmtTimeLeft(hardEndMs - t);
+      label.classList.add('warn');
+      status.textContent = 'Grace period';
+    } else {
+      label.textContent = 'Time up';
+      label.classList.add('dead');
+      status.textContent = 'Submitting…';
+      clearInterval(timerInterval);
+      autoSubmitQuiz('timeout');
+    }
+  }
+  tick();
+  timerInterval = setInterval(tick, 500);
+}
+
+/* ===== Submit (local auto-grade for MCQ/TF) ===== */
+function submitQuiz(reason){
+  document.getElementById('submitBtn').disabled = true;
+  saveProgress();
+
+  let score = 0, total = 0;
+  (quizObj?.questions||[]).forEach((q, idx) => {
+    const radios = document.querySelectorAll(`input[type='radio'][name='q_${idx}']`);
+    if (radios.length){
+      total++;
+      const checked = [...radios].find(r => r.checked);
+      const correct = q.correctAnswer || q.correct; // supports either key
+      if (checked && checked.value === correct) score++;
+    }
+  });
+
+  const result = document.getElementById('resultArea');
+  result.classList.remove('d-none');
+  const pct = total? Math.round(score/total*100) : 0;
+  result.innerHTML = `
+    <div class="alert alert-success d-flex justify-content-between">
+      <div>
+        <strong>Quiz submitted (${reason}).</strong>
+        <div>Auto-graded score: <strong>${score}/${total}</strong> (${pct}%).</div>
+        <div class="small text-muted">Essay responses (if any) are not auto-graded.</div>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="/STUDENT/quiz/index.html">Back to quizzes</a>
+    </div>`;
+  scrollTo({top:0,behavior:'smooth'});
+}
+function autoSubmitQuiz(reason){ submitQuiz(reason); }
+
+/* ===== Boot ===== */
+document.addEventListener('DOMContentLoaded', loadQuiz);
+</script>
+<script>
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+</body>
+</html>

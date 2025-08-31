@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>EduConnect Student – Assignment</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Keep your theme -->
+  <link rel="stylesheet" href="../assignment/assignment.css" />
+
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --card-radius:14px;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--text)}
+    .dashboard{display:flex; min-height:100vh}
+    .main{margin-left:70px; width:calc(100% - 70px); transition:margin-left .3s ease,width .3s ease; display:flex; flex-direction:column; min-height:100vh; background:var(--bg)}
+    .sidebar:hover ~ .main{margin-left:220px; width:calc(100% - 220px)}
+
+    .header-top{
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:1rem 2rem; background:linear-gradient(to bottom,#4A1A0C,#7A2810);
+      color:#fff; box-shadow:0 4px 8px rgba(0,0,0,.1); position:sticky; top:0; z-index:10;
+    }
+    .logo-header{height:45px}
+    .search-box{position:relative; flex:1; max-width:500px; margin:0 20px}
+    .search-box input{width:100%; padding:10px 14px; border-radius:30px; border:none; outline:none}
+    .search-box i{position:absolute; right:15px; top:50%; transform:translateY(-50%); color:#999}
+    .profile-btn{background:none; border:none; font-size:1.8rem; color:#fff; cursor:pointer; display:flex; align-items:center; gap:8px}
+
+    .content{padding:24px}
+    .page-title{font-weight:700; font-size:1.6rem; margin:0 0 10px; text-align:left}
+    .brand-grad{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text; background-clip:text; color:transparent}
+
+    .ui-card{background:var(--card); border:1px solid var(--border); border-radius:var(--card-radius); padding:16px; box-shadow:0 10px 24px rgba(0,0,0,.10)}
+    .muted{color:var(--muted)}
+    .badge-soft{display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(176,60,16,.25); border-radius:999px; padding:2px 8px; font-size:.75rem; color:var(--brand-accent-2); background:linear-gradient(90deg, rgba(255,106,0,.12), rgba(176,60,16,.12))}
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border:none}
+    .btn-amber:hover{filter:brightness(1.05); color:#fff}
+    .btn-amber-outline{background:#fff; color:var(--brand-accent-2); border:1px solid var(--brand-accent-2)}
+    .btn-amber-outline:hover{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border-color:transparent}
+    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2); box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+    .attachment-list a{text-decoration:none}
+    .small-label{font-size:.9rem; color:var(--muted)}
+    .file-list{display:flex; flex-direction:column; gap:8px}
+    .file-pill{border:1px dashed var(--border); border-radius:10px; padding:10px; background:#fff; display:flex; justify-content:space-between; align-items:center}
+    .disabled{opacity:.7; pointer-events:none}
+
+    .meta-row{display:flex; flex-wrap:wrap; gap:10px}
+    .meta-item{display:flex; flex-direction:column; padding:.5rem .75rem; border:1px solid var(--border); border-radius:10px; background:#fff; min-width:140px}
+    .meta-label{font-size:.75rem; color:var(--muted)}
+    .meta-value{font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+        <div class="search-box">
+          <input type="text" placeholder="Search…"/>
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username"></span>
+        </button>
+      </header>
+
+      <div class="content container-fluid">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-2">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/STUDENT/assignment/assignment.html">Assignments</a></li>
+            <li class="breadcrumb-item active" id="bcTitle" aria-current="page">Loading…</li>
+          </ol>
+        </nav>
+
+        <!-- Overview & Instructions (TOP) -->
+        <h1 class="page-title"><span class="brand-grad" id="pageTitle">Assignment</span></h1>
+        <div class="ui-card mb-3">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <div class="badge-soft mb-2" id="courseBadge"><i class="bi bi-journal-text"></i> Course</div>
+              <h4 id="assignTitle" class="mb-1">Loading…</h4>
+              <div class="small-label">
+                <span id="moduleLine"></span>
+                <span id="pointsLine"></span>
+              </div>
+            </div>
+            <div class="meta-row">
+              <div class="meta-item">
+                <span class="meta-label">Due</span>
+                <span class="meta-value" id="dueAt">—</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Status</span>
+                <span class="meta-value" id="statusPill">—</span>
+              </div>
+            </div>
+          </div>
+          <hr class="my-3"/>
+          <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Instructions</h6>
+          <div id="assignContent" style="white-space:pre-wrap">Loading content…</div>
+
+          <div id="attachmentsWrap" class="mt-3"></div>
+        </div>
+
+        <!-- Submission (MIDDLE) -->
+        <div class="ui-card mb-3">
+          <h5 class="mb-2"><i class="bi bi-upload me-2"></i>Submit Your Work</h5>
+          <p class="small-label mb-3">Upload file(s) and optionally add a brief note (you may paste a link inside your note).</p>
+
+          <form id="submitForm" class="d-grid gap-3" novalidate>
+            <div>
+              <label class="form-label">File(s)</label>
+              <input class="form-control" type="file" id="fileInput" name="files" multiple/>
+              <div class="form-text">Supported: documents, images, PDFs, etc.</div>
+              <div id="filePreview" class="file-list mt-2"></div>
+            </div>
+
+            <div>
+              <label class="form-label">Note (optional)</label>
+              <textarea class="form-control" id="noteInput" name="text" rows="3" placeholder="e.g., 'Please see attached. https://…'"></textarea>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <button id="submitBtn" type="submit" class="btn btn-amber">
+                <i class="bi bi-send me-1"></i> Submit
+              </button>
+              <a href="/STUDENT/assignment/assignment.html" class="btn btn-amber-outline">
+                <i class="bi bi-arrow-left me-1"></i> Back to Assignments
+              </a>
+              <div id="submitStatus" class="small-label ms-auto"></div>
+            </div>
+          </form>
+
+          <div id="alreadySubmitted" class="alert alert-info py-2 px-3 d-none mt-3" role="alert" style="border:1px solid #b6d4fe;">
+            <i class="bi bi-info-circle me-1"></i> You have already submitted this assignment. Resubmission is disabled.
+          </div>
+        </div>
+
+        <!-- Your Submission (BOTTOM) -->
+        <div id="submissionSummary" class="ui-card d-none">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-file-check me-2"></i>Your Submission</h5>
+            <span id="submissionTime" class="small-label"></span>
+          </div>
+          <div id="submissionStatusBadge" class="mt-2"></div>
+          <div id="submissionFiles" class="mt-2"></div>
+          <div id="submissionNote" class="mt-2"></div>
+          <div id="submissionGrade" class="mt-2"></div>
+        </div>
+      </div> <!-- /content -->
+    </div> <!-- /main -->
+  </div> <!-- /dashboard -->
+
+  <!-- Sidebar Loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Page Logic -->
+  <script>
+    // ====== Config ======
+    const API_BASE = "http://localhost:5000";
+
+    // ====== Auth guard ======
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isStudent) {
+      window.location.href = "/STUDENT/login/login.html";
+    }
+   // === Initials-only header name ===
+function initialsFrom(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (!s) return "";
+
+  // If it's an email, use the local part (e.g., jane.doe -> JD)
+  if (s.includes("@")) {
+    const local = s.split("@")[0];
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : local.slice(0, 2)
+    ).toUpperCase();
+  }
+
+  // Names/usernames: first + last token initials
+  const parts = s.split(/[\s\-]+/).filter(Boolean);
+  return (parts.length >= 2
+    ? parts[0][0] + parts[parts.length - 1][0]
+    : parts[0].slice(0, 2)
+  ).toUpperCase();
+}
+
+// Apply initials to the header
+(() => {
+  const el = document.getElementById("Username");
+  if (!el) return;
+  const displayName = userData.fullName || userData.username || userData.email || "";
+  const initials = initialsFrom(displayName) || "?";
+  el.textContent = initials;
+  el.title = displayName;                 // tooltip with full name
+  el.setAttribute("aria-label", displayName);
+})();
+
+
+    // ====== Helpers ======
+    const qs = new URLSearchParams(location.search);
+    const assignmentId = qs.get("id");
+
+    function escapeHTML(s=''){
+      return String(s)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+    const fmtDateTime = (ms) => {
+      if (!ms) return '—';
+      try { return new Date(ms).toLocaleString(); } catch { return '—'; }
+    };
+    function toApiUrl(pathOrUrl){
+      return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API_BASE + String(pathOrUrl || "");
+    }
+    function bytesKB(b){ return Math.round((b || 0)/102.4)/10; } // 1 decimal
+    function tsToMs(v){
+      if (v == null) return null;
+      if (typeof v === 'object'){
+        if (typeof v.toMillis === 'function') return v.toMillis();
+        if (typeof v._seconds === 'number') return v._seconds * 1000;
+      }
+      const n = Number(v);
+      if (!Number.isNaN(n) && n > 1e9) return n;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d.getTime();
+    }
+
+    // ====== DOM ======
+    const bcTitle = document.getElementById("bcTitle");
+    const pageTitle = document.getElementById("pageTitle");
+    const courseBadge = document.getElementById("courseBadge");
+    const assignTitle = document.getElementById("assignTitle");
+    const moduleLine = document.getElementById("moduleLine");
+    const pointsLine = document.getElementById("pointsLine");
+    const dueAtEl = document.getElementById("dueAt");
+    const assignContent = document.getElementById("assignContent");
+    const attachmentsWrap = document.getElementById("attachmentsWrap");
+
+    const submitForm = document.getElementById("submitForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const submitStatus = document.getElementById("submitStatus");
+    const noteInput = document.getElementById("noteInput");
+    const fileInput = document.getElementById("fileInput");
+    const filePreview = document.getElementById("filePreview");
+    const alreadySubmitted = document.getElementById("alreadySubmitted");
+    const statusPill = document.getElementById("statusPill");
+
+    // Submission summary DOM
+    const submissionSummary = document.getElementById("submissionSummary");
+    const submissionTime = document.getElementById("submissionTime");
+    const submissionStatusBadge = document.getElementById("submissionStatusBadge");
+    const submissionFiles = document.getElementById("submissionFiles");
+    const submissionNote = document.getElementById("submissionNote");
+    const submissionGrade = document.getElementById("submissionGrade");
+
+    // ====== Status state ======
+    let currentStatus = 'Open';
+
+    // ====== Data fetchers ======
+    async function fetchAssignment(id){
+      const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`);
+      if (!res.ok) return null;
+      const js = await res.json().catch(()=>null);
+      return js?.assignment || js;
+    }
+    async function fetchMySubmission(id){
+      try{
+        const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/submissions/${encodeURIComponent(userData.userId)}`);
+        if (!res.ok) return null;
+        const js = await res.json().catch(()=>null);
+        return js?.submission || null;
+      }catch{ return null; }
+    }
+
+    function normalizeAssignment(a){
+      if (!a) return null;
+      return {
+        id: a.id,
+        title: a.title || "Untitled",
+        content: a.content || "",
+        courseId: a.courseId || null,
+        courseTitle: a.courseTitle || "Course",
+        moduleNumber: a.moduleNumber ?? null,
+        points: a.points ?? null,
+        publishAt: tsToMs(a.publishAt),
+        dueAt: tsToMs(a.dueAt),
+        attachments: Array.isArray(a.attachments) ? a.attachments : []
+      };
+    }
+
+    function computeStatus(a, mySub){
+      const now = Date.now();
+      if (mySub?.graded) return 'Graded';
+      if (mySub) return 'Submitted';
+      if (a.publishAt && now < a.publishAt) return 'Closed';
+      if (a.dueAt && now > a.dueAt) return 'Closed';
+      return 'Open';
+    }
+
+    function setStatusPill(status){
+      const map = {
+        Open: 'badge bg-success-subtle text-success-emphasis',
+        Submitted: 'badge bg-primary-subtle text-primary-emphasis',
+        Graded: 'badge bg-success text-white',
+        Closed: 'badge bg-danger-subtle text-danger-emphasis'
+      };
+      statusPill.innerHTML = `<span class="${map[status] || 'badge bg-secondary'}">${status}</span>`;
+    }
+
+    // ====== Renderers ======
+    function renderAssignment(a){
+      bcTitle.textContent = a.title;
+      pageTitle.textContent = a.title;
+      assignTitle.textContent = a.title;
+      courseBadge.innerHTML = `<i class="bi bi-journal-text"></i> ${escapeHTML(a.courseTitle || "Course")}`;
+      const moduleTxt = a.moduleNumber ? `Module #${a.moduleNumber}` : "";
+      moduleLine.textContent = moduleTxt;
+      pointsLine.textContent = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
+      dueAtEl.textContent = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
+
+      assignContent.innerHTML = escapeHTML(a.content);
+
+      const atts = Array.isArray(a.attachments) ? a.attachments : [];
+      if (!atts.length){
+        attachmentsWrap.innerHTML = "";
+      } else {
+        const items = atts.map(x => {
+          if (x.url){
+            const safe = escapeHTML(x.url);
+            return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${safe}" target="_blank" rel="noopener">${safe}</a></li>`;
+          } else if (x.filePath){
+            const rel = String(x.filePath);
+            const href = escapeHTML(toApiUrl(rel));
+            const name = escapeHTML(x.originalName || rel.split('/').pop());
+            const sizeTxt = x.size ? ` (${bytesKB(x.size)} KB)` : '';
+            return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+          }
+          return "";
+        }).join("");
+
+        attachmentsWrap.innerHTML = `
+          <div class="mt-3">
+            <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Attachments</div>
+            <ul class="attachment-list ps-3 mb-0">${items}</ul>
+          </div>`;
+      }
+    }
+
+    function renderSubmission(sub){
+      submissionSummary.classList.remove('d-none');
+
+      const when = tsToMs(sub.submittedAt);
+      submissionTime.textContent = when ? `Submitted: ${fmtDateTime(when)}` : '';
+
+      const graded = !!sub.graded;
+      submissionStatusBadge.innerHTML = graded
+        ? `<span class="badge rounded-pill text-bg-success"><i class="bi bi-patch-check-fill me-1"></i> Graded</span>`
+        : `<span class="badge rounded-pill text-bg-primary"><i class="bi bi-cloud-check me-1"></i> Submitted</span>`;
+
+      // Files
+      const files = Array.isArray(sub.files) ? sub.files : [];
+      if (files.length){
+        const list = files.map(f => {
+          const href = f.filePath ? toApiUrl(f.filePath) : '#';
+          const name = escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file');
+          const size = f.size ? ` • ${bytesKB(f.size)} KB` : '';
+          const attrs = f.filePath ? `href="${href}" target="_blank" rel="noopener"` : `href="#" aria-disabled="true"`;
+          return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a ${attrs}>${name}</a>${size}</li>`;
+        }).join('');
+        submissionFiles.innerHTML = `
+          <div>
+            <div class="fw-semibold mb-1"><i class="bi bi-folder2-open"></i> Files</div>
+            <ul class="attachment-list ps-3 mb-0">${list}</ul>
+          </div>`;
+      } else {
+        submissionFiles.innerHTML = `<div class="small-label">No files attached.</div>`;
+      }
+
+      // Note/Text
+      const text = (sub.text || '').trim();
+      submissionNote.innerHTML = text
+        ? `<div><div class="fw-semibold mb-1"><i class="bi bi-sticky"></i> Note</div><div class="p-2 border rounded" style="white-space:pre-wrap">${escapeHTML(text)}</div></div>`
+        : `<div class="small-label">No note provided.</div>`;
+
+      // Grade / Feedback
+      if (graded || sub.grade != null || (sub.feedback && String(sub.feedback).trim())){
+        const g = (sub.grade != null) ? `<div><span class="fw-semibold">Grade:</span> ${escapeHTML(String(sub.grade))}</div>` : '';
+        const fb = (sub.feedback && String(sub.feedback).trim())
+          ? `<div class="mt-1"><span class="fw-semibold">Feedback:</span> ${escapeHTML(String(sub.feedback))}</div>`
+          : '';
+        submissionGrade.innerHTML = `<hr class="my-2"/>${g}${fb}`;
+      } else {
+        submissionGrade.innerHTML = '';
+      }
+    }
+
+    // UPDATED: reason-aware locker
+    function lockSubmissionUI(reason = 'You have already submitted this assignment. Resubmission is disabled.') {
+      [fileInput, noteInput].forEach(el => {
+        if (!el) return;
+        el.disabled = true;
+        el.classList.add('disabled');
+      });
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class="bi bi-lock-fill me-1"></i> Submission Locked`;
+        submitBtn.classList.add('disabled');
+      }
+
+      alreadySubmitted.classList.remove('d-none');
+      alreadySubmitted.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${reason}`;
+    }
+
+    // ====== Load ======
+    async function loadPage(){
+      if (!assignmentId){
+        assignContent.textContent = "Invalid assignment id.";
+        return;
+      }
+      const aRaw = await fetchAssignment(assignmentId);
+      const a = normalizeAssignment(aRaw);
+      if (!a){
+        assignContent.textContent = "Assignment not found.";
+        return;
+      }
+      renderAssignment(a);
+
+      const mySub = await fetchMySubmission(assignmentId);
+      const status = computeStatus(a, mySub);
+      currentStatus = status;
+      setStatusPill(status);
+
+      if (status === 'Closed') {
+        // closed (either not yet open or past due)
+        lockSubmissionUI('This assignment is closed. Submissions are disabled.');
+      } else if (mySub) {
+        // submitted (or graded) — show summary then lock
+        renderSubmission(mySub);
+        lockSubmissionUI(); // default message for already-submitted
+      }
+    }
+
+    // ====== File preview ======
+    fileInput.addEventListener('change', () => {
+      filePreview.innerHTML = '';
+      const files = fileInput.files || [];
+      Array.from(files).forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'file-pill';
+        row.innerHTML = `
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-file-earmark"></i>
+            <div>
+              <div class="fw-semibold">${escapeHTML(f.name)}</div>
+              <div class="small-label">${bytesKB(f.size)} KB</div>
+            </div>
+          </div>`;
+        filePreview.appendChild(row);
+      });
+    });
+
+    // ====== Submit handler (with guard) ======
+    async function submitAssignment(e){
+      e.preventDefault();
+      if (!assignmentId) return;
+
+      // NEW: block if not open
+      if (currentStatus !== 'Open') {
+        submitStatus.textContent = (currentStatus === 'Closed')
+          ? 'This assignment is closed. Submissions are disabled.'
+          : 'You have already submitted this assignment.';
+        return;
+      }
+
+      // Require at least a file or a note
+      const hasFile = (fileInput.files && fileInput.files.length > 0);
+      const hasNote = !!noteInput.value.trim();
+      if (!hasFile && !hasNote){
+        submitStatus.textContent = "Please add at least one file or a note.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("studentId", userData.userId);
+      if (hasFile){
+        Array.from(fileInput.files).forEach(f => formData.append("files", f));
+      }
+      if (hasNote) formData.append("text", noteInput.value.trim());
+
+      submitStatus.textContent = "Submitting…";
+      submitBtn.disabled = true;
+
+      let ok = false, errMsg = null;
+      try{
+        const url = `${API_BASE}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`;
+        const res = await fetch(url, { method:"POST", body: formData });
+        if (res.ok){
+          const js = await res.json().catch(()=>({success:true}));
+          ok = (js?.success !== false);
+        } else {
+          errMsg = `HTTP ${res.status}`;
+        }
+      }catch(err){
+        errMsg = err?.message || String(err);
+      }
+
+      if (!ok){
+        submitStatus.textContent = "Failed to submit: " + (errMsg || "Unknown error");
+        submitBtn.disabled = false;
+        return;
+      }
+
+      // Lock UI + render a local receipt immediately
+      lockSubmissionUI();
+      const localSub = {
+        text: noteInput.value.trim(),
+        files: Array.from(fileInput.files || []).map(f => ({
+          filePath: '',
+          originalName: f.name,
+          size: f.size
+        })),
+        graded: false,
+        grade: null,
+        feedback: null,
+        submittedAt: Date.now()
+      };
+      renderSubmission(localSub);
+
+      // Redirect back to the list (optional)
+      window.location.href = "/STUDENT/assignment/assignment.html?submitted=1";
+    }
+
+    function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+
+    // Init
+    (async function init(){
+      try{ await loadPage(); }
+      catch(e){ console.error(e); assignContent.textContent = "Failed to load assignment details."; }
+      submitForm.addEventListener("submit", submitAssignment);
+    })();
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

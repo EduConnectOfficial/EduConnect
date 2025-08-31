@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Verify Code</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="signup1.css"/>
+
+  <style>
+    .otp-container{display:flex;justify-content:center;gap:10px;margin-bottom:1rem}
+    .otp-input{width:42px;height:52px;text-align:center;font-size:1.4rem;border:1px solid #ced4da;border-radius:8px}
+    .otp-input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.25)}
+    .disabled-link{pointer-events:none;opacity:.6;text-decoration:none}
+    .muted{opacity:.85}
+    .modal-body{color:#000 !important} /* ensure black text inside modals */
+  </style>
+</head>
+
+<body>
+  <div class="top-logo text-center my-4">
+    <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
+  </div>
+
+  <div class="login-container">
+    <div class="login-box text-center">
+      <h4 class="mb-2">Enter Verification Code</h4>
+      <p id="sentTo" class="mb-3 text-white muted"></p>
+
+      <form id="verifyCodeForm" novalidate>
+        <div class="otp-container">
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" autocomplete="one-time-code"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+        </div>
+
+        <div id="verificationError" class="text-danger mb-3"></div>
+
+        <button id="verifyBtn" type="submit" class="btn login-btn w-100 mb-2">
+          Verify
+        </button>
+
+        <div class="d-flex justify-content-center gap-2 align-items-center">
+          <span class="text-white">Didn't receive the code?</span>
+          <a href="#" id="resendCode" class="">Resend</a>
+          <span id="resendTimer" class="text-white-50 small"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="successModalLabel">Success</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">User verified and registered successfully.</p>
+          <div class="mb-2">
+            <div class="fw-semibold">Your User ID:</div>
+            <div><code class="bg-light px-2 py-1 d-inline-block" id="successUserId">—</code></div>
+          </div>
+          <div>
+            <div class="fw-semibold">Your Teacher ID:</div>
+            <div><code class="bg-light px-2 py-1 d-inline-block" id="successTeacherId">—</code></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" id="successOkBtn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Modal (resend/info/errors) -->
+  <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="feedbackModalLabel">Notification</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="feedbackModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    const inputs = Array.from(document.querySelectorAll(".otp-input"));
+    const verifyForm = document.getElementById("verifyCodeForm");
+    const verifyBtn = document.getElementById("verifyBtn");
+    const verificationError = document.getElementById("verificationError");
+    const resendLink = document.getElementById("resendCode");
+    const resendTimer = document.getElementById("resendTimer");
+    const sentTo = document.getElementById("sentTo");
+
+    const email = sessionStorage.getItem("pendingEmail");
+
+    if (email) {
+      const masked = email.replace(/(^.).*(@.*$)/, (_, a, b) => a + "••••" + b);
+      sentTo.textContent = `We sent a 6-digit code to ${masked}. Please enter it below.`;
+    } else {
+      sentTo.textContent = "We sent a 6-digit code to your email. Please enter it below.";
+    }
+
+    const joinCode = () => inputs.map(i => i.value.trim()).join("");
+
+    // OTP behaviour
+    inputs.forEach((input, i) => {
+      input.addEventListener("beforeinput", (e) => {
+        if (e.inputType === "insertText" && !/^\d$/.test(e.data)) e.preventDefault();
+      });
+
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "");
+        if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
+        verificationError.textContent = "";
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowLeft" && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowRight" && i < inputs.length - 1) inputs[i + 1].focus();
+      });
+
+      input.addEventListener("paste", (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData("text");
+        if (/^\d{6}$/.test(text)) {
+          e.preventDefault();
+          for (let k = 0; k < 6; k++) inputs[k].value = text[k];
+          inputs[5].focus();
+        }
+      });
+    });
+
+    // Resend cooldown
+    let cooldown = 0;
+    let timerId = null;
+    function setResendState(active) {
+      if (active) {
+        resendLink.classList.remove("disabled-link");
+        resendTimer.textContent = "";
+      } else {
+        resendLink.classList.add("disabled-link");
+      }
+    }
+    function startCooldown(seconds = 60) {
+      if (timerId) clearInterval(timerId); // prevent stacked timers
+      cooldown = seconds;
+      setResendState(false);
+      updateTimer();
+      timerId = setInterval(updateTimer, 1000);
+    }
+    function updateTimer() {
+      if (cooldown <= 0) {
+        clearInterval(timerId);
+        timerId = null;
+        resendTimer.textContent = "";
+        setResendState(true);
+        return;
+      }
+      resendTimer.textContent = `(${cooldown}s)`;
+      cooldown -= 1;
+    }
+
+    // Modal helpers
+    function showSuccessModal({ userId = null, teacherId = null, redirectTo = null, autoCloseMs = null }) {
+      const el = document.getElementById("successModal");
+      const m  = new bootstrap.Modal(el);
+
+      document.getElementById("successUserId").textContent    = userId    || "—";
+      document.getElementById("successTeacherId").textContent = teacherId || "—";
+
+      document.getElementById("successOkBtn").onclick = () => { if (redirectTo) window.location.href = redirectTo; };
+      el.addEventListener("hidden.bs.modal", function onHidden() {
+        el.removeEventListener("hidden.bs.modal", onHidden);
+        if (redirectTo) window.location.href = redirectTo;
+      });
+
+      m.show();
+
+      if (autoCloseMs && Number.isFinite(autoCloseMs)) {
+        setTimeout(() => {
+          m.hide();
+          if (redirectTo) window.location.href = redirectTo;
+        }, autoCloseMs);
+      }
+    }
+
+    function showFeedbackModal(message, title = "Notification") {
+      document.getElementById("feedbackModalLabel").textContent = title;
+      document.getElementById("feedbackModalBody").textContent  = message;
+      new bootstrap.Modal(document.getElementById("feedbackModal")).show();
+    }
+
+    // Submit verification
+    verifyForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const code = joinCode();
+
+      if (!/^\d{6}$/.test(code)) {
+        verificationError.textContent = "Please enter a valid 6-digit code.";
+        inputs[0].focus();
+        return;
+      }
+      if (!email) {
+        verificationError.textContent = "Email not found. Please register again.";
+        return;
+      }
+
+      verificationError.textContent = "";
+      verifyBtn.disabled = true;
+      const prevHTML = verifyBtn.innerHTML;
+      verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying...`;
+
+      try {
+        const res = await fetch(`${API_BASE}/verify-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          const userId    = data.userId    || (data.user && data.user.userId);
+          const teacherId = data.teacherId || (data.user && data.user.teacherId);
+          const studentId = data.studentId || (data.user && data.user.studentId); // still saved if present (optional)
+
+          if (userId)    sessionStorage.setItem("verifiedUserId", userId);
+          if (teacherId) sessionStorage.setItem("teacherId", teacherId);
+          if (studentId) sessionStorage.setItem("studentId", studentId);
+
+          // Clean pending state (before redirect)
+          sessionStorage.removeItem("pendingEmail");
+          sessionStorage.removeItem("pendingUserData");
+
+          // Show formatted success modal (User ID + Teacher ID), then redirect to Teacher login
+          showSuccessModal({
+            userId,
+            teacherId,
+            redirectTo: "/TEACHER/login/login.html"
+            // autoCloseMs: 2000, // <- uncomment to auto-close after 2s
+          });
+
+        } else {
+          verificationError.textContent = data.error || "Invalid or expired code.";
+          if (!timerId) startCooldown(30); // discourage spamming
+        }
+      } catch (err) {
+        console.error(err);
+        verificationError.textContent = "Failed to connect to server.";
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = prevHTML;
+      }
+    });
+
+    // Resend code
+    resendLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (resendLink.classList.contains("disabled-link")) return;
+      if (!email) {
+        verificationError.textContent = "Missing email from session.";
+        return;
+      }
+      try {
+        setResendState(false);
+        const res = await fetch(`${API_BASE}/resend-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showFeedbackModal("New verification code sent to your email.", "Code Resent");
+          inputs.forEach(i => i.value = "");
+          inputs[0].focus();
+          startCooldown(60);
+        } else {
+          setResendState(true);
+          showFeedbackModal(data.error || "Could not resend code.", "Resend Failed");
+        }
+      } catch (error) {
+        console.error(error);
+        setResendState(true);
+        showFeedbackModal("Server error while resending verification code.", "Server Error");
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      inputs[0].focus();
+      startCooldown(30);
+    });
+  </script>
+</body>
+</html>

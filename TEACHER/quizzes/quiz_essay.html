@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher – Essay Grading (Grouped by Quiz)</title>
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <!-- Shared theme (optional) -->
+  <link rel="stylesheet" href="../quizzes/quiz.css"/>
+
+  <style>
+    :root{
+      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;--radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
+    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+    .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
+    .logo-header{height:45px}
+    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
+    .search-box input{border-radius:30px}
+    .muted{color:#6c757d}
+    .q-item{cursor:pointer;border-radius:10px;padding:.5rem .6rem;border:1px solid var(--border);background:#fff}
+    .q-item.active{border-color:var(--accent-2);box-shadow:0 0 0 .12rem rgba(176,60,16,.12)}
+    .q-item .small{color:#6c757d}
+    .sticky-title{position:sticky;top:0;background:#fff;z-index:2;padding:.25rem 0}
+    .quiz-q,.student-ans{white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input type="text" class="form-control" id="freeSearch" placeholder="Search student, quiz, or answer…"/>
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <section class="content px-4 py-3">
+        <h1 class="fw-bold mb-3">Essay Grading</h1>
+
+        <!-- Filters / Toolbar -->
+        <div class="card p-3 mb-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-2">
+              <label class="form-label fw-semibold">Status</label>
+              <select class="form-select" id="statusSelect">
+                <option value="">All</option>
+                <option value="pending" selected>Pending</option>
+                <option value="graded">Graded</option>
+                <option value="needs_review">Needs Review</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-lg-3">
+              <label class="form-label fw-semibold">Course</label>
+              <select class="form-select" id="courseFilter">
+                <option value="">All Courses</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-lg-3">
+              <label class="form-label fw-semibold">Module</label>
+              <select class="form-select" id="moduleFilter" disabled>
+                <option value="">All Modules</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-lg-2">
+              <label class="form-label fw-semibold">Page Size</label>
+              <select class="form-select" id="pageSizeSelect">
+                <option>10</option>
+                <option selected>20</option>
+                <option>50</option>
+                <option>100</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-lg-2 d-flex gap-2 justify-content-end">
+              <button id="refreshBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-repeat"></i> Refresh</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- List (grouped) -->
+        <div class="table-responsive card">
+          <table class="table table-striped align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Module</th>
+                <th>Quiz</th>
+                <th>Essay Items</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="essayTbody">
+              <tr><td colspan="8" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pager -->
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div class="muted" id="listSummary">—</div>
+          <div class="btn-group">
+            <button class="btn btn-outline-secondary btn-sm" id="prevBtn">Prev</button>
+            <span class="btn btn-light btn-sm disabled" id="pageIndicator">1 / 1</span>
+            <button class="btn btn-outline-secondary btn-sm" id="nextBtn">Next</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Group Grade Modal -->
+  <div class="modal fade" id="gradeModal" tabindex="-1" aria-labelledby="gradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="gradeModalLabel">Grade Submission</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="row g-3">
+            <!-- Sidebar: questions in this submission -->
+            <div class="col-12 col-lg-4">
+              <div class="card p-3 h-100">
+                <div class="sticky-title">
+                  <div class="small text-muted" id="modalCourseModuleLine">—</div>
+                  <div class="fw-semibold" id="modalStudentLine">Student —</div>
+                  <div class="small text-muted" id="modalQuizLine">Quiz —</div>
+                  <hr class="mt-2 mb-3"/>
+                </div>
+                <div id="qList" class="d-flex flex-column gap-2"></div>
+              </div>
+            </div>
+
+            <!-- Main: selected question -->
+            <div class="col-12 col-lg-8">
+              <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h6 class="text-muted mb-2">Question</h6>
+                  <div class="small text-muted" id="qIndexLine">1 / 1</div>
+                </div>
+                <div id="qText" class="quiz-q mb-3"></div>
+                <h6 class="text-muted mb-1">Student Answer</h6>
+                <div id="ansText" class="student-ans mb-3"></div>
+
+                <form id="gradeForm">
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <label class="form-label fw-semibold">Score</label>
+                      <input type="number" step="1" min="0" class="form-control" id="scoreInput" required>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label fw-semibold">Max</label>
+                      <input type="number" step="1" min="1" class="form-control" id="maxInput" value="10" required>
+                    </div>
+                  </div>
+
+                  <div class="mt-2">
+                    <label class="form-label fw-semibold">Feedback</label>
+                    <textarea class="form-control" rows="4" id="feedbackInput" placeholder="Write helpful feedback…"></textarea>
+                  </div>
+
+                  <div class="mt-2">
+                    <label class="form-label fw-semibold">Status</label>
+                    <select id="statusInput" class="form-select">
+                      <option value="graded" selected>Graded</option>
+                      <option value="needs_review">Needs Review</option>
+                    </select>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Save This Question</button>
+                    <button type="button" id="prevQBtn" class="btn btn-outline-secondary">Prev</button>
+                    <button type="button" id="nextQBtn" class="btn btn-outline-secondary">Next</button>
+                    <div class="ms-auto"></div>
+                    <button type="button" id="saveAllBtn" class="btn btn-success"><i class="bi bi-save2"></i> Save All</button>
+                  </div>
+                </form>
+
+                <div class="small text-muted mt-3" id="metaInfo"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sb = document.querySelector(".sidebar"), db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        })
+        .catch(()=>{});
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Page Logic -->
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // ---- Auth guard + username ----
+    (function () {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
+      if (!u?.userId || !u?.isTeacher) {
+        window.location.href = "/TEACHER/login/login.html";
+        return;
+      }
+      window.currentUser = u;
+      const nameEl = document.getElementById("Username");
+      if (nameEl) nameEl.textContent = u.username || "Teacher";
+    })();
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // ====== UI refs ======
+    const statusSelectEl   = document.getElementById('statusSelect');
+    const pageSizeSelectEl = document.getElementById('pageSizeSelect');
+    const freeSearchEl     = document.getElementById('freeSearch');
+    const refreshBtn       = document.getElementById('refreshBtn');
+    const essayTbody       = document.getElementById('essayTbody');
+    const pageIndicator    = document.getElementById('pageIndicator');
+    const listSummary      = document.getElementById('listSummary');
+    const prevBtn          = document.getElementById('prevBtn');
+    const nextBtn          = document.getElementById('nextBtn');
+    const courseFilterEl   = document.getElementById('courseFilter');
+    const moduleFilterEl   = document.getElementById('moduleFilter');
+
+    // Modal refs
+    const qListEl     = document.getElementById('qList');
+    const qTextEl     = document.getElementById('qText');
+    const ansTextEl   = document.getElementById('ansText');
+    const scoreInput  = document.getElementById('scoreInput');
+    const maxInput    = document.getElementById('maxInput');
+    const feedbackInput= document.getElementById('feedbackInput');
+    const statusInput = document.getElementById('statusInput');
+    const metaInfo    = document.getElementById('metaInfo');
+    const modalCourseModule = document.getElementById('modalCourseModuleLine');
+    const modalStudentLine  = document.getElementById('modalStudentLine');
+    const modalQuizLine     = document.getElementById('modalQuizLine');
+    const gradeForm         = document.getElementById('gradeForm');
+    const qIndexLine        = document.getElementById('qIndexLine');
+    const prevQBtn          = document.getElementById('prevQBtn');
+    const nextQBtn          = document.getElementById('nextQBtn');
+    const saveAllBtn        = document.getElementById('saveAllBtn');
+    const gradeModalEl      = document.getElementById('gradeModal');
+    const gradeModal        = new bootstrap.Modal(gradeModalEl);
+
+    // ====== State ======
+    const teacherId =
+      new URLSearchParams(location.search).get('teacherId') ||
+      (window.currentUser && window.currentUser.userId) || '';
+
+    let page = 1;
+    let total = 0;
+    let pageSize = parseInt(pageSizeSelectEl.value, 10);
+    let lastItems = [];
+    let grouped = []; // array of groups (one row per submission)
+    let selectedGroup = null;
+    let selIndex = 0; // which essay within a group is selected
+
+    // Caches
+    const courseLabelCache = new Map();
+    const moduleLabelCache = new Map();
+
+    // ====== Helpers ======
+    function withTeacher(urlOrPath) {
+      const base = urlOrPath.startsWith('http') ? urlOrPath : `${API_BASE}${urlOrPath}`;
+      const u = new URL(base);
+      if (!u.searchParams.get('teacherId')) u.searchParams.set('teacherId', teacherId);
+      return u.toString();
+    }
+
+    async function getJson(urlOrPath) {
+      const res = await fetch(withTeacher(urlOrPath));
+      const text = await res.text();
+      if (!res.ok) throw new Error(`GET ${urlOrPath} -> ${res.status}: ${text.slice(0,200)}`);
+      try { return JSON.parse(text); } catch { return {}; }
+    }
+
+    async function postJson(urlOrPath, body) {
+      const res = await fetch(withTeacher(urlOrPath), {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      const text = await res.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch {}
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || `POST ${urlOrPath} failed`);
+      }
+      return data;
+    }
+
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    function statusBadge(s='') {
+      s = s.toLowerCase();
+      if (s === 'pending')      return '<span class="badge bg-warning text-dark">Pending</span>';
+      if (s === 'graded')       return '<span class="badge bg-success">Graded</span>';
+      if (s === 'needs_review') return '<span class="badge bg-secondary">Needs Review</span>';
+      return '<span class="badge bg-light text-dark">—</span>';
+    }
+
+    function asDate(v) {
+      if (!v) return '—';
+      if (v._seconds) return new Date(v._seconds * 1000).toLocaleString();
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+    }
+
+    async function getCourseLabel(courseId) {
+      if (!courseId) return '—';
+      if (courseLabelCache.has(courseId)) return courseLabelCache.get(courseId);
+      try {
+        const c = await getJson(`/api/courses/${encodeURIComponent(courseId)}`);
+        const label = (c && (c.title || c.name)) ? (c.title || c.name) : courseId;
+        courseLabelCache.set(courseId, label);
+        return label;
+      } catch {
+        courseLabelCache.set(courseId, courseId);
+        return courseId;
+      }
+    }
+    async function getModuleLabel(moduleId) {
+      if (!moduleId) return '—';
+      if (moduleLabelCache.has(moduleId)) return moduleLabelCache.get(moduleId);
+      try {
+        const m = await getJson(`/modules/${encodeURIComponent(moduleId)}`);
+        const label = (m && (m.title || m.name)) ? (m.title || m.name) : moduleId;
+        moduleLabelCache.set(moduleId, label);
+        return label;
+      } catch {
+        moduleLabelCache.set(moduleId, moduleId);
+        return moduleId;
+      }
+    }
+
+    // ====== Normalizer (adjust field names here if needed) ======
+    function normalizeListResponse(resp) {
+      const rawItems = Array.isArray(resp) ? resp
+                    : Array.isArray(resp.items) ? resp.items
+                    : Array.isArray(resp.submissions) ? resp.submissions
+                    : [];
+
+      const norm = rawItems.map(r => {
+        return {
+          // per-essay fields
+          id: r.id || r.submissionId || r.attemptId || r.docId || r._id,   // <-- essay row id
+          questionTitle: r.questionTitle || r.question_text || r.questionText || r.question || '',
+          questionText:  r.questionText  || r.questionTitle || r.question || '',
+          answer:        r.answer ?? r.studentAnswer ?? r.essay ?? '',
+          status: (r.status || r.state || 'pending').toLowerCase(),
+          score: (r.score != null) ? Number(r.score) : (r.givenScore != null ? Number(r.givenScore) : null),
+          maxScore: (r.maxScore != null) ? Number(r.maxScore) : (r.totalScore != null ? Number(r.totalScore) : 10),
+          createdAt: r.createdAt || r.submittedAt || r.created || r.timestamp || null,
+
+          // who/what submission
+          studentName:  r.studentName || r.student || r.student_display || r.studentEmail || 'Student',
+          studentEmail: r.studentEmail || r.email || null,
+          quizId:   r.quizId || r.quiz_id || r.quiz || '',             // <-- REQUIRED to group
+          attemptId: r.attemptId || r.attempt_id || null,
+
+          // for filters/labels
+          courseId: r.courseId || r.course_id || '',
+          moduleId: r.moduleId || r.module_id || ''
+        };
+      });
+
+      const total = Number(resp.total ?? norm.length) || norm.length;
+      return { items: norm, total };
+    }
+
+    function groupBySubmission(items) {
+      // key: studentEmail|studentName|quizId|attemptId|courseId|moduleId
+      const map = new Map();
+      for (const x of items) {
+        const key = [
+          x.studentEmail || '',
+          x.studentName  || '',
+          x.quizId || '',
+          x.attemptId || '',
+          x.courseId || '',
+          x.moduleId || ''
+        ].join('|');
+
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            studentName: x.studentName,
+            studentEmail: x.studentEmail,
+            quizId: x.quizId,
+            attemptId: x.attemptId,
+            courseId: x.courseId,
+            moduleId: x.moduleId,
+            createdAt: x.createdAt,
+            essays: []
+          });
+        }
+        const g = map.get(key);
+        g.essays.push(x);
+        // earliest createdAt for display
+        if (!g.createdAt || (x.createdAt && new Date(x.createdAt) < new Date(g.createdAt))) g.createdAt = x.createdAt;
+      }
+      // compute status summary (if any pending -> pending; else if any needs_review -> needs_review; else graded)
+      const groups = [...map.values()].map(g => {
+        const statuses = g.essays.map(e => e.status);
+        let groupStatus = 'graded';
+        if (statuses.some(s => s === 'pending')) groupStatus = 'pending';
+        else if (statuses.some(s => s === 'needs_review')) groupStatus = 'needs_review';
+        return { ...g, status: groupStatus };
+      });
+      return groups;
+    }
+
+    async function loadTeacherCoursesForFilter() {
+      try {
+        const data = await getJson(`/api/teacher/dashboard-stats?teacherId=${encodeURIComponent(teacherId)}`);
+        const courses = Array.isArray(data?.courses) ? data.courses : [];
+        courseFilterEl.innerHTML = `<option value="">All Courses</option>` +
+          courses.map(c => {
+            const id = c.id || c.courseId;
+            const title = c.title || c.name || 'Untitled';
+            if (id) courseLabelCache.set(id, title);
+            return id ? `<option value="${escapeHTML(id)}">${escapeHTML(title)}</option>` : '';
+          }).join('');
+      } catch {}
+    }
+    async function loadModulesForCourse(courseId) {
+      moduleFilterEl.innerHTML = `<option value="">All Modules</option>`;
+      moduleFilterEl.disabled = !courseId;
+      if (!courseId) return;
+      try {
+        const resp = await getJson(`/courses/${encodeURIComponent(courseId)}/modules`);
+        const modules = Array.isArray(resp?.modules) ? resp.modules : (Array.isArray(resp) ? resp : []);
+        moduleFilterEl.innerHTML = `<option value="">All Modules</option>` +
+          modules.map(m => `<option value="${escapeHTML(m.id)}">${escapeHTML(m.title || 'Untitled Module')}</option>`).join('');
+        modules.forEach(m => moduleLabelCache.set(m.id, m.title || 'Untitled Module'));
+      } catch {}
+    }
+
+    async function loadEssays() {
+      essayTbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Loading…</td></tr>`;
+      const status  = statusSelectEl.value;
+      pageSize      = parseInt(pageSizeSelectEl.value, 10) || 20;
+
+      const base = `/api/teacher/quiz-essays?status=${encodeURIComponent(status)}&page=${page}&pageSize=${pageSize}`;
+      const resp = await getJson(base);
+      const { items, total: t } = normalizeListResponse(resp);
+
+      total     = t || 0;
+      lastItems = items || [];
+      grouped   = groupBySubmission(lastItems);
+
+      // label caches for current page
+      await Promise.all([
+        ...new Set(grouped.map(g => g.courseId)).values()
+      ].filter(Boolean).map(getCourseLabel));
+      await Promise.all([
+        ...new Set(grouped.map(g => g.moduleId)).values()
+      ].filter(Boolean).map(getModuleLabel));
+
+      applyFiltersAndRender();
+    }
+
+    function applyFiltersAndRender() {
+      const q = (freeSearchEl.value || '').toLowerCase().trim();
+      const fCourse = courseFilterEl.value;
+      const fModule = moduleFilterEl.value;
+
+      const filtered = grouped.filter(g => {
+        if (fCourse && g.courseId !== fCourse) return false;
+        if (fModule && g.moduleId !== fModule) return false;
+        if (q) {
+          const hay = `${g.studentName} ${g.studentEmail||''} ${g.quizId} ${
+            (courseLabelCache.get(g.courseId)||'')} ${(moduleLabelCache.get(g.moduleId)||'')} ${
+            g.essays.map(e => `${e.questionText} ${e.answer}`).join(' ')
+          }`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      renderList(filtered);
+      renderPager();
+    }
+
+    function renderList(view) {
+      if (!view.length) {
+        essayTbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No results</td></tr>`;
+        return;
+      }
+
+      essayTbody.innerHTML = view.map(g => {
+        const cLabel = escapeHTML(courseLabelCache.get(g.courseId) || '—');
+        const mLabel = escapeHTML(moduleLabelCache.get(g.moduleId) || '—');
+        const badge  = statusBadge(g.status);
+        const submitted = asDate(g.createdAt);
+        const quizLabel = escapeHTML(g.quizId || '—');
+        const count = g.essays.length;
+
+        return `
+          <tr>
+            <td>${escapeHTML(g.studentName || 'Student')}</td>
+            <td>${cLabel}</td>
+            <td>${mLabel}</td>
+            <td>${quizLabel}</td>
+            <td>${count}</td>
+            <td>${badge}</td>
+            <td>${submitted}</td>
+            <td>
+              <button class="btn btn-sm btn-primary" data-key="${escapeHTML(g.key)}" data-action="open-group">
+                <i class="bi bi-pencil-square"></i> Grade ${count}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderPager() {
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      page = Math.min(Math.max(1, page), pages);
+      pageIndicator.textContent = `${page} / ${pages}`;
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= pages;
+      listSummary.textContent = `${total} essay item${total === 1 ? '' : 's'} • page size ${pageSize}`;
+    }
+
+    // ====== Group modal ======
+    function fillSidebar(group) {
+      qListEl.innerHTML = group.essays.map((e, i) => {
+        const preview = (e.answer || '').slice(0, 60).replace(/\n/g,' ') + ((e.answer||'').length>60?'…':'');
+        const statusSmall = e.status === 'graded' ? 'graded' : (e.status === 'needs_review' ? 'needs review' : 'pending');
+        return `
+          <div class="q-item ${i===selIndex?'active':''}" data-idx="${i}">
+            <div class="fw-semibold">${i+1}. ${escapeHTML(e.questionTitle || 'Essay')}</div>
+            <div class="small">${escapeHTML(preview)}</div>
+            <div class="small">Status: ${escapeHTML(statusSmall)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function loadQuestionIntoForm(group, index) {
+      const e = group.essays[index];
+      if (!e) return;
+
+      document.querySelectorAll('.q-item').forEach(el => el.classList.remove('active'));
+      const active = qListEl.querySelector(`.q-item[data-idx="${index}"]`);
+      if (active) active.classList.add('active');
+
+      qIndexLine.textContent = `${index+1} / ${group.essays.length}`;
+      qTextEl.textContent    = e.questionText || e.questionTitle || '';
+      ansTextEl.textContent  = e.answer || '';
+      scoreInput.value       = (e.score != null ? e.score : '');
+      maxInput.value         = e.maxScore ?? 10;
+      feedbackInput.value    = e.feedback || '';
+      statusInput.value      = (e.status === 'graded' || e.status === 'needs_review') ? e.status : 'graded';
+      metaInfo.textContent   = `${group.studentName || 'Student'} • Submitted ${asDate(e.createdAt)}`;
+    }
+
+    async function openGroupByKey(key) {
+      const group = grouped.find(g => g.key === key);
+      if (!group) return;
+
+      selectedGroup = group;
+      selIndex = 0;
+
+      // header lines
+      modalStudentLine.textContent = group.studentName || 'Student';
+      modalQuizLine.textContent    = `Quiz: ${group.quizId || '—'}`;
+      const cLabel = courseLabelCache.get(group.courseId) || '—';
+      const mLabel = moduleLabelCache.get(group.moduleId) || '—';
+      modalCourseModule.textContent = `Course: ${cLabel} • Module: ${mLabel}`;
+
+      // list + first question
+      fillSidebar(group);
+      loadQuestionIntoForm(group, selIndex);
+
+      gradeModal.show();
+    }
+
+    async function saveOne(eObj) {
+      const body = {
+        score: Number(scoreInput.value),
+        maxScore: Number(maxInput.value),
+        feedback: feedbackInput.value || '',
+        status: statusInput.value || 'graded'
+      };
+      if (!Number.isFinite(body.score) || body.score < 0) {
+        alert('Score must be a non-negative number.'); return;
+      }
+      if (!Number.isFinite(body.maxScore) || body.maxScore <= 0) {
+        alert('Max must be a positive number.'); return;
+      }
+      await postJson(`/api/teacher/quiz-essays/${encodeURIComponent(eObj.id)}/grade`, body);
+      // update local copy
+      Object.assign(eObj, body);
+      eObj.status = body.status;
+    }
+
+    async function saveAll(group) {
+      const promises = [];
+      // we reuse the current form state for the currently selected item (ensure it’s applied)
+      const current = group.essays[selIndex];
+      if (current) {
+        await saveOne(current);
+      }
+      // but “Save All” means push the server any local changes we made per essay.
+      // Here we simply re-send each essay’s current values (score/max/feedback/status).
+      for (const e of group.essays) {
+        const payload = {
+          score: (e.score != null ? e.score : 0),
+          maxScore: (e.maxScore != null ? e.maxScore : 10),
+          feedback: (e.feedback || ''),
+          status: (e.status || 'graded')
+        };
+        promises.push(postJson(`/api/teacher/quiz-essays/${encodeURIComponent(e.id)}/grade`, payload));
+      }
+      await Promise.all(promises);
+    }
+
+    // ====== Events ======
+    essayTbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="open-group"]');
+      if (!btn) return;
+      const key = btn.getAttribute('data-key');
+      if (key) openGroupByKey(key).catch(err => {
+        console.error(err);
+        alert('Failed to load submission.');
+      });
+    });
+
+    qListEl.addEventListener('click', (e) => {
+      const box = e.target.closest('.q-item');
+      if (!box || !selectedGroup) return;
+      const idx = parseInt(box.getAttribute('data-idx'), 10);
+      if (!Number.isInteger(idx)) return;
+      // before switching, update current essay object with form values
+      const cur = selectedGroup.essays[selIndex];
+      if (cur) {
+        cur.score = (scoreInput.value !== '' ? Number(scoreInput.value) : cur.score);
+        cur.maxScore = Number(maxInput.value) || cur.maxScore;
+        cur.feedback = feedbackInput.value || cur.feedback;
+        cur.status = statusInput.value || cur.status;
+      }
+      selIndex = idx;
+      loadQuestionIntoForm(selectedGroup, selIndex);
+    });
+
+    gradeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedGroup) return;
+      const essay = selectedGroup.essays[selIndex];
+      if (!essay) return;
+
+      const btn = gradeForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        await saveOne(essay);
+        // refresh list view status badges without reloading page
+        fillSidebar(selectedGroup);
+        alert('Saved.');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to save grade.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    prevQBtn.addEventListener('click', () => {
+      if (!selectedGroup) return;
+      if (selIndex > 0) {
+        // persist current edits in memory
+        const cur = selectedGroup.essays[selIndex];
+        cur.score = (scoreInput.value !== '' ? Number(scoreInput.value) : cur.score);
+        cur.maxScore = Number(maxInput.value) || cur.maxScore;
+        cur.feedback = feedbackInput.value || cur.feedback;
+        cur.status = statusInput.value || cur.status;
+
+        selIndex -= 1;
+        loadQuestionIntoForm(selectedGroup, selIndex);
+      }
+    });
+
+    nextQBtn.addEventListener('click', () => {
+      if (!selectedGroup) return;
+      if (selIndex < selectedGroup.essays.length - 1) {
+        const cur = selectedGroup.essays[selIndex];
+        cur.score = (scoreInput.value !== '' ? Number(scoreInput.value) : cur.score);
+        cur.maxScore = Number(maxInput.value) || cur.maxScore;
+        cur.feedback = feedbackInput.value || cur.feedback;
+        cur.status = statusInput.value || cur.status;
+
+        selIndex += 1;
+        loadQuestionIntoForm(selectedGroup, selIndex);
+      }
+    });
+
+    saveAllBtn.addEventListener('click', async () => {
+      if (!selectedGroup) return;
+      saveAllBtn.disabled = true;
+      try {
+        await saveAll(selectedGroup);
+        gradeModal.hide();
+        await loadEssays();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to save all grades.');
+      } finally {
+        saveAllBtn.disabled = false;
+      }
+    });
+
+    statusSelectEl.addEventListener('change', () => { page = 1; loadEssays().catch(console.error); });
+    pageSizeSelectEl.addEventListener('change', () => { page = 1; loadEssays().catch(console.error); });
+    refreshBtn.addEventListener('click', () => loadEssays().catch(console.error));
+    freeSearchEl.addEventListener('input', applyFiltersAndRender);
+
+    courseFilterEl.addEventListener('change', async () => {
+      const cid = courseFilterEl.value;
+      await loadModulesForCourse(cid);
+      moduleFilterEl.value = '';
+      applyFiltersAndRender();
+    });
+    moduleFilterEl.addEventListener('change', applyFiltersAndRender);
+
+    prevBtn.addEventListener('click', () => { if (page > 1) { page--; loadEssays().catch(console.error); }});
+    nextBtn.addEventListener('click', () => { page++; loadEssays().catch(console.error); });
+
+    // ====== Boot ======
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!teacherId) {
+        alert("Missing teacherId. Please log in again.");
+        window.location.href = "/TEACHER/login/login.html";
+        return;
+      }
+      await loadTeacherCoursesForFilter();
+      await loadEssays().catch(err => {
+        console.error(err);
+        essayTbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load essays.</td></tr>`;
+      });
+    });
+  </script>
+</body>
+</html>

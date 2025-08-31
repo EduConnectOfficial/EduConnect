@@ -1,0 +1,305 @@
+/* analytics.css */
+
+/* Page Title */
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+/* Subsections */
+.subsection {
+  margin-bottom: 2.5rem;
+}
+
+.subsection h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Chart Cards */
+.chart-card {
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: #fff;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  height: 300px !important;
+}
+
+/* Summary Cards */
+.summary-cards .summary-card {
+  flex: 1 1 200px;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  text-align: center;
+}
+
+.summary-card h6 {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.summary-card p {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* At-Risk Table */
+#atRiskTable th,
+#atRiskTable td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Export Buttons */
+.btn-outline-primary,
+.btn-outline-secondary {
+  min-width: 160px;
+}
+
+/* Small helpers, in case analytics.css is minimal */
+.page-title {
+  margin: 24px 0 16px;
+  font-weight: 700;
+}
+
+.subsection>h2 {
+  margin: 24px 0 16px;
+  font-weight: 700;
+}
+
+.chart-card {
+  padding: 16px;
+}
+
+.chart-title {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.summary-cards .summary-card {
+  padding: 16px;
+  min-width: 200px;
+}
+
+.summary-cards .summary-card h6 {
+  margin-bottom: 6px;
+  color: #6c757d;
+}
+
+.summary-cards .summary-card p {
+  font-size: 1.35rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.muted {
+  color: #6c757d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .summary-cards {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .chart-card canvas {
+    height: 250px !important;
+  }
+}
+/* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }
+@media (max-width: 480px) {
+  /* Make buttons easy to tap and nicely spaced */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;           /* stack cleanly */
+    width: 100%;              /* full-width buttons */
+    min-height: 44px;         /* Apple HIG tap target */
+    padding: 0.9rem 1rem;     /* comfy padding */
+    font-size: 1rem;          /* avoid iOS zoom */
+    line-height: 1.2;
+    border-radius: 14px;      /* softer corners on small screens */
+    margin: 10px 0;           /* vertical gap between buttons */
+    text-align: center;
+  }
+
+  /* Icon + text alignment inside buttons */
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+
+  /* Button groups wrap nicely with spacing */
+  .btn-group,
+  .lesson-nav,
+  .content .d-flex,
+  .content .btn-toolbar {
+    flex-wrap: wrap !important;
+    gap: 10px;
+  }
+
+  /* Specific: lesson prev/next should stack under title if tight */
+  .lesson-nav .btn {
+    min-width: unset;         /* let full-width rule apply */
+  }
+
+  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
+  .content .d-flex.gap-2 {
+    gap: 10px !important;
+  }
+
+  /* Prevent tiny outline/ghost borders on gradient buttons */
+  .btn-amber,
+  .btn-amber-outline,
+  .back-btn,
+  .logout-btn {
+    border-width: 1px;
+  }
+}
+
+/* Tablet: keep buttons inline but add breathing room */
+@media (min-width: 481px) and (max-width: 1280px) {
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+  }
+
+  /* Lesson nav buttons keep reasonable width */
+  .lesson-nav .btn { min-width: 120px; }
+}

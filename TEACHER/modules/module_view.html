@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+  <title>EduConnect Teacher - Module Content</title>
+
+  <!-- Bootstrap & Icons -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+    rel="stylesheet"
+/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+ <link rel="stylesheet" href="list.css" />
+
+  <style>
+    :root {
+      --color-primary: #4A1A0C;
+      --color-secondary: #7A2810;
+      --color-bg: #f8fafc;
+      --color-border: #e0e7ef;
+      --color-text: #374151;
+      --radius-card: 1.5rem;
+      --shadow-light: 0 1.5px 6px rgba(30, 34, 90, 0.07);
+      --shadow-strong: 0 6px 32px rgba(30, 34, 90, 0.13);
+    }
+
+    body {
+      background-color: var(--color-bg);
+      color: var(--color-text);
+    }
+
+    main.container {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+
+    .module-content-card {
+      background: #fff;
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-strong), var(--shadow-light);
+      padding: 2rem;
+      max-width: 2000px;
+      border: 1px solid var(--color-border);
+      transition: box-shadow 0.2s;
+      
+    }
+    .profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+.profile-btn .username {
+  font-size: 14px;
+}
+
+    .module-title {
+      color: var(--color-secondary);
+      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    /* Top‐aligned, scrollable nav-pills */
+    .nav-pills {
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-pills .nav-item {
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
+    .nav-pills .nav-link {
+      border-radius: 0.75rem;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+    }
+    .nav-pills .nav-link.active {
+      background-color: var(--color-primary) !important;
+      color: #fff;
+    }
+
+    .module-subtitle {
+      color: var(--color-primary) !important;
+      font-weight: 600;
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .module-desc,
+    .main-desc {
+      font-size: 1rem;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .main-desc {
+      border-top: 1px solid var(--color-border);
+      padding-top: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .attachment-item {
+      background: #e3eafc;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .attachment-item a {
+      font-weight: 600;
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    .attachment-item .small {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/components/sidebar.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+          });
+      });
+    </script>
+    <!-- Main Content -->
+    <div class="main">
+    <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input id="searchBox" type="text" placeholder="Search my module..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn btn">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="dashboardUsername" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <main class="container">
+        <div id="moduleContent" class="module-content-card text-center text-muted">
+          Loading module...
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      // 1. Load username
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!userData.username) {
+        return window.location.replace("/login/login.html");
+      }
+      document.getElementById("dashboardUsername").textContent = userData.username;
+
+      // 2. Fetch module
+      const params = new URLSearchParams(location.search);
+      const moduleId = params.get("moduleId");
+      const subIdx = parseInt(params.get("subIdx"), 10) || 0;
+      const container = document.getElementById("moduleContent");
+
+      if (!moduleId) {
+        container.innerHTML = '<div class="text-danger">No module selected.</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:5000/modules/${moduleId}`);
+        const mod = await res.json();
+        if (!mod.title) throw new Error("Module not found");
+
+        // Build HTML
+        let html = `
+          <div class="module-title">${mod.title}</div>
+          <ul class="nav nav-pills" id="lessonTabs" role="tablist">
+        `;
+        mod.moduleSubTitles?.forEach((sub, i) => {
+          html += `
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link${i === subIdx ? " active" : ""}"
+                id="tab-${i}"
+                data-bs-toggle="pill"
+                data-bs-target="#lesson-${i}"
+                type="button"
+                role="tab"
+                aria-controls="lesson-${i}"
+                aria-selected="${i === subIdx}"
+              >${sub || "(No Title)"}</button>
+            </li>`;
+        });
+        html += `</ul><div class="tab-content">`;
+
+        mod.moduleSubTitles?.forEach((sub, i) => {
+          // Find all attachments for this lesson
+          let lessonAttachments = Array.isArray(mod.attachments)
+            ? mod.attachments.filter(att => att.lessonIdx === i)
+            : [];
+          html += `
+            <div
+              class="tab-pane fade${i === subIdx ? " show active" : ""}"
+              id="lesson-${i}"
+              role="tabpanel"
+              aria-labelledby="tab-${i}"
+            >
+              <h6 class="module-subtitle">${sub || "(No Title)"}</h6>
+              <p class="module-desc">${
+                mod.moduleSubDescs?.[i]
+                  ? mod.moduleSubDescs[i].replace(/\n/g, "<br>")
+                  : "<span class='text-muted'>(No Description)</span>"
+              }</p>
+              ${lessonAttachments.length > 0 ? lessonAttachments.map((att, attIdx) => {
+                let preview = '';
+                if (att.filePath) {
+                  const ext = att.filePath.split('.').pop().toLowerCase();
+                  if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
+                    preview = `<img src="http://127.0.0.1:5000${att.filePath}" alt="Preview" style="max-width:180px;max-height:120px;display:block;margin-bottom:0.5rem;border-radius:0.5rem;box-shadow:0 2px 8px #0001;cursor:pointer;" onclick="showAttachmentPreview('${att.filePath}','image')">`;
+                  } else if (ext === "pdf") {
+                    preview = `<embed src="http://127.0.0.1:5000${att.filePath}" type="application/pdf" width="180" height="120" style="border-radius:0.5rem;box-shadow:0 2px 8px #0001;cursor:pointer;" onclick="showAttachmentPreview('${att.filePath}','pdf')" />`;
+                  } else if (["mp4","webm","ogg"].includes(ext)) {
+                    preview = `<video controls style="max-width:180px;max-height:120px;display:block;margin-bottom:0.5rem;border-radius:0.5rem;box-shadow:0 2px 8px #0001;">
+                      <source src="http://127.0.0.1:5000${att.filePath}" type="video/${ext}">
+                      Your browser does not support the video tag.
+                    </video>`;
+                  }
+                }
+                // For video/text modules, show video URL and its description
+                let linkHtml = '';
+                if (att.url) {
+                  linkHtml = `<a href="${att.url}" target="_blank">
+                                <i class="bi bi-link-45deg me-2"></i>External Link
+                              </a>`;
+                } else if (att.filePath) {
+                  linkHtml = `<a href="http://127.0.0.1:5000${att.filePath}" target="_blank">
+                                <i class="bi bi-file-earmark-pdf-fill me-2"></i>Download File
+                              </a>`;
+                }
+                // Prefer videoDesc, then description, then fallback
+                const desc = att.videoDesc || att.description || "(no description)";
+                return `
+                  <div class="attachment-item mt-3">
+                    <div class="fw-bold mb-1">File ${attIdx + 1}</div>
+                    ${preview}
+                    ${linkHtml}
+                    <div class="small">${desc}</div>
+                  </div>
+                `;
+              }).join('') : ''}
+            </div>`;
+        });
+
+        // Main description
+        if (mod.description) {
+          html += `
+            <div class="main-desc">
+              <strong class="text-primary">Main Description</strong>
+              <p>${mod.description.replace(/\n/g, "<br>")}</p>
+            </div>`;
+        }
+
+        // (Global attachment list removed; now shown per lesson only)
+
+        container.classList.remove("text-center", "text-muted");
+        container.innerHTML = html;
+
+        // Update URL when user switches tabs
+        const tabs = container.querySelectorAll('#lessonTabs [data-bs-toggle="pill"]');
+        tabs.forEach(btn => {
+          btn.addEventListener('shown.bs.tab', e => {
+            const idx = e.target.id.split('-')[1];
+            history.replaceState(null, '', `?moduleId=${moduleId}&subIdx=${idx}`);
+          });
+        });
+
+        // Preview modal logic
+        if (!document.getElementById('attachmentPreviewModal')) {
+          const modalHtml = `
+            <div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-labelledby="attachmentPreviewLabel" aria-hidden="true">
+              <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="attachmentPreviewLabel">Attachment Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body" id="attachmentPreviewBody" style="min-height:400px;text-align:center;"></div>
+                </div>
+              </div>
+            </div>`;
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        window.showAttachmentPreview = function(filePath, type) {
+          const body = document.getElementById('attachmentPreviewBody');
+          if (type === 'image') {
+            body.innerHTML = `<img src="http://127.0.0.1:5000${filePath}" alt="Preview" style="max-width:90vw;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
+          } else if (type === 'pdf') {
+            body.innerHTML = `<embed src="http://127.0.0.1:5000${filePath}" type="application/pdf" width="100%" height="70vh" style="border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
+          } else {
+            body.innerHTML = `<div class='text-muted'>No preview available.</div>`;
+          }
+          const modal = new bootstrap.Modal(document.getElementById('attachmentPreviewModal'));
+          modal.show();
+        }
+
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = '<div class="text-danger">Failed to load module content.</div>';
+      }
+    });
+  </script>
+  
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/components/sidebar.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+
+            const sidebar = document.querySelector(".sidebar");
+            const dashboard = document.querySelector(".dashboard");
+
+            if (sidebar && dashboard) {
+              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+            }
+
+            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+              toggle.addEventListener('click', e => {
+                e.preventDefault();
+                const parent = toggle.closest('.has-submenu');
+                parent.classList.toggle('open');
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!expanded));
+              });
+            });
+          })
+          .catch(err => console.error("Failed to load sidebar:", err));
+      });
+       function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    </script>
+</body>
+</html>

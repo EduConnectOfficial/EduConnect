@@ -1,0 +1,68 @@
+/* graded.css */
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.filter-bar .form-label {
+  font-weight: 500;
+}
+
+.filter-bar .btn {
+  margin-top: 1.75rem;
+}
+
+#gradedTable th,
+#gradedTable td {
+  vertical-align: middle;
+}
+
+.badge {
+  font-size: 0.9rem;
+}
+
+.help-btn {
+  font-size: 0.9rem;
+  color: #fff;
+  opacity: 0.8;
+}
+.help-btn:hover {
+  color: #FFD580;
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-bar .row > div {
+    flex: 1 1 100%;
+  }
+  #gradedTable, 
+  #gradedTable thead, 
+  #gradedTable tbody, 
+  #gradedTable tr, 
+  #gradedTable td {
+    display: block;
+    width: 100%;
+  }
+  #gradedTable thead { display: none; }
+  #gradedTable tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+  #gradedTable td {
+    position: relative;
+    padding: 0.5rem;
+    text-align: right;
+  }
+  #gradedTable td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+}

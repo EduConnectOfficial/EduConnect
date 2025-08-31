@@ -1,0 +1,429 @@
+ :root {
+   --bg: #f6f8fa;
+   --text: #1f2328;
+   --muted: #6a737d;
+   --card: #fff;
+   --border: #e5e7eb;
+   --brand-dark-1: #4A1A0C;
+   --brand-dark-2: #7A2810;
+   --brand-accent-1: #FF6A00;
+   --brand-accent-2: #B03C10;
+   --card-radius: 14px;
+ }
+
+ html,
+ body {
+   height: 100%;
+   margin: 0;
+   background: var(--bg);
+   color: var(--text);
+ }
+
+ .dashboard {
+   display: flex;
+   min-height: 100vh;
+ }
+
+ .main {
+   margin-left: 70px;
+   width: calc(100% - 70px);
+   transition: margin-left .3s ease, width .3s ease;
+   display: flex;
+   flex-direction: column;
+   min-height: 100vh;
+   background: var(--bg);
+ }
+
+ .sidebar:hover~.main {
+   margin-left: 220px;
+   width: calc(100% - 220px);
+ }
+
+ /* Original header (kept) */
+ .header-top {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 12px 20px;
+   background: #fff;
+   border-bottom: 1px solid var(--border);
+   position: sticky;
+   top: 0;
+   z-index: 5;
+ }
+
+ .logo-header {
+   height: 45px;
+ }
+
+ .search-box {
+   position: relative;
+   flex: 1;
+   max-width: 500px;
+   margin: 0 20px;
+ }
+
+ .search-box input {
+   width: 100%;
+   padding: 10px 40px 10px 14px;
+   border: 1px solid var(--border);
+   border-radius: 999px;
+ }
+
+ .search-box i {
+   position: absolute;
+   right: 14px;
+   top: 50%;
+   transform: translateY(-50%);
+   color: #9aa2a8;
+ }
+
+ .profile-btn {
+   background: none;
+   border: none;
+   font-size: 1.8rem;
+   color: #222;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   cursor: pointer;
+ }
+
+ .profile-btn .username {
+   font-size: 14px;
+ }
+
+ .content {
+   padding: 24px;
+ }
+
+ .page-title {
+   font-weight: 700;
+   font-size: 1.6rem;
+   text-align: center;
+   margin: 4px 0 18px;
+ }
+
+ .page-title.brand {
+   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+   -webkit-background-clip: text;
+   background-clip: text;
+   color: transparent;
+ }
+
+ /* Cards */
+ .ui-card {
+   background: var(--card);
+   border: 1px solid var(--border);
+   border-radius: 12px;
+   padding: 16px;
+ }
+
+ .ui-card.card-themed {
+   border-radius: var(--card-radius);
+   border: 1px solid rgba(0, 0, 0, .06);
+   box-shadow: 0 10px 24px rgba(0, 0, 0, .10);
+   overflow: hidden;
+ }
+
+ .ui-card-head {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 10px;
+ }
+
+ .ui-card.card-themed .ui-card-head {
+   margin: -16px -16px 12px -16px;
+   padding: 12px 16px;
+   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+   color: #FFD8A9;
+   border-bottom: 1px solid rgba(255, 255, 255, .1);
+ }
+
+ .ui-card-title {
+   font-size: 1rem;
+   font-weight: 700;
+   margin: 0;
+   display: flex;
+   gap: 8px;
+   align-items: center;
+ }
+
+ .ui-card.card-themed .ui-card-title i {
+   color: #FFD8A9;
+ }
+
+ .ui-card.card-themed .ui-subtext {
+   color: #f1e8d9;
+ }
+
+ .ui-card.card-themed> :not(.ui-card-head) {
+   color: #1f2328;
+ }
+
+ .ui-subtext {
+   font-size: .9rem;
+   color: var(--muted);
+ }
+
+ /* KB cards */
+ .kb-card {
+   background: #fff;
+   border: 1px solid var(--border);
+   border-radius: 12px;
+   padding: 14px;
+   height: 100%;
+ }
+
+ .kb-card h6 {
+   margin: 0 0 4px;
+   font-weight: 700;
+ }
+
+ .kb-card p {
+   margin: 0;
+   color: var(--muted);
+   font-size: .9rem;
+ }
+
+ /* Buttons */
+ .btn-amber {
+   background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+   color: #fff;
+   border: none;
+ }
+
+ .btn-amber:hover {
+   filter: brightness(1.05);
+   color: #fff;
+ }
+
+ .btn-amber-outline {
+   background: #fff;
+   color: var(--brand-accent-2);
+   border: 1px solid var(--brand-accent-2);
+ }
+
+ .btn-amber-outline:hover {
+   background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+   color: #fff;
+   border-color: transparent;
+ }
+
+ .form-control:focus,
+ .form-select:focus {
+   border-color: var(--brand-accent-2);
+   box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18);
+ }
+
+ /* Ticket badge */
+ .ticket-badge {
+   display: inline-flex;
+   align-items: center;
+   gap: 6px;
+   border: 1px solid rgba(176, 60, 16, .25);
+   border-radius: 999px;
+   padding: 4px 10px;
+   font-size: .8rem;
+   color: var(--brand-accent-2);
+   background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+ }
+
+ .list-clean {
+   list-style: none;
+   margin: 0;
+   padding: 0;
+ }
+
+ .list-clean li+li {
+   margin-top: 8px;
+ }
+ 
+ .logout-btn {
+   background: linear-gradient(to bottom, #FF6A00, #B03C10);
+   border: none;
+   padding: 0.6rem 1.5rem;
+   border-radius: 20px;
+   color: white;
+   font-size: 1rem;
+   font-weight: bold;
+   cursor: pointer;
+   text-decoration: none;
+   white-space: nowrap;
+   display: inline-block;
+   opacity: 0;
+   transition: opacity 0.3s ease, color 0.3s ease;
+   user-select: none;
+   text-align: center;
+ }
+
+ .sidebar:hover .logout-btn {
+   opacity: 1;
+ }
+
+ .logout-btn:hover {
+   opacity: 0.85;
+   color: #4A1A0C;
+ }
+
+ /* Header */
+ .header-top {
+   width: 100%;
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   padding: 1rem 2rem;
+   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+   color: #fff;
+   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+ }
+
+ .logo-header {
+   height: 45px;
+ }
+
+ .search-box {
+   position: relative;
+   flex: 1;
+   max-width: 500px;
+   margin: 0 20px;
+ }
+
+ .search-box input {
+   width: 100%;
+   padding: 10px 14px;
+   border-radius: 30px;
+   border: none;
+   outline: none;
+ }
+
+ .search-box i {
+   position: absolute;
+   right: 15px;
+   top: 50%;
+   transform: translateY(-50%);
+   color: #999;
+ }
+
+ .profile-btn {
+   background: none;
+   border: none;
+   font-size: 1.8rem;
+   color: #fff;
+   cursor: pointer;
+ }
+ /* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }

@@ -1,0 +1,103 @@
+<link rel="stylesheet" href="/STUDENT/components/sidebar.css" />
+
+<nav class="sidebar" role="navigation" aria-label="Student Sidebar Navigation">
+  <div class="sidebar-logo">Main Menu</div>
+
+  <ul class="sidebar-links">
+    <!-- Dashboard -->
+    <li>
+      <a href="/STUDENT/dashboard/dashboard.html">
+        <i class="bi bi-house-door-fill"></i>
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- Modules -->
+    <li>
+      <a href="/STUDENT/courses/courses.html">
+        <i class="bi bi-folder2-open"></i>
+        <span>Courses</span>
+      </a>
+    </li>
+
+    <!-- Quizzes -->
+    <li>
+      <a href="/STUDENT/quiz/quiz.html">
+        <i class="bi bi-question-circle-fill"></i>
+        <span>Quizzes</span>
+      </a>
+    </li>
+
+    <li>
+      <a href="/STUDENT/assignment/assignment.html">
+        <i class="bi bi-question-circle-fill"></i>
+        <span>Assignments</span>
+      </a>
+    </li>
+
+    <!-- Progress & Rewards -->
+    <li class="sidebar-item has-submenu" id="progressDropdown">
+      <a class="submenu-toggle" href="#" aria-expanded="false">
+        <div class="menu-item">
+          <i class="bi bi-bar-chart-line-fill"></i>
+          <span>Progress & Rewards</span>
+        </div>
+        <i class="bi bi-chevron-down submenu-arrow"></i>
+      </a>
+      <ul class="submenu">
+        <li>
+          <a href="/STUDENT/progress/progress.html">
+            <i class="bi bi-graph-up"></i>
+            Progress Tracker
+          </a>
+        </li>
+        <li>
+          <a href="/STUDENT/rewards/rewards.html">
+            <i class="bi bi-award-fill"></i>
+            Badges & Leaderboard
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <!-- Forums -->
+    <li>
+      <a href="/STUDENT/forum/forum.html">
+        <i class="bi bi-chat-dots-fill"></i>
+        <span>Forums</span>
+      </a>
+    </li>
+
+    <!-- Study Groups -->
+    <li>
+      <a href="/STUDENT/grades/grades.html">
+        <i class="bi bi-award-fill"></i>
+        <span>Grades</span>
+      </a>
+    </li>
+
+    <!-- Profile -->
+        <li>
+          <a href="/STUDENT/profile/profile.html">
+            <i class="bi bi-person-fill"></i>
+             <span>Profile</span>
+          </a>
+        </li>
+        
+
+    <!-- Help & Support -->
+    <li>
+      <a href="/STUDENT/help/help.html">
+        <i class="bi bi-life-preserver"></i>
+        <span> Help & Support</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="sidebar-footer p-3">
+    <a href="#" class="logout-btn" onclick="logoutUser()">
+      <i class="bi bi-box-arrow-right"></i>
+      Logout
+    </a>
+  </div>
+</nav>

@@ -1,0 +1,64 @@
+/* submission.css */
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.filter-bar .form-label {
+  font-weight: 500;
+}
+
+.filter-bar .btn {
+  margin-top: 1.75rem;
+}
+
+#submissionTable th,
+#submissionTable td {
+  vertical-align: middle;
+}
+
+.help-btn {
+  font-size: 0.9rem;
+  color: #fff;
+  opacity: 0.8;
+}
+.help-btn:hover {
+  color: #FFD580;
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-bar .row > div {
+    flex: 1 1 100%;
+  }
+  #submissionTable, 
+  #submissionTable thead, 
+  #submissionTable tbody, 
+  #submissionTable tr, 
+  #submissionTable td {
+    display: block;
+    width: 100%;
+  }
+  #submissionTable thead { display: none; }
+  #submissionTable tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+  #submissionTable td {
+    position: relative;
+    padding: 0.5rem;
+    text-align: right;
+  }
+  #submissionTable td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+}

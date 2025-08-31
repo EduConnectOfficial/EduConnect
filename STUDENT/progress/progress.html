@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EduConnect Student - Progress Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Page styles -->
+  <link rel="stylesheet" href="../progress/progress.css" />
+
+
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box">
+          <input type="text" placeholder="Search..." />
+          <i class="fas fa-search"></i>
+        </div>
+        <button class="profile-btn" >
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">My Course Progress</h1>
+
+        <!-- Overall Progress -->
+        <div class="row g-3 mb-2">
+          <div class="col-12 col-xl-8 mx-auto">
+            <div class="ui-card card-themed p-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-speedometer2"></i> Overall Course Progress</h2>
+                <span id="overallChip" class="chip"><i class="bi bi-graph-up"></i><span>Loading…</span></span>
+              </div>
+              <div class="progress" style="height: 22px;">
+                <div id="overallBar" class="progress-bar fw-semibold" role="progressbar"
+                     style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+              </div>
+              <p class="ui-subtext mt-2 mb-0">This is your completion across all enrolled subjects.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subject Progress -->
+        <div class="row g-3">
+          <div class="col-12 col-xl-8 mx-auto">
+            <div class="ui-card card-themed p-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-bar-chart-line"></i> Subjects</h2>
+                <div class="d-flex gap-2">
+                  <select id="sortSelect" class="form-select form-select-sm" style="min-width: 180px;">
+                    <option value="name">Sort: Name</option>
+                    <option value="asc">Sort: Progress ↑</option>
+                    <option value="desc">Sort: Progress ↓</option>
+                  </select>
+                </div>
+              </div>
+              <ul id="subjectList" class="progress-list"></ul>
+              <p id="subjectsEmpty" class="ui-subtext mt-2 mb-0 d-none">No courses found. If you just enrolled, give it a second and hit refresh.</p>
+            </div>
+          </div>
+
+          <!-- Achievements -->
+          <div class="col-12 col-xl-8 mx-auto">
+            <div class="ui-card card-themed p-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-award"></i> Recent Achievements</h2>
+              </div>
+              <div id="badgeWrap" class="d-flex flex-wrap gap-2"></div>
+              <p class="ui-subtext mt-2 mb-0">Badges are awarded for milestones like streaks, on-time submissions, and top quiz scores.</p>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /content -->
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+  </script>
+
+  <!-- Auth -->
+  <script>
+    const API_BASE = 'http://127.0.0.1:5000'; // ← backend server
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.userId) {
+      window.location.href = "../login/login.html";
+    } else {
+    // === Initials-only header display ===
+function initialsFrom(str) {
+  if (!str) return "";
+  const s = String(str).trim();
+  if (!s) return "";
+
+  // If email, take first + last token from local part
+  if (s.includes("@")) {
+    const local = s.split("@")[0];
+    const parts = local.split(/[.\-_]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : local.slice(0, 2)
+    ).toUpperCase();
+  }
+
+  // Names or usernames: first + last token initials
+  const parts = s.split(/[\s\-]+/).filter(Boolean);
+  return (parts.length >= 2
+    ? parts[0][0] + parts[parts.length - 1][0]
+    : parts[0].slice(0, 2)
+  ).toUpperCase();
+}
+
+const userData = JSON.parse(localStorage.getItem("user") || "{}");
+const userId = userData.userId || userData.uid || userData.id || userData.email;
+
+if (!userId) {
+  window.location.href = "../login/login.html";
+} else {
+  const displayName = userData.fullName || userData.username || userData.email || "Student";
+  const initials = initialsFrom(displayName) || "?";
+  const el = document.getElementById("Username");
+  el.textContent = initials;
+  el.title = displayName;                 // tooltip with full name
+  el.setAttribute("aria-label", displayName);
+
+  if (!userData.uid) {
+    userData.uid = userId;
+    localStorage.setItem("user", JSON.stringify(userData));
+  }
+}
+
+    }
+    document.getElementById('logoutBtn').onclick = () => {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "../login/login.html";
+    };
+  </script>
+
+  <!-- Data + Rendering -->
+  <script>
+    const pct = (c,t) => t ? Math.round((c/t)*100) : 0;
+
+    function setOverall(completed, total) {
+      const p = pct(completed, total);
+      const bar = document.getElementById('overallBar');
+      const chip = document.getElementById('overallChip').querySelector('span');
+      bar.style.width = p + '%'; bar.setAttribute('aria-valuenow', p); bar.textContent = p + '%';
+      chip.textContent = `${completed}/${total} tasks`;
+    }
+
+    function renderSubjects(subjects, sort='name') {
+      const list = document.getElementById('subjectList');
+      const empty = document.getElementById('subjectsEmpty');
+      list.innerHTML = '';
+      if (!subjects || !subjects.length) {
+        empty.classList.remove('d-none');
+        return;
+      }
+      empty.classList.add('d-none');
+
+      const arr = subjects.slice();
+      if (sort==="asc")   arr.sort((a,b)=> (a.percent??0) - (b.percent??0));
+      if (sort==="desc")  arr.sort((a,b)=> (b.percent??0) - (a.percent??0));
+      if (sort==="name")  arr.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+
+      arr.forEach(s=>{
+        const p = s.percent ?? pct(s.completed, s.total);
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <strong class="text-light">${s.name || '—'}</strong>
+            <span class="chip"><i class="bi bi-check2-circle"></i>${s.completed ?? 0}/${s.total ?? 0}</span>
+          </div>
+          <div class="progress" style="height: 18px;">
+            <div class="progress-bar" role="progressbar" style="width:${p}%;" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100">${p}%</div>
+          </div>`;
+        list.appendChild(li);
+      });
+    }
+
+    function renderBadges(badges) {
+      const wrap = document.getElementById('badgeWrap');
+      wrap.innerHTML = '';
+      if (!badges || !badges.length) {
+        const span = document.createElement('span');
+        span.className = 'text-muted';
+        span.textContent = 'No badges yet — keep going!';
+        wrap.appendChild(span);
+        return;
+      }
+      badges.forEach(b=>{
+        const span = document.createElement('span');
+        span.className = `badge text-bg-${b.type || 'secondary'}`;
+        span.textContent = b.label;
+        wrap.appendChild(span);
+      });
+    }
+
+    async function getJson(url) {
+      const res = await fetch(url, { headers: { 'Content-Type':'application/json' }});
+      if (!res.ok) {
+        const t = await res.text().catch(()=> '');
+        throw new Error(`GET ${url} -> ${res.status} ${t.slice(0,120)}`);
+      }
+      return res.json();
+    }
+
+    async function loadProgress() {
+      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/progress`;
+      const data = await getJson(url);
+      // data: { success, overall:{completed,total,percent}, subjects:[{courseId,name,completed,total,percent}] }
+      const overall = data.overall || { completed:0, total:0 };
+      setOverall(overall.completed || 0, overall.total || 0);
+      renderSubjects(data.subjects || [], document.getElementById('sortSelect').value);
+    }
+
+    async function loadBadges() {
+      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/badges`;
+      const data = await getJson(url);
+      // data: { success, badges:[{label,type}] }
+      renderBadges(data.badges || []);
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadProgress().catch(err => {
+        console.error(err);
+        setOverall(0, 0);
+        renderSubjects([], 'name');
+      });
+      loadBadges().catch(err => {
+        console.error(err);
+        renderBadges([]);
+      });
+
+      document.getElementById('sortSelect').addEventListener('change', (e)=>{
+        // re-render using cached subjects from last response if you cache
+        loadProgress().catch(console.error);
+      });
+    });
+  </script>
+<script>
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

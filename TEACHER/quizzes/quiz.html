@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Upload Quiz</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="quiz.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        fetch("/components/sidebar.html")
+          .then(res => res.text())
+          .then(html => {
+            document.getElementById("sidebar-container").innerHTML = html;
+            const sidebar = document.querySelector(".sidebar");
+            const dashboard = document.querySelector(".dashboard");
+            if (sidebar && dashboard) {
+              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+            }
+            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+              toggle.addEventListener('click', e => {
+                e.preventDefault();
+                const parent = toggle.closest('.has-submenu');
+                parent.classList.toggle('open');
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!expanded));
+              });
+            });
+          })
+          .catch(err => console.error("Failed to load sidebar:", err));
+      });
+    </script>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="search-box position-relative">
+          <input type="text" class="form-control" placeholder="Search..."/>
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <div class="upload-container container-fluid">
+        <div class="form-card">
+          <h2>Upload Quiz</h2>
+
+          <form id="quizForm">
+            <!-- Course/Module -->
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Select Course</label>
+                <select id="courseSelect" class="form-select" required>
+                  <option value="">-- Select a Course --</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Select Module</label>
+                <select id="moduleSelect" class="form-select" required disabled>
+                  <option value="">-- Select a Module --</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Title / Description -->
+            <div class="row g-3 mt-1">
+              <div class="col-12 col-lg-6">
+                <label class="form-label fw-bold">Quiz Title</label>
+                <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
+              </div>
+              <div class="col-12 col-lg-6">
+                <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
+                <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
+              </div>
+            </div>
+
+            <!-- Due date & Attempts -->
+            <div class="row g-3 mt-1">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Due Date & Time <span class="text-muted">(optional)</span></label>
+                <input type="datetime-local" id="dueAtInput" class="form-control">
+                <div class="hint mt-1">If set, quiz closes after this time.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Attempts Allowed</label>
+                <input type="number" id="attemptsInput" class="form-control" min="0" step="1" value="1" required>
+                <div class="hint mt-1">0 means unlimited attempts.</div>
+              </div>
+            </div>
+
+            <hr class="my-4"/>
+
+            <!-- Timer -->
+            <div class="row g-3 align-items-center">
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-bold d-flex align-items-center gap-2">
+                  <i class="bi bi-stopwatch"></i> Enable Timer
+                </label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="enableTimer">
+                  <label class="form-check-label" for="enableTimer">Limit the total time for this quiz</label>
+                </div>
+                <div class="hint mt-1">If enabled, students see a countdown in the quiz UI.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
+                <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
+                <div class="hint mt-1">Whole minutes, minimum 1.</div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
+                <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
+                <div class="hint mt-1">Extra seconds before auto-submit.</div>
+              </div>
+            </div>
+
+            <hr class="my-4"/>
+
+            <!-- Order & Flow -->
+            <div class="row g-3">
+              <div class="col-12 col-lg-4">
+                <label class="form-label fw-bold d-flex align-items-center gap-2">
+                  <i class="bi bi-shuffle"></i> Question Order
+                </label>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="fixedOrderCheck">
+                  <label class="form-check-label" for="fixedOrderCheck">
+                    Fixed order (no randomize)
+                  </label>
+                </div>
+                <div class="hint mt-1">Default is randomized when this is <strong>unchecked</strong>.</div>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <label class="form-label fw-bold d-flex align-items-center gap-2">
+                  <i class="bi bi-ui-checks-grid"></i> Pagination
+                </label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="enablePagination">
+                  <label class="form-check-label" for="enablePagination">Enable pagination</label>
+                </div>
+                <div class="mt-2">
+                  <label for="perPageInput" class="form-label">Questions per page</label>
+                  <input type="number" min="1" step="1" class="form-control" id="perPageInput" value="1" disabled>
+                </div>
+                <div class="hint mt-1">Minimum 1. If enabled, students will see one page at a time.</div>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <label class="form-label fw-bold d-flex align-items-center gap-2">
+                  <i class="bi bi-arrow-left-right"></i> Backtracking
+                </label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="allowBacktracking" checked>
+                  <label class="form-check-label" for="allowBacktracking">Allow backtracking</label>
+                </div>
+                <div class="hint mt-1">If off, students cannot return to earlier pages once they proceed.</div>
+              </div>
+            </div>
+
+            <hr class="my-4"/>
+
+            <!-- Bulk import (CSV only) -->
+            <div class="import-card p-3 mb-4">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="import-title"><span class="step">Step 1:</span> Download a CSV Template</div>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkHelpModal">
+                  <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
+                </button>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" id="downloadCsvTplMcq"   class="btn btn-amber-outline">
+                  <i class="bi bi-download me-1"></i> CSV: Multiple Choice
+                </button>
+                <button type="button" id="downloadCsvTplTf"    class="btn btn-amber-outline">
+                  <i class="bi bi-download me-1"></i> CSV: True / False
+                </button>
+                <button type="button" id="downloadCsvTplEssay" class="btn btn-amber-outline">
+                  <i class="bi bi-download me-1"></i> CSV: Essay
+                </button>
+                <button type="button" id="downloadCsvTplAll"   class="btn btn-amber-outline">
+                  <i class="bi bi-download me-1"></i> CSV: All Types
+                </button>
+              </div>
+              <div class="hint mt-2">
+                Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+                For True/False, use <span class="mono">TRUE</span> or <span class="mono">FALSE</span> in <span class="mono">correct</span>.
+              </div>
+
+              <hr class="my-3">
+
+              <div class="import-title mb-2"><span class="step">Step 2:</span> Upload your CSV</div>
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-8">
+                  <label class="form-label">Pick a <strong>.csv</strong> file</label>
+                  <input type="file" id="bulkFile" class="form-control" accept=".csv" />
+                </div>
+                <div class="col-12 col-md-4">
+                  <button type="button" id="parseBulkBtn" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-eye"></i> Preview & Validate
+                  </button>
+                </div>
+              </div>
+
+              <div id="bulkResult" class="mt-3 d-none">
+                <div class="d-flex flex-wrap justify-content-between align-items-center">
+                  <div id="bulkSummary" class="small" aria-live="polite"></div>
+                  <button type="button" id="addValidBtn" class="btn btn-success" disabled>
+                    <i class="bi bi-plus-circle me-1"></i> Add valid questions to quiz
+                  </button>
+                </div>
+                <div class="preview-table mt-2">
+                  <table class="table table-sm table-striped mb-0">
+                    <thead>
+                      <tr>
+                        <th>#</th><th>Type</th><th>Question</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Correct</th><th>Status</th><th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bulkTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Question pager toolbar -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0 fw-bold">Questions</label>
+              <div class="q-toolbar">
+                <span class="q-chip"><span id="qPageNow">0</span>/<span id="qPageTotal">0</span></span>
+                <div id="qDots" class="q-dots" aria-hidden="true"></div>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="qPrevBtn" disabled>Prev</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="qNextBtn" disabled>Next</button>
+                </div>
+                <button type="button" class="btn btn-amber-outline btn-sm" id="addQuestionBtnTop">
+                  <i class="bi bi-plus-circle me-1"></i> Add Question
+                </button>
+              </div>
+            </div>
+
+            <!-- Questions -->
+            <div id="question-container"></div>
+
+            <div class="d-flex justify-content-between mt-3">
+              <button type="button" class="btn btn-amber-outline" id="addQuestionBtn">
+                <i class="bi bi-plus-circle me-1"></i> Add Question
+              </button>
+              <button type="submit" class="btn btn-upload">
+                <i class="bi bi-cloud-upload me-1"></i> Upload Quiz
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">Your quiz has been uploaded successfully.</p>
+          <div id="quizIdRow" class="mb-2 d-none">
+            <span class="text-muted">Quiz ID:</span>
+            <code id="createdQuizId" class="ms-2"></code>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulking Help Modal (elder-friendly) -->
+  <div class="modal fade" id="bulkHelpModal" tabindex="-1" aria-labelledby="bulkHelpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="bulkHelpLabel">Quiz Bulking – Easy Step-by-Step Guide</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close help"></button>
+        </div>
+        <div class="modal-body">
+          <div class="fs-5 mb-3">
+            This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
+          </div>
+
+          <ol class="fs-6">
+            <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice, True/False, or Essay). You can also pick “All Types”.</li>
+            <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
+              <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+              <ul>
+                <li>For Multiple Choice, fill choices A–D and set <span class="mono">correct</span> to A, B, C, or D.</li>
+                <li>For True/False, leave choices blank and set <span class="mono">correct</span> to TRUE or FALSE.</li>
+                <li>For Essay, just write the question. Choices can be blank.</li>
+              </ul>
+            </li>
+            <li class="mb-2"><strong>Save your file as CSV</strong>. (In Excel: File → Save As → CSV.)</li>
+            <li class="mb-2"><strong>Upload the CSV</strong> using “Preview & Validate”. The system will check your rows.</li>
+            <li class="mb-2"><strong>Review the table</strong>:
+              <ul>
+                <li>Rows marked <span class="badge bg-success">OK</span> are valid.</li>
+                <li>Rows with <span class="badge bg-danger">Error</span> need fixing in your CSV (hover to see the reason).</li>
+                <li>You can <strong>Remove</strong> any valid row you don’t want to add.</li>
+              </ul>
+            </li>
+            <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows will be added.</li>
+            <li class="mb-2">You may still edit the questions after adding them.</li>
+          </ol>
+
+          <hr>
+          <div class="fs-6">
+            <strong>Tips for clarity:</strong>
+            <ul>
+              <li>Keep questions short and clear.</li>
+              <li>Use proper capitalization for answers.</li>
+              <li>If something looks confusing, try again with fewer rows first.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV parser -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- Logic -->
+  <script>
+    const API = "http://localhost:5000";
+
+    // Auth guard (teacher)
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData?.userId || !userData?.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+    } else {
+      document.getElementById("Username").textContent = userData.username || "";
+    }
+    function logoutUser(){
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
+    const TEACHER_ID = userData.userId;
+
+    // -------- Utilities shared --------
+    function escapeHTML(str=''){
+      return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function toCSV(rows){
+      return rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      }).join(',')).join('\n');
+    }
+
+    // Load courses & modules
+    async function loadCourses() {
+      const courseSelect = document.getElementById("courseSelect");
+      const moduleSelect = document.getElementById("moduleSelect");
+
+      courseSelect.innerHTML = `<option value="">Loading…</option>`;
+      moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
+      moduleSelect.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
+        const payload = await res.json();
+        let courses = Array.isArray(payload) ? payload : (payload.courses || []);
+        if (courses.length && 'uploadedBy' in courses[0]) {
+          courses = courses.filter(c => c.uploadedBy === TEACHER_ID);
+        }
+        courses.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); 
+        courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
+          courses.map(c => `<option value="${c.id}">${(c.title||'Untitled')}${c.courseNumber ? ' (#'+c.courseNumber+')' : ''}</option>`).join('');
+
+        const params = new URLSearchParams(location.search);
+        const preCourse = params.get('courseId');
+        const preModule = params.get('moduleId');
+        if (preCourse && courses.find(x => x.id === preCourse)) {
+          courseSelect.value = preCourse;
+          await loadModules(preCourse);
+          if (preModule) {
+            moduleSelect.value = preModule;
+            moduleSelect.disabled = !moduleSelect.value;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        courseSelect.innerHTML = `<option value="">(Failed to load)</option>`;
+      }
+    }
+
+    async function loadModules(courseId) {
+      const moduleSelect = document.getElementById("moduleSelect");
+      moduleSelect.innerHTML = `<option value="">Loading…</option>`;
+      moduleSelect.disabled = true;
+
+      if (!courseId) {
+        moduleSelect.innerHTML = `<option value="">-- Select a Course first --</option>`;
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules`);
+        const mods = await res.json();
+        const modules = Array.isArray(mods) ? mods : (mods.modules || []);
+        modules.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+
+        moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>` +
+          modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${m.title || 'Untitled'}</option>`).join('');
+        moduleSelect.disabled = false;
+      } catch (err) {
+        console.error(err);
+        moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
+      }
+    }
+
+    // ------- Question Builder + Pager -------
+    let qIndex = 0;
+    const container = document.getElementById("question-container");
+    const qPager = { cur: 0 };
+
+    function renderQPager(){
+      const blocks = [...document.querySelectorAll(".question-block")];
+
+      // activate current
+      blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
+
+      // numbers
+      const nowEl = document.getElementById("qPageNow");
+      const totalEl = document.getElementById("qPageTotal");
+      if (blocks.length === 0) {
+        nowEl.textContent = '0';
+        totalEl.textContent = '0';
+      } else {
+        nowEl.textContent = String(Math.min(qPager.cur+1, blocks.length));
+        totalEl.textContent = String(blocks.length);
+      }
+
+      // dots
+      const dots = document.getElementById("qDots");
+      dots.innerHTML = "";
+      for (let i=0;i<blocks.length;i++){
+        const d = document.createElement("span");
+        d.className = "dot" + (i===qPager.cur ? " active" : "");
+        d.title = "Go to question " + (i+1);
+        d.style.cursor = "pointer";
+        d.addEventListener("click", ()=>{ qPager.cur = i; renderQPager(); });
+        dots.appendChild(d);
+      }
+
+      // pager buttons
+      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur>0);
+      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur<blocks.length-1);
+    }
+
+    function renderBody(type, idx) {
+      if (type === "mcq") {
+        return `
+          <div class="form-label"><strong>Choices</strong> <span class="hint">(pick the correct one)</span></div>
+          <div class="input-group mb-2">
+            <div class="input-group-text">
+              <input type="radio" name="correct_${idx}" value="A" required>
+            </div>
+            <span class="input-group-text">A</span>
+            <input type="text" class="form-control" name="choiceA" placeholder="Choice A" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text">
+              <input type="radio" name="correct_${idx}" value="B" required>
+            </div>
+            <span class="input-group-text">B</span>
+            <input type="text" class="form-control" name="choiceB" placeholder="Choice B" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text">
+              <input type="radio" name="correct_${idx}" value="C" required>
+            </div>
+            <span class="input-group-text">C</span>
+            <input type="text" class="form-control" name="choiceC" placeholder="Choice C" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text">
+              <input type="radio" name="correct_${idx}" value="D" required>
+            </div>
+            <span class="input-group-text">D</span>
+            <input type="text" class="form-control" name="choiceD" placeholder="Choice D" required>
+          </div>
+        `;
+      }
+      if (type === "tf") {
+        return `
+          <div class="form-label"><strong>Answer</strong></div>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_true_${idx}" value="A" required>
+              <label class="form-check-label" for="tf_true_${idx}">True</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_false_${idx}" value="B" required>
+              <label class="form-check-label" for="tf_false_${idx}">False</label>
+            </div>
+          </div>
+          <div class="hint mt-2">Will be saved as choices A: True, B: False.</div>
+        `;
+      }
+      return `
+        <div class="alert alert-warning py-2 px-3">
+          Essay questions are not auto-graded. A placeholder choice is saved to match the schema.
+        </div>
+      `;
+    }
+
+    function addQuestion(type = "mcq") {
+      const idx = qIndex++;
+      const block = document.createElement("div");
+      block.className = "question-block";
+      block.dataset.index = idx;
+      block.dataset.type = type;
+
+      block.innerHTML = `
+        <div class="q-head">
+          <div class="q-type">
+            <span class="chip ${type==='mcq'?'active':''}" data-type="mcq">Multiple Choice</span>
+            <span class="chip ${type==='tf'?'active':''}" data-type="tf">True / False</span>
+            <span class="chip ${type==='essay'?'active':''}" data-type="essay">Essay</span>
+          </div>
+          <div class="q-actions">
+            <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label fw-bold">Question</label>
+          <input type="text" class="form-control" name="question" placeholder="Enter question" required>
+        </div>
+
+        <div class="q-body">${renderBody(type, idx)}</div>
+      `;
+
+      block.querySelectorAll(".chip").forEach(chip=>{
+        chip.addEventListener("click", ()=>{
+          block.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+          chip.classList.add("active");
+          const t = chip.dataset.type;
+          block.dataset.type = t;
+          block.querySelector(".q-body").innerHTML = renderBody(t, idx);
+        });
+      });
+
+      block.querySelector("[data-action='remove']").addEventListener("click", ()=>{
+        const blocks = [...document.querySelectorAll(".question-block")];
+        const myIndex = blocks.indexOf(block);
+        block.remove();
+        const totalAfter = document.querySelectorAll(".question-block").length;
+        if (totalAfter === 0) {
+          qPager.cur = 0;
+        } else {
+          if (qPager.cur >= totalAfter) qPager.cur = totalAfter - 1;
+          if (myIndex < qPager.cur) qPager.cur = Math.max(0, qPager.cur - 1);
+        }
+        renderQPager();
+      });
+
+      container.appendChild(block);
+
+      qPager.cur = [...document.querySelectorAll(".question-block")].length - 1;
+      renderQPager();
+
+      return block;
+    }
+
+    // Timer & Flow UI wiring
+    const enableTimerEl = document.getElementById("enableTimer");
+    const timerMinutesEl = document.getElementById("timerMinutes");
+    const gracePeriodEl  = document.getElementById("gracePeriod");
+
+    const fixedOrderEl = document.getElementById("fixedOrderCheck");
+    const enablePaginationEl = document.getElementById("enablePagination");
+    const perPageEl = document.getElementById("perPageInput");
+    const allowBacktrackingEl = document.getElementById("allowBacktracking");
+
+    function resetTimerUI() {
+      enableTimerEl.checked = false;
+      timerMinutesEl.value = "";
+      gracePeriodEl.value  = "";
+      timerMinutesEl.disabled = true;
+      gracePeriodEl.disabled  = true;
+    }
+    enableTimerEl?.addEventListener("change", () => {
+      const on = enableTimerEl.checked;
+      timerMinutesEl.disabled = !on;
+      gracePeriodEl.disabled  = !on;
+      if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
+    });
+
+    function updatePaginationUI() {
+      const on = enablePaginationEl.checked;
+      perPageEl.disabled = !on;
+    }
+    enablePaginationEl.addEventListener("change", updatePaginationUI);
+
+    // Helper: detect placeholder/empty question block
+    function isEmptyQuestionBlock(block){
+      const type = block?.dataset?.type || 'mcq';
+      const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
+      if (!qText) return true; // blank question text => placeholder
+
+      if (type === 'mcq') {
+        const A = block.querySelector("input[name='choiceA']")?.value?.trim() || "";
+        const B = block.querySelector("input[name='choiceB']")?.value?.trim() || "";
+        const C = block.querySelector("input[name='choiceC']")?.value?.trim() || "";
+        const D = block.querySelector("input[name='choiceD']")?.value?.trim() || "";
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return (!A && !B && !C && !D && !picked);
+      }
+      if (type === 'tf') {
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return !picked;
+      }
+      return false; // essay with text is considered non-empty
+    }
+
+    // DOM Ready
+    document.addEventListener("DOMContentLoaded", () => {
+      loadCourses();
+
+      document.getElementById("courseSelect").addEventListener("change", function(){
+        const cid = this.value;
+        if (cid) loadModules(cid);
+        else {
+          const moduleSelect = document.getElementById("moduleSelect");
+          moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
+          moduleSelect.disabled = true;
+        }
+      });
+
+      document.getElementById("qPrevBtn").addEventListener("click", ()=>{
+        if (qPager.cur>0){ qPager.cur--; renderQPager(); }
+      });
+      document.getElementById("qNextBtn").addEventListener("click", ()=>{
+        const total = document.querySelectorAll(".question-block").length;
+        if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }
+      });
+
+      document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
+      document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
+
+      // Default: one blank question open
+      addQuestion();
+      resetTimerUI();
+      updatePaginationUI();
+      renderQPager();
+    });
+
+    // ---------- BULK IMPORT (CSV only) ----------
+    const bulkFileEl = document.getElementById('bulkFile');
+    const parseBulkBtn = document.getElementById('parseBulkBtn');
+    const bulkResult = document.getElementById('bulkResult');
+    const bulkTbody = document.getElementById('bulkTbody');
+    const bulkSummary = document.getElementById('bulkSummary');
+    const addValidBtn = document.getElementById('addValidBtn');
+
+    // Template buttons
+    const btnTplMcq   = document.getElementById('downloadCsvTplMcq');
+    const btnTplTf    = document.getElementById('downloadCsvTplTf');
+    const btnTplEssay = document.getElementById('downloadCsvTplEssay');
+    const btnTplAll   = document.getElementById('downloadCsvTplAll');
+
+    const REQUIRED_HEADERS = ['type','question','choicea','choiceb','choicec','choiced','correct'];
+
+    function normalizeHeader(s){ return String(s||'').trim().toLowerCase(); }
+    function normalizeType(t){
+      const x = String(t||'').trim().toLowerCase();
+      if (['mcq','multiple choice','multiple-choice','multiplechoice'].includes(x)) return 'mcq';
+      if (['tf','true/false','truefalse','true-false'].includes(x)) return 'tf';
+      if (['essay','open','long','long answer','long-answer'].includes(x)) return 'essay';
+      return '';
+    }
+    function normalizeCorrectForTF(v){
+      const x = String(v||'').trim().toLowerCase();
+      if (['true','t','a','1','yes','y'].includes(x)) return 'A';
+      if (['false','f','b','0','no','n'].includes(x)) return 'B';
+      return '';
+    }
+    function normalizeCorrectForMCQ(v){
+      const x = String(v||'').trim().toUpperCase();
+      return ['A','B','C','D'].includes(x) ? x : '';
+    }
+
+    // CSV template builders
+    function buildCsvTemplate(kind){
+      const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
+      let rows = [header];
+
+      if (kind === 'mcq'){
+        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
+        rows.push(['mcq','Which color is the sky?','Blue','Green','Red','Yellow','A']);
+      } else if (kind === 'tf'){
+        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
+        rows.push(['tf','The Earth is flat','','','','','FALSE']);
+      } else if (kind === 'essay'){
+        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
+        rows.push(['essay','Describe Newton’s three laws of motion.','','','','','']);
+      } else { // all
+        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
+        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
+        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
+      }
+      return toCSV(rows);
+    }
+    function downloadCSV(kind, filename){
+      const csv = buildCsvTemplate(kind);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    btnTplMcq.addEventListener('click',  ()=>downloadCSV('mcq','quiz_template_mcq.csv'));
+    btnTplTf.addEventListener('click',   ()=>downloadCSV('tf','quiz_template_true_false.csv'));
+    btnTplEssay.addEventListener('click',()=>downloadCSV('essay','quiz_template_essay.csv'));
+    btnTplAll.addEventListener('click',  ()=>downloadCSV('all','quiz_template_all.csv'));
+
+    parseBulkBtn.addEventListener('click', async ()=>{
+      const f = bulkFileEl.files && bulkFileEl.files[0];
+      if (!f){ alert('Please pick a CSV file first.'); return; }
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (ext !== 'csv'){ alert('Only .csv files are supported.'); return; }
+
+      let rows = [];
+      try{
+        rows = await parseCSVFile(f);
+      }catch(err){
+        console.error(err);
+        alert('Failed to read the CSV. Please check your format.');
+        return;
+      }
+
+      const result = validateBulkRows(rows);
+      renderBulkPreview(result);
+    });
+
+    function parseCSVFile(file){
+      return new Promise((resolve, reject)=>{
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: 'greedy',
+          complete: (res)=> resolve(res.data || []),
+          error: reject
+        });
+      });
+    }
+
+    function validateBulkRows(rawRows){
+      const normed = rawRows.map(r=>{
+        const out = {};
+        Object.keys(r||{}).forEach(k=> out[normalizeHeader(k)] = r[k]);
+        return out;
+      });
+
+      const have = new Set(Object.keys(normed[0] || {}));
+      const missing = ['type','question'].filter(h => !have.has(h));
+
+      const items = [];
+      let validCount = 0, invalidCount = 0;
+
+      normed.forEach((r, i)=>{
+        const rowNum = i+2;
+        const type = normalizeType(r.type);
+        const question = String(r.question||'').trim();
+        const A = String(r.choicea||'').trim();
+        const B = String(r.choiceb||'').trim();
+        const C = String(r.choicec||'').trim();
+        const D = String(r.choiced||'').trim();
+        let correct = String(r.correct||'').trim();
+
+        const errors = [];
+        if (!type) errors.push('Invalid type');
+        if (!question) errors.push('Question required');
+
+        if (type === 'mcq'){
+          if (!A || !B || !C || !D) errors.push('MCQ needs all choices A–D');
+          correct = normalizeCorrectForMCQ(correct);
+          if (!correct) errors.push('Correct must be A/B/C/D');
+        } else if (type === 'tf'){
+          correct = normalizeCorrectForTF(correct);
+          if (!correct) errors.push('Correct must be TRUE/FALSE (or A/B)');
+        } else if (type === 'essay'){
+          correct = 'A'; // placeholder
+        }
+
+        const ok = errors.length === 0;
+        if (ok) validCount++; else invalidCount++;
+
+        items.push({
+          rowNum, ok, errors,
+          display: { type, question, A, B, C, D, correct },
+          excluded: false,
+          payload: {
+            type, question,
+            choices: type==='mcq' ? { A,B,C,D } :
+                     type==='tf'  ? { A:'True', B:'False' } :
+                                    { A:'(Essay response)' },
+            correct
+          }
+        });
+      });
+
+      return { items, validCount, invalidCount, missingHeaders: missing };
+    }
+
+    function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }){
+      bulkResult.classList.remove('d-none');
+      bulkTbody.innerHTML = '';
+      addValidBtn.disabled = (validCount === 0);
+
+      const maxRows = Math.min(items.length, 200);
+      for (let i=0;i<maxRows;i++){
+        const it = items[i];
+        const st = it.ok ? '<span class="badge bg-success">OK</span>' :
+                           `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
+        const actionBtn = it.ok
+          ? `<button type="button" class="btn btn-sm ${it.excluded ? 'btn-outline-secondary' : 'btn-outline-danger'} bulk-toggle"
+                      data-idx="${i}" title="${it.excluded ? 'Restore this row' : 'Remove this row'}">
+               ${it.excluded ? '<i class="bi bi-arrow-counterclockwise"></i> Restore' : '<i class="bi bi-x-circle"></i> Remove'}
+             </button>`
+          : `<button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Invalid row">Remove</button>`;
+
+        const trClass = it.excluded ? 'row-excluded' : '';
+        bulkTbody.innerHTML += `
+          <tr class="${trClass}">
+            <td>${i+1}</td>
+            <td>${it.display.type || '—'}</td>
+            <td>${escapeHTML(it.display.question || '')}</td>
+            <td>${escapeHTML(it.display.A || '')}</td>
+            <td>${escapeHTML(it.display.B || '')}</td>
+            <td>${escapeHTML(it.display.C || '')}</td>
+            <td>${escapeHTML(it.display.D || '')}</td>
+            <td>${escapeHTML(it.display.correct || '')}</td>
+            <td>${st}</td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }
+      const more = items.length > maxRows ? ` (+${items.length-maxRows} more…)` : '';
+      const excludedCount = items.filter(x => x.ok && x.excluded).length;
+      const addableCount = items.filter(x => x.ok && !x.excluded).length;
+      const miss = (missingHeaders && missingHeaders.length) ? ` Missing headers: ${missingHeaders.join(', ')}.` : '';
+      bulkSummary.textContent = `Valid: ${validCount} • Invalid: ${invalidCount} • Excluded: ${excludedCount} • Will add: ${addableCount} • Total: ${items.length}${more}.${miss}`;
+
+      // Persist items (including excluded flags)
+      addValidBtn.dataset.bulk = JSON.stringify(items);
+    }
+
+    // Toggle remove/restore on preview table (event delegation)
+    bulkTbody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.bulk-toggle');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
+      if (Number.isInteger(idx) && items[idx] && items[idx].ok){
+        items[idx].excluded = !items[idx].excluded;
+        renderBulkPreview({ 
+          items,
+          validCount: items.filter(x=>x.ok).length,
+          invalidCount: items.filter(x=>!x.ok).length,
+          missingHeaders: [] 
+        });
+      }
+    });
+
+    addValidBtn.addEventListener('click', ()=>{
+      const data = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
+      const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
+      if (!validOnly.length){ alert('No valid (and not-removed) rows to add.'); return; }
+
+      // If the editor only has placeholder(s), clear them so CSV starts at #1
+      const blocks = document.querySelectorAll(".question-block");
+      const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
+      if (allPlaceholders){
+        container.innerHTML = "";
+        qIndex = 0;
+        qPager.cur = 0;
+        renderQPager();
+      }
+
+      const LIMIT = 300;
+      const slice = validOnly.slice(0, LIMIT);
+
+      slice.forEach(q=>{
+        const block = addQuestion(q.type || 'mcq');
+        const qInput = block.querySelector("input[name='question']");
+        if (qInput) qInput.value = q.question || '';
+
+        if (q.type === 'mcq'){
+          const A = block.querySelector("input[name='choiceA']");
+          const B = block.querySelector("input[name='choiceB']");
+          const C = block.querySelector("input[name='choiceC']");
+          const D = block.querySelector("input[name='choiceD']");
+          if (A) A.value = q.choices.A || '';
+          if (B) B.value = q.choices.B || '';
+          if (C) C.value = q.choices.C || '';
+          if (D) D.value = q.choices.D || '';
+          const idx = block.dataset.index;
+          const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
+          if (rb) rb.checked = true;
+        } else if (q.type === 'tf'){
+          const idx = block.dataset.index;
+          const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
+          if (rb) rb.checked = true;
+        } // essay uses placeholder choice
+      });
+
+      renderQPager();
+      alert(`Added ${slice.length} question(s) to the quiz.`);
+    });
+
+    // ---------- SUBMIT ----------
+    document.getElementById("quizForm").addEventListener("submit", async (e)=>{
+      e.preventDefault();
+
+      const courseId = document.getElementById("courseSelect").value;
+      const moduleId = document.getElementById("moduleSelect").value;
+      const title = document.getElementById("quizTitleInput").value.trim();
+      const description = document.getElementById("quizDescInput").value.trim();
+      const dueAtRaw = document.getElementById("dueAtInput").value;
+      const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
+
+      if (!courseId || !moduleId) return alert("Please select a course and a module.");
+      if (!title) return alert("Please enter a quiz title.");
+      if (!Number.isInteger(attemptsAllowedVal) || attemptsAllowedVal < 0) {
+        return alert("Attempts Allowed must be 0 (unlimited) or a positive whole number.");
+      }
+
+      const blocks = document.querySelectorAll(".question-block");
+      if (!blocks.length) return alert("Please add at least one question.");
+
+      const quiz = [];
+      for (const block of blocks) {
+        const idx = block.dataset.index;
+        const type = block.dataset.type;
+        const qText = block.querySelector("input[name='question']")?.value?.trim();
+        if (!qText) continue;
+
+        if (type === "mcq") {
+          const A = block.querySelector("input[name='choiceA']")?.value?.trim();
+          const B = block.querySelector("input[name='choiceB']")?.value?.trim();
+          const C = block.querySelector("input[name='choiceC']")?.value?.trim();
+          const D = block.querySelector("input[name='choiceD']")?.value?.trim();
+          const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
+          if (!A || !B || !C || !D || !correct) {
+            return alert("Complete all MCQ fields and pick the correct answer.");
+          }
+          quiz.push({ question: qText, choices: { A, B, C, D }, correct });
+        } else if (type === "tf") {
+          const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
+          if (!correct) return alert("Please select True or False.");
+          quiz.push({ question: qText, choices: { A: "True", B: "False" }, correct });
+        } else {
+          quiz.push({ question: qText, choices: { A: "(Essay response)" }, correct: "A" });
+        }
+      }
+
+      if (!quiz.length) return alert("Please add at least one valid question.");
+
+      // Build settings to match backend normalizeSettings()
+      let settings = {};
+      if (enableTimerEl.checked) {
+        const mins = parseInt(timerMinutesEl.value, 10);
+        const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
+        if (!Number.isInteger(mins) || mins < 1) return alert("Time Limit must be at least 1 minute.");
+        if (!Number.isInteger(grace) || grace < 0) return alert("Grace Period must be 0 or more.");
+        settings.timerEnabled = true;
+        settings.durationMinutes = mins;
+        settings.graceSeconds = grace;
+      } else {
+        settings.timerEnabled = false;
+      }
+      settings.shuffleQuestions = !fixedOrderEl.checked;
+
+      const pagEnabled = enablePaginationEl.checked;
+      let perPage = parseInt(perPageEl.value, 10);
+      if (!Number.isInteger(perPage) || perPage < 1) perPage = 1;
+      settings.pagination = { enabled: pagEnabled, perPage };
+
+      settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
+
+      const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
+
+      try {
+        const res = await fetch(`${API}/upload-quiz`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseId,
+            moduleId,
+            title,
+            description,
+            dueAt,
+            attemptsAllowed: attemptsAllowedVal,
+            quiz,
+            settings
+          })
+        });
+        const out = await res.json();
+        if (out.success) {
+          const quizId = out.quizId || null;
+
+          if (quizId) {
+            localStorage.setItem('lastCreatedQuizId', quizId);
+            const list = JSON.parse(localStorage.getItem('createdQuizIds') || '[]');
+            list.unshift({ id: quizId, title, courseId, moduleId, createdAt: Date.now() });
+            localStorage.setItem('createdQuizIds', JSON.stringify(list.slice(0, 50)));
+          }
+
+          const idRow = document.getElementById('quizIdRow');
+          const idCode = document.getElementById('createdQuizId');
+          if (quizId) {
+            idRow.classList.remove('d-none');
+            idCode.textContent = quizId;
+          } else {
+            idRow.classList.add('d-none');
+          }
+
+          const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
+          modal.show();
+
+          // Reset form and show a fresh blank question
+          document.getElementById("quizForm").reset();
+          container.innerHTML = "";
+          qIndex = 0;
+          resetTimerUI();
+          document.getElementById("moduleSelect").innerHTML = `<option value="">-- Select a Module --</option>`;
+          document.getElementById("moduleSelect").disabled = true;
+          qPager.cur = 0; renderQPager();
+          updatePaginationUI();
+
+          addQuestion();
+          renderQPager();
+
+          // Clear bulk area
+          document.getElementById('bulkFile').value = '';
+          document.getElementById('bulkResult').classList.add('d-none');
+          document.getElementById('bulkTbody').innerHTML = '';
+          document.getElementById('addValidBtn').disabled = true;
+        } else {
+          alert("Failed to upload quiz: " + (out.message || "Unknown error"));
+        }
+      } catch (err) {
+        console.error("🔥 Upload error:", err);
+        alert("Server error occurred while uploading quiz.");
+      }
+    });
+
+    // Boot
+    const TEACHER_ID_CONST = TEACHER_ID; // just to avoid lints
+    (async function init(){ await loadCourses(); })();
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

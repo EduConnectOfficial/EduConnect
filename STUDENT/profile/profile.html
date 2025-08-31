@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Student - Profile Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="profile.css" />
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --accent-1: #FF6A00;
+      --accent-2: #B03C10;
+      --radius: 14px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); }
+    .dashboard { display: flex; min-height: 100vh; }
+
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex; flex-direction: column;
+    }
+    .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px); }
+    .dashboard.sidebar-expanded .main { margin-left: 220px; width: calc(100% - 220px); }
+
+ 
+    .logo-header { height: 44px; }
+    .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 10px; }
+    .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100%; }
+    .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf; }
+
+    .profile-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+    .profile-btn .username { font-size: 14px; }
+
+    .content { padding: 24px; }
+    .ui-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 10px 22px rgba(0,0,0,.08); }
+    .ui-card.section { padding: 18px; }
+
+    .btn-amber { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border: none; }
+    .btn-amber:hover { filter: brightness(1.06); color: #fff; }
+    .btn-amber-outline { background: #fff; color: var(--accent-2); border: 1px solid var(--accent-2); }
+    .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border-color: transparent; }
+
+    .form-control:focus, .form-select:focus { border-color: var(--accent-2) !important; box-shadow: 0 0 0 .2rem rgba(255,106,0,.18) !important; }
+    .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none; }
+    .modal-content { border-radius: 12px; border: 1px solid var(--border); }
+    .modal-footer { border-top: 1px solid var(--border); }
+
+    #studentId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
+
+    .visually-hidden-input {
+      position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0, 0, 0, 0); border: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <div class="main">
+      <header class="header-top">
+        <button id="sidebarToggle" class="btn btn-sm btn-light d-md-none" type="button" aria-expanded="false" aria-controls="sidebar">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+
+        <div class="search-box">
+          <input type="text" placeholder="Search..." aria-label="Search" />
+          <i class="fas fa-search"></i>
+        </div>
+
+        <button class="profile-btn">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username"></span>
+        </button>
+      </header>
+
+      <!-- Profile Section -->
+      <section class="content">
+        <div class="ui-card section mb-3">
+          <h2 class="fw-bold mb-3">Profile Management</h2>
+
+          <form id="profileForm" class="row g-4" enctype="multipart/form-data">
+            <div class="col-12 text-center">
+              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover;" alt="Profile Picture" loading="lazy" decoding="async" />
+              <div class="d-flex justify-content-center">
+                <label for="profilePic" class="btn btn-amber-outline">Choose Photo</label>
+                <input type="file" id="profilePic" name="profilePic" accept="image/png, image/jpeg, image/webp" class="visually-hidden-input" />
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">First Name</label>
+              <input type="text" id="firstName" class="form-control" required autocomplete="given-name" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Middle Name</label>
+              <input type="text" id="middleName" class="form-control" autocomplete="additional-name" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Last Name</label>
+              <input type="text" id="lastName" class="form-control" required autocomplete="family-name" />
+            </div>
+
+            <!-- Student ID (readonly) -->
+            <div class="col-md-6">
+              <label class="form-label">Student ID (readonly)</label>
+              <input type="text" id="studentId" class="form-control" readonly aria-readonly="true" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Username</label>
+              <input type="text" id="username" class="form-control" required autocomplete="username" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Email (readonly)</label>
+              <input type="email" id="email" class="form-control" readonly autocomplete="email" />
+            </div>
+
+            <div class="col-12 text-end">
+              <button type="submit" class="btn btn-amber">Update Profile</button>
+              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <form id="changePasswordForm">
+                  <div class="mb-3">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="currentPassword" required autocomplete="current-password" />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPassword" required minlength="8" autocomplete="new-password" />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmPassword" required minlength="8" autocomplete="new-password" />
+                  </div>
+
+                  <ul class="list-unstyled mt-2" id="pwCriteria">
+                    <li id="pwLength"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
+                    <li id="pwUpper"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
+                    <li id="pwNumber"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
+                    <li id="pwSpecial"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
+                    <li id="pwMatch"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
+                  </ul>
+
+                  <div class="form-check text-start mb-2">
+                    <input class="form-check-input" type="checkbox" id="toggleChangePw" />
+                    <label class="form-check-label" for="toggleChangePw">Show Password</label>
+                  </div>
+
+                  <div id="changePasswordMsg" class="mb-2" style="display:none;" aria-live="polite"></div>
+                  <button type="submit" class="btn btn-amber">Change Password</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- Sidebar JS -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/STUDENT/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+
+    // Mobile toggle button
+    document.getElementById("sidebarToggle")?.addEventListener("click", () => {
+      const dash = document.querySelector(".dashboard");
+      const expanded = dash.classList.toggle("sidebar-expanded");
+      document.getElementById("sidebarToggle").setAttribute("aria-expanded", String(expanded));
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Profile Logic -->
+  <script>
+    // ===== Utilities =====
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
+    }
+
+    function setHeaderInitials(displayName) {
+      const el = document.getElementById("Username");
+      if (!el) return;
+      const initials = initialsFrom(displayName) || "?";
+      el.textContent = initials;
+      el.title = displayName || "";
+      el.setAttribute("aria-label", displayName || "");
+    }
+
+    // Auth header helper
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
+
+    // Base URLs
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : "";
+    const API = `${SERVER_BASE}/api`;
+
+    // ===== Startup auth guard =====
+    const rawUser = localStorage.getItem("user");
+    if (!rawUser) { window.location.href = "/STUDENT/login/login.html"; }
+    const storedUser = JSON.parse(rawUser || "{}");
+    if (!storedUser?.userId) { window.location.href = "/STUDENT/login/login.html"; }
+
+    const userId = encodeURIComponent(storedUser.userId);
+
+    // Header initials on load
+    setHeaderInitials(
+      storedUser.firstName && storedUser.lastName
+        ? `${storedUser.firstName} ${storedUser.lastName}`
+        : storedUser.username || storedUser.email || ""
+    );
+
+    // ===== Avatar preview + validation =====
+    const profilePicInput = document.getElementById("profilePic");
+    const profilePreview = document.getElementById("profilePreview");
+    const MAX_MB = 5;
+    let previewUrl;
+    profilePicInput.addEventListener("change", () => {
+      const f = profilePicInput.files[0];
+      if (!f) return;
+      const okType = /^image\/(png|jpe?g|webp)$/i.test(f.type);
+      const okSize = f.size <= MAX_MB * 1024 * 1024;
+      if (!okType || !okSize) {
+        alert(`Please select a PNG/JPG/WEBP up to ${MAX_MB} MB.`);
+        profilePicInput.value = "";
+        return;
+      }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(f);
+      profilePreview.src = previewUrl;
+    });
+    window.addEventListener("beforeunload", () => previewUrl && URL.revokeObjectURL(previewUrl));
+
+    // ===== Student ID resolve + lock =====
+    const studentIdInput = document.getElementById("studentId");
+    const lockStudentId = (v) => {
+      studentIdInput.value = v || "";
+      studentIdInput.setAttribute("readonly", "true");
+      studentIdInput.setAttribute("aria-readonly", "true");
+    };
+    function resolveStudentId(u) {
+      return (
+        u.studentId || u.studentID || u.sid || u.idNumber || u.lpuId || u.student_no || ""
+      );
+    }
+
+    // ===== Load user =====
+    (async () => {
+      try {
+        const res = await fetch(`${API}/users/${userId}`, { headers: authHeaders() });
+        if (res.status === 401) { alert("Session expired. Please log in again."); return logoutUser(); }
+        const data = await res.json().catch(() => ({}));
+        const { success, user } = data || {};
+        if (success && user) {
+          document.getElementById("firstName").value = user.firstName || "";
+          document.getElementById("middleName").value = user.middleName || "";
+          document.getElementById("lastName").value = user.lastName || "";
+          document.getElementById("username").value = user.username || "";
+          document.getElementById("email").value = user.email || "";
+
+          // Student ID (read-only)
+          lockStudentId(resolveStudentId(user));
+
+          // Header initials
+          setHeaderInitials(
+            (user.firstName || user.lastName) ? `${user.firstName||""} ${user.lastName||""}`.trim()
+              : user.username || user.email || ""
+          );
+
+          // Persist safe fields
+          storedUser.username = user.username ?? storedUser.username;
+          if (user.photoURL) {
+            profilePreview.src = `${SERVER_BASE}${user.photoURL}?t=${Date.now()}`;
+            storedUser.photoURL = user.photoURL;
+          }
+          localStorage.setItem("user", JSON.stringify(storedUser));
+        }
+      } catch (err) {
+        console.error("❌ Error fetching user:", err);
+      }
+    })();
+
+    // ===== Update profile (Change Photo uploads via FormData) =====
+    const profileForm = document.getElementById("profileForm");
+    profileForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const submitBtn = profileForm.querySelector('button[type="submit"]');
+      submitBtn.disabled = true; const oldText = submitBtn.textContent; submitBtn.textContent = "Updating…";
+
+      const fd = new FormData();
+      fd.append("firstName", document.getElementById("firstName").value);
+      fd.append("middleName", document.getElementById("middleName").value);
+      fd.append("lastName", document.getElementById("lastName").value);
+      fd.append("username", document.getElementById("username").value);
+      // DO NOT send studentId or email
+      if (profilePicInput.files.length) fd.append("profilePic", profilePicInput.files[0]);
+
+      try {
+        const res = await fetch(`${API}/users/${userId}/profile`, {
+          method: "POST",
+          headers: authHeaders(), // don't set Content-Type for FormData
+          body: fd
+        });
+        if (res.status === 401) { alert("Session expired. Please log in again."); return logoutUser(); }
+        const result = await res.json().catch(() => ({}));
+        if (res.ok && result.success) {
+          alert("✅ Profile updated!");
+          if (result.updatedUser) {
+            const uu = result.updatedUser;
+            storedUser.username = uu.username ?? storedUser.username;
+            storedUser.firstName = uu.firstName ?? storedUser.firstName;
+            storedUser.lastName  = uu.lastName  ?? storedUser.lastName;
+
+            // Re-lock Student ID to server value if echoed
+            lockStudentId(resolveStudentId(uu) || studentIdInput.value);
+
+            setHeaderInitials(
+              (uu.firstName || uu.lastName) ? `${uu.firstName||""} ${uu.lastName||""}`.trim()
+                : uu.username || storedUser.email || ""
+            );
+          }
+          if (result.updatedUser?.photoURL) {
+            if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+            profilePreview.src = `${SERVER_BASE}${result.updatedUser.photoURL}?t=${Date.now()}`;
+            storedUser.photoURL = result.updatedUser.photoURL;
+          }
+          localStorage.setItem("user", JSON.stringify(storedUser));
+        } else {
+          alert(result.message || "❌ Failed to update profile");
+        }
+      } catch (err) {
+        console.error("❌ Update failed:", err);
+        alert("❌ Update failed");
+      } finally {
+        submitBtn.disabled = false; submitBtn.textContent = oldText;
+      }
+    });
+
+    // ===== Auto-login helpers =====
+    function persistAuth(obj) {
+      const u = obj?.user || obj?.data?.user || obj?.data || obj;
+      const token = obj?.token || obj?.accessToken || obj?.jwt || obj?.data?.token || null;
+      if (u) localStorage.setItem("user", JSON.stringify({ ...u, token }));
+      if (token) localStorage.setItem("authToken", token);
+    }
+    async function smartLogin({ email, username, password }) {
+      const bodies = [];
+      if (email) { bodies.push({ email, password }, { identifier: email, password }); }
+      if (username) { bodies.push({ username, password }, { identifier: username, password }); }
+      const routes = [`${API}/login`, `${API}/auth/login`, `${SERVER_BASE}/login`, `${SERVER_BASE}/auth/login`];
+      const creds = ["include", "omit"];
+      for (const url of routes) {
+        for (const b of bodies) {
+          for (const c of creds) {
+            try {
+              const r = await fetch(url, { method: "POST", credentials: c, headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+              const txt = await r.text(); let j = {}; try { j = JSON.parse(txt); } catch { }
+              const ok = j?.user || j?.data?.user || (j?.success && (j?.user || j?.data));
+              if (r.ok && ok) { persistAuth(j); return j; }
+            } catch {}
+          }
+        }
+      }
+      throw new Error("All login attempts failed");
+    }
+
+    // ===== Password change (with auto re-login + auto-close) =====
+    const newPw = document.getElementById("newPassword");
+    const confirmPw = document.getElementById("confirmPassword");
+    const msgDiv = document.getElementById("changePasswordMsg");
+
+    function check(el, ok) {
+      const i = el.querySelector("i");
+      i.classList.toggle("bi-check-circle", ok);
+      i.classList.toggle("text-success", ok);
+      i.classList.toggle("bi-x-circle", !ok);
+      i.classList.toggle("text-danger", !ok);
+    }
+    function livePw() {
+      const p = newPw.value;
+      check(document.getElementById("pwLength"), p.length >= 8);
+      check(document.getElementById("pwUpper"), /[A-Z]/.test(p));
+      check(document.getElementById("pwNumber"), /\d/.test(p));
+      check(document.getElementById("pwSpecial"), /[^A-Za-z0-9]/.test(p));
+      check(document.getElementById("pwMatch"), p === confirmPw.value && p !== "");
+    }
+    newPw.addEventListener("input", livePw);
+    confirmPw.addEventListener("input", livePw);
+
+    document.getElementById("toggleChangePw").addEventListener("change", function () {
+      const t = this.checked ? "text" : "password";
+      document.getElementById("currentPassword").type = t;
+      newPw.type = t; confirmPw.type = t;
+    });
+
+    const pwForm = document.getElementById("changePasswordForm");
+    pwForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const currentPassword = document.getElementById("currentPassword").value;
+      const newPassword = newPw.value;
+      const confirmPassword = confirmPw.value;
+
+      const btn = pwForm.querySelector('button[type="submit"]');
+      btn.disabled = true; const old = btn.textContent; btn.textContent = "Changing…";
+
+      msgDiv.style.display = "none"; msgDiv.textContent = ""; msgDiv.classList.remove("text-success", "text-danger");
+
+      const showErr = (m) => { msgDiv.textContent = m; msgDiv.classList.add("text-danger"); msgDiv.style.display = "block"; };
+
+      if (newPassword.length < 8) { showErr("Password ≥8 chars"); done(); return; }
+      if (!/[A-Z]/.test(newPassword)) { showErr("Need uppercase"); done(); return; }
+      if (!/\d/.test(newPassword)) { showErr("Need number"); done(); return; }
+      if (!/[^A-Za-z0-9]/.test(newPassword)) { showErr("Need special char"); done(); return; }
+      if (newPassword !== confirmPassword) { showErr("Passwords do not match"); done(); return; }
+
+      try {
+        const res = await fetch(`${API}/users/${userId}/change-password`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        if (res.status === 401) { alert("Session expired. Please log in again."); done(); return logoutUser(); }
+
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok || !result.success) { showErr(result.error || `HTTP ${res.status}`); done(); return; }
+
+        // Re-login
+        const latestEmail = document.getElementById("email").value || storedUser.email || null;
+        const latestUsername = document.getElementById("username").value || storedUser.username || null;
+
+        try {
+          await smartLogin({ email: latestEmail, username: latestUsername, password: newPassword });
+          msgDiv.textContent = "Password changed!"; msgDiv.classList.add("text-success"); msgDiv.style.display = "block";
+          setTimeout(() => {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("changePasswordModal")).hide();
+            pwForm.reset();
+            msgDiv.style.display = "none";
+          }, 1200);
+        } catch {
+          showErr("Password changed, but auto-login failed. Please log in again.");
+        }
+      } catch (err) {
+        console.error("Pw change error:", err);
+        showErr(err.message || "Password change failed");
+      } finally {
+        done();
+      }
+
+      function done() { btn.disabled = false; btn.textContent = old; }
+    });
+
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+</body>
+</html>
