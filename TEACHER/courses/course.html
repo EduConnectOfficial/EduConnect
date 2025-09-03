@@ -196,10 +196,9 @@
       }
     });
 
-    function logoutUser() {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/ADMIN/login/login.html";
+     function logoutUser() {
+      localStorage.removeItem('user');
+      window.location.href = '/TEACHER/login/login.html';
     }
   </script>
 

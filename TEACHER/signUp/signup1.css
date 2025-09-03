@@ -9,7 +9,40 @@ html, body {
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   color: white;
 }
+.modal-body {
+  color:black
+}
+/* Signup container aligned like login */
+.signup-container,
+.login-container {
+  height: auto;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
 
+/* Signup box aligned with login box */
+.signup-box,
+.login-box {
+  background-color: #5c2213;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 300px;   /* tighter width so it doesn’t stretch too wide */
+
+  margin: auto;
+  text-align: center;
+}
+
+/* Adjust headings */
+.signup-box h2 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  color: #fff6dd;
+}
 
 .main-container {
   min-height: 100vh;
@@ -71,13 +104,7 @@ html, body {
   left: 30px;
 }
 
-/* Center container */
-.login-container {
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+
 
 /* Card-style form box */
 .login-box {
