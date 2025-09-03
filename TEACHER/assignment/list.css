@@ -333,3 +333,40 @@
       background: #f3f4f6;
       border-color: #e5e7eb;
     }
+
+    /* ===== Pills ===== */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:.4rem;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:.8rem;
+  font-weight:700;
+  border:1px solid var(--border);
+  background:#fff;
+  color:#374151;
+  white-space:nowrap;
+}
+.pill .bi{ font-size:.9rem; }
+
+/* Course (soft orange) */
+.pill-course{
+  background:#fff7ed;       /* orange-50 */
+  border-color:#fed7aa;     /* orange-200 */
+  color:#9a3412;            /* orange-800 */
+}
+
+/* Module (soft green) */
+.pill-module{
+  background:#ecfdf5;       /* emerald-50 */
+  border-color:#a7f3d0;     /* emerald-200 */
+  color:#065f46;            /* emerald-900 */
+}
+
+/* Archived (soft gray) – already used by you */
+.pill-archived{
+  background:#f3f4f6;       /* gray-100 */
+  border-color:#e5e7eb;     /* gray-200 */
+  color:#374151;            /* gray-700 */
+}

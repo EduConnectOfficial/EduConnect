@@ -14,6 +14,28 @@
   <!-- Global dashboard CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <link rel="stylesheet" href="list.css" />
+
+  <!-- Pills (course / module / archived) -->
+  <style>
+    .pill{
+      display:inline-flex;align-items:center;gap:.4rem;
+      padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+      border:1px solid var(--border, #e5e7eb);background:#fff;color:#374151;white-space:nowrap;
+    }
+    .pill .bi{font-size:.9rem}
+    .pill-course{
+      background:#fff7ed;border-color:#fed7aa;color:#9a3412; /* orange */
+    }
+    .pill-module{
+      background:#ecfdf5;border-color:#a7f3d0;color:#065f46; /* emerald */
+    }
+    .pill-archived{
+      background:#f3f4f6;border-color:#e5e7eb;color:#374151; /* gray */
+    }
+
+    /* keep toast anchored */
+    .toast-fixed{position:fixed;right:16px;bottom:16px;z-index:1056}
+  </style>
 </head>
 
 <body>
@@ -42,8 +64,7 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-check"></i> Your Course Assignments</h2>
-            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.
-            </div>
+            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.</div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -93,8 +114,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <form id="editForm">
-          <div class="modal-header"
-            style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9;">
+          <div class="modal-header" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9;">
             <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Assignment</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -145,8 +165,7 @@
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
             <button id="saveEditBtn" type="submit" class="btn btn-amber">
               <span class="save-text">Save Changes</span>
-              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status"
-                aria-hidden="true"></span>
+              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
             </button>
           </div>
         </form>
@@ -157,14 +176,10 @@
 
   <!-- Toast -->
   <div class="toast-fixed">
-    <div id="actionToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive"
-      aria-atomic="true">
+    <div id="actionToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
-        <div class="toast-body fw-semibold">
-          Done.
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
-          aria-label="Close"></button>
+        <div class="toast-body fw-semibold">Done.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   </div>
@@ -234,7 +249,7 @@
 
     // State
     let coursesList = [];                // [{id,title,courseNumber}, ...]
-    let courseMap = new Map();         // id -> {title, courseNumber, label}
+    let courseMap = new Map();           // id -> {title, courseNumber, label}
     let masterAssignments = [];          // ALL assignments across courses (preloaded)
     let filtered = [];
     let currentCourseId = '';            // '' means "All courses"
@@ -413,20 +428,10 @@
       const sort = elSort.value;
       if (sort === 'az') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));           // A→Z
       else if (sort === 'due') list.sort((a, b) => (a._dueMs ?? Infinity) - (b._dueMs ?? Infinity)); // nearest due first
-      else list.sort((a, b) => (b._createdMs ?? b._pubMs ?? 0) - (a._createdMs ?? a._pubMs ?? 0)); // newest
+      else list.sort((a, b) => (b._createdMs ?? b._pubMs ?? 0) - (a._createdMs ?? a._pubMs ?? 0));   // newest
 
       filtered = list;
       renderGrid();
-    }
-
-    // Build a consistent module label
-    function fmtModule(a) {
-      const num = a.moduleNumber;
-      const title = (a.moduleTitle || '').trim();
-      if (num != null && title) return `Module ${num} • ${escapeHTML(title)}`;
-      if (num != null) return `Module ${num}`;
-      if (title) return escapeHTML(title);
-      return '—';
     }
 
     // ---- Archive / Unarchive ----
@@ -556,7 +561,7 @@
       }
     }
 
-    // Render cards (includes Archived ribbon/actions)
+    // Render cards with Course + Module pills
     function renderGrid() {
       if (!filtered.length) {
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No assignments found.</div></div>`;
@@ -565,33 +570,35 @@
       elGrid.innerHTML = filtered.map(a => {
         const dueStr = a._dueMs ? new Date(a._dueMs).toLocaleString() : 'N/A';
         const pts = (typeof a.points === 'number') ? `${a.points} pts` : '';
-        const moduleInfo = fmtModule(a);
-        const courseBadge = a.courseLabel ? `<span class="badge-course"><i class="bi bi-book me-1"></i>${escapeHTML(a.courseLabel)}</span>` : '';
+
+        const coursePill = a.courseLabel
+          ? `<span class="pill pill-course"><i class="bi bi-collection"></i>${escapeHTML(a.courseLabel)}</span>`
+          : '';
+
+        // Module pill label: "#N — Title" if both exist; otherwise whichever is present
+        let moduleLabel = '';
+        if (a.moduleNumber != null && (a.moduleTitle || '').trim()) moduleLabel = `#${a.moduleNumber} — ${escapeHTML(a.moduleTitle)}`;
+        else if (a.moduleNumber != null) moduleLabel = `#${a.moduleNumber}`;
+        else if ((a.moduleTitle || '').trim()) moduleLabel = escapeHTML(a.moduleTitle);
+
+        const modulePill = moduleLabel
+          ? `<span class="pill pill-module"><i class="bi bi-box"></i>${moduleLabel}</span>`
+          : '';
 
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
             <div class="assignment-card ${a.archived === true ? 'archived' : ''}">
-             
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="m-0">${escapeHTML(a.title || 'Untitled')}</h5>
+                <div class="d-flex align-items-center gap-2">
+                  ${a.archived === true ? `<span class="pill pill-archived"><i class="bi bi-archive"></i>Archived</span>` : ''}
+                  ${pts ? `<span class="badge-soft"><i class="bi bi-award"></i>${pts}</span>` : ``}
+                </div>
+              </div>
 
-             <div class="d-flex align-items-center justify-content-between mb-2">
-  <h5 class="m-0">${escapeHTML(a.title || 'Untitled')}</h5>
-  <div class="d-flex align-items-center gap-2">
-    ${a.archived === true
-            ? `<span class="pill pill-archived"><i class="bi bi-archive"></i>Archived</span>`
-            : ''
-          }
-    ${pts ? `<span class="badge-soft"><i class="bi bi-award"></i>${pts}</span>` : ``}
-  </div>
-</div>
-
-
-              <div class="mb-2">${courseBadge}</div>
+              <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
 
               <div class="text-muted small mb-2">${escapeHTML(preview(a.content, 140))}</div>
-
-              <div class="text-muted small mb-1">
-                <i class="bi bi-box me-1"></i>${moduleInfo}
-              </div>
 
               <div class="d-flex align-items-center justify-content-between small mb-3">
                 <span class="text-muted"><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueStr}</span>
@@ -599,14 +606,15 @@
               </div>
 
               <div class="d-flex justify-content-end gap-2">
-                ${a.archived === true
-            ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
-                       <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-                     </button>`
-            : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
-                       <i class="bi bi-archive"></i> Archive
-                     </button>`
-          }
+                ${
+                  a.archived === true
+                    ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
+                         <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                       </button>`
+                    : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
+                         <i class="bi bi-archive"></i> Archive
+                       </button>`
+                }
                 <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${a.id}')">
                   <i class="bi bi-pencil"></i> Edit
                 </button>
@@ -626,7 +634,6 @@
     // Segmented controls
     function setSegmentedActive(which) {
       statusFilter = which;
-      // aria & visual state
       const all = [btnActive, btnArchived, btnAll];
       all.forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
       if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
