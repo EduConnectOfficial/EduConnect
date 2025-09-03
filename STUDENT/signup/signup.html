@@ -97,6 +97,35 @@
     </div>
   </div>
 
+  <!-- Success Modal -->
+  <div class="modal fade" id="signupSuccessModal" tabindex="-1" aria-labelledby="signupSuccessLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header">
+          <h5 class="modal-title" id="signupSuccessLabel">
+            <i class="bi bi-check-circle me-2"></i>Verification code sent
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">We emailed a verification code to <strong id="modalEmail"></strong>.</p>
+          <div id="idContainer" class="small text-muted"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="copyIdsBtn" class="btn btn-outline-secondary d-none">
+            <i class="bi bi-clipboard-check me-1"></i>Copy IDs
+          </button>
+          <button type="button" id="continueBtn" class="btn btn-primary">
+            Continue to verification
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS bundle (required for modal) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
   <!-- JS Script -->
   <script>
     const API_BASE = "http://localhost:5000";
@@ -121,6 +150,16 @@
     const specialCharCheck = document.getElementById("specialCharCheck");
     const numberCheck = document.getElementById("numberCheck");
     const matchCheck = document.getElementById("matchCheck");
+
+    // Modal elements
+    const successModalEl = document.getElementById("signupSuccessModal");
+    const modalEmail = document.getElementById("modalEmail");
+    const idContainer = document.getElementById("idContainer");
+    const copyIdsBtn = document.getElementById("copyIdsBtn");
+    const continueBtn = document.getElementById("continueBtn");
+    const successModal = new bootstrap.Modal(successModalEl, { backdrop: "static", keyboard: false });
+
+    const VERIFICATION_URL = "/STUDENT/signup/verification.html";
 
     // Show/hide password
     document.getElementById("togglePassword").addEventListener("change", () => {
@@ -212,6 +251,14 @@
     passwordInput.addEventListener("input", validatePasswordLive);
     confirmPasswordInput.addEventListener("input", validatePasswordLive);
 
+    // Utility: mask email (shorter version)
+    function maskEmail(email) {
+      const [user, domain] = email.split("@");
+      if (!user || !domain) return email;
+      if (user.length <= 2) return user[0] + "*@" + domain;
+      return user[0] + "***" + user[user.length - 1] + "@" + domain;
+    }
+
     // Submit
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -264,16 +311,37 @@
           sessionStorage.setItem("pendingEmail", payload.email);
           sessionStorage.setItem("pendingUserData", JSON.stringify(payload));
 
-          // If backend returns any IDs/tokens, show them (but actual User ID is created on verification)
+          // Build IDs text
           const idBits = [];
           if (js.studentId) idBits.push(`Student ID: ${js.studentId}`);
           if (js.teacherId) idBits.push(`Teacher ID: ${js.teacherId}`);
           if (js.studentReserveId) idBits.push(`Reserved Student ID: ${js.studentReserveId}`);
           if (js.teacherReserveId) idBits.push(`Reserved Teacher ID: ${js.teacherReserveId}`);
-          const extra = idBits.length ? `\n${idBits.join(" | ")}` : "";
+          const idsText = idBits.join(" | ");
 
-          alert(`Verification code sent to your email!${extra}`);
-          window.location.href = "/STUDENT/signup/verification.html";
+          // Populate and show modal
+          modalEmail.textContent = maskEmail(payload.email);
+          idContainer.textContent = idsText || "";
+          copyIdsBtn.classList.toggle("d-none", !idsText);
+
+          // Copy IDs button
+          copyIdsBtn.onclick = async () => {
+            try {
+              await navigator.clipboard.writeText(idsText);
+              copyIdsBtn.innerHTML = '<i class="bi bi-clipboard-check me-1"></i>Copied!';
+              setTimeout(() => copyIdsBtn.innerHTML = '<i class="bi bi-clipboard-check me-1"></i>Copy IDs', 1500);
+            } catch {}
+          };
+
+          // Continue button -> redirect
+          continueBtn.onclick = () => { window.location.href = VERIFICATION_URL; };
+
+          // Also redirect if modal is closed via X
+          successModalEl.addEventListener("hidden.bs.modal", () => {
+            window.location.href = VERIFICATION_URL;
+          }, { once: true });
+
+          successModal.show();
         } else {
           signupErrorDiv.textContent = js.error || "Signup failed.";
           submitBtn.disabled = false;

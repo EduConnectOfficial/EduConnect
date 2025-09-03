@@ -72,6 +72,42 @@
     </div>
   </div>
 
+  <!-- Success Modal -->
+  <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i><span id="successTitle"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="successMessage" class="mb-0"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="continueBtn" class="btn btn-primary">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Modal (for resend messages) -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope-check me-2"></i>Code Sent</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="infoMessage" class="mb-0"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -79,6 +115,22 @@
     const inputs = document.querySelectorAll('.otp-input');
     const verificationError = document.getElementById("verificationError");
     const resendLink = document.getElementById("resendCode");
+
+    const successModal = new bootstrap.Modal(document.getElementById("successModal"));
+    const infoModal = new bootstrap.Modal(document.getElementById("infoModal"));
+    const successTitle = document.getElementById("successTitle");
+    const successMessage = document.getElementById("successMessage");
+    const infoMessage = document.getElementById("infoMessage");
+    const continueBtn = document.getElementById("continueBtn");
+
+    // Mask email helper
+    function maskEmail(email) {
+      const [user, domain] = (email || "").split("@");
+      if (!user || !domain) return email;
+      if (user.length <= 1) return user + "*@" + domain;
+      if (user.length === 2) return user[0] + "*@" + domain;
+      return user[0] + "***" + user[user.length - 1] + "@" + domain;
+    }
 
     // Auto-focus behavior
     inputs.forEach((input, i) => {
@@ -126,13 +178,16 @@
           body: JSON.stringify({ email, code, newPassword })
         });
 
-
         const data = await response.json();
 
         if (response.ok) {
-          alert(data.message || "Password reset successful!");
-          sessionStorage.removeItem("resetEmail");
-          window.location.href = "/STUDENT/login/login.html";
+          successTitle.textContent = "Password Reset";
+          successMessage.textContent = data.message || "Password reset successful!";
+          continueBtn.onclick = () => {
+            sessionStorage.removeItem("resetEmail");
+            window.location.href = "/STUDENT/login/login.html";
+          };
+          successModal.show();
         } else {
           verificationError.textContent = data.error || "Invalid or expired code.";
         }
@@ -161,7 +216,8 @@
         const data = await response.json();
 
         if (response.ok) {
-          alert("New code sent to your email.");
+          infoMessage.textContent = "A new code was sent to " + maskEmail(email) + ".";
+          infoModal.show();
         } else {
           verificationError.textContent = data.error || "Could not resend code.";
         }
@@ -171,6 +227,9 @@
       }
     });
   </script>
+
+  <!-- Bootstrap Icons (for check/envelope icons) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 </body>
 
 </html>

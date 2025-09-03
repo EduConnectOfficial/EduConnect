@@ -692,6 +692,10 @@
 
     // Init
     loadCourses();
+       function logoutUser() {
+      localStorage.removeItem('user');
+      window.location.href = '/TEACHER/login/login.html';
+    }
   </script>
 </body>
 

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,7 +16,6 @@
       gap: 10px;
       margin-bottom: 1rem;
     }
-
     .otp-input {
       width: 40px;
       height: 50px;
@@ -26,7 +24,6 @@
       border: 1px solid #ced4da;
       border-radius: 5px;
     }
-
     .otp-input:focus {
       outline: none;
       border-color: #86b7fe;
@@ -36,7 +33,7 @@
 </head>
 
 <body class="bg-light">
-      <!-- Top Logo -->
+  <!-- Top Logo -->
   <div class="top-logo text-center my-4">
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
@@ -72,6 +69,24 @@
     </div>
   </div>
 
+  <!-- ✅ Reusable Status Modal -->
+  <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true" aria-labelledby="statusModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="statusModalLabel" class="modal-title">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="statusModalBody">
+          <!-- message set via JS -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="statusModalBtn" class="btn btn-primary">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -80,14 +95,49 @@
     const verificationError = document.getElementById("verificationError");
     const resendLink = document.getElementById("resendCode");
 
-    // Auto-focus behavior
+    // Modal refs
+    const statusModalEl = document.getElementById('statusModal');
+    const statusModalBody = document.getElementById('statusModalBody');
+    const statusModalBtn = document.getElementById('statusModalBtn');
+    const statusModal = new bootstrap.Modal(statusModalEl, { backdrop: 'static', keyboard: false });
+
+    // Helper: mask email like dy•••@gmail.com
+    function maskEmail(email) {
+      if (!email || !email.includes('@')) return email;
+      const [local, domain] = email.split('@');
+      if (local.length <= 2) return local[0] + '•••@' + domain;
+      return local.slice(0, 2) + '•••@' + domain;
+    }
+
+    // Reusable modal
+    function showModal(message, { title = 'Notice', buttonText = 'OK', onClick = null, onClose = null } = {}) {
+      document.getElementById('statusModalLabel').textContent = title;
+      statusModalBody.innerHTML = message;
+      statusModalBtn.textContent = buttonText;
+
+      // reset handlers
+      statusModalBtn.onclick = null;
+      statusModalEl.onhidden = null;
+
+      statusModalBtn.onclick = () => {
+        statusModal.hide();
+        if (onClick) onClick();
+      };
+      statusModalEl.addEventListener('hidden.bs.modal', () => {
+        if (onClose) onClose();
+      }, { once: true });
+
+      statusModal.show();
+    }
+
+    // Auto-focus behavior for OTP
     inputs.forEach((input, i) => {
       input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0,1);
         if (input.value.length === 1 && i < inputs.length - 1) {
           inputs[i + 1].focus();
         }
       });
-
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Backspace' && !input.value && i > 0) {
           inputs[i - 1].focus();
@@ -106,12 +156,10 @@
         verificationError.textContent = "Please enter a valid 6-digit code.";
         return;
       }
-
       if (!email) {
         verificationError.textContent = "Email not found in session. Please try again.";
         return;
       }
-
       if (newPassword.length < 8) {
         verificationError.textContent = "Password must be at least 8 characters long.";
         return;
@@ -126,13 +174,20 @@
           body: JSON.stringify({ email, code, newPassword })
         });
 
-
         const data = await response.json();
 
         if (response.ok) {
-          alert(data.message || "Password reset successful!");
+          // Clear session email before redirect
           sessionStorage.removeItem("resetEmail");
-          window.location.href = "/TEACHER/login/login.html";
+
+          // Success modal → go to login
+          const goLogin = () => window.location.href = "/TEACHER/login/login.html";
+          showModal(data.message || "Password reset successful!", {
+            title: "Success",
+            buttonText: "Go to login",
+            onClick: goLogin,
+            onClose: goLogin
+          });
         } else {
           verificationError.textContent = data.error || "Invalid or expired code.";
         }
@@ -161,7 +216,10 @@
         const data = await response.json();
 
         if (response.ok) {
-          alert("New code sent to your email.");
+          showModal(`New code sent to <strong>${maskEmail(email)}</strong>.`, {
+            title: "Code Resent",
+            buttonText: "OK"
+          });
         } else {
           verificationError.textContent = data.error || "Could not resend code.";
         }
@@ -172,5 +230,4 @@
     });
   </script>
 </body>
-
 </html>
