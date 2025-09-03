@@ -1,67 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Teacher - Assignments</title>
 
   <!-- Bootstrap / Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-  <!-- Page Styles -->
-  <style>
-    :root{
-      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
-      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--brand-accent-1:#FF6A00;--brand-accent-2:#B03C10;
-      --card-radius:14px;
-    }
-    html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
-
-    .header-top{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;
-      background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:5}
-    .logo-header{height:45px}
-    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
-    .search-box input{width:100%;padding:12px 44px 12px 16px;border:none;border-radius:999px;outline:0;font-size:1.05rem}
-    .search-box i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#d7dadf;font-size:1.1rem}
-
-    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
-    .profile-btn .username{font-size:14px}
-
-    .content{padding:24px}
-    .page-title{font-weight:700;font-size:1.7rem;text-align:center;margin:4px 0 18px}
-    .page-title.brand{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent}
-
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-    .ui-card.card-themed{border-radius:var(--card-radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .ui-card.card-themed .ui-card-head{margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)}
-    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-    .ui-subtext{font-size:1rem;color:#ffe9ca}
-
-    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none;font-size:1rem;padding:.55rem .9rem}
-    .btn-amber:hover{filter:brightness(1.05);color:#fff}
-    .form-select, .form-control{font-size:1.05rem;padding:.6rem .85rem}
-
-    .assignment-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;height:100%;
-      box-shadow:0 8px 18px rgba(0,0,0,.08);position:relative;transition:transform .08s ease, box-shadow .2s ease}
-    .assignment-card:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(0,0,0,.12)}
-    .assignment-card h5{font-size:1.15rem}
-    .badge-soft{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;padding:3px 10px;font-size:.8rem;
-      color:var(--brand-accent-2);background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12))}
-    .badge-course{background:#f0f3f8;border:1px solid #d9e0ea;color:#344054;border-radius:999px;padding:3px 10px;font-size:.8rem}
-
-    /* helpful empty-state */
-    .empty{border:2px dashed #e5e7eb;border-radius:12px;padding:24px;color:#6b7280;background:#fff}
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <!-- Global dashboard CSS -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="list.css" />
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -73,7 +27,7 @@
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input id="searchBox" type="text" class="form-control" placeholder="Search assignments or modules…"/>
+          <input id="searchBox" type="text" class="form-control" placeholder="Search assignments or modules…" />
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -88,17 +42,19 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-check"></i> Your Course Assignments</h2>
-            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.</div>
+            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.
+            </div>
           </div>
 
           <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-5 col-xl-4">
+            <div class="col-12 col-md-4 col-xl-4">
               <label class="form-label">Course</label>
               <select id="courseSelect" class="form-select" aria-label="Filter by course">
                 <option value="">All courses</option>
               </select>
             </div>
-            <div class="col-12 col-md-4 col-xl-3">
+
+            <div class="col-12 col-md-3 col-xl-3">
               <label class="form-label">Sort</label>
               <select id="sortBy" class="form-select" aria-label="Sort assignments">
                 <option value="due" selected>Nearest due date</option>
@@ -106,12 +62,25 @@
                 <option value="az">Title A → Z</option>
               </select>
             </div>
-            <div class="col-12 col-md-3 col-xl-5 d-flex justify-content-md-end">
-              <button id="newAssignBtn" class="btn btn-amber w-100 w-md-auto mt-2 mt-md-0" onclick="goUpload()">
+
+            <!-- 3-button visibility filter -->
+            <div class="col-12 col-md-5 col-xl-3">
+              <label class="form-label">Show</label>
+              <div class="segmented" role="tablist" aria-label="Assignment visibility">
+                <button id="btnActive" class="seg-btn is-active" role="tab" aria-selected="true">Active</button>
+                <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
+                <button id="btnAll" class="seg-btn is-all" role="tab" aria-selected="false">All</button>
+              </div>
+            </div>
+
+            <!-- Keep Create Assignment -->
+            <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
+              <button id="newAssignBtn" class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" onclick="goUpload()">
                 <i class="bi bi-plus-circle me-1"></i>Create Assignment
               </button>
             </div>
           </div>
+
         </div>
 
         <div id="assignmentGrid" class="row g-3"></div>
@@ -124,7 +93,8 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <form id="editForm">
-          <div class="modal-header" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9;">
+          <div class="modal-header"
+            style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9;">
             <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Assignment</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -132,16 +102,16 @@
 
             <div id="editError" class="text-danger mb-2" style="min-height:1rem;"></div>
 
-            <input type="hidden" id="editAssignmentId"/>
+            <input type="hidden" id="editAssignmentId" />
 
             <div class="row g-3">
               <div class="col-md-8">
                 <label class="form-label">Title</label>
-                <input type="text" id="editTitle" class="form-control" required/>
+                <input type="text" id="editTitle" class="form-control" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label">Points</label>
-                <input type="number" id="editPoints" min="0" step="1" class="form-control"/>
+                <input type="number" id="editPoints" min="0" step="1" class="form-control" />
               </div>
               <div class="col-12">
                 <label class="form-label">Content / Instructions</label>
@@ -152,11 +122,11 @@
             <div class="row g-3 mt-1">
               <div class="col-md-6">
                 <label class="form-label">Publish At</label>
-                <input type="datetime-local" id="editPublishAt" class="form-control"/>
+                <input type="datetime-local" id="editPublishAt" class="form-control" />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Due At</label>
-                <input type="datetime-local" id="editDueAt" class="form-control"/>
+                <input type="datetime-local" id="editDueAt" class="form-control" />
               </div>
             </div>
 
@@ -175,7 +145,8 @@
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
             <button id="saveEditBtn" type="submit" class="btn btn-amber">
               <span class="save-text">Save Changes</span>
-              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
+              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status"
+                aria-hidden="true"></span>
             </button>
           </div>
         </form>
@@ -183,6 +154,20 @@
     </div>
   </div>
   <!-- /EDIT MODAL -->
+
+  <!-- Toast -->
+  <div class="toast-fixed">
+    <div id="actionToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive"
+      aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body fw-semibold">
+          Done.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+          aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
 
   <!-- Sidebar loader -->
   <script>
@@ -219,69 +204,80 @@
     // Auth
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     if (!userData || !userData.userId || !userData.isTeacher) {
-      window.location.href="/TEACHER/login/login.html";
+      window.location.href = "/TEACHER/login/login.html";
     }
     document.getElementById("Username").textContent = userData.username || "";
 
     // DOM
     const elCourse = document.getElementById('courseSelect');
-    const elGrid   = document.getElementById('assignmentGrid');
-    const elSort   = document.getElementById('sortBy');
+    const elGrid = document.getElementById('assignmentGrid');
+    const elSort = document.getElementById('sortBy');
     const elSearch = document.getElementById('searchBox');
+    const btnActive = document.getElementById('btnActive');
+    const btnArchived = document.getElementById('btnArchived');
+    const btnAll = document.getElementById('btnAll');
 
     // Edit modal DOM
     let editModal; // bootstrap modal instance
-    const elEditId       = document.getElementById('editAssignmentId');
-    const elEditTitle    = document.getElementById('editTitle');
-    const elEditPoints   = document.getElementById('editPoints');
-    const elEditContent  = document.getElementById('editContent');
-    const elEditPublish  = document.getElementById('editPublishAt');
-    const elEditDue      = document.getElementById('editDueAt');
-    const elEditModule   = document.getElementById('editModuleId');
-    const elEditForm     = document.getElementById('editForm');
-    const elEditError    = document.getElementById('editError');
-    const elSaveBtn      = document.getElementById('saveEditBtn');
-    const elSaveSpinner  = elSaveBtn.querySelector('.spinner-border');
-    const elSaveText     = elSaveBtn.querySelector('.save-text');
+    const elEditId = document.getElementById('editAssignmentId');
+    const elEditTitle = document.getElementById('editTitle');
+    const elEditPoints = document.getElementById('editPoints');
+    const elEditContent = document.getElementById('editContent');
+    const elEditPublish = document.getElementById('editPublishAt');
+    const elEditDue = document.getElementById('editDueAt');
+    const elEditModule = document.getElementById('editModuleId');
+    const elEditForm = document.getElementById('editForm');
+    const elEditError = document.getElementById('editError');
+    const elSaveBtn = document.getElementById('saveEditBtn');
+    const elSaveSpinner = elSaveBtn.querySelector('.spinner-border');
+    const elSaveText = elSaveBtn.querySelector('.save-text');
 
     // State
     let coursesList = [];                // [{id,title,courseNumber}, ...]
-    let courseMap   = new Map();         // id -> {title, courseNumber, label}
+    let courseMap = new Map();         // id -> {title, courseNumber, label}
     let masterAssignments = [];          // ALL assignments across courses (preloaded)
     let filtered = [];
     let currentCourseId = '';            // '' means "All courses"
+    let statusFilter = 'active';         // 'active' | 'archived' | 'all'
 
     // Cache for module lookups (moduleId -> { title, moduleNumber })
     const moduleCache = new Map();
 
     // Utils
-    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
-    function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;"); }
-    function goUpload(){ window.location.href = "/TEACHER/assignment/assignment_upload.html"; }
-    function goToGraded(courseId, assignmentId){
+    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
+    function escapeHTML(str = '') { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", "&#039;"); }
+    function goUpload() { window.location.href = "/TEACHER/assignment/assignment_upload.html"; }
+    function goToGraded(courseId, assignmentId) {
       const params = new URLSearchParams({ courseId, assignmentId });
       window.location.href = `/TEACHER/assignment/grade_submission.html?${params.toString()}`;
     }
-    function tsToMs(ts){
+    function tsToMs(ts) {
       if (!ts) return null;
       const s = ts._seconds ?? ts.seconds;
       const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
-      if (typeof s === 'number') return (s*1000) + Math.floor(ns/1e6);
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
       if (typeof ts === 'number') return ts;
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d.getTime();
     }
-    function preview(text,n=120){ const t=(text||'').trim(); return t.length>n?`${t.slice(0,n)}…`:t; }
-    function msToLocalInput(ms){
+    function preview(text, n = 120) { const t = (text || '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; }
+    function msToLocalInput(ms) {
       if (!ms) return '';
       const d = new Date(ms);
-      const pad = n=> String(n).padStart(2,'0');
+      const pad = n => String(n).padStart(2, '0');
       const yyyy = d.getFullYear();
-      const mm   = pad(d.getMonth()+1);
-      const dd   = pad(d.getDate());
-      const hh   = pad(d.getHours());
-      const mi   = pad(d.getMinutes());
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
       return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+    function showToast(msg, variant = 'success') {
+      const el = document.getElementById('actionToast');
+      el.className = `toast align-items-center text-bg-${variant} border-0`;
+      el.querySelector('.toast-body').textContent = msg;
+      const t = bootstrap.Toast.getOrCreateInstance(el, { delay: 1600 });
+      t.show();
     }
 
     // Load courses (build map and labels)
@@ -293,8 +289,8 @@
         const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
         const title = c.title || c.name || 'Untitled';
         const label = `#${n} — ${title}`;
-        courseMap.set(c.id, { title, courseNumber:n, label });
-        return { id:c.id, title, courseNumber:n, label };
+        courseMap.set(c.id, { title, courseNumber: n, label });
+        return { id: c.id, title, courseNumber: n, label };
       });
 
       // Build selector (All courses first)
@@ -304,37 +300,37 @@
     }
 
     // Fetch course modules for modal select
-    async function loadModulesForCourse(courseId, selectedModuleId){
+    async function loadModulesForCourse(courseId, selectedModuleId) {
       elEditModule.innerHTML = `<option value="">— Keep current —</option>`;
       if (!courseId) return;
-      try{
+      try {
         const res = await fetch(`${API}/api/courses/${encodeURIComponent(courseId)}/modules`);
-        const js  = await res.json();
-        const mods = Array.isArray(js) ? js : (js.modules||[]);
-        mods.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
-        mods.forEach(m=>{
+        const js = await res.json();
+        const mods = Array.isArray(js) ? js : (js.modules || []);
+        mods.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+        mods.forEach(m => {
           const opt = document.createElement('option');
           opt.value = m.id;
           opt.textContent = `Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
-          if (selectedModuleId && String(selectedModuleId)===String(m.id)) opt.selected = true;
+          if (selectedModuleId && String(selectedModuleId) === String(m.id)) opt.selected = true;
           elEditModule.appendChild(opt);
         });
-      }catch(e){
+      } catch (e) {
         console.warn('Failed loading modules for course', e);
       }
     }
 
     // Fetch a module doc and cache it
-    async function fetchModuleMeta(moduleId){
+    async function fetchModuleMeta(moduleId) {
       if (!moduleId) return null;
       if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
-      try{
+      try {
         const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`);
-        const js  = await res.json(); // { id, title, moduleNumber, ... }
+        const js = await res.json(); // { id, title, moduleNumber, ... }
         const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
         moduleCache.set(moduleId, meta);
         return meta;
-      }catch(e){
+      } catch (e) {
         console.warn('Module fetch failed for', moduleId, e);
         moduleCache.set(moduleId, null);
         return null;
@@ -342,33 +338,33 @@
     }
 
     // Enrich assignments list with moduleTitle/moduleNumber
-    async function hydrateModulesForAssignments(list){
+    async function hydrateModulesForAssignments(list) {
       const ids = [...new Set(list.map(a => a.moduleId).filter(Boolean))];
       await Promise.all(ids.map(id => fetchModuleMeta(id)));
       list.forEach(a => {
         const meta = a.moduleId ? moduleCache.get(a.moduleId) : null;
-        if (meta){
+        if (meta) {
           if (!a.moduleTitle) a.moduleTitle = meta.title || '';
           if (a.moduleNumber == null) a.moduleNumber = meta.moduleNumber ?? null;
         }
       });
     }
 
-    // PRELOAD: load assignments across ALL courses
-    async function preloadAllAssignments(){
+    // PRELOAD: load assignments across ALL courses (includes archived for teacher control)
+    async function preloadAllAssignments() {
       if (!coursesList.length) return;
       elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading assignments…</div></div>`;
 
       const promises = coursesList.map(c =>
-        fetch(`${API}/api/courses/${encodeURIComponent(c.id)}/assignments`)
-          .then(r => r.json().catch(()=>({success:false})))
-          .then(js => ({ course:c, payload: js }))
-          .catch(() => ({ course:c, payload: { success:false, assignments:[] }}))
+        fetch(`${API}/api/courses/${encodeURIComponent(c.id)}/assignments?includeArchived=true`)
+          .then(r => r.json().catch(() => ({ success: false })))
+          .then(js => ({ course: c, payload: js }))
+          .catch(() => ({ course: c, payload: { success: false, assignments: [] } }))
       );
 
       const results = await Promise.all(promises);
       const combined = [];
-      results.forEach(({course, payload}) => {
+      results.forEach(({ course, payload }) => {
         const items = (payload && payload.success && Array.isArray(payload.assignments))
           ? payload.assignments : [];
         items.forEach(a => {
@@ -377,8 +373,8 @@
             courseId: course.id,
             courseTitle: course.title,
             courseLabel: course.label,
-            _dueMs:     tsToMs(a.dueAt),
-            _pubMs:     tsToMs(a.publishAt),
+            _dueMs: tsToMs(a.dueAt),
+            _pubMs: tsToMs(a.publishAt),
             _createdMs: tsToMs(a.createdAt),
           });
         });
@@ -387,91 +383,124 @@
       masterAssignments = combined;
       await hydrateModulesForAssignments(masterAssignments);
 
-      // Reset filters to defaults: All courses + sort by "due"
+      // Reset filters
       currentCourseId = '';
       elCourse.value = '';
       elSort.value = 'due';
       elSearch.value = '';
+      statusFilter = 'active';
+      setSegmentedActive('active');
       applyFilters();
     }
 
-    // Apply search/sort/filter to the preloaded list
-    function applyFilters(){
-      const q = (elSearch.value||'').toLowerCase().trim();
+    // Apply search/sort/filter
+    function applyFilters() {
+      const q = (elSearch.value || '').toLowerCase().trim();
 
       const base = currentCourseId
         ? masterAssignments.filter(a => a.courseId === currentCourseId)
         : masterAssignments.slice();
 
       let list = base.filter(a => {
-        const hay = `${a.title||''} ${a.content||''} ${a.moduleTitle||''} ${a.moduleNumber!=null?('module '+a.moduleNumber):''} ${a.courseTitle||''}`.toLowerCase();
+        const hay = `${a.title || ''} ${a.content || ''} ${a.moduleTitle || ''} ${a.moduleNumber != null ? ('module ' + a.moduleNumber) : ''} ${a.courseTitle || ''}`.toLowerCase();
         return hay.includes(q);
       });
 
+      // Status filter
+      if (statusFilter === 'active') list = list.filter(a => a.archived !== true);
+      if (statusFilter === 'archived') list = list.filter(a => a.archived === true);
+
       const sort = elSort.value;
-      if (sort==='az') list.sort((a,b)=>(a.title||'').localeCompare(b.title||''));           // A→Z
-      else if (sort==='due') list.sort((a,b)=> (a._dueMs??Infinity) - (b._dueMs??Infinity)); // nearest due first
-      else list.sort((a,b)=> (b._createdMs ?? b._pubMs ?? 0) - (a._createdMs ?? a._pubMs ?? 0)); // newest
+      if (sort === 'az') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));           // A→Z
+      else if (sort === 'due') list.sort((a, b) => (a._dueMs ?? Infinity) - (b._dueMs ?? Infinity)); // nearest due first
+      else list.sort((a, b) => (b._createdMs ?? b._pubMs ?? 0) - (a._createdMs ?? a._pubMs ?? 0)); // newest
 
       filtered = list;
       renderGrid();
     }
 
     // Build a consistent module label
-    function fmtModule(a){
+    function fmtModule(a) {
       const num = a.moduleNumber;
-      const title = (a.moduleTitle||'').trim();
-      if (num!=null && title) return `Module ${num} • ${escapeHTML(title)}`;
-      if (num!=null)          return `Module ${num}`;
-      if (title)              return escapeHTML(title);
+      const title = (a.moduleTitle || '').trim();
+      if (num != null && title) return `Module ${num} • ${escapeHTML(title)}`;
+      if (num != null) return `Module ${num}`;
+      if (title) return escapeHTML(title);
       return '—';
     }
 
+    // ---- Archive / Unarchive ----
+    async function setArchiveState(id, archived) {
+      try {
+        const res = await fetch(`${API}/api/assignments/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archived: !!archived })
+        });
+        const js = await res.json();
+        if (!res.ok || js.success === false) {
+          throw new Error(js.message || 'Failed to update archive state.');
+        }
+        await preloadAllAssignments();
+        showToast(archived ? 'Archived. Students can no longer see this.' : 'Unarchived. Students can see this again.', archived ? 'warning' : 'success');
+      } catch (e) {
+        console.error(e);
+        showToast(e.message || 'Server error while updating.', 'danger');
+      }
+    }
+    function archiveAssignment(id) {
+      if (!confirm('Archive this assignment? Students will no longer see it.')) return;
+      setArchiveState(id, true);
+    }
+    function unarchiveAssignment(id) {
+      setArchiveState(id, false);
+    }
+
     // Edit modal open
-    async function openEditModal(assignmentId){
+    async function openEditModal(assignmentId) {
       elEditError.textContent = '';
       elSaveBtn.disabled = false;
       elSaveSpinner.classList.add('visually-hidden');
       elSaveText.textContent = 'Save Changes';
 
-      try{
+      try {
         const res = await fetch(`${API}/api/assignments/${assignmentId}`);
-        const js  = await res.json();
+        const js = await res.json();
         if (!res.ok || !js.success) throw new Error(js.message || 'Failed to fetch assignment');
 
         const a = js.assignment || js.data || {};
-        elEditId.value       = assignmentId;
-        elEditTitle.value    = a.title || '';
-        elEditContent.value  = a.content || '';
-        elEditPoints.value   = (typeof a.points === 'number') ? a.points : '';
-        elEditPublish.value  = msToLocalInput(tsToMs(a.publishAt));
-        elEditDue.value      = msToLocalInput(tsToMs(a.dueAt));
+        elEditId.value = assignmentId;
+        elEditTitle.value = a.title || '';
+        elEditContent.value = a.content || '';
+        elEditPoints.value = (typeof a.points === 'number') ? a.points : '';
+        elEditPublish.value = msToLocalInput(tsToMs(a.publishAt));
+        elEditDue.value = msToLocalInput(tsToMs(a.dueAt));
 
         // Load modules list for this course & preselect current
         await loadModulesForCourse(a.courseId, a.moduleId);
 
         if (!editModal) editModal = new bootstrap.Modal(document.getElementById('editAssignmentModal'));
         editModal.show();
-      }catch(e){
+      } catch (e) {
         console.error(e);
         alert('Failed to open editor: ' + e.message);
       }
     }
 
     // Save edit (PATCH)
-    elEditForm.addEventListener('submit', async (e)=>{
+    elEditForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       elEditError.textContent = '';
 
-      const id    = elEditId.value;
+      const id = elEditId.value;
       const title = elEditTitle.value.trim();
       const content = elEditContent.value.trim();
       const pointsStr = elEditPoints.value;
       const publishVal = elEditPublish.value;
-      const dueVal     = elEditDue.value;
-      const moduleId   = elEditModule.value;
+      const dueVal = elEditDue.value;
+      const moduleId = elEditModule.value;
 
-      if (!title || !content){
+      if (!title || !content) {
         elEditError.textContent = 'Title and Content are required.';
         return;
       }
@@ -479,30 +508,30 @@
       const payload = { title, content };
       if (pointsStr !== '') payload.points = Number(pointsStr);
       if (publishVal) payload.publishAt = String(new Date(publishVal).getTime());
-      if (dueVal)     payload.dueAt     = String(new Date(dueVal).getTime());
-      if (moduleId)   payload.moduleId  = moduleId;
+      if (dueVal) payload.dueAt = String(new Date(dueVal).getTime());
+      if (moduleId) payload.moduleId = moduleId;
 
       elSaveBtn.disabled = true;
       elSaveSpinner.classList.remove('visually-hidden');
       elSaveText.textContent = 'Saving…';
 
-      try{
+      try {
         const res = await fetch(`${API}/api/assignments/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const js = await res.json();
-        if (!res.ok || js.success === false){
+        if (!res.ok || js.success === false) {
           throw new Error(js.message || js.error || 'Failed to save changes.');
         }
 
         await preloadAllAssignments();   // refresh full list for consistency
         editModal.hide();
-      }catch(err){
+      } catch (err) {
         console.error(err);
         elEditError.textContent = err.message || 'Server error while saving.';
-      }finally{
+      } finally {
         elSaveBtn.disabled = false;
         elSaveSpinner.classList.add('visually-hidden');
         elSaveText.textContent = 'Save Changes';
@@ -510,30 +539,30 @@
     });
 
     // Delete assignment
-    async function deleteAssignment(id){
+    async function deleteAssignment(id) {
       if (!confirm("Are you sure you want to delete this assignment? This cannot be undone.")) return;
       try {
         const res = await fetch(`${API}/api/assignments/${id}`, { method: 'DELETE' });
         const js = await res.json();
-        if (!res.ok || !js.success){
+        if (!res.ok || !js.success) {
           alert(js.message || "Failed to delete assignment.");
           return;
         }
-        alert("Assignment deleted.");
+        showToast('Assignment deleted.', 'warning');
         await preloadAllAssignments(); // refresh full list
-      } catch (e){
+      } catch (e) {
         console.error(e);
-        alert("Server error while deleting assignment.");
+        showToast('Server error while deleting.', 'danger');
       }
     }
 
-    // Render cards
-    function renderGrid(){
-      if (!filtered.length){
+    // Render cards (includes Archived ribbon/actions)
+    function renderGrid() {
+      if (!filtered.length) {
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No assignments found.</div></div>`;
         return;
       }
-      elGrid.innerHTML = filtered.map(a=>{
+      elGrid.innerHTML = filtered.map(a => {
         const dueStr = a._dueMs ? new Date(a._dueMs).toLocaleString() : 'N/A';
         const pts = (typeof a.points === 'number') ? `${a.points} pts` : '';
         const moduleInfo = fmtModule(a);
@@ -541,15 +570,24 @@
 
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
-            <div class="assignment-card">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <h5 class="m-0">${escapeHTML(a.title||'Untitled')}</h5>
-                ${pts ? `<span class="badge-soft"><i class="bi bi-award"></i>${pts}</span>` : ``}
-              </div>
+            <div class="assignment-card ${a.archived === true ? 'archived' : ''}">
+             
+
+             <div class="d-flex align-items-center justify-content-between mb-2">
+  <h5 class="m-0">${escapeHTML(a.title || 'Untitled')}</h5>
+  <div class="d-flex align-items-center gap-2">
+    ${a.archived === true
+            ? `<span class="pill pill-archived"><i class="bi bi-archive"></i>Archived</span>`
+            : ''
+          }
+    ${pts ? `<span class="badge-soft"><i class="bi bi-award"></i>${pts}</span>` : ``}
+  </div>
+</div>
+
 
               <div class="mb-2">${courseBadge}</div>
 
-              <div class="text-muted small mb-2">${escapeHTML(preview(a.content,140))}</div>
+              <div class="text-muted small mb-2">${escapeHTML(preview(a.content, 140))}</div>
 
               <div class="text-muted small mb-1">
                 <i class="bi bi-box me-1"></i>${moduleInfo}
@@ -561,6 +599,14 @@
               </div>
 
               <div class="d-flex justify-content-end gap-2">
+                ${a.archived === true
+            ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
+                       <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                     </button>`
+            : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
+                       <i class="bi bi-archive"></i> Archive
+                     </button>`
+          }
                 <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${a.id}')">
                   <i class="bi bi-pencil"></i> Edit
                 </button>
@@ -577,8 +623,23 @@
       }).join('');
     }
 
-    // Events (now just filter & sort on the preloaded list)
-    elCourse.addEventListener('change', ()=>{
+    // Segmented controls
+    function setSegmentedActive(which) {
+      statusFilter = which;
+      // aria & visual state
+      const all = [btnActive, btnArchived, btnAll];
+      all.forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
+      applyFilters();
+    }
+    btnActive.addEventListener('click', () => setSegmentedActive('active'));
+    btnArchived.addEventListener('click', () => setSegmentedActive('archived'));
+    btnAll.addEventListener('click', () => setSegmentedActive('all'));
+
+    // Other events
+    elCourse.addEventListener('change', () => {
       currentCourseId = elCourse.value || '';
       applyFilters();
     });
@@ -586,21 +647,18 @@
     elSearch.addEventListener('input', applyFilters);
 
     // Boot
-    (async function init(){
-      try{
+    (async function init() {
+      try {
         await loadCourses();
-        // If a courseId is passed via URL, we still honor it; else show ALL by default
         const params = new URLSearchParams(location.search);
         const preCourse = params.get('courseId');
+        await preloadAllAssignments(); // load all (includes archived)
         if (preCourse && courseMap.has(preCourse)) {
-          await preloadAllAssignments();
           currentCourseId = preCourse;
           elCourse.value = preCourse;
           applyFilters();
-        } else {
-          await preloadAllAssignments(); // all courses shown immediately
         }
-      }catch(e){
+      } catch (e) {
         console.error(e);
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center text-danger">Failed to load assignments.</div></div>`;
       }
@@ -610,9 +668,12 @@
     window.openEditModal = openEditModal;
     window.deleteAssignment = deleteAssignment;
     window.goToGraded = goToGraded;
+    window.archiveAssignment = archiveAssignment;
+    window.unarchiveAssignment = unarchiveAssignment;
   </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
