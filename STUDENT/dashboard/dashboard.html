@@ -50,9 +50,6 @@
                 <h2 class="ui-card-title"><i class="bi bi-check2-square"></i>To-Do List</h2>
               </div>
               <ul id="todoList" class="ui-list"></ul>
-              <div class="text-end">
-                <a href="/STUDENT/dashboard/dashboard.html#todo" class="btn btn-sm btn-amber-outline">View all</a>
-              </div>
             </div>
           </div>
 
@@ -71,41 +68,32 @@
                 <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
               </div>
               <div id="calendarGrid" class="calendar-grid"></div>
-              <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-sm btn-amber-outline" disabled>Month</button>
-                <button class="btn btn-sm btn-amber-outline" disabled>Week</button>
-                <button class="btn btn-sm btn-amber-outline" disabled>Day</button>
+            </div>
+          </div>
+
+          <!-- Calendar Events Modal -->
+          <div class="modal fade" id="calEventsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="calEventsTitle">Events</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <ul id="calEventsList" class="list-group list-group-flush"></ul>
+                </div>
               </div>
             </div>
           </div>
-<!-- Calendar Events Modal -->
-<div class="modal fade" id="calEventsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="calEventsTitle">Events</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <ul id="calEventsList" class="list-group list-group-flush"></ul>
-      </div>
-    </div>
-  </div>
-</div>
 
-          <!-- Notifications -->
+          <!-- Notifications (email toggle removed) -->
           <div class="col-12 col-lg-3">
             <div class="ui-card card-themed h-100">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-bell"></i>Notifications</h2>
               </div>
               <ul id="notifList" class="ui-list"></ul>
-              <div class="d-flex">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="notifyEmail">
-                  <label class="form-check-label text-light" for="notifyEmail">Email</label>
-                </div>
-              </div>
+              <!-- removed email toggle switch -->
             </div>
           </div>
         </div><!-- /row -->
@@ -218,45 +206,43 @@
       </section>
     </div>
   </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Auth -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <!-- Auth (Initials only) -->
-<script>
-  // Safely build initials from name/username/email
-  function initialsFrom(str) {
-    if (!str) return "";
-    const s = String(str).trim();
-    if (!s) return "";
+  <script>
+    // Safely build initials from name/username/email
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
 
-    // Email? Use local part
-    if (s.includes("@")) {
-      const local = s.split("@")[0];
-      const parts = local.split(/[.\-_]+/).filter(Boolean);
+      // Email? Use local part
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return local.slice(0, 2).toUpperCase();
+      }
+
+      // Name or username: first + last token
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
       if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      return local.slice(0, 2).toUpperCase();
+      return parts[0].slice(0, 2).toUpperCase();
     }
 
-    // Name or username: first + last token
-    const parts = s.split(/[\s\-]+/).filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  const userData = JSON.parse(localStorage.getItem("user"));
-  if (!userData || !userData.userId) {
-    window.location.href = "../login/login.html";
-  } else {
-    const displayName = userData.fullName || userData.username || userData.email || "";
-    const initials = initialsFrom(displayName) || "?";
-    const el = document.getElementById("Username");
-    el.textContent = initials;
-    // nice-to-have: keep the full name accessible on hover/screen readers
-    el.title = displayName;
-    el.setAttribute("aria-label", displayName);
-  }
-</script>
-
+    const userData = JSON.parse(localStorage.getItem("user"));
+    if (!userData || !userData.userId) {
+      window.location.href = "../login/login.html";
+    } else {
+      const displayName = userData.fullName || userData.username || userData.email || "";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      el.textContent = initials;
+      el.title = displayName;
+      el.setAttribute("aria-label", displayName);
+    }
+  </script>
 
   <!-- Sidebar + API wiring -->
   <script>
@@ -264,15 +250,6 @@
 
     async function apiGet(url) {
       const r = await fetch(url, { headers:{'Content-Type':'application/json'} });
-      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
-      return r.json();
-    }
-    async function apiPatch(url, body) {
-      const r = await fetch(url, {
-        method:'PATCH',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body||{})
-      });
       if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
       return r.json();
     }
@@ -316,7 +293,7 @@
     // ===== To-Do =====
     async function loadTodo(){
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/todo`;
-      const data = await apiGet(url); // {items:[{text, dueAt, tag, tagClass}]}
+      const data = await apiGet(url);
       const ul = document.getElementById('todoList');
       ul.innerHTML = '';
       if (!data.items || !data.items.length){
@@ -332,36 +309,37 @@
         ul.appendChild(li);
       });
     }
-let calEventsByDate = {};
-let calEventsModal; // reuse the same modal instance
 
-function openCalEventsModal(dateIso){
-  const list = document.getElementById('calEventsList');
-  const title = document.getElementById('calEventsTitle');
-  const events = calEventsByDate[dateIso] || [];
+    let calEventsByDate = {};
+    let calEventsModal;
 
-  title.textContent = new Date(dateIso).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    function openCalEventsModal(dateIso){
+      const list = document.getElementById('calEventsList');
+      const title = document.getElementById('calEventsTitle');
+      const events = calEventsByDate[dateIso] || [];
 
-  if (!events.length) {
-    list.innerHTML = '<li class="list-group-item text-muted">No events.</li>';
-  } else {
-    list.innerHTML = events.map(e => {
-      const label = e.label || e.title || 'Event';
-      const time  =
-        e.time ||
-        (e.startTime && e.endTime ? `${e.startTime}–${e.endTime}` : (e.startTime || e.endTime || ''));
-      const desc = e.description || e.note || '';
-      return `
-        <li class="list-group-item">
-          <div class="fw-semibold">${label} ${time ? `<span class="text-muted">· ${time}</span>` : ''}</div>
-          ${desc ? `<div class="small text-muted">${desc}</div>` : ''}
-        </li>`;
-    }).join('');
-  }
+      title.textContent = new Date(dateIso).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
-  calEventsModal = calEventsModal || new bootstrap.Modal(document.getElementById('calEventsModal'));
-  calEventsModal.show();
-}
+      if (!events.length) {
+        list.innerHTML = '<li class="list-group-item text-muted">No events.</li>';
+      } else {
+        list.innerHTML = events.map(e => {
+          const label = e.label || e.title || 'Event';
+          const time  =
+            e.time ||
+            (e.startTime && e.endTime ? `${e.startTime}–${e.endTime}` : (e.startTime || e.endTime || ''));
+          const desc = e.description || e.note || '';
+          return `
+            <li class="list-group-item">
+              <div class="fw-semibold">${label} ${time ? `<span class="text-muted">· ${time}</span>` : ''}</div>
+              ${desc ? `<div class="small text-muted">${desc}</div>` : ''}
+            </li>`;
+        }).join('');
+      }
+
+      calEventsModal = calEventsModal || new bootstrap.Modal(document.getElementById('calEventsModal'));
+      calEventsModal.show();
+    }
 
     // ===== Calendar =====
     let calDate = new Date();
@@ -381,59 +359,58 @@ function openCalEventsModal(dateIso){
       const byDate = {};
       events.forEach(e => { (byDate[e.date] ||= []).push(e); });
 
-     const grid = document.getElementById('calendarGrid');
-grid.innerHTML = '';
-const startDay = first.getDay();
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+      const startDay = first.getDay();
 
-// (A) optional leading fillers to align the first day
-for (let i = 0; i < startDay; i++) {
-  const filler = document.createElement('div');
-  filler.className = 'cal-day';
-  filler.style.visibility = 'hidden';
-  grid.appendChild(filler);
-}
+      // (A) leading fillers to align the first day
+      for (let i = 0; i < startDay; i++) {
+        const filler = document.createElement('div');
+        filler.className = 'cal-day';
+        filler.style.visibility = 'hidden';
+        grid.appendChild(filler);
+      }
 
-// Save map globally for modal use
-calEventsByDate = byDate;
+      // Save map globally for modal use
+      calEventsByDate = byDate;
 
-const todayStr = ymd(new Date());
-for (let d = 1; d <= daysInMonth(y, m); d++) {
-  const cell = document.createElement('div');
-  cell.className = 'cal-day';
+      const todayStr = ymd(new Date());
+      for (let d = 1; d <= daysInMonth(y, m); d++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-day';
 
-  const thisDate = new Date(y, m, d);
-  const iso = ymd(thisDate);
-  const evs = byDate[iso] || [];
+        const thisDate = new Date(y, m, d);
+        const iso = ymd(thisDate);
+        const evs = byDate[iso] || [];
 
-  if (iso === todayStr) cell.classList.add('today');
+        if (iso === todayStr) cell.classList.add('today');
 
-  // Render day number + existing pills
-  cell.innerHTML = `<div class="num">${d}</div>` +
-                   evs.map(e => `<div class="pill">${e.label}</div>`).join('');
+        // Render day number + pills
+        cell.innerHTML = `<div class="num">${d}</div>` +
+                         evs.map(e => `<div class="pill">${e.label}</div>`).join('');
 
-  // Make clickable if it has events
-  if (evs.length) {
-    cell.classList.add('has-events');
-    cell.setAttribute('role', 'button');
-    cell.setAttribute('tabindex', '0');
-    cell.setAttribute('aria-label', `View ${evs.length} event${evs.length>1?'s':''} on ${thisDate.toDateString()}`);
+        // Make clickable if it has events
+        if (evs.length) {
+          cell.classList.add('has-events');
+          cell.setAttribute('role', 'button');
+          cell.setAttribute('tabindex', '0');
+          cell.setAttribute('aria-label', `View ${evs.length} event${evs.length>1?'s':''} on ${thisDate.toDateString()}`);
 
-    const open = () => openCalEventsModal(iso);
-    cell.addEventListener('click', open);
-    cell.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
-    });
-  }
+          const open = () => openCalEventsModal(iso);
+          cell.addEventListener('click', open);
+          cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+          });
+        }
 
-  grid.appendChild(cell);
-}
-
+        grid.appendChild(cell);
+      }
     }
 
-    // ===== Notifications =====
+    // ===== Notifications (prefs toggle removed) =====
     async function loadNotifications(){
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/notifications`;
-      const data = await apiGet(url); // {items, prefs:{email}}
+      const data = await apiGet(url); // {items, prefs:{...}} but we ignore prefs now
       const ul = document.getElementById('notifList');
       ul.innerHTML = '';
       (data.items||[]).slice(0,6).forEach(n=>{
@@ -442,14 +419,9 @@ for (let d = 1; d <= daysInMonth(y, m); d++) {
         li.innerHTML = `<i class="bi ${n.icon||'bi-bell'} me-1 ${n.cls||''}"></i> ${n.text}`;
         ul.appendChild(li);
       });
-      document.getElementById('notifyEmail').checked = !!data.prefs?.email;
-    }
-    async function updateNotifPrefs(){
-      const email = document.getElementById('notifyEmail').checked;
-      await apiPatch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/notification-preferences`, { email });
     }
 
-    // ===== Library =====
+    // ===== Library (Download removed; View goes to module viewer) =====
     let libraryAll = [];
     async function loadLibrary(){
       const q = encodeURIComponent(document.getElementById('searchModules').value||'');
@@ -468,6 +440,7 @@ for (let d = 1; d <= daysInMonth(y, m); d++) {
         const col = document.createElement('div');
         col.className = 'col';
         const uploaded = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '';
+        const viewHref = `/STUDENT/modules/view.html?moduleId=${encodeURIComponent(m.id)}`;
         col.innerHTML = `
           <div class="p-3 border rounded-3 h-100 bg-white">
             <div class="d-flex justify-content-between align-items-start">
@@ -476,8 +449,7 @@ for (let d = 1; d <= daysInMonth(y, m); d++) {
             </div>
             <small class="text-muted d-block">${m.courseTitle || ''}${uploaded ? ' · ' + uploaded : ''}</small>
             <div class="mt-2 d-flex gap-2">
-              ${m.previewUrl ? `<a class="btn btn-sm btn-amber-outline" href="${m.previewUrl}" target="_blank">View</a>` : ''}
-              ${m.downloadUrl ? `<a class="btn btn-sm btn-amber-outline" href="${m.downloadUrl}" download>Download</a>` : ''}
+              <a class="btn btn-sm btn-amber-outline" href="${viewHref}">View</a>
             </div>
           </div>`;
         grid.appendChild(col);
@@ -597,8 +569,8 @@ for (let d = 1; d <= daysInMonth(y, m); d++) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false, // use wrapper height
-          interaction: { mode: 'index', intersect: false }, // v4-safe
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
           scales: {
             x: {
               type: 'time',
@@ -635,7 +607,6 @@ for (let d = 1; d <= daysInMonth(y, m); d++) {
       document.getElementById('prevMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth()-1); await loadCalendar(); });
       document.getElementById('nextMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth()+1); await loadCalendar(); });
 
-      document.getElementById('notifyEmail').addEventListener('change', updateNotifPrefs);
       document.getElementById('searchModules').addEventListener('input', () => loadLibrary().catch(console.error));
       document.getElementById('assignmentForm').addEventListener('submit', submitAssignment);
       document.getElementById('gradeSubject').addEventListener('change', () => loadGrades().catch(console.error));

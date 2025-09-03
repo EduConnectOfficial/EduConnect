@@ -29,11 +29,46 @@ async function getActiveEnrollmentsClassIds(userId) {
   return filterActiveClassIds(enrolled);
 }
 
+/** Ensure each course has an 'archived' flag; default missing => fetch from 'courses' to enrich. */
+async function ensureCourseArchivedFlag(courses) {
+  const arr = Array.isArray(courses) ? courses : [];
+  if (!arr.length) return arr;
+
+  const needs = arr.some(c => typeof c?.archived === 'undefined');
+  if (!needs) return arr;
+
+  // Build set of ids to look up
+  const ids = Array.from(new Set(arr.map(c => c && (c.id || c.courseId)).filter(Boolean)));
+  if (!ids.length) return arr;
+
+  // Fetch in chunks and build map
+  const archMap = {};
+  for (const batch of chunk(ids, 10)) {
+    const snap = await firestore.collection('courses').where('__name__', 'in', batch).get();
+    snap.forEach(doc => {
+      const data = doc.data() || {};
+      archMap[doc.id] = data.archived === true;
+    });
+  }
+
+  // Return enriched list
+  return arr.map(c => {
+    if (typeof c?.archived !== 'undefined') return c;
+    const cid = c.id || c.courseId;
+    return { ...c, archived: archMap[cid] === true };
+  });
+}
+
 /** Keep only courses where archived !== true (missing archived = active). */
 function filterActiveCourses(courses) {
   return (Array.isArray(courses) ? courses : []).filter(c => c && c.archived !== true);
 }
 
+/** Generic check for a child document that may have an 'archived' flag. */
+function isActiveDoc(doc) {
+  // If no archived field, treat as active (backward compatible).
+  return !doc || doc.archived !== true;
+}
 
 /* ---------------------------------------------
    To-Do (assignments & quizzes due soon)
@@ -45,7 +80,9 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
   if (!classIds.length) return res.json({ success: true, items: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
+
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 
@@ -71,6 +108,7 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
     }
     for (const doc of aSnap.docs) {
       const a = doc.data() || {};
+      if (!isActiveDoc(a)) continue; // skip archived assignment
       const due = toMillis(a.dueAt);
       if (!due || due < now || due > soonMs) continue;
 
@@ -109,6 +147,7 @@ router.get('/students/:userId/todo', asyncHandler(async (req, res) => {
     }
     for (const doc of qSnap.docs) {
       const q = doc.data() || {};
+      if (!isActiveDoc(q)) continue; // skip archived quiz
       const due = toMillis(q.dueAt);
       if (!due || due < now || due > soonMs) continue;
 
@@ -148,30 +187,30 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   if (!classIds.length) return res.json({ success: true, events: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
-
-  ;
 
   const events = [];
 
   // Assignments
   for (const ids of chunk(courseIds, 10)) {
     if (!ids.length) continue;
-    let aSnap;
+    let snap;
     try {
-      aSnap = await firestore.collection('assignments')
+      snap = await firestore.collection('assignments')
         .where('courseId', 'in', ids)
-        .orderBy('publishAt', 'desc')
+        .orderBy('publishAt', 'asc')
         .limit(200).get();
     } catch {
-      aSnap = await firestore.collection('assignments')
+      snap = await firestore.collection('assignments')
         .where('courseId', 'in', ids)
         .limit(200).get();
     }
-    for (const d of aSnap.docs) {
+    for (const d of snap.docs) {
       const a = d.data() || {};
+      if (!isActiveDoc(a)) continue; // skip archived assignment
       const title = `${courseMap[a.courseId] || 'Subject'}: ${a.title || 'Assignment'}`;
       const pub = toMillis(a.publishAt);
       const due = toMillis(a.dueAt);
@@ -183,19 +222,20 @@ router.get('/students/:userId/calendar', asyncHandler(async (req, res) => {
   // Quizzes
   for (const ids of chunk(courseIds, 10)) {
     if (!ids.length) continue;
-    let qSnap;
+    let snap;
     try {
-      qSnap = await firestore.collection('quizzes')
+      snap = await firestore.collection('quizzes')
         .where('courseId', 'in', ids)
         .orderBy('createdAt', 'desc')
         .limit(200).get();
     } catch {
-      qSnap = await firestore.collection('quizzes')
+      snap = await firestore.collection('quizzes')
         .where('courseId', 'in', ids)
         .limit(200).get();
     }
-    for (const d of qSnap.docs) {
+    for (const d of snap.docs) {
       const q = d.data() || {};
+      if (!isActiveDoc(q)) continue; // skip archived quiz
       const due = toMillis(q.dueAt);
       if (due && due >= startMs && due <= endMs) {
         const title = `${courseMap[q.courseId] || 'Subject'}: ${q.title || 'Quiz'}`;
@@ -222,9 +262,15 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
   const items = [];
   const now = Date.now();
 
-  // Announcements (only for active classes)
-  const classIds = await getActiveEnrollmentsClassIds(userId);
-  for (const ids of chunk(classIds, 10)) {
+  // Work from active classes & active courses so we only surface relevant stuff
+  const activeClassIds = await getActiveEnrollmentsClassIds(userId);
+  const coursesAll = await getCoursesForClassIds(activeClassIds);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const activeCourses = filterActiveCourses(coursesEnriched);
+  const activeCourseIds = new Set(activeCourses.map(c => c.id));
+
+  // Announcements (only for active classes, skip archived announcements)
+  for (const ids of chunk(activeClassIds, 10)) {
     if (!ids.length) continue;
     let snap;
     try {
@@ -238,6 +284,7 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
     }
     snap.forEach(d => {
       const a = d.data() || {};
+      if (!isActiveDoc(a)) return; // skip archived announcement
       const pub = toMillis(a.publishAt);
       const exp = toMillis(a.expiresAt);
       if (pub && pub <= now && (!exp || exp >= now)) {
@@ -246,11 +293,12 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
     });
   }
 
-  // Assignment grades
+  // Assignment grades (only for active courses)
   const gSnap = await firestore.collection('users').doc(userId)
     .collection('assignmentGrades').orderBy('gradedAt', 'desc').limit(10).get();
   gSnap.forEach(d => {
     const g = d.data() || {};
+    if (g.courseId && !activeCourseIds.has(g.courseId)) return; // hide grades from archived courses
     if (g.grade != null) {
       items.push({
         icon: 'bi-star-fill',
@@ -261,10 +309,11 @@ router.get('/students/:userId/notifications', asyncHandler(async (req, res) => {
     }
   });
 
-  // Quiz attempts
+  // Quiz attempts (only for active courses)
   const qaSnap = await firestore.collection('users').doc(userId).collection('quizAttempts').get();
   qaSnap.forEach(d => {
     const q = d.data() || {};
+    if (q.courseId && !activeCourseIds.has(q.courseId)) return; // hide attempts from archived courses
     if (q.lastScore?.percent != null) {
       items.push({
         icon: 'bi-patch-check',
@@ -299,10 +348,11 @@ router.get('/students/:userId/library', asyncHandler(async (req, res) => {
   if (!classIds.length) return res.json({ success: true, modules: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
+
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
-
 
   const out = [];
   for (const ids of chunk(courseIds, 10)) {
@@ -320,6 +370,8 @@ router.get('/students/:userId/library', asyncHandler(async (req, res) => {
     }
     snap.forEach(d => {
       const m = d.data() || {};
+      if (!isActiveDoc(m)) return; // skip archived module
+
       const title = m.title || (m.moduleNumber != null ? `Module ${m.moduleNumber}` : 'Module');
       if (q && !title.toLowerCase().includes(q)) return;
 
@@ -355,7 +407,8 @@ router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) =
   if (!classIds.length) return res.json({ success: true, quizzes: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
   const courseIds = courses.map(c => c.id);
 
   const now = Date.now();
@@ -376,6 +429,7 @@ router.get('/students/:userId/quizzes-upcoming', asyncHandler(async (req, res) =
     }
     snap.forEach(d => {
       const q = d.data() || {};
+      if (!isActiveDoc(q)) return; // skip archived quiz
       const due = toMillis(q.dueAt);
       if (due && due < now) return;
       out.push({ id: d.id, title: q.title || 'Quiz', settings: q.settings || { timerEnabled: false } });
@@ -394,7 +448,8 @@ router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) =
   if (!classIds.length) return res.json({ success: true, assignments: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
   const courseIds = courses.map(c => c.id);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 
@@ -416,6 +471,7 @@ router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) =
     }
     for (const d of snap.docs) {
       const a = d.data() || {};
+      if (!isActiveDoc(a)) continue; // skip archived assignment
       const due = toMillis(a.dueAt);
       if (due && due < now) continue;
 
@@ -434,12 +490,22 @@ router.get('/students/:userId/assignments-open', asyncHandler(async (req, res) =
 ----------------------------------------------*/
 router.get('/students/:userId/recent-feedback', asyncHandler(async (req, res) => {
   const { userId } = req.params;
+
+  // Only surface feedback from active courses
+  const classIds = await getActiveEnrollmentsClassIds(userId);
+  const coursesAll = await getCoursesForClassIds(classIds);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const activeCourses = filterActiveCourses(coursesEnriched);
+  const activeCourseIds = new Set(activeCourses.map(c => c.id));
+
   const snap = await firestore.collection('users').doc(userId)
     .collection('assignmentGrades').orderBy('gradedAt', 'desc').limit(5).get();
-  const items = snap.docs.map(d => {
-    const x = d.data() || {};
-    return { title: x.assignmentTitle || 'Assignment', feedback: x.feedback || '' };
-  });
+
+  const items = snap.docs
+    .map(d => d.data() || {})
+    .filter(x => !x.courseId || activeCourseIds.has(x.courseId)) // keep if course unknown or active
+    .map(x => ({ title: x.assignmentTitle || 'Assignment', feedback: x.feedback || '' }));
+
   res.json({ success: true, items });
 }));
 
@@ -456,10 +522,11 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
   if (!classIds.length) return res.json({ success: true, items: [], subjects: [] });
 
   const coursesAll = await getCoursesForClassIds(classIds);
-  const courses = filterActiveCourses(coursesAll);
+  const coursesEnriched = await ensureCourseArchivedFlag(coursesAll);
+  const courses = filterActiveCourses(coursesEnriched);
   const courseMap = Object.fromEntries(courses.map(c => [c.id, c.title || 'Subject']));
 
-
+  const activeCourseIds = new Set(Object.keys(courseMap));
   const items = [];
 
   // Assignment grades
@@ -468,6 +535,7 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
       .collection('assignmentGrades').orderBy('gradedAt', 'desc').limit(300).get();
     gSnap.forEach(d => {
       const g = d.data() || {};
+      if (g.courseId && !activeCourseIds.has(g.courseId)) return; // hide archived course grades
       const at = toMillis(g.gradedAt) || toMillis(g.dueAt) || Date.now();
       if (at < cutoff) return;
       const subject = courseMap[g.courseId] || 'Subject';
@@ -483,6 +551,7 @@ router.get('/students/:userId/grades', asyncHandler(async (req, res) => {
     const qaSnap = await firestore.collection('users').doc(userId).collection('quizAttempts').get();
     qaSnap.forEach(d => {
       const q = d.data() || {};
+      if (q.courseId && !activeCourseIds.has(q.courseId)) return; // hide archived course attempts
       const at = toMillis(q.lastSubmittedAt) || 0;
       if (!at || at < cutoff) return;
       const subject = courseMap[q.courseId] || 'Subject';
