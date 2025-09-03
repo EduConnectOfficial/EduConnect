@@ -48,6 +48,19 @@ async function checkCourseArchived(courseId) {
   return { ok:true, archived: doc.data().archived === true };
 }
 
+/** Check if a module is archived. Returns { ok, archived, code?, message? } */
+async function checkModuleArchived(moduleId) {
+  if (!moduleId) return { ok:true, archived:false }; // not attached to a module
+  const doc = await firestore.collection('modules').doc(moduleId).get();
+  if (!doc.exists) return { ok:false, code:404, message:'Module not found.' };
+  return { ok:true, archived: doc.data().archived === true, courseId: doc.data().courseId, moduleNumber: doc.data().moduleNumber ?? null };
+}
+
+/** Parse includeArchived=true flag from querystring */
+function wantsArchived(req) {
+  return String(req.query.includeArchived).toLowerCase() === 'true';
+}
+
 /* ===========================================================
    CREATE ASSIGNMENT  (archive-aware)
    POST /assignments
@@ -69,10 +82,21 @@ router.post(
     }
 
     // ❗ Block creation if the course is archived
-    const status = await checkCourseArchived(String(courseId).trim());
-    if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
-    if (status.archived) {
+    const courseStatus = await checkCourseArchived(String(courseId).trim());
+    if (!courseStatus.ok) return res.status(courseStatus.code).json({ success:false, message:courseStatus.message });
+    if (courseStatus.archived) {
       return res.status(403).json({ success:false, message:'Course is archived; cannot create assignments.' });
+    }
+
+    // ❗ Block creation if the referenced module is archived
+    let moduleNumber = null;
+    if (moduleId) {
+      const modStatus = await checkModuleArchived(String(moduleId).trim());
+      if (!modStatus.ok) return res.status(modStatus.code).json({ success:false, message:modStatus.message });
+      if (modStatus.archived) {
+        return res.status(403).json({ success:false, message:'Module is archived; cannot create assignments under it.' });
+      }
+      moduleNumber = modStatus.moduleNumber ?? null;
     }
 
     // Optional links[] from body
@@ -93,15 +117,6 @@ router.post(
       .filter(u => u.length)
       .map(u => ({ url: u }));
 
-    // Fetch moduleNumber if moduleId present
-    let moduleNumber = null;
-    if (moduleId) {
-      try {
-        const m = await firestore.collection('modules').doc(String(moduleId)).get();
-        if (m.exists) moduleNumber = m.data().moduleNumber || null;
-      } catch { /* ignore */ }
-    }
-
     const payload = {
       title: String(title).trim(),
       content: String(content).trim(),
@@ -117,6 +132,8 @@ router.post(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
+      // Ensure present for filtering
+      archived: false
     };
 
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
@@ -135,6 +152,8 @@ router.post(
 /* ===========================================================
    GET ONE ASSIGNMENT
    GET /assignments/:id
+   (Leave as-is; front-ends should decide whether to call this.
+    Hidden logic is enforced in list endpoints.)
 =========================================================== */
 router.get(
   '/assignments/:id',
@@ -161,6 +180,7 @@ router.patch(
     if (req.body.title !== undefined)   updates.title   = String(req.body.title).trim();
     if (req.body.content !== undefined) updates.content = String(req.body.content).trim();
     if (req.body.points !== undefined)  updates.points  = (req.body.points === null || req.body.points === '') ? null : Number(req.body.points);
+    if (req.body.archived !== undefined) updates.archived = !!req.body.archived; // allow explicit archive flips here if needed
 
     if (req.body.publishAt !== undefined) {
       const ts = toTimestampOrNull(req.body.publishAt);
@@ -173,6 +193,16 @@ router.patch(
     // handle module move
     if (req.body.moduleId !== undefined) {
       const newModuleId = req.body.moduleId ? String(req.body.moduleId).trim() : null;
+
+      // prevent moving into archived module
+      if (newModuleId) {
+        const modStatus = await checkModuleArchived(newModuleId);
+        if (!modStatus.ok) return res.status(modStatus.code).json({ success:false, message:modStatus.message });
+        if (modStatus.archived) {
+          return res.status(403).json({ success:false, message:'Target module is archived; cannot move assignment there.' });
+        }
+      }
+
       updates.moduleId = newModuleId;
 
       // recompute moduleNumber
@@ -219,20 +249,30 @@ router.delete(
 /* ===========================================================
    LIST ASSIGNMENTS BY MODULE (archive-aware)
    GET /modules/:moduleId/assignments
+   - Default: hide archived assignments and assignments from archived module
+   - Pass ?includeArchived=true to include archived
 =========================================================== */
 router.get(
   '/modules/:moduleId/assignments',
   asyncHandler(async (req, res) => {
     const { moduleId } = req.params;
+    const includeArchived = wantsArchived(req);
 
-    // find the parent course via module
-    const mDoc = await firestore.collection('modules').doc(moduleId).get();
-    if (!mDoc.exists) return res.json({ success:true, assignments: [] });
+    // module existence + state
+    const modStatus = await checkModuleArchived(moduleId);
+    if (!modStatus.ok) return res.status(modStatus.code).json({ success:false, message:modStatus.message });
 
-    const courseId = mDoc.data()?.courseId;
-    const status = await checkCourseArchived(courseId);
-    if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
-    if (status.archived) return res.json({ success:true, assignments: [] });
+    // If module is archived and we do NOT include archived, return empty
+    if (modStatus.archived && !includeArchived) {
+      return res.json({ success:true, assignments: [] });
+    }
+
+    // Also verify parent course isn't archived (keeps behavior consistent)
+    const courseStatus = await checkCourseArchived(modStatus.courseId);
+    if (!courseStatus.ok) return res.status(courseStatus.code).json({ success:false, message:courseStatus.message });
+    if (courseStatus.archived && !includeArchived) {
+      return res.json({ success:true, assignments: [] });
+    }
 
     const snap = await firestore
       .collection('assignments')
@@ -240,7 +280,9 @@ router.get(
       .orderBy('publishAt', 'desc')
       .get();
 
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!includeArchived) items = items.filter(a => a.archived !== true);
+
     res.json({ success: true, assignments: items });
   })
 );
@@ -248,15 +290,20 @@ router.get(
 /* ===========================================================
    LIST ASSIGNMENTS BY COURSE (teacher, archive-aware)
    GET /courses/:courseId/assignments
+   - Default: hide archived assignments
+   - Pass ?includeArchived=true to include archived
 =========================================================== */
 router.get(
   '/courses/:courseId/assignments',
   asyncHandler(async (req, res) => {
     const { courseId } = req.params;
+    const includeArchived = wantsArchived(req);
 
     const status = await checkCourseArchived(courseId);
     if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
-    if (status.archived) return res.json({ success:true, assignments: [] });
+
+    // If course archived and we do NOT include archived, show none
+    if (status.archived && !includeArchived) return res.json({ success:true, assignments: [] });
 
     const snap = await firestore
       .collection('assignments')
@@ -264,7 +311,9 @@ router.get(
       .orderBy('publishAt', 'desc')
       .get();
 
-    const assignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let assignments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!includeArchived) assignments = assignments.filter(a => a.archived !== true);
+
     res.json({ success: true, assignments });
   })
 );
@@ -272,6 +321,8 @@ router.get(
 /* ===========================================================
    CONSOLIDATED STUDENT ASSIGNMENTS (archive-aware)
    GET /students/:userId/assignments
+   - Excludes archived classes, archived courses, and archived assignments.
+   - Also excludes assignments whose module is archived (double-safety).
 =========================================================== */
 router.get(
   '/students/:userId/assignments',
@@ -329,25 +380,46 @@ router.get(
       snap.forEach(doc => results.push({ id: doc.id, ...doc.data() }));
     }
 
+    // ❗ Filter out archived assignments right away
+    let filtered = results.filter(a => a.archived !== true);
+
+    // ❗ Double-safety: exclude assignments whose module is archived
+    // Build a map of moduleId -> archived boolean (batched reads)
+    const moduleIds = Array.from(new Set(filtered.map(a => a.moduleId).filter(Boolean)));
+    const modState = new Map();
+    while (moduleIds.length) {
+      const chunk = moduleIds.splice(0, 10);
+      const snap = await firestore.collection('modules').where('__name__', 'in', chunk).get();
+      const found = new Set();
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        modState.set(doc.id, d.archived === true);
+        found.add(doc.id);
+      });
+      // Missing module docs considered not archived (orphan safety)
+      chunk.forEach(id => { if (!found.has(id)) modState.set(id, false); });
+    }
+    filtered = filtered.filter(a => !a.moduleId || modState.get(a.moduleId) !== true);
+
     // 4) attach mySubmission for this userId (best-effort)
-    await Promise.all(results.map(async (a, idx) => {
+    await Promise.all(filtered.map(async (a, idx) => {
       try {
         const subDoc = await firestore
           .collection('assignments').doc(a.id)
           .collection('submissions').doc(userId)
           .get();
-        if (subDoc.exists) results[idx].mySubmission = subDoc.data();
+        if (subDoc.exists) filtered[idx].mySubmission = subDoc.data();
       } catch { /* ignore */ }
     }));
 
     // newest first
-    results.sort((x, y) => {
+    filtered.sort((x, y) => {
       const xp = x.publishAt?.toMillis?.() ?? 0;
       const yp = y.publishAt?.toMillis?.() ?? 0;
       return yp - xp;
     });
 
-    res.json({ success: true, assignments: results });
+    res.json({ success: true, assignments: filtered });
   })
 );
 
@@ -366,11 +438,20 @@ router.post(
       return res.status(400).json({ success: false, message: 'studentId is required.' });
     }
 
-    // validate assignment exists
+    // validate assignment exists and is not archived (prevent new submissions to archived)
     const aRef = firestore.collection('assignments').doc(assignmentId);
     const aDoc = await aRef.get();
     if (!aDoc.exists) {
       return res.status(404).json({ success: false, message: 'Assignment not found.' });
+    }
+    if (aDoc.data()?.archived === true) {
+      return res.status(403).json({ success:false, message:'Assignment is archived; submissions are closed.' });
+    }
+    if (aDoc.data()?.moduleId) {
+      const modStatus = await checkModuleArchived(aDoc.data().moduleId);
+      if (modStatus.archived) {
+        return res.status(403).json({ success:false, message:'Module is archived; submissions are closed.' });
+      }
     }
 
     const text = (req.body.text || '').toString().trim();
@@ -551,13 +632,26 @@ function collectSubmissionFiles(filesArr) {
 }
 
 async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
-  // Validate assignment
+  // Validate assignment and check archive status (block if archived/module archived)
   const aRef = firestore.collection('assignments').doc(assignmentId);
   const aDoc = await aRef.get();
   if (!aDoc.exists) {
     const err = new Error('Assignment not found.');
     err.statusCode = 404;
     throw err;
+  }
+  if (aDoc.data()?.archived === true) {
+    const err = new Error('Assignment is archived; submissions are closed.');
+    err.statusCode = 403;
+    throw err;
+  }
+  if (aDoc.data()?.moduleId) {
+    const modStatus = await checkModuleArchived(aDoc.data().moduleId);
+    if (modStatus.archived) {
+      const err = new Error('Module is archived; submissions are closed.');
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   const subRef = aRef.collection('submissions').doc(studentId);
@@ -588,8 +682,12 @@ router.post(
     }
     const filesBlobs = collectSubmissionFiles(req.files);
     const text = req.body.note || req.body.text || '';
-    const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
-    return res.json(result);
+    try {
+      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
+      return res.json(result);
+    } catch (err) {
+      return res.status(err.statusCode || 500).json({ success:false, message: err.message || 'Failed to save submission.' });
+    }
   })
 );
 
@@ -601,8 +699,12 @@ router.post(
     const { assignmentId, studentId } = req.params;
     const filesBlobs = collectSubmissionFiles(req.files);
     const text = req.body.note || req.body.text || '';
-    const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
-    return res.json(result);
+    try {
+      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
+      return res.json(result);
+    } catch (err) {
+      return res.status(err.statusCode || 500).json({ success:false, message: err.message || 'Failed to save submission.' });
+    }
   })
 );
 

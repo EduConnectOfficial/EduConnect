@@ -22,7 +22,56 @@ const flexibleUpload = (req, res, next) => {
   });
 };
 
-// ==== MODULE: UPLOAD ====
+/* -----------------------------------------------------------
+   ARCHIVE HELPERS
+----------------------------------------------------------- */
+
+/** Update archive flag on related collections that reference the moduleId. */
+async function cascadeArchiveToRelated({ moduleId, archived }) {
+  const batch = firestore.batch();
+
+  // Assignments referencing this module
+  const assignmentsSnap = await firestore
+    .collection('assignments')
+    .where('moduleId', '==', moduleId)
+    .get();
+  assignmentsSnap.forEach(doc => batch.update(doc.ref, {
+    archived,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  }));
+
+  // Quizzes referencing this module
+  const quizzesSnap = await firestore
+    .collection('quizzes')
+    .where('moduleId', '==', moduleId)
+    .get();
+  quizzesSnap.forEach(doc => batch.update(doc.ref, {
+    archived,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  }));
+
+  await batch.commit();
+}
+
+/** Sets archived flag on a module and cascades to related docs. */
+async function setArchiveStateForModule(moduleId, archived) {
+  const moduleRef = firestore.collection('modules').doc(moduleId);
+  const snap = await moduleRef.get();
+  if (!snap.exists) return { ok: false, code: 404, message: 'Module not found.' };
+
+  await moduleRef.update({
+    archived,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  await cascadeArchiveToRelated({ moduleId, archived });
+  return { ok: true };
+}
+
+/* -----------------------------------------------------------
+   MODULE: UPLOAD
+----------------------------------------------------------- */
+
 // POST /upload-module
 router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   const startTime = Date.now();
@@ -82,6 +131,8 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     moduleSubTitles,
     moduleSubDescs,
+    // Important: ensure the field is always present so we can reliably filter
+    archived: false
   };
 
   // Attachments for file type
@@ -170,7 +221,10 @@ router.use((error, req, res, next) => {
   return next(error); // let the global error handler catch other errors
 });
 
-// ==== MODULE: GET (by moduleId) ====
+/* -----------------------------------------------------------
+   MODULE: GET (by moduleId)
+----------------------------------------------------------- */
+
 // GET /modules/:id
 router.get('/modules/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -181,21 +235,38 @@ router.get('/modules/:id', asyncHandler(async (req, res) => {
   res.json({ id: doc.id, ...doc.data() });
 }));
 
-// ==== MODULES: LIST FOR COURSE ====
-// GET /courses/:id/modules  (sorted by moduleNumber DESC)
+/* -----------------------------------------------------------
+   MODULES: LIST FOR COURSE
+   Default: hide archived. Use ?includeArchived=true to show all.
+   (Sorted by moduleNumber DESC)
+----------------------------------------------------------- */
+
+// GET /courses/:id/modules
 router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const includeArchived = String(req.query.includeArchived).toLowerCase() === 'true';
+
+  // We fetch all for the course, then filter in-memory to avoid Firestore inequality+orderBy constraints
   const snapshot = await firestore
     .collection('modules')
     .where('courseId', '==', id)
     .orderBy('moduleNumber', 'desc')
     .get();
 
-  const modules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  res.json(modules);
+  let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+  if (!includeArchived) {
+    // keep if archived is not true (missing -> treated as active)
+    list = list.filter(m => m.archived !== true);
+  }
+
+  res.json(list);
 }));
 
-// ==== MODULE: UPDATE ====
+/* -----------------------------------------------------------
+   MODULE: UPDATE
+----------------------------------------------------------- */
+
 // PUT /modules/:id  body: { title, description, moduleSubTitles?, moduleSubDescs? }
 router.put('/modules/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -222,7 +293,34 @@ router.put('/modules/:id', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Module updated successfully.' });
 }));
 
-// ==== MODULE: DELETE & RENUMBER ====
+/* -----------------------------------------------------------
+   MODULE: ARCHIVE / UNARCHIVE
+----------------------------------------------------------- */
+
+// PUT /modules/:id/archive
+router.put('/modules/:id/archive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await setArchiveStateForModule(id, true);
+  if (!result.ok) {
+    return res.status(result.code || 500).json({ success: false, message: result.message || 'Failed to archive.' });
+  }
+  res.json({ success: true, message: 'Module archived. Related assignments and quizzes hidden.' });
+}));
+
+// PUT /modules/:id/unarchive
+router.put('/modules/:id/unarchive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await setArchiveStateForModule(id, false);
+  if (!result.ok) {
+    return res.status(result.code || 500).json({ success: false, message: result.message || 'Failed to unarchive.' });
+  }
+  res.json({ success: true, message: 'Module unarchived. Related assignments and quizzes restored.' });
+}));
+
+/* -----------------------------------------------------------
+   MODULE: DELETE & RENUMBER
+----------------------------------------------------------- */
+
 // DELETE /modules/:id
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   const moduleId = req.params.id;
@@ -258,6 +356,10 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Module deleted and modules renumbered.' });
 }));
 
+/* -----------------------------------------------------------
+   COMPLETIONS ENDPOINTS (unchanged)
+----------------------------------------------------------- */
+
 // ==== MODULE: CHECK IF SPECIFIC MODULE IS COMPLETED ====
 // GET /users/:email/modules/:moduleId/isCompleted
 router.get('/users/:email/modules/:moduleId/isCompleted', asyncHandler(async (req, res) => {
@@ -286,7 +388,7 @@ router.get('/users/:email/completed-modules-count', asyncHandler(async (req, res
   const userSnapshot = await firestore.collection('users').where('email', '==', email).get();
   if (userSnapshot.empty) {
     return res.status(404).json({ count: 0, message: 'User not found' });
-    }
+  }
   const userId = userSnapshot.docs[0].id;
 
   const snapshot = await firestore

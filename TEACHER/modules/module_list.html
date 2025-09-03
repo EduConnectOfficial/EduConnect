@@ -36,19 +36,8 @@
     .search-box{max-width:520px; width:100%; position:relative}
     .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
     .search-box i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#d7dadf}
-   .profile-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-}
-.profile-btn .username {
-  font-size: 14px;
-}
+    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
+    .profile-btn .username{font-size:14px}
 
     /* Page */
     .content{padding:24px}
@@ -65,6 +54,13 @@
       transition:transform .07s ease, box-shadow .2s ease;
     }
     .module-card:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
+    .module-card.archived{opacity:.85}
+    .module-card .archived-badge{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px dashed rgba(176,60,16,.35); border-radius:999px;
+      padding:3px 10px; font-size:.75rem; color:#B03C10;
+      background:rgba(255,106,0,.10);
+    }
 
     .badge-soft{
       display:inline-flex; align-items:center; gap:6px;
@@ -152,7 +148,16 @@
       </header>
 
       <section class="content">
-        <h2 id="courseTitleHeading" class="page-title">Modules for …</h2>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <h2 id="courseTitleHeading" class="page-title mb-0">Modules for …</h2>
+
+          <!-- Show archived toggle -->
+          <div class="form-check form-switch ms-auto">
+            <input class="form-check-input" type="checkbox" id="toggleShowArchived">
+            <label class="form-check-label" for="toggleShowArchived">Show archived</label>
+          </div>
+        </div>
+
         <div id="moduleList" class="row g-4 justify-content-center"></div>
       </section>
     </div>
@@ -250,6 +255,12 @@
       });
     }
 
+    // Toggle show archived
+    const showArchivedToggle = document.getElementById('toggleShowArchived');
+    if (showArchivedToggle) {
+      showArchivedToggle.addEventListener('change', () => loadModules());
+    }
+
     function filterAndRenderModules(query) {
       const filtered = !query ? modules : modules.filter(m => {
         if ((m.title||"").toLowerCase().includes(query)) return true;
@@ -316,13 +327,17 @@
           attachmentsHtml += `</div>`;
         }
 
+        const archivedFlag = module.archived === true;
+        const archivedBadge = archivedFlag ? `<span class="archived-badge ms-2"><i class="fa-solid fa-box-archive"></i> Archived</span>` : "";
+
         col.innerHTML = `
-          <article class="module-card border-0 rounded-4">
+          <article class="module-card border-0 rounded-4 ${archivedFlag ? 'archived' : ''}">
             <div class="card-body d-flex flex-column flex-md-row align-items-stretch p-4">
               <div class="flex-grow-1 pe-md-4">
                 <div class="d-flex align-items-center mb-2">
                   <span class="badge-soft me-2"><i class="bi bi-collection"></i> Module #${escapeHtml(String(module.moduleNumber || ''))}</span>
                   <h4 class="card-title mb-0 text-dark">${escapeHtml(module.title || '')}</h4>
+                  ${archivedBadge}
                 </div>
                 <div class="mb-2">
                   <span class="fw-semibold text-secondary">${escapeHtml(truncateDescription(module.description||''))}</span>
@@ -354,15 +369,28 @@
               </div>
 
               <div class="d-flex flex-column justify-content-between align-items-end ms-md-4 mt-3 mt-md-0">
-                <button class="btn btn-amber-outline btn-sm mb-2 edit-module-btn" data-id="${escapeHtml(module.id)}">
-                  <i class="fas fa-edit me-1"></i> Edit
-                </button>
-                <button class="btn btn-outline-danger btn-sm delete-module-btn" data-id="${escapeHtml(module.id)}">
-                  <i class="fas fa-trash"></i> Delete
-                </button>
-                <button class="btn btn-amber-outline btn-sm mt-2 view-full-description" data-id="${escapeHtml(module.id)}">
-                  <i class="bi bi-card-text me-1"></i> Details
-                </button>
+                <div class="d-flex flex-column gap-2">
+                  <button class="btn btn-amber-outline btn-sm edit-module-btn" data-id="${escapeHtml(module.id)}" ${archivedFlag ? 'disabled title="Unarchive to edit"' : ''}>
+                    <i class="fas fa-edit me-1"></i> Edit
+                  </button>
+
+                  ${archivedFlag
+                    ? `<button class="btn btn-success btn-sm unarchive-module-btn" data-id="${escapeHtml(module.id)}">
+                         <i class="fa-solid fa-rotate-left me-1"></i> Unarchive
+                       </button>`
+                    : `<button class="btn btn-warning btn-sm archive-module-btn" data-id="${escapeHtml(module.id)}">
+                         <i class="fa-solid fa-box-archive me-1"></i> Archive
+                       </button>`
+                  }
+
+                  <button class="btn btn-outline-danger btn-sm delete-module-btn" data-id="${escapeHtml(module.id)}">
+                    <i class="fas fa-trash"></i> Delete
+                  </button>
+
+                  <button class="btn btn-amber-outline btn-sm view-full-description" data-id="${escapeHtml(module.id)}">
+                    <i class="bi bi-card-text me-1"></i> Details
+                  </button>
+                </div>
               </div>
             </div>
           </article>
@@ -376,8 +404,10 @@
       const courseId = urlParams.get("courseId");
       if (!courseId) { alert("No course ID provided."); return; }
 
+      const includeArchived = document.getElementById('toggleShowArchived')?.checked;
+
       try {
-        const res = await fetch(`http://localhost:5000/courses/${courseId}/modules`);
+        const res = await fetch(`http://localhost:5000/courses/${courseId}/modules${includeArchived ? '?includeArchived=true' : ''}`);
         const data = await res.json();
         modules = Array.isArray(data) ? data : [];
         filterAndRenderModules(searchInput ? searchInput.value.trim().toLowerCase() : '');
@@ -414,12 +444,55 @@
       const delBtn = target.closest('.delete-module-btn');
       const descBtn = target.closest('.view-full-description');
       const fileBtn = target.closest('.file-preview-btn');
+      const archiveBtn = target.closest('.archive-module-btn');
+      const unarchiveBtn = target.closest('.unarchive-module-btn');
 
       if (link) {
         const moduleId = link.getAttribute('data-module-id');
         const subIdx = link.getAttribute('data-sub-idx');
         window.location.href = `/TEACHER/Modules/module_view.html?moduleId=${encodeURIComponent(moduleId)}&subIdx=${encodeURIComponent(subIdx)}`;
         e.preventDefault();
+        return;
+      }
+
+      if (archiveBtn) {
+        const id = archiveBtn.dataset.id;
+        if (!confirm("Archive this module? It and its related assignments/quizzes will be hidden from students.")) return;
+        (async () => {
+          try {
+            const res = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}/archive`, { method: "PUT" });
+            const data = await res.json();
+            if (data.success) {
+              alert("Module archived.");
+              loadModules();
+            } else {
+              alert("Archive failed: " + (data.message || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Error archiving module:", err);
+            alert("Server error during archive.");
+          }
+        })();
+        return;
+      }
+
+      if (unarchiveBtn) {
+        const id = unarchiveBtn.dataset.id;
+        (async () => {
+          try {
+            const res = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}/unarchive`, { method: "PUT" });
+            const data = await res.json();
+            if (data.success) {
+              alert("Module unarchived.");
+              loadModules();
+            } else {
+              alert("Unarchive failed: " + (data.message || "Unknown error"));
+            }
+          } catch (err) {
+            console.error("Error unarchiving module:", err);
+            alert("Server error during unarchive.");
+          }
+        })();
         return;
       }
 
@@ -585,7 +658,8 @@
         alert("Server error during update.");
       }
     });
-     function logoutUser(){
+
+    function logoutUser(){
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/TEACHER/login/login.html";
