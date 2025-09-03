@@ -174,4 +174,48 @@ router.get('/class/:classId/visible', asyncHandler(async (req, res) => {
   res.json({ success: true, announcements: items });
 }));
 
+// ==== ARCHIVE / UNARCHIVE ====
+// POST /api/announcements/:id/archive
+router.post('/:id/archive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ref = firestore.collection('announcements').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ success: false, message: 'Announcement not found.' });
+  }
+  await ref.update({
+    expiresAt: admin.firestore.Timestamp.now(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  res.json({ success: true });
+}));
+
+// POST /api/announcements/:id/unarchive
+router.post('/:id/unarchive', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ref = firestore.collection('announcements').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    return res.status(404).json({ success: false, message: 'Announcement not found.' });
+  }
+
+  const a = snap.data() || {};
+  // If publishAt is missing/null, seed it to now so it can be visible immediately.
+  // Otherwise, we keep the existing publishAt:
+  //  - if it's in the future → status becomes "scheduled"
+  //  - if it's in the past   → status becomes "published"
+  const updates = {
+    expiresAt: null,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (!a.publishAt) {
+    updates.publishAt = admin.firestore.Timestamp.now();
+  }
+
+  await ref.update(updates);
+  res.json({ success: true });
+}));
+
+
+
 module.exports = router;

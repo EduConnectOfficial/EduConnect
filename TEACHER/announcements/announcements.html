@@ -323,7 +323,7 @@
     });
   </script>
 
-  <!-- Main JS (sorting added) -->
+  <!-- Main JS (sorting + archive/unarchive) -->
   <script>
     const API_BASE = "http://localhost:5000";
 
@@ -410,6 +410,15 @@
       return list.sort((a,b)=>getMs(b.publishAt)-getMs(a.publishAt));
     }
 
+    function badgeClass(status) {
+      switch (status) {
+        case 'published': return 'bg-success';
+        case 'scheduled': return 'bg-secondary';
+        case 'expired':   return 'bg-dark';
+        default:          return 'bg-light text-dark';
+      }
+    }
+
     function renderTable() {
       const q = (document.getElementById("searchBox").value || "").toLowerCase();
       const tbody = document.querySelector("#announcementTable tbody");
@@ -437,6 +446,7 @@
 
       list.forEach(a=>{
         const classesText = (a.classIds || []).map(id => CLASS_MAP[id] || id).join(", ");
+        const isExpired = String(a.status||'').toLowerCase() === 'expired';
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="fw-semibold">${a.title}</td>
@@ -447,7 +457,11 @@
           <td>${a.important ? '<i class="bi bi-exclamation-circle-fill text-danger"></i>' : ''}</td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-primary me-2" data-action="edit" data-id="${a.id}">Edit</button>
-            <button class="btn btn-sm btn-outline-danger" data-action="archive" data-id="${a.id}">Archive</button>
+            ${
+              isExpired
+                ? `<button class="btn btn-sm btn-outline-success" data-action="unarchive" data-id="${a.id}">Unarchive</button>`
+                : `<button class="btn btn-sm btn-outline-danger" data-action="archive" data-id="${a.id}">Archive</button>`
+            }
           </td>
         `;
         tbody.appendChild(tr);
@@ -456,20 +470,12 @@
       tbody.querySelectorAll('button[data-action]').forEach(btn=>{
         const id = btn.getAttribute('data-id');
         const action = btn.getAttribute('data-action');
-        btn.onclick = () => {
-          if (action === 'edit') openEdit(id);
-          else if (action === 'archive') archiveAnnouncement(id);
+        btn.onclick = async () => {
+          if (action === 'edit') return openEdit(id);
+          if (action === 'archive') return archiveAnnouncement(id);
+          if (action === 'unarchive') return unarchiveAnnouncement(id);
         };
       });
-    }
-
-    function badgeClass(status) {
-      switch (status) {
-        case 'published': return 'bg-success';
-        case 'scheduled': return 'bg-secondary';
-        case 'expired':   return 'bg-dark';
-        default:          return 'bg-light text-dark';
-      }
     }
 
     document.getElementById("createAnnouncementForm").addEventListener("submit", async (e)=>{
@@ -557,15 +563,27 @@
 
     async function archiveAnnouncement(id) {
       if (!confirm("Archive this announcement? It will be marked expired.")) return;
-      const now = Date.now();
-      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ expiresAt: now })
+      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}/archive`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"}
       });
       const js = await res.json();
       if (!js.success) {
         alert(js.message || "Failed to archive announcement");
+        return;
+      }
+      await loadAnnouncements();
+    }
+
+    async function unarchiveAnnouncement(id) {
+      if (!confirm("Unarchive this announcement? It will be visible again based on its publish date.")) return;
+      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}/unarchive`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"}
+      });
+      const js = await res.json();
+      if (!js.success) {
+        alert(js.message || "Failed to unarchive announcement");
         return;
       }
       await loadAnnouncements();
