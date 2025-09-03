@@ -1,19 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Teacher - Analytics & Reporting</title>
 
   <!-- Icons & Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
   <!-- Global & Page CSS -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css" />
-  <link rel="stylesheet" href="analytics.css" />
+  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link rel="stylesheet" href="analytics.css"/>
+
+  <!-- THEME (your exact design CSS) -->
+  <style>
+    :root {
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%;position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem;padding-right:36px}
+    .search-box i.fas.fa-search{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6;font-size:.95rem}
+    .profile-btn{color:#fff}
+
+    .content{padding:24px}
+    .page-title{
+      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text;background-clip:text;
+    }
+
+    /* ui-card themed controls */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.06);color:#fff}
+
+    /* Segmented (kept here in case you add segmented toggles later) */
+    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
+    .segmented .seg-btn{
+      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
+      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
+      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
+    }
+    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
+    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
+  </style>
 </head>
 
 <body>
@@ -24,11 +74,11 @@
     <!-- Main Content -->
     <div class="main">
       <!-- Header -->
-      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff;">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
           <input type="text" class="form-control" placeholder="Search..." />
-          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+          <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
           <i class="fas fa-user-circle fa-2x"></i>
@@ -40,22 +90,51 @@
       <section class="content px-4">
         <h1 class="page-title">Analytics & Reporting</h1>
 
-        <!-- Filters -->
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <span class="muted">Class:</span>
-          <select id="classSelect" class="form-select" style="width:auto; min-width:220px;">
-            <option value="">All classes</option>
-          </select>
+        <!-- THEMED FILTER/SORT BAR -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title w-100 text-center">
+              <i class="bi bi-graph-up-arrow me-2"></i> Dashboard Controls
+            </h2>
+          </div>
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Class</label>
+              <select id="classSelect" class="form-select">
+                <option value="">All classes</option>
+              </select>
+            </div>
 
-          <span class="muted ms-3">View:</span>
-          <select id="viewSelect" class="form-select" style="width:auto; min-width:160px;">
-            <option value="quiz" selected>Quizzes</option>
-            <option value="assignment">Assignments</option>
-          </select>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">View</label>
+              <select id="viewSelect" class="form-select">
+                <option value="quiz" selected>Quizzes</option>
+                <option value="assignment">Assignments</option>
+              </select>
+            </div>
 
-          <button id="refreshBtn" class="btn btn-outline-secondary btn-sm ms-2">
-            <i class="bi bi-arrow-repeat"></i> Refresh
-          </button>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Sort</label>
+              <select id="sortBy" class="form-select">
+                <option value="avg_desc" selected>Avg Quiz Score (High → Low)</option>
+                <option value="avg_asc">Avg Quiz Score (Low → High)</option>
+                <option value="name_az">Name A → Z</option>
+                <option value="taken_desc">Quizzes Taken (Most → Least)</option>
+                <option value="taken_asc">Quizzes Taken (Least → Most)</option>
+                <option value="ontime_desc">On-time % (High → Low)</option>
+                <option value="ontime_asc">On-time % (Low → High)</option>
+                <option value="modules_desc">Modules Completed (Most → Least)</option>
+                <option value="modules_asc">Modules Completed (Least → Most)</option>
+                <option value="status_risk">Status (At Risk first)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-3 d-flex justify-content-end">
+            <button id="refreshBtn" class="btn btn-amber">
+              <i class="bi bi-arrow-repeat"></i> Refresh
+            </button>
+          </div>
         </div>
 
         <!-- Analytics Dashboard -->
@@ -210,6 +289,7 @@
     // Refs
     const classSelectEl = document.getElementById('classSelect');
     const viewSelectEl = document.getElementById('viewSelect');
+    const sortByEl = document.getElementById('sortBy');
     const refreshBtn = document.getElementById('refreshBtn');
     const dashboardTitleEl = document.getElementById('dashboardTitle');
     const leftChartTitleEl = document.getElementById('leftChartTitle');
@@ -228,8 +308,8 @@
     function cleanLabel(s, max = 28) {
       if (!s) return '—';
       let t = String(s)
-        .replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '')   // drop leading "Course 1: "
-        .replace(/\s*\([^)]*\)\s*$/,'')                      // drop trailing "(4 modules)"
+        .replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '')
+        .replace(/\s*\([^)]*\)\s*$/,'')
         .trim();
       if (t.length > max) t = t.slice(0, max - 1) + '…';
       return t;
@@ -239,7 +319,6 @@
     const charts = { left: null, right: null };
     function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
 
-    // NOTE: pass FULL labels; we shorten for display but keep full titles in tooltips
     function renderBar(key, id, fullLabels, values, lbl) {
       destroyChart(key);
       const displayLabels = (fullLabels || []).map(l => cleanLabel(l));
@@ -248,18 +327,9 @@
         type: 'bar',
         data: { labels: displayLabels, datasets: [{ label: lbl, data: values }] },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            tooltip: {
-              callbacks: {
-                title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label
-              }
-            }
-          },
-          scales: {
-            x: { ticks: { autoSkip: false } }
-          }
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label } } },
+          scales: { x: { ticks: { autoSkip: false } } }
         }
       });
     }
@@ -272,18 +342,9 @@
         type: 'line',
         data: { labels: displayLabels, datasets: [{ label: lbl, data: values, fill: false }] },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            tooltip: {
-              callbacks: {
-                title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label
-              }
-            }
-          },
-          scales: {
-            x: { ticks: { autoSkip: false } }
-          }
+          responsive: true, maintainAspectRatio: false,
+          plugins: { tooltip: { callbacks: { title: (items) => (fullLabels || [])[items[0].dataIndex] || items[0].label } } },
+          scales: { x: { ticks: { autoSkip: false } } }
         }
       });
     }
@@ -296,12 +357,74 @@
       return '<span class="badge bg-secondary">—</span>';
     }
 
+    // ===== Sorting =====
+    let SORT_BY = 'avg_desc';
+    let lastQuizProgress = [];
+    let lastAssignmentProgress = [];
+
+    function setSortOptionsForMode(mode) {
+      if (!sortByEl) return;
+      // update option labels to match the mode, values stay the same
+      const label = (val, text) => sortByEl.querySelector(`option[value="${val}"]`).textContent = text;
+      if (mode === 'assignment') {
+        label('avg_desc','Avg Assignment Score (High → Low)');
+        label('avg_asc','Avg Assignment Score (Low → High)');
+        label('taken_desc','Assignments Submitted (Most → Least)');
+        label('taken_asc','Assignments Submitted (Least → Most)');
+      } else {
+        label('avg_desc','Avg Quiz Score (High → Low)');
+        label('avg_asc','Avg Quiz Score (Low → High)');
+        label('taken_desc','Quizzes Taken (Most → Least)');
+        label('taken_asc','Quizzes Taken (Least → Most)');
+      }
+    }
+
+    function sortRows(rows, mode) {
+      const norm = (v) => Number.isFinite(+v) ? +v : NaN;
+      const modulesRate = (r) => {
+        const a = norm(r.modulesCompleted), t = norm(r.totalModules);
+        return (Number.isFinite(a) && Number.isFinite(t) && t > 0) ? (a / t) : NaN;
+      };
+      const get = (r, key) => {
+        switch (key) {
+          case 'avg':   return mode==='assignment' ? norm(r.avgAssignmentScore) : norm(r.avgQuizScore);
+          case 'taken': return mode==='assignment' ? norm(r.assignmentsSubmitted) : norm(r.quizzesTaken);
+          case 'ontime':return norm(r.onTimePct);
+          case 'modules': return modulesRate(r);
+          case 'name':  return String(r.name || '');
+          case 'statusRank': {
+            const s = String(r.status || '').toLowerCase();
+            return (s === 'at risk') ? 0 : (s === 'on track' ? 1 : 2);
+          }
+        }
+      };
+
+      rows.sort((a,b) => {
+        const val = SORT_BY;
+        if (val === 'name_az') return get(a,'name').localeCompare(get(b,'name'));
+        if (val === 'status_risk') return get(a,'statusRank') - get(b,'statusRank');
+
+        const metric = val.startsWith('avg') ? 'avg'
+                      : val.startsWith('taken') ? 'taken'
+                      : val.startsWith('ontime') ? 'ontime'
+                      : 'modules';
+        const asc = val.endsWith('_asc');
+        let av = get(a, metric), bv = get(b, metric);
+        // push NaNs to the end
+        if (!Number.isFinite(av)) av = asc ? Infinity : -Infinity;
+        if (!Number.isFinite(bv)) bv = asc ? Infinity : -Infinity;
+        return asc ? (av - bv) : (bv - av);
+      });
+
+      return rows;
+    }
+
     // Tables with View buttons
     function renderQuizTable(rows) {
-      if (!rows?.length) {
-        atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return;
-      }
-      atRiskTbody.innerHTML = rows.map(r => `
+      const data = Array.isArray(rows) ? rows.slice() : [];
+      sortRows(data, 'quiz');
+      if (!data.length) { atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return; }
+      atRiskTbody.innerHTML = data.map(r => `
         <tr>
           <td>${r.name || '—'}</td>
           <td>${r.studentId || '—'}</td>
@@ -314,10 +437,10 @@
         </tr>`).join('');
     }
     function renderAssignmentTable(rows) {
-      if (!rows?.length) {
-        atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return;
-      }
-      atRiskTbody.innerHTML = rows.map(r => `
+      const data = Array.isArray(rows) ? rows.slice() : [];
+      sortRows(data, 'assignment');
+      if (!data.length) { atRiskTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>'; return; }
+      atRiskTbody.innerHTML = data.map(r => `
         <tr>
           <td>${r.name || '—'}</td>
           <td>${r.studentId || '—'}</td>
@@ -332,6 +455,7 @@
 
     // Labels
     function setModeLabels(mode) {
+      setSortOptionsForMode(mode);
       if (mode === 'assignment') {
         dashboardTitleEl.textContent = 'Assignment Analytics Dashboard';
         leftChartTitleEl.textContent = 'Average Assignment Score by Assignment';
@@ -396,7 +520,8 @@
       renderBar('left','quizAvgChart',qLabels,data.byQuiz?.avgScores||[],'Average Score (%)');
       renderLine('right','quizAttemptsChart',qLabels,data.byQuiz?.attempts||[],'Attempts');
       setSummaryValuesForQuiz(data.summary,data.progress);
-      renderQuizTable(data.progress||[]);
+      lastQuizProgress = data.progress || [];
+      renderQuizTable(lastQuizProgress);
     }
     async function loadAssignmentAnalytics() {
       setModeLabels('assignment');
@@ -406,7 +531,8 @@
       renderBar('left','quizAvgChart',aLabels,data.byAssignment?.avgScores||[],'Average Score (%)');
       renderLine('right','quizAttemptsChart',aLabels,data.byAssignment?.submissions||[],'Submissions');
       setSummaryValuesForAssignment(data.summary);
-      renderAssignmentTable(data.progress||[]);
+      lastAssignmentProgress = data.progress || [];
+      renderAssignmentTable(lastAssignmentProgress);
     }
     async function loadAnalyticsView() {
       if (viewSelectEl.value === 'assignment') await loadAssignmentAnalytics();
@@ -435,8 +561,13 @@
     document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
     document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
     classSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
-    viewSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
+    viewSelectEl.addEventListener('change',()=>{ setSortOptionsForMode(viewSelectEl.value); loadAnalyticsView().catch(alert); });
     refreshBtn.addEventListener('click',()=>loadAnalyticsView().catch(console.error));
+    sortByEl.addEventListener('change', (e) => {
+      SORT_BY = e.target.value;
+      if (viewSelectEl.value === 'assignment') renderAssignmentTable(lastAssignmentProgress);
+      else renderQuizTable(lastQuizProgress);
+    });
 
     // Delegate clicks for "View Analytics"
     document.getElementById('atRiskTable').addEventListener('click', (e)=>{
@@ -449,7 +580,7 @@
     });
 
     // Init
-    (async ()=>{ await loadClasses(); await loadAnalyticsView(); })();
+    (async ()=>{ await loadClasses(); setSortOptionsForMode('quiz'); await loadAnalyticsView(); })();
   </script>
 </body>
 </html>

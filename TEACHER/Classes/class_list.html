@@ -12,14 +12,78 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
+  <!-- Your page/theme css (can hold ui-card styles already) -->
   <link rel="stylesheet" href="class_list.css"/>
+
+  <!-- Minimal helpers in case ui-card / segmented aren't in class_list.css yet -->
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
+      --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+    .header-top{
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#fff;border-bottom:1px solid rgba(255,255,255,.08);
+      position:sticky;top:0;z-index:10;
+    }
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%;position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
+    .search-box i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#d7dadf}
+    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px}
+    .content{padding:24px}
+    .page-title{
+      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      -webkit-background-clip:text;background-clip:text;
+    }
+
+    /* ui-card themed */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{
+      border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);
+      box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden;
+    }
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    .btn-amber{
+      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
+      color:#fff;border:none;font-size:1rem;padding:.55rem .9rem
+    }
+    .btn-amber:hover{filter:brightness(1.05);color:#fff}
+
+    /* Segmented buttons */
+    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
+    .segmented .seg-btn{
+      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
+      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
+      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
+    }
+    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
+    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
+  </style>
 </head>
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
@@ -36,30 +100,60 @@
 
       <!-- Page Content -->
       <section class="content">
-        <div class="toolbar-card d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <h1 class="page-title mb-0">My Classes</h1>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span id="classCountPill" class="meta-pill d-none">
-              <i class="bi bi-people"></i>
-              <span id="classCount">0</span> classes
-            </span>
+        <h1 class="page-title">My Classes</h1>
 
-            <!-- Archive Filter Toggle -->
-            <div class="btn-group" role="group" aria-label="Archive filter">
-              <input type="radio" class="btn-check" name="archFilter" id="archEx" autocomplete="off" checked>
-              <label class="btn btn-outline-secondary" for="archEx" title="Show active only">Active</label>
+        <!-- NEW: ui-card controls (matching Assignments) -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-people"></i> Your Classes</h2>
+            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.</div>
+          </div>
 
-              <input type="radio" class="btn-check" name="archFilter" id="archOnly" autocomplete="off">
-              <label class="btn btn-outline-secondary" for="archOnly" title="Show archived only">Archived</label>
-
-              <input type="radio" class="btn-check" name="archFilter" id="archInc" autocomplete="off">
-              <label class="btn btn-outline-secondary" for="archInc" title="Show all">All</label>
+          <div class="row g-2 align-items-end">
+            <!-- School Year filter -->
+            <div class="col-12 col-md-4 col-xl-4">
+              <label class="form-label">School Year</label>
+              <select id="syFilter" class="form-select" aria-label="Filter by school year">
+                <option value="">All years</option>
+              </select>
             </div>
 
-            <button class="btn btn-amber" data-bs-toggle="modal" data-bs-target="#createClassModal">
-              <i class="bi bi-plus-lg me-1"></i> Add Class
-            </button>
+            <!-- Sort: Semester / School Year -->
+            <div class="col-12 col-md-3 col-xl-3">
+              <label class="form-label">Sort</label>
+              <select id="sortBy" class="form-select" aria-label="Sort classes">
+                <option value="sy_new" selected>School Year (newest → oldest)</option>
+                <option value="sy_old">School Year (oldest → newest)</option>
+                <option value="sem_1_2">Semester (1st → 2nd)</option>
+                <option value="sem_2_1">Semester (2nd → 1st)</option>
+              </select>
+            </div>
+
+            <!-- 3-button visibility filter -->
+            <div class="col-12 col-md-5 col-xl-3">
+              <label class="form-label">Show</label>
+              <div class="segmented" role="tablist" aria-label="Class visibility">
+                <button id="btnActive"   class="seg-btn is-active"   role="tab" aria-selected="true">Active</button>
+                <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
+                <button id="btnAll"      class="seg-btn is-all"      role="tab" aria-selected="false">All</button>
+              </div>
+            </div>
+
+            <!-- Create Class -->
+            <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
+              <button class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" data-bs-toggle="modal" data-bs-target="#createClassModal">
+                <i class="bi bi-plus-lg me-1"></i> Add Class
+              </button>
+            </div>
           </div>
+        </div>
+
+        <!-- Meta pill (count) -->
+        <div class="mb-2">
+          <span id="classCountPill" class="badge rounded-pill text-bg-light d-none">
+            <i class="bi bi-people me-1"></i>
+            <span id="classCount">0</span> classes
+          </span>
         </div>
 
         <div class="ui-card p-2">
@@ -193,7 +287,6 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-amber">Save Changes</button>
           </div>
-
         </form>
       </div>
     </div>
@@ -214,47 +307,42 @@
       if (m >= 7) return [y, y + 1];
       return [y - 1, y];
     }
-
     function getDefaultSchoolYear() {
       const [a, b] = currentSchoolYearRange();
       return `${a}-${b}`;
     }
-
     function getDefaultSemester() {
-      // Rough guide: Aug–Dec = 1st; Jan–May = 2nd; Jun–Jul -> default 1st
       const m = new Date().getMonth();
       if (m >= 7 && m <= 11) return '1st Semester';
       if (m >= 0 && m <= 4)  return '2nd Semester';
       return '1st Semester';
     }
-
-    function buildSchoolYearOptions(selectEl, span = 3) {
-      selectEl.innerHTML = '<option value="">Select school year</option>';
-      const result = [];
-      for (let i = -span; i <= span; i++) {
-        const [a, b] = currentSchoolYearRange(i);
-        result.push(`${a}-${b}`);
-      }
-      Array.from(new Set(result))
-        .sort((x, y) => parseInt(y.split('-')[0]) - parseInt(x.split('-')[0]))
-        .forEach(sy => {
-          const opt = document.createElement('option');
-          opt.value = sy;
-          opt.textContent = sy;
-          selectEl.appendChild(opt);
-        });
+    function buildSchoolYearOptions(selectEl, years) {
+      const unique = Array.from(new Set(years.filter(Boolean)));
+      unique.sort((a,b) => parseInt(b) - parseInt(a)); // sort by starting year desc
+      selectEl.innerHTML = '<option value="">All years</option>' +
+        unique.map(sy => `<option value="${sy}">${sy}</option>`).join('');
     }
 
-    function filterTable() {
-      const q = (document.getElementById('tableSearch').value || '').toLowerCase();
-      const rows = document.querySelectorAll('#classListBody tr');
-      rows.forEach(tr => {
-        const txt = tr.innerText.toLowerCase();
-        tr.style.display = txt.includes(q) ? '' : 'none';
-      });
+    // Parse "YYYY-YYYY" to first year int
+    function syStart(sy) {
+      if (!sy) return NaN;
+      const n = parseInt(String(sy).split('-')[0], 10);
+      return isNaN(n) ? NaN : n;
+    }
+    function semesterRank(s) {
+      if (s === '1st Semester') return 1;
+      if (s === '2nd Semester') return 2;
+      return 99;
     }
 
-    // Sidebar loader
+    // ===== State =====
+    let classesData = [];     // full payload from server (respecting archived mode)
+    let statusFilter = 'active'; // 'active' | 'archived' | 'all'
+    let currentSY = '';       // '' = all
+    let currentSort = 'sy_new';
+
+    // ===== Sidebar loader =====
     async function loadSidebar() {
       try {
         const res = await fetch('/components/sidebar.html');
@@ -281,29 +369,82 @@
       }
     }
 
-    // Load classes
+    // ===== API load (respects statusFilter -> archived param) =====
     async function loadClasses(teacherId) {
       try {
-        const archMode = document.getElementById('archOnly').checked
-          ? 'only'
-          : document.getElementById('archInc').checked ? 'include' : 'exclude';
+        const archivedParam =
+          statusFilter === 'archived' ? 'only' :
+          statusFilter === 'all'      ? 'include' : 'exclude';
 
-        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}&archived=${archMode}`;
+        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}&archived=${archivedParam}`;
         const res = await fetch(url);
         const data = await res.json();
+
         if (data.success && Array.isArray(data.classes)) {
-          document.getElementById('classListBody').innerHTML = '';
-          data.classes.forEach(appendRow);
-          // Show total count (of what’s currently displayed)
-          document.getElementById('classCount').textContent = String(data.classes.length);
-          document.getElementById('classCountPill').classList.remove('d-none');
+          classesData = data.classes.slice();
+
+          // populate School Year filter options (from loaded list)
+          const years = classesData.map(c => c.schoolYear || '').filter(Boolean);
+          buildSchoolYearOptions(document.getElementById('syFilter'), years);
+
+          applyAndRender(); // render table with active filters/sort
         }
       } catch (err) {
         console.error('Error loading classes:', err);
       }
     }
 
-    // Append a class row
+    // ===== Filtering / Sorting / Rendering =====
+    function applyAndRender() {
+      const q = (document.getElementById('tableSearch').value || '').toLowerCase().trim();
+
+      // 1) base list (current archived mode already handled server-side)
+      let list = classesData.slice();
+
+      // 2) school year filter
+      if (currentSY) list = list.filter(c => (c.schoolYear || '') === currentSY);
+
+      // 3) search filter
+      if (q) {
+        list = list.filter(c => {
+          const txt = `${c.name||''} ${c.gradeLevel||''} ${c.section||''} ${c.schoolYear||''} ${c.semester||''}`.toLowerCase();
+          return txt.includes(q);
+        });
+      }
+
+      // 4) sort
+      if (currentSort === 'sy_new') {
+        list.sort((a,b) => (syStart(b.schoolYear) || -Infinity) - (syStart(a.schoolYear) || -Infinity));
+      } else if (currentSort === 'sy_old') {
+        list.sort((a,b) => (syStart(a.schoolYear) || Infinity) - (syStart(b.schoolYear) || Infinity));
+      } else if (currentSort === 'sem_1_2') {
+        list.sort((a,b) => semesterRank(a.semester) - semesterRank(b.semester));
+      } else if (currentSort === 'sem_2_1') {
+        list.sort((a,b) => semesterRank(b.semester) - semesterRank(a.semester));
+      }
+
+      // 5) render
+      renderTable(list);
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('classListBody');
+      tbody.innerHTML = '';
+
+      if (!rows.length) {
+        document.getElementById('classCount').textContent = '0';
+        document.getElementById('classCountPill').classList.remove('d-none');
+        return;
+      }
+
+      rows.forEach(c => appendRow(c));
+
+      // show count of displayed rows
+      document.getElementById('classCount').textContent = String(rows.length);
+      document.getElementById('classCountPill').classList.remove('d-none');
+    }
+
+    // ===== Row builder (with actions) =====
     function appendRow(c) {
       const tbody = document.getElementById('classListBody');
       const tr = document.createElement('tr');
@@ -323,9 +464,8 @@
         <td>${(typeof c.students === 'number' ? c.students : (c.studentsCount || 0))}</td>
         <td class="text-center">
           <div class="btn-group">
-            <button class="btn btn-sm btn-amber  roster-btn"><i class="bi bi-people me-1"></i>Roster</button>
-            <button class="btn btn-sm  btn-outline-secondary manage-btn" ${c.archived ? 'disabled' : ''}><i class="bi bi-tools me-1"></i>Manage</button>
-            
+            <button class="btn btn-sm btn-amber roster-btn"><i class="bi bi-people me-1"></i>Roster</button>
+            <button class="btn btn-sm btn-outline-secondary manage-btn" ${c.archived ? 'disabled' : ''}><i class="bi bi-tools me-1"></i>Manage</button>
             ${c.archived
               ? '<button class="btn btn-sm btn-outline-success unarchive-btn"><i class="bi bi-arrow-counterclockwise me-1"></i>Unarchive</button>'
               : '<button class="btn btn-sm btn-outline-warning archive-btn"><i class="bi bi-archive me-1"></i>Archive</button>'}
@@ -344,7 +484,13 @@
         document.getElementById('editSectionInput').value = c.section;
 
         const sySel = document.getElementById('editSchoolYearInput');
-        buildSchoolYearOptions(sySel);
+        // build around current range +/- 3 years
+        const around = [];
+        for (let i=-3;i<=3;i++){
+          const [a,b] = currentSchoolYearRange(i);
+          around.push(`${a}-${b}`);
+        }
+        buildSchoolYearOptions(sySel, around);
         sySel.value = c.schoolYear || getDefaultSchoolYear();
 
         const semSel = document.getElementById('editSemesterInput');
@@ -355,7 +501,6 @@
 
       // Roster -> redirect
       tr.querySelector('.roster-btn').addEventListener('click', () => {
-        // Roster page can try fetch and if 403, show "Archived" banner.
         window.location.href = `/TEACHER/Classes/roster.html?classId=${encodeURIComponent(c.id)}`;
       });
 
@@ -373,7 +518,8 @@
             });
             const out = await res.json();
             if (res.ok && out.success) {
-              window.location.reload();
+              // Refresh list with current filters
+              await loadClasses(user.userId);
             } else {
               alert(out.message || 'Failed to archive.');
             }
@@ -388,12 +534,11 @@
       if (unarchBtn) {
         unarchBtn.addEventListener('click', async () => {
           try {
-            const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(c.id)}/unarchive`, {
-              method: 'PATCH'
-            });
+            const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(c.id)}/unarchive`, { method: 'PATCH' });
             const out = await res.json();
             if (res.ok && out.success) {
-              window.location.reload();
+              const user = JSON.parse(localStorage.getItem('user') || '{}');
+              await loadClasses(user.userId);
             } else {
               alert(out.message || 'Failed to unarchive.');
             }
@@ -403,32 +548,28 @@
         });
       }
 
-      // Delete -> confirm + call API + remove row
+      // Delete
       tr.querySelector('.delete-btn').addEventListener('click', async () => {
         const confirmMsg = `Delete class "${c.name}"? This cannot be undone.`;
         if (!confirm(confirmMsg)) return;
 
         try {
-          const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(c.id)}?cascade=true`, {
-            method: 'DELETE'
-          });
+          const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(c.id)}?cascade=true`, { method: 'DELETE' });
           const out = await res.json();
           if (res.ok && out.success) {
-            tr.remove();
-            // update count
-            const cnt = document.querySelectorAll('#classListBody tr').length;
-            document.getElementById('classCount').textContent = String(cnt);
+            // Remove locally, re-apply filters
+            classesData = classesData.filter(x => x.id !== c.id);
+            applyAndRender();
           } else {
             alert(out.message || 'Failed to delete class.');
           }
         } catch (err) {
-          console.error('Delete error:', err);
           alert('Failed to delete class.');
         }
       });
     }
 
-    // Create class
+    // ===== Create / Edit =====
     document.getElementById('createClassForm').addEventListener('submit', async e => {
       e.preventDefault();
       const name = document.getElementById('classNameInput').value.trim();
@@ -453,12 +594,8 @@
         });
         const result = await res.json();
         if (res.ok && result.success && result.class) {
-          appendRow(result.class);
-          // update count
-          const cnt = document.querySelectorAll('#classListBody tr').length;
-          document.getElementById('classCount').textContent = String(cnt);
-          document.getElementById('classCountPill').classList.remove('d-none');
-
+          classesData.push(result.class);
+          applyAndRender();
           e.target.reset();
           bootstrap.Modal.getInstance(document.getElementById('createClassModal')).hide();
         } else {
@@ -469,7 +606,6 @@
       }
     });
 
-    // Edit class
     document.getElementById('editClassForm').addEventListener('submit', async e => {
       e.preventDefault();
       const id = document.getElementById('editClassId').value;
@@ -492,8 +628,13 @@
         });
         const result = await res.json();
         if (res.ok && result.success) {
-          // Simple refresh to reflect edits
-          window.location.reload();
+          // update local snapshot
+          const idx = classesData.findIndex(c => c.id === id);
+          if (idx >= 0) {
+            classesData[idx] = { ...classesData[idx], name, gradeLevel, section, schoolYear, semester };
+          }
+          applyAndRender();
+          bootstrap.Modal.getInstance(document.getElementById('editClassModal')).hide();
         } else {
           alert(result.message || 'Error updating class.');
         }
@@ -502,34 +643,53 @@
       }
     });
 
-    // Init
+    // ===== Controls wiring =====
+    // segmented
+    function setSegmentedActive(which) {
+      statusFilter = which;
+      const btnActive = document.getElementById('btnActive');
+      const btnArchived = document.getElementById('btnArchived');
+      const btnAll = document.getElementById('btnAll');
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
+      if (which === 'active')   { btnActive.classList.add('is-active');   btnActive.setAttribute('aria-selected','true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
+      if (which === 'all')      { btnAll.classList.add('is-active');      btnAll.setAttribute('aria-selected','true'); }
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.userId) loadClasses(user.userId); // reload from API with new archived param
+    }
+    document.getElementById('btnActive').addEventListener('click', () => setSegmentedActive('active'));
+    document.getElementById('btnArchived').addEventListener('click', () => setSegmentedActive('archived'));
+    document.getElementById('btnAll').addEventListener('click', () => setSegmentedActive('all'));
+
+    // sort & filter
+    document.getElementById('sortBy').addEventListener('change', (e) => { currentSort = e.target.value; applyAndRender(); });
+    document.getElementById('syFilter').addEventListener('change', (e) => { currentSY = e.target.value || ''; applyAndRender(); });
+
+    // search
+    document.getElementById('tableSearch').addEventListener('input', applyAndRender);
+
+    // ===== Init =====
     document.addEventListener('DOMContentLoaded', async () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.isTeacher) return window.location.href = '/TEACHER/login/login.html';
-
-      document.querySelector('.username').textContent = user.username;
+      if (!user?.isTeacher) return window.location.href = '/TEACHER/login/login.html';
+      document.getElementById('Username').textContent = user.username || '';
 
       // Prefill SY + Semester when opening Create modal
       const createModalEl = document.getElementById('createClassModal');
       createModalEl.addEventListener('show.bs.modal', () => {
+        // Build a small range around current year
+        const around = [];
+        for (let i=-3;i<=3;i++){
+          const [a,b] = currentSchoolYearRange(i);
+          around.push(`${a}-${b}`);
+        }
         const sySel = document.getElementById('schoolYearInput');
-        buildSchoolYearOptions(sySel);
+        buildSchoolYearOptions(sySel, around);
         sySel.value = getDefaultSchoolYear();
 
         const semSel = document.getElementById('semesterInput');
         semSel.value = getDefaultSemester();
-      });
-
-      // Table search
-      document.getElementById('tableSearch').addEventListener('input', filterTable);
-
-      // Archive filter change -> reload list
-      ['archEx','archOnly','archInc'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', () => {
-          const u = JSON.parse(localStorage.getItem('user') || '{}');
-          if (u.userId) loadClasses(u.userId);
-        });
       });
 
       await loadSidebar();

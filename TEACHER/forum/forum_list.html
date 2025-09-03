@@ -12,6 +12,60 @@
 
   <!-- Sidebar / shared styles -->
   <link rel="stylesheet" href="../forum/forum.css" />
+
+  <!-- THEME -->
+  <style>
+    :root {
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+
+    .header-top{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%;position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem;padding-right:36px}
+    .search-box i.fas.fa-search{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6;font-size:.95rem}
+    .profile-btn{color:#fff}
+
+    .content{padding:24px}
+    .page-title{
+      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text;background-clip:text;
+    }
+
+    /* ui-card themed controls */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.06);color:#fff}
+
+    /* Threads */
+    .thread.thread-themed{
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      background:var(--card);
+      box-shadow:0 10px 24px rgba(0,0,0,.08);
+      padding:14px;
+      margin-bottom:12px;
+      transition:transform .07s ease, box-shadow .2s ease;
+    }
+    .thread.thread-themed:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
+    .thread-title{margin:0 0 4px;font-weight:700}
+    .thread-meta{color:var(--muted);font-size:.9rem}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -21,11 +75,12 @@
     <!-- Main -->
     <div class="main">
       <!-- Header -->
-     <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input type="text" class="form-control" placeholder="Search..."/>
-          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+          <!-- use header search for threads -->
+          <input id="headerSearch" type="text" class="form-control" placeholder="Search threads..." />
+          <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
           <i class="fas fa-user-circle fa-2x"></i>
@@ -35,25 +90,21 @@
 
       <!-- Content -->
       <div class="content container-fluid">
-        <h1 class="page-title brand">Forum Threads</h1>
+        <h1 class="page-title">Forum Threads</h1>
 
-        <!-- Controls: search + filter + sort -->
+        <!-- Filters (search removed; using header search) -->
         <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-funnel"></i> Filters</h2>
+          </div>
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-6">
-              <label class="form-label" for="threadSearch">Search Threads</label>
-              <div class="input-group">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input id="threadSearch" type="search" class="form-control border-start-0" placeholder="Search by title or content..." />
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
               <label class="form-label" for="courseFilter">Course</label>
               <select id="courseFilter" class="form-select">
                 <option value="All">All</option>
               </select>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-12 col-md-6">
               <label class="form-label" for="sortThreads">Sort by</label>
               <select id="sortThreads" class="form-select">
                 <option value="newest">Newest</option>
@@ -66,7 +117,7 @@
         <!-- Threads List -->
         <div class="ui-card card-themed">
           <div class="ui-card-head">
-            <h2 class="ui-card-title"><i class="bi bi-chat-dots"></i>Recent Threads</h2>
+            <h2 class="ui-card-title"><i class="bi bi-chat-dots"></i> Recent Threads</h2>
             <div class="ui-subtext" id="threadCount"></div>
           </div>
           <div id="forumThreads"></div>
@@ -93,14 +144,14 @@
               e.preventDefault();
               const p = toggle.closest('.has-submenu');
               p.classList.toggle('open');
-              toggle.setAttribute('aria-expanded', String(!JSON.parse(toggle.getAttribute('aria-expanded'))));
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
             });
           });
         })
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
-
 
   <script>
     const FORUM_API = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
@@ -160,9 +211,25 @@
       }
     }
 
+    function clientSort(arr, sortVal) {
+      const copy = Array.isArray(arr) ? arr.slice() : [];
+      if (sortVal === 'replies') {
+        copy.sort((a,b) => (b.repliesCount || 0) - (a.repliesCount || 0));
+      } else {
+        // newest by createdAt
+        copy.sort((a,b) => {
+          const ta = (a.createdAt?._seconds ? a.createdAt._seconds*1000 : Date.parse(a.createdAt || 0)) || 0;
+          const tb = (b.createdAt?._seconds ? b.createdAt._seconds*1000 : Date.parse(b.createdAt || 0)) || 0;
+          return tb - ta;
+        });
+      }
+      return copy;
+    }
+
     async function loadThreads() {
       const filterVal = qs('#courseFilter').value;
-      const searchQ = qs('#threadSearch').value || '';
+      const headerSearchEl = qs('#headerSearch');
+      const searchQ = headerSearchEl ? headerSearchEl.value : '';
       const sortVal = qs('#sortThreads').value || 'newest';
 
       const params = new URLSearchParams({
@@ -175,6 +242,10 @@
       try {
         const j = await fetchJSON(`${FORUM_API}/threads?${params.toString()}`);
         threads = j.data || [];
+
+        // Client-side fallback sort to ensure UX matches the dropdown
+        threads = clientSort(threads, sortVal);
+
         renderThreads();
       } catch (err) {
         console.error(err);
@@ -197,26 +268,24 @@
       threads.forEach(t => {
         const div = document.createElement('div');
         div.className = 'thread thread-themed';
-       div.innerHTML = `
-  <div class="d-flex justify-content-between align-items-start mb-1">
-    <h3 class="thread-title">${escapeHtml(t.title || '')}</h3>
-    <div class="d-flex gap-2">
-      <button class="btn btn-amber view-btn" data-id="${t.id}">
-        <i class="bi bi-eye"></i> View
-      </button>
-      <button class="btn btn-danger delete-btn" data-id="${t.id}">
-        <i class="bi bi-trash"></i> Delete
-      </button>
-    </div>
-  </div>
-  <!-- Removed thread body text -->
-  <div class="thread-meta mb-2">
-    Course: <strong>${escapeHtml(t.courseTitle || '')}</strong> •
-    Replies: ${t.repliesCount || 0} •
-    Posted: ${toLocal(t.createdAt)}
-  </div>
-`;
-
+        div.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h3 class="thread-title">${escapeHtml(t.title || '')}</h3>
+            <div class="d-flex gap-2">
+              <button class="btn btn-amber view-btn" data-id="${t.id}">
+                <i class="bi bi-eye"></i> View
+              </button>
+              <button class="btn btn-danger delete-btn" data-id="${t.id}">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+          <div class="thread-meta mb-2">
+            Course: <strong>${escapeHtml(t.courseTitle || '')}</strong> •
+            Replies: ${t.repliesCount || 0} •
+            Posted: ${toLocal(t.createdAt)}
+          </div>
+        `;
         wrap.appendChild(div);
       });
 
@@ -246,11 +315,15 @@
       await loadCourses();
       await loadThreads();
 
-      qs('#threadSearch').addEventListener('input', loadThreads);
+      // header search now drives filtering
+      const headerSearch = qs('#headerSearch');
+      if (headerSearch) headerSearch.addEventListener('input', loadThreads);
+
       qs('#courseFilter').addEventListener('change', loadThreads);
       qs('#sortThreads').addEventListener('change', loadThreads);
     });
-     function logoutUser(){
+
+    function logoutUser(){
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/TEACHER/login/login.html";

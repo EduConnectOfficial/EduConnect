@@ -27,7 +27,6 @@
     .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
 
     /* Header */
-   
     .logo-header{height:44px}
     .search-box{max-width:520px;width:100%}
     .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
@@ -38,6 +37,18 @@
     .page-title{font-weight:800;font-size:1.6rem;margin:0;color:transparent;
       background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
       -webkit-background-clip:text;background-clip:text}
+
+    /* ui-card themed toolbar */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
 
     /* Cards */
     .card-shell{
@@ -60,11 +71,8 @@
     .help-btn{color:var(--brand-accent-1)!important}
     .help-btn:hover{color:var(--brand-accent-2)!important}
 
-    /* Filter bar */
-    .filter-bar{
-      background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;
-      box-shadow:0 10px 24px rgba(0,0,0,.06)
-    }
+    /* Filter bar (kept for layout spacing) */
+    .filter-bar{padding:0;border:none;box-shadow:none;background:transparent}
     #filterClasses[multiple], #announcementClasses[multiple], #editClasses[multiple]{min-height:110px}
     .form-label{font-weight:600}
 
@@ -104,12 +112,11 @@
 
     <!-- Main -->
     <div class="main">
-        <!-- Header -->
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
           <input id="searchBox" type="text" class="form-control" placeholder="Search..."/>
-
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -117,7 +124,6 @@
           <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
-
 
       <!-- Content -->
       <section class="content">
@@ -129,32 +135,51 @@
             <button class="btn btn-amber" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
               <i class="bi bi-bell-plus"></i> New Announcement
             </button>
-            
           </div>
         </div>
 
-        <!-- Filters -->
-        <form id="announcementFilterForm" class="filter-bar mb-4">
-          <div class="row g-3">
-            <div class="col-sm-4">
-              <label for="filterClasses" class="form-label">Class</label>
-              <select id="filterClasses" multiple class="form-select"></select>
-            </div>
-            <div class="col-sm-4">
-              <label for="filterStatus" class="form-label">Status</label>
-              <select id="filterStatus" class="form-select">
-                <option value="">All</option>
-                <option value="published">Published</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="expired">Expired</option>
-                <option value="important">Important</option>
-              </select>
-            </div>
-            <div class="col-sm-4 d-flex align-items-end">
-              <button type="submit" class="btn btn-amber w-100">Apply Filters</button>
-            </div>
+        <!-- THEMED TOOLBAR (filters + SORT) -->
+        <div class="ui-card card-themed mb-4">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Your Announcements</h2>
+            <div class="ui-subtext">Everything shows up right away. Use filters or change the order with Sort.</div>
           </div>
-        </form>
+
+          <form id="announcementFilterForm" class="filter-bar">
+            <div class="row g-3 align-items-end">
+              <div class="col-sm-4">
+                <label for="filterClasses" class="form-label">Class</label>
+                <select id="filterClasses" multiple class="form-select"></select>
+              </div>
+
+              <div class="col-sm-3">
+                <label for="filterStatus" class="form-label">Status</label>
+                <select id="filterStatus" class="form-select">
+                  <option value="">All</option>
+                  <option value="published">Published</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="expired">Expired</option>
+                  <option value="important">Important</option>
+                </select>
+              </div>
+
+              <div class="col-sm-3">
+                <label for="sortBy" class="form-label">Sort</label>
+                <select id="sortBy" class="form-select">
+                  <option value="publish_desc" selected>Newest publish date</option>
+                  <option value="publish_asc">Oldest publish date</option>
+                  <option value="title_az">Title A → Z</option>
+                  <option value="status">Status (Published → Scheduled → Expired)</option>
+                </select>
+              </div>
+
+              <div class="col-sm-2 d-grid">
+                <button type="submit" class="btn btn-amber"><i class="bi bi-sliders2-vertical me-1"></i>Apply</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        <!-- /THEMED TOOLBAR -->
 
         <!-- Table -->
         <div class="table-card">
@@ -298,7 +323,7 @@
     });
   </script>
 
-  <!-- Main JS (unchanged, already matched to your backend) -->
+  <!-- Main JS (sorting added) -->
   <script>
     const API_BASE = "http://localhost:5000";
 
@@ -316,6 +341,7 @@
     let CLASS_MAP = {};
     let ANNOUNCEMENTS = [];
     let FILTER = { status:"", classIds:[] };
+    let SORT_BY = 'publish_desc';
 
     // Utils
     const fmtDT = (ts) => {
@@ -370,6 +396,19 @@
     }
 
     document.getElementById("searchBox").addEventListener("input", ()=> renderTable());
+    document.getElementById("sortBy").addEventListener("change", (e)=>{ SORT_BY = e.target.value; renderTable(); });
+
+    function sortAnnouncements(list){
+      const getMs = v => v?.toMillis ? v.toMillis() : (typeof v === 'number' ? v : (v ? new Date(v).getTime() : 0));
+      if (SORT_BY === 'publish_asc')  return list.sort((a,b)=>getMs(a.publishAt)-getMs(b.publishAt));
+      if (SORT_BY === 'title_az')     return list.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+      if (SORT_BY === 'status') {
+        const rank = s => ({published:0, scheduled:1, expired:2}[String(s||'').toLowerCase()] ?? 9);
+        return list.sort((a,b)=>rank(a.status)-rank(b.status));
+      }
+      // default newest publish date
+      return list.sort((a,b)=>getMs(b.publishAt)-getMs(a.publishAt));
+    }
 
     function renderTable() {
       const q = (document.getElementById("searchBox").value || "").toLowerCase();
@@ -377,12 +416,17 @@
       tbody.innerHTML = "";
 
       let list = ANNOUNCEMENTS.slice();
+
+      // client-side search
       if (q) {
         list = list.filter(a =>
           (a.title||"").toLowerCase().includes(q) ||
           (a.content||"").toLowerCase().includes(q)
         );
       }
+
+      // client-side sort
+      sortAnnouncements(list);
 
       if (!list.length) {
         const tr = document.createElement("tr");
@@ -551,117 +595,102 @@
       }
     })();
   </script>
-<script>
-/* ===== Mobile-friendly <input type="datetime-local"> enhancer ===== */
-(function enhanceDateTimeForMobile(){
-  const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
-  if (!isTouch) return; // keep native picker for non-touch devices
 
-  // Build a split UI (date + time) next to a hidden original datetime-local
-  function makeSplitById(id) {
-    const original = document.getElementById(id);
-    if (!original) return null;
+  <script>
+  /* ===== Mobile-friendly <input type="datetime-local"> enhancer ===== */
+  (function enhanceDateTimeForMobile(){
+    const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+    if (!isTouch) return;
 
-    // hide original but keep it in the form so existing code keeps reading .value
-    original.classList.add('dt-hidden');
+    function makeSplitById(id) {
+      const original = document.getElementById(id);
+      if (!original) return null;
+      original.classList.add('dt-hidden');
 
-    // split container placed right after the original input
-    const wrap = document.createElement('div');
-    wrap.className = 'dt-split';
-    original.insertAdjacentElement('afterend', wrap);
+      const wrap = document.createElement('div');
+      wrap.className = 'dt-split';
+      original.insertAdjacentElement('afterend', wrap);
 
-    // inputs
-    const date = document.createElement('input');
-    date.type = 'date';
-    date.className = 'form-control';
-    date.id = id + '__date';
+      const date = document.createElement('input');
+      date.type = 'date';
+      date.className = 'form-control';
+      date.id = id + '__date';
 
-    const time = document.createElement('input');
-    time.type = 'time';
-    time.className = 'form-control';
-    time.id = id + '__time';
-    time.step = 60; // minutes
+      const time = document.createElement('input');
+      time.type = 'time';
+      time.className = 'form-control';
+      time.id = id + '__time';
+      time.step = 60;
 
-    wrap.append(date, time);
+      wrap.append(date, time);
 
-    // seed from original value, if any
-    function seedFromOriginal(){
-      if (!original.value) { date.value = ''; time.value = ''; return; }
-      const d = new Date(original.value);
-      if (isNaN(d)) { date.value=''; time.value=''; return; }
-      date.value = d.toISOString().slice(0,10);
-      time.value = String(d.getHours()).padStart(2,'0') + ':' +
-                   String(d.getMinutes()).padStart(2,'0');
+      function seedFromOriginal(){
+        if (!original.value) { date.value = ''; time.value = ''; return; }
+        const d = new Date(original.value);
+        if (isNaN(d)) { date.value=''; time.value=''; return; }
+        date.value = d.toISOString().slice(0,10);
+        time.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }
+      seedFromOriginal();
+
+      return { original, date, time, wrap, seedFromOriginal };
     }
-    seedFromOriginal();
 
-    return { original, date, time, wrap, seedFromOriginal };
-  }
+    const C_PUB = makeSplitById('publishAt');
+    const C_EXP = makeSplitById('expiresAt');
+    const E_PUB = makeSplitById('editPublishAt');
+    const E_EXP = makeSplitById('editExpiresAt');
 
-  // Create both pairs (create & edit modals)
-  const C_PUB = makeSplitById('publishAt');
-  const C_EXP = makeSplitById('expiresAt');
-  const E_PUB = makeSplitById('editPublishAt');
-  const E_EXP = makeSplitById('editExpiresAt');
+    if (!C_PUB && !C_EXP && !E_PUB && !E_EXP) return;
 
-  if (!C_PUB && !C_EXP && !E_PUB && !E_EXP) return;
+    function toLocalDatetimeValue(dateVal, timeVal){
+      if (!dateVal || !timeVal) return '';
+      const [hh, mm] = String(timeVal).split(':').map(Number);
+      const d = new Date(dateVal);
+      if (isNaN(d)) return '';
+      d.setHours(hh || 0, mm || 0, 0, 0);
+      const y  = d.getFullYear();
+      const mo = String(d.getMonth()+1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      const h  = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      return `${y}-${mo}-${da}T${h}:${mi}`;
+    }
 
-  function toLocalDatetimeValue(dateVal, timeVal){
-    if (!dateVal || !timeVal) return '';
-    const [hh, mm] = String(timeVal).split(':').map(Number);
-    const d = new Date(dateVal);
-    if (isNaN(d)) return '';
-    d.setHours(hh || 0, mm || 0, 0, 0);
-    // "YYYY-MM-DDTHH:MM"
-    const y  = d.getFullYear();
-    const mo = String(d.getMonth()+1).padStart(2,'0');
-    const da = String(d.getDate()).padStart(2,'0');
-    const h  = String(d.getHours()).padStart(2,'0');
-    const mi = String(d.getMinutes()).padStart(2,'0');
-    return `${y}-${mo}-${da}T${h}:${mi}`;
-  }
+    function syncPair(pub, exp){
+      if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
+      if (exp) exp.original.value = toLocalDatetimeValue(exp.date.value, exp.time.value);
+      if (pub && exp) exp.date.min = pub.date.value || '';
+    }
 
-  function syncPair(pub, exp){
-    // write composed values back into hidden originals
-    if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
-    if (exp) exp.original.value = toLocalDatetimeValue(exp.date.value, exp.time.value);
+    function wire(pub, exp){
+      ['input','change'].forEach(ev=>{
+        if (pub) { pub.date.addEventListener(ev, ()=>syncPair(pub,exp));
+                   pub.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
+        if (exp) { exp.date.addEventListener(ev, ()=>syncPair(pub,exp));
+                   exp.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
+      });
+      syncPair(pub, exp);
+    }
 
-    // constraint: expires >= publish
-    if (pub && exp) exp.date.min = pub.date.value || '';
-  }
+    wire(C_PUB, C_EXP);
+    wire(E_PUB, E_EXP);
 
-  function wire(pub, exp){
-    ['input','change'].forEach(ev=>{
-      if (pub) { pub.date.addEventListener(ev, ()=>syncPair(pub,exp));
-                 pub.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
-      if (exp) { exp.date.addEventListener(ev, ()=>syncPair(pub,exp));
-                 exp.time.addEventListener(ev, ()=>syncPair(pub,exp)); }
-    });
-    syncPair(pub, exp);
-  }
+    const createForm = document.getElementById('createAnnouncementForm');
+    const editForm   = document.getElementById('editAnnouncementForm');
+    if (createForm) createForm.addEventListener('submit', ()=>syncPair(C_PUB, C_EXP), true);
+    if (editForm)   editForm.addEventListener('submit',   ()=>syncPair(E_PUB, E_EXP), true);
 
-  // wire up both modal forms
-  wire(C_PUB, C_EXP);
-  wire(E_PUB, E_EXP);
-
-  // Ensure values are ready before each submit
-  const createForm = document.getElementById('createAnnouncementForm');
-  const editForm   = document.getElementById('editAnnouncementForm');
-  if (createForm) createForm.addEventListener('submit', ()=>syncPair(C_PUB, C_EXP), true);
-  if (editForm)   editForm.addEventListener('submit',   ()=>syncPair(E_PUB, E_EXP), true);
-
-  // When the Edit modal is opened, seed the split inputs from whatever
-  // value your code just put into the hidden originals.
-  const editModal = document.getElementById('editAnnouncementModal');
-  if (editModal){
-    editModal.addEventListener('shown.bs.modal', ()=>{
-      if (E_PUB) { E_PUB.seedFromOriginal(); }
-      if (E_EXP) { E_EXP.seedFromOriginal(); }
-      syncPair(E_PUB, E_EXP);
-    });
-  }
-})();
-</script>
+    const editModal = document.getElementById('editAnnouncementModal');
+    if (editModal){
+      editModal.addEventListener('shown.bs.modal', ()=>{
+        if (E_PUB) { E_PUB.seedFromOriginal(); }
+        if (E_EXP) { E_EXP.seedFromOriginal(); }
+        syncPair(E_PUB, E_EXP);
+      });
+    }
+  })();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

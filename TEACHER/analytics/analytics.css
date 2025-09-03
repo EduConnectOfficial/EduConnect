@@ -112,6 +112,26 @@
   color: #6c757d;
 }
 
+ /* --- Themed selects to match your design --- */
+  .toolbar-label{
+    font-weight:700;
+    color:#374151;
+  }
+  .toolbar-select{
+    min-width:260px;
+    border:2px solid var(--border);
+    border-radius:12px;
+    background:#fff;
+    padding:.55rem .9rem;
+    box-shadow:0 1px 2px rgba(0,0,0,.03);
+  }
+  /* keep your brand focus ring + color */
+  .form-control:focus,
+  .form-select:focus,
+  .toolbar-select:focus{
+    border-color:var(--brand-accent-2) !important;
+    box-shadow:0 0 0 .2rem rgba(255,106,0,.18) !important;
+  }
 /* Responsive */
 @media (max-width: 768px) {
   .summary-cards {

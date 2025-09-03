@@ -1,22 +1,70 @@
- :root {
-   --bg: #f6f8fa;
-   --text: #1f2328;
-   --muted: #6a737d;
-   --card: #ffffff;
-   --border: #e5e7eb;
-   --brand-dark-1: #4A1A0C;
-   --brand-dark-2: #7A2810;
-   --brand-accent-1: #FF6A00;
-   --brand-accent-2: #B03C10;
-   --radius: 14px;
- }
+  :root {
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
 
- html,
- body {
-   height: 100%;
-   background: var(--bg);
-   color: var(--text)
- }
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%;position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem;padding-right:36px}
+    .search-box i.fas.fa-search{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6;font-size:.95rem}
+    .profile-btn{color:#fff}
+
+    .content{padding:24px}
+    .page-title{
+      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text;background-clip:text;
+    }
+
+    /* ui-card themed controls */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.06);color:#fff}
+
+    /* Segmented */
+    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
+    .segmented .seg-btn{
+      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
+      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
+      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
+    }
+    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
+    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
+
+    /* Course card */
+    .course-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);
+      box-shadow:0 10px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;padding:14px;height:100%;
+      transition:transform .07s ease, box-shadow .2s ease;}
+    .course-card:hover{transform:translateY(-2px);box-shadow:0 14px 26px rgba(0,0,0,.12)}
+    .course-title{margin:0 0 4px;font-weight:700}
+    .badge-soft{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;
+      padding:2px 10px;font-size:.75rem;color:var(--brand-accent-2);background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12))}
+    .course-meta{color:var(--muted);font-size:.9rem}
+    .course-actions .btn{min-width:90px}
+
+    /* Modals */
+    .modal-header{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;border-bottom:none}
+    .modal-content{border-radius:12px;border:1px solid var(--border)}
+    .modal-footer{border-top:1px solid var(--border)}
+    .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+
+    /* Empty state */
+    .empty-card{background:#fff;border:1px solid var(--border);border-radius:14px}
 
  .dashboard {
    display: flex;

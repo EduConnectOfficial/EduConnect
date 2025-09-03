@@ -26,12 +26,25 @@
     .logo-header{height:45px}
     .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
     .search-box input{border-radius:30px}
+
     .muted{color:#6c757d}
     .q-item{cursor:pointer;border-radius:10px;padding:.5rem .6rem;border:1px solid var(--border);background:#fff}
     .q-item.active{border-color:var(--accent-2);box-shadow:0 0 0 .12rem rgba(176,60,16,.12)}
     .q-item .small{color:#6c757d}
     .sticky-title{position:sticky;top:0;background:#fff;z-index:2;padding:.25rem 0}
     .quiz-q,.student-ans{white-space:pre-wrap}
+
+    /* ui-card themed toolbar (same look as other pages) */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center; color:#ffe9ca}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
   </style>
 </head>
 <body>
@@ -58,9 +71,27 @@
       <section class="content px-4 py-3">
         <h1 class="fw-bold mb-3">Essay Grading</h1>
 
-        <!-- Filters / Toolbar -->
-        <div class="card p-3 mb-3">
+        <!-- THEMED TOOLBAR (Sorting only, no active/archived/all) -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Essay Queue</h2>
+            <div class="ui-subtext">Everything shows up right away. Use Sort if you want a different order.</div>
+          </div>
+
           <div class="row g-2 align-items-end">
+            <!-- Sort -->
+            <div class="col-12 col-lg-3">
+              <label class="form-label fw-semibold">Sort</label>
+              <select id="sortBy" class="form-select" aria-label="Sort list">
+                <option value="submitted_desc" selected>Newest submitted</option>
+                <option value="submitted_asc">Oldest submitted</option>
+                <option value="student_az">Student A → Z</option>
+                <option value="course_az">Course A → Z</option>
+                <option value="module_az">Module A → Z</option>
+              </select>
+            </div>
+
+            <!-- Existing filters kept as-is -->
             <div class="col-12 col-lg-2">
               <label class="form-label fw-semibold">Status</label>
               <select class="form-select" id="statusSelect">
@@ -85,8 +116,8 @@
               </select>
             </div>
 
-            <div class="col-12 col-lg-2">
-              <label class="form-label fw-semibold">Page Size</label>
+            <div class="col-6 col-lg-1">
+              <label class="form-label fw-semibold">Page</label>
               <select class="form-select" id="pageSizeSelect">
                 <option>10</option>
                 <option selected>20</option>
@@ -95,11 +126,12 @@
               </select>
             </div>
 
-            <div class="col-12 col-lg-2 d-flex gap-2 justify-content-end">
+            <div class="col-6 col-lg-0 d-flex justify-content-end">
               <button id="refreshBtn" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-repeat"></i> Refresh</button>
             </div>
           </div>
         </div>
+        <!-- /THEMED TOOLBAR -->
 
         <!-- List (grouped) -->
         <div class="table-responsive card">
@@ -280,6 +312,7 @@
     const nextBtn          = document.getElementById('nextBtn');
     const courseFilterEl   = document.getElementById('courseFilter');
     const moduleFilterEl   = document.getElementById('moduleFilter');
+    const sortByEl         = document.getElementById('sortBy');
 
     // Modal refs
     const qListEl     = document.getElementById('qList');
@@ -371,6 +404,7 @@
       const d = new Date(v);
       return isNaN(d.getTime()) ? '—' : d.toLocaleString();
     }
+    function toMs(v){ if(!v) return 0; if(v._seconds) return v._seconds*1000; const d=new Date(v); return isNaN(d.getTime())?0:d.getTime(); }
 
     async function getCourseLabel(courseId) {
       if (!courseId) return '—';
@@ -399,7 +433,7 @@
       }
     }
 
-    // ====== Normalizer (adjust field names here if needed) ======
+    // ====== Normalizer ======
     function normalizeListResponse(resp) {
       const rawItems = Array.isArray(resp) ? resp
                     : Array.isArray(resp.items) ? resp.items
@@ -408,8 +442,7 @@
 
       const norm = rawItems.map(r => {
         return {
-          // per-essay fields
-          id: r.id || r.submissionId || r.attemptId || r.docId || r._id,   // <-- essay row id
+          id: r.id || r.submissionId || r.attemptId || r.docId || r._id,
           questionTitle: r.questionTitle || r.question_text || r.questionText || r.question || '',
           questionText:  r.questionText  || r.questionTitle || r.question || '',
           answer:        r.answer ?? r.studentAnswer ?? r.essay ?? '',
@@ -418,13 +451,11 @@
           maxScore: (r.maxScore != null) ? Number(r.maxScore) : (r.totalScore != null ? Number(r.totalScore) : 10),
           createdAt: r.createdAt || r.submittedAt || r.created || r.timestamp || null,
 
-          // who/what submission
           studentName:  r.studentName || r.student || r.student_display || r.studentEmail || 'Student',
           studentEmail: r.studentEmail || r.email || null,
-          quizId:   r.quizId || r.quiz_id || r.quiz || '',             // <-- REQUIRED to group
+          quizId:   r.quizId || r.quiz_id || r.quiz || '',
           attemptId: r.attemptId || r.attempt_id || null,
 
-          // for filters/labels
           courseId: r.courseId || r.course_id || '',
           moduleId: r.moduleId || r.module_id || ''
         };
@@ -435,7 +466,6 @@
     }
 
     function groupBySubmission(items) {
-      // key: studentEmail|studentName|quizId|attemptId|courseId|moduleId
       const map = new Map();
       for (const x of items) {
         const key = [
@@ -462,10 +492,8 @@
         }
         const g = map.get(key);
         g.essays.push(x);
-        // earliest createdAt for display
         if (!g.createdAt || (x.createdAt && new Date(x.createdAt) < new Date(g.createdAt))) g.createdAt = x.createdAt;
       }
-      // compute status summary (if any pending -> pending; else if any needs_review -> needs_review; else graded)
       const groups = [...map.values()].map(g => {
         const statuses = g.essays.map(e => e.status);
         let groupStatus = 'graded';
@@ -516,12 +544,8 @@
       grouped   = groupBySubmission(lastItems);
 
       // label caches for current page
-      await Promise.all([
-        ...new Set(grouped.map(g => g.courseId)).values()
-      ].filter(Boolean).map(getCourseLabel));
-      await Promise.all([
-        ...new Set(grouped.map(g => g.moduleId)).values()
-      ].filter(Boolean).map(getModuleLabel));
+      await Promise.all([...new Set(grouped.map(g => g.courseId)).values()].filter(Boolean).map(getCourseLabel));
+      await Promise.all([...new Set(grouped.map(g => g.moduleId)).values()].filter(Boolean).map(getModuleLabel));
 
       applyFiltersAndRender();
     }
@@ -531,7 +555,7 @@
       const fCourse = courseFilterEl.value;
       const fModule = moduleFilterEl.value;
 
-      const filtered = grouped.filter(g => {
+      let view = grouped.filter(g => {
         if (fCourse && g.courseId !== fCourse) return false;
         if (fModule && g.moduleId !== fModule) return false;
         if (q) {
@@ -544,7 +568,18 @@
         return true;
       });
 
-      renderList(filtered);
+      // ---- Sorting (new) ----
+      const sort = sortByEl.value;
+      view.sort((a,b)=>{
+        if (sort === 'submitted_asc')  return toMs(a.createdAt) - toMs(b.createdAt);
+        if (sort === 'student_az')     return (a.studentName||'').localeCompare(b.studentName||'');
+        if (sort === 'course_az')      return (courseLabelCache.get(a.courseId)||'').localeCompare(courseLabelCache.get(b.courseId)||'');
+        if (sort === 'module_az')      return (moduleLabelCache.get(a.moduleId)||'').localeCompare(moduleLabelCache.get(b.moduleId)||'');
+        /* default: newest submitted first */
+        return toMs(b.createdAt) - toMs(a.createdAt);
+      });
+
+      renderList(view);
       renderPager();
     }
 
@@ -630,14 +665,12 @@
       selectedGroup = group;
       selIndex = 0;
 
-      // header lines
       modalStudentLine.textContent = group.studentName || 'Student';
       modalQuizLine.textContent    = `Quiz: ${group.quizId || '—'}`;
       const cLabel = courseLabelCache.get(group.courseId) || '—';
       const mLabel = moduleLabelCache.get(group.moduleId) || '—';
       modalCourseModule.textContent = `Course: ${cLabel} • Module: ${mLabel}`;
 
-      // list + first question
       fillSidebar(group);
       loadQuestionIntoForm(group, selIndex);
 
@@ -651,27 +684,16 @@
         feedback: feedbackInput.value || '',
         status: statusInput.value || 'graded'
       };
-      if (!Number.isFinite(body.score) || body.score < 0) {
-        alert('Score must be a non-negative number.'); return;
-      }
-      if (!Number.isFinite(body.maxScore) || body.maxScore <= 0) {
-        alert('Max must be a positive number.'); return;
-      }
+      if (!Number.isFinite(body.score) || body.score < 0) { alert('Score must be a non-negative number.'); return; }
+      if (!Number.isFinite(body.maxScore) || body.maxScore <= 0) { alert('Max must be a positive number.'); return; }
       await postJson(`/api/teacher/quiz-essays/${encodeURIComponent(eObj.id)}/grade`, body);
-      // update local copy
-      Object.assign(eObj, body);
-      eObj.status = body.status;
+      Object.assign(eObj, body); eObj.status = body.status;
     }
 
     async function saveAll(group) {
       const promises = [];
-      // we reuse the current form state for the currently selected item (ensure it’s applied)
       const current = group.essays[selIndex];
-      if (current) {
-        await saveOne(current);
-      }
-      // but “Save All” means push the server any local changes we made per essay.
-      // Here we simply re-send each essay’s current values (score/max/feedback/status).
+      if (current) { await saveOne(current); }
       for (const e of group.essays) {
         const payload = {
           score: (e.score != null ? e.score : 0),
@@ -700,7 +722,6 @@
       if (!box || !selectedGroup) return;
       const idx = parseInt(box.getAttribute('data-idx'), 10);
       if (!Number.isInteger(idx)) return;
-      // before switching, update current essay object with form values
       const cur = selectedGroup.essays[selIndex];
       if (cur) {
         cur.score = (scoreInput.value !== '' ? Number(scoreInput.value) : cur.score);
@@ -722,7 +743,6 @@
       btn.disabled = true;
       try {
         await saveOne(essay);
-        // refresh list view status badges without reloading page
         fillSidebar(selectedGroup);
         alert('Saved.');
       } catch (err) {
@@ -736,7 +756,6 @@
     prevQBtn.addEventListener('click', () => {
       if (!selectedGroup) return;
       if (selIndex > 0) {
-        // persist current edits in memory
         const cur = selectedGroup.essays[selIndex];
         cur.score = (scoreInput.value !== '' ? Number(scoreInput.value) : cur.score);
         cur.maxScore = Number(maxInput.value) || cur.maxScore;
@@ -781,6 +800,7 @@
     pageSizeSelectEl.addEventListener('change', () => { page = 1; loadEssays().catch(console.error); });
     refreshBtn.addEventListener('click', () => loadEssays().catch(console.error));
     freeSearchEl.addEventListener('input', applyFiltersAndRender);
+    sortByEl.addEventListener('change', applyFiltersAndRender);
 
     courseFilterEl.addEventListener('change', async () => {
       const cid = courseFilterEl.value;
