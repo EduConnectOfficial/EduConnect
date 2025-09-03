@@ -10,92 +10,87 @@
 </head>
 
 <body>
-  <div class="main-container">
-    <div class="top-logo text-center my-4">
-      <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
-    </div>
-
-    <!-- Left Panel -->
-    <div class="left-panel">
-      <h2>Create your<br><strong>Account</strong></h2>
-      <p>Join your classes, take quizzes, and track your progress.</p>
-    </div>
-
-    <!-- Right Panel -->
-    <div class="right-panel">
-      <div class="form-box login-box">
-        <img src="/assets/signup_text.png" alt="Sign Up" class="img-fluid mb-4 justify-content-center" style="max-width: 200px;" />
-
-        <form id="signupStep1Form" novalidate>
-          <!-- Username -->
-          <div class="mb-3 text-start">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" id="username" class="form-control" placeholder="Choose a username" required />
-            <div id="usernameTaken" class="small mt-1"></div>
-          </div>
-
-          <!-- First Name -->
-          <div class="mb-3 text-start">
-            <label for="firstName" class="form-label">First Name</label>
-            <input type="text" id="firstName" class="form-control" placeholder="Enter your first name" required />
-          </div>
-
-          <!-- Middle Name -->
-          <div class="mb-3 text-start">
-            <label for="middleName" class="form-label">Middle Name</label>
-            <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
-          </div>
-
-          <!-- Last Name -->
-          <div class="mb-3 text-start">
-            <label for="lastName" class="form-label">Last Name</label>
-            <input type="text" id="lastName" class="form-control" placeholder="Enter your last name" required />
-          </div>
-
-          <!-- Email -->
-          <div class="mb-3 text-start">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" id="email" class="form-control" placeholder="Enter your email address" required />
-            <div id="emailTaken" class="small mt-1"></div>
-          </div>
-
-          <!-- Password -->
-          <div class="mb-3 text-start">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" class="form-control" placeholder="Create a password" required />
-          </div>
-
-          <!-- Confirm Password -->
-          <div class="mb-3 text-start">
-            <label for="confirmPassword" class="form-label">Confirm Password</label>
-            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required />
-            <ul class="list-unstyled mt-2" id="passwordCriteria">
-              <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
-              <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
-              <li id="numberCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
-              <li id="specialCharCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
-              <li id="matchCheck"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
-            </ul>
-          </div>
-
-          <!-- Show/Hide Password -->
-          <div class="form-check text-start mb-3">
-            <input class="form-check-input" type="checkbox" id="togglePassword" />
-            <label class="form-check-label" for="togglePassword">Show Password</label>
-          </div>
-
-          <!-- Error Messages -->
-          <div id="passwordError" class="text-danger mb-2"></div>
-          <div id="signupError" class="text-danger mb-3"></div>
-
-          <!-- Submit -->
-          <button type="submit" id="submitBtn" class="btn login-btn w-100 mb-3" disabled>Submit</button>
-        </form>
-
-        <p class="options text-white">Already have an account? <a href="../login/login.html">Login</a></p>
-      </div>
-    </div>
+    <!-- Top Logo (same behavior as your login page CSS) -->
+  <div class="top-logo text-center my-4">
+    <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
+
+ <!-- Signup Container -->
+<div class="login-container">
+  <div class="login-box text-center">
+    <img src="/assets/signup_text.png" alt="Login" class="img-fluid mb-4" style="max-width: 200px;" />
+
+    <form id="signupStep1Form" novalidate>
+      <!-- Username -->
+      <div class="mb-3 text-start">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" id="username" class="form-control" placeholder="Choose a username" required />
+        <div id="usernameTaken" class="small mt-1"></div>
+      </div>
+
+      <!-- First Name -->
+      <div class="mb-3 text-start">
+        <label for="firstName" class="form-label">First Name</label>
+        <input type="text" id="firstName" class="form-control" placeholder="Enter your first name" required />
+      </div>
+
+      <!-- Middle Name -->
+      <div class="mb-3 text-start">
+        <label for="middleName" class="form-label">Middle Name</label>
+        <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
+      </div>
+
+      <!-- Last Name -->
+      <div class="mb-3 text-start">
+        <label for="lastName" class="form-label">Last Name</label>
+        <input type="text" id="lastName" class="form-control" placeholder="Enter your last name" required />
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3 text-start">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Enter your email address" required />
+        <div id="emailTaken" class="small mt-1"></div>
+      </div>
+
+      <!-- Password -->
+      <div class="mb-3 text-start">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Create a password" required />
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="mb-3 text-start">
+        <label for="confirmPassword" class="form-label">Confirm Password</label>
+        <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required />
+        <ul class="list-unstyled mt-2" id="passwordCriteria">
+          <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
+          <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
+          <li id="numberCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
+          <li id="specialCharCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
+          <li id="matchCheck"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
+        </ul>
+      </div>
+
+      <!-- Show/Hide Password -->
+      <div class="form-check text-start mb-3">
+        <input class="form-check-input" type="checkbox" id="togglePassword" />
+        <label class="form-check-label" for="togglePassword">Show Password</label>
+      </div>
+
+      <!-- Error Messages -->
+      <div id="passwordError" class="text-danger mb-2"></div>
+      <div id="signupError" class="text-danger mb-3"></div>
+
+      <!-- Submit -->
+      <button type="submit" id="submitBtn" class="btn login-btn w-100 mb-3" disabled>Submit</button>
+    </form>
+
+    <p class="options text-white">
+      Already have an account? <a href="../login/login.html">Login</a>
+    </p>
+  </div>
+</div>
 
   <!-- Success Modal -->
   <div class="modal fade" id="signupSuccessModal" tabindex="-1" aria-labelledby="signupSuccessLabel" aria-hidden="true">
