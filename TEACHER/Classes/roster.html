@@ -169,6 +169,39 @@
     </div>
   </div>
 
+  <!-- Generic INFO Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic CONFIRM Modal -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmOkBtn">Yes, continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
@@ -185,6 +218,53 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", "&#39;");
     }
+
+    // ---------- Modal Helpers ----------
+    const infoModalEl = document.getElementById('infoModal');
+    const infoModal = new bootstrap.Modal(infoModalEl);
+    const infoTitleEl = document.getElementById('infoModalLabel');
+    const infoBodyEl = document.getElementById('infoModalBody');
+
+    function showInfo(title = 'Notice', message = '') {
+      infoTitleEl.textContent = title;
+      infoBodyEl.innerHTML = message;
+      infoModal.show();
+    }
+
+    const confirmModalEl = document.getElementById('confirmModal');
+    const confirmTitleEl = document.getElementById('confirmModalLabel');
+    const confirmBodyEl = document.getElementById('confirmModalBody');
+    const confirmOkBtn = document.getElementById('confirmOkBtn');
+    const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+    const confirmModal = new bootstrap.Modal(confirmModalEl);
+
+   function showConfirm(title = 'Confirm Action', message = 'Are you sure?') {
+  confirmTitleEl.textContent = title;
+  confirmBodyEl.innerHTML = message;
+  return new Promise((resolve) => {
+    const onOk = () => { 
+      cleanup(); 
+      confirmModal.hide();   // 👈 closes the modal automatically
+      resolve(true); 
+    };
+    const onCancel = () => { 
+      cleanup(); 
+      resolve(false); 
+    };
+
+    function cleanup() {
+      confirmOkBtn.removeEventListener('click', onOk);
+      confirmCancelBtn.removeEventListener('click', onCancel);
+      confirmModalEl.removeEventListener('hidden.bs.modal', onCancel);
+    }
+
+    confirmOkBtn.addEventListener('click', onOk, { once: true });
+    confirmCancelBtn.addEventListener('click', onCancel, { once: true });
+    confirmModalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+
+    confirmModal.show();
+  });
+}
 
     // Sidebar
     async function loadSidebar() {
@@ -266,28 +346,34 @@
         document.getElementById('metaCount').textContent = String(students.length);
       } catch (err) {
         console.error('Error loading roster:', err);
+        showInfo('Load Error', 'There was a problem loading the class roster. Please try again.');
       }
     }
 
     // Remove single
-    document.getElementById('rosterBody').addEventListener('click', (e) => {
+    document.getElementById('rosterBody').addEventListener('click', async (e) => {
       const btn = e.target.closest('.remove-btn');
       if (!btn) return;
       const sid = btn.dataset.studentId;
-      removeStudent(sid);
+      await removeStudent(sid);
     });
 
     async function removeStudent(studentId) {
       if (!studentId) return;
-      if (!confirm('Remove this student from the class?')) return;
+      const ok = await showConfirm('Remove Student', 'Remove this student from the class?');
+      if (!ok) return;
       try {
         const res = await fetch(`${API_BASE}/api/classes/${classId}/students/${encodeURIComponent(studentId)}`, { method: 'DELETE' });
         const out = await safeJson(res) || {};
-        if (!res.ok || out.success === false) return alert(out.message || 'Failed to remove student.');
+        if (!res.ok || out.success === false) {
+          showInfo('Remove Failed', escapeHtml(out.message || 'Failed to remove student.'));
+          return;
+        }
         await loadRoster();
+        showInfo('Removed', 'The student was removed from this class.');
       } catch (err) {
         console.error('Error removing student:', err);
-        alert('Network error removing student.');
+        showInfo('Network Error', 'Network error while removing the student.');
       }
     }
 
@@ -318,18 +404,26 @@
       bulkBtn.onclick = async () => {
         const ids = rowChecks.filter(cb => cb.checked).map(cb => cb.dataset.studentId);
         if (!ids.length) return;
-        if (!confirm(`Remove ${ids.length} selected student(s) from the class?`)) return;
 
-        let ok = 0, fail = 0;
+        const ok = await showConfirm(
+          'Bulk Remove',
+          `Remove <strong>${ids.length}</strong> selected student(s) from the class?`
+        );
+        if (!ok) return;
+
+        let removed = 0, failed = 0;
         for (const sid of ids) {
           try {
             const res = await fetch(`${API_BASE}/api/classes/${classId}/students/${encodeURIComponent(sid)}`, { method: 'DELETE' });
             const out = await safeJson(res) || {};
-            if (res.ok && out.success) ok++; else fail++;
-          } catch { fail++; }
+            if (res.ok && out.success) removed++; else failed++;
+          } catch { failed++; }
         }
-        alert(`Bulk remove done.\nRemoved: ${ok}\nFailed: ${fail}`);
         await loadRoster();
+        showInfo('Bulk Remove Complete', `
+          <div><strong>Removed:</strong> ${removed}</div>
+          <div><strong>Failed:</strong> ${failed}</div>
+        `);
       };
 
       bulkBtn.disabled = true;
@@ -401,7 +495,10 @@
 
     document.getElementById('enrollStudentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!_selectedStudentId) return alert('Please pick a student from the results.');
+      if (!_selectedStudentId) {
+        showInfo('Pick a Student', 'Please select a student from the search results first.');
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE}/api/classes/${classId}/students`, {
           method: 'POST',
@@ -409,14 +506,18 @@
           body: JSON.stringify({ studentId: _selectedStudentId })
         });
         const out = await safeJson(res) || {};
-        if (!res.ok || !out.success) return alert(out.message || 'Failed to enroll student.');
+        if (!res.ok || !out.success) {
+          showInfo('Enroll Failed', escapeHtml(out.message || 'Failed to enroll student.'));
+          return;
+        }
         e.target.reset(); clearSearchUI(); lookupStateEl().textContent = '';
         const modal = bootstrap.Modal.getInstance(document.getElementById('enrollStudentModal'));
         modal && modal.hide();
         await loadRoster();
+        showInfo('Enrolled', 'The student was successfully enrolled in this class.');
       } catch (err) {
         console.error('Enroll error:', err);
-        alert('Error enrolling student.');
+        showInfo('Network Error', 'There was a problem enrolling the student. Please try again.');
       }
     });
 
@@ -436,7 +537,10 @@
       const fileInput = document.getElementById('bulkFile');
       const statusEl = document.getElementById('bulkStatus');
       const resultEl = document.getElementById('bulkResult');
-      if (!fileInput.files || !fileInput.files[0]) return alert('Please select a file.');
+      if (!fileInput.files || !fileInput.files[0]) {
+        showInfo('No File', 'Please select a .csv or .xlsx file first.');
+        return;
+      }
 
       statusEl.textContent = 'Uploading and processing…';
       resultEl.classList.add('d-none'); resultEl.innerHTML = '';
@@ -460,15 +564,16 @@
               <div><strong>Errors:</strong> ${r.errors ?? 0}</div>
             </div>`;
           await loadRoster();
+          showInfo('Bulk Enroll Complete', 'Your file has been processed.');
           return;
         }
 
         statusEl.textContent = '';
-        alert(out?.message || `Bulk enroll failed (HTTP ${res.status}).`);
+        showInfo('Bulk Enroll Failed', escapeHtml(out?.message || `Bulk enroll failed (HTTP ${res.status}).`));
       } catch (err) {
         statusEl.textContent = '';
         console.error('Bulk upload error:', err);
-        alert('Bulk upload successfully!');
+        showInfo('Network Error', 'There was a problem uploading or processing the file.');
       }
     });
 
@@ -478,8 +583,11 @@
       classId = params.get('classId');
 
       if (!classId) {
-        alert('Missing classId in URL. Redirecting to class list.');
-        return window.location.href = '/TEACHER/Classes/class_list.html';
+        showInfo('Missing classId', 'Missing classId in URL. You will be redirected to the Class List.');
+        infoModalEl.addEventListener('hidden.bs.modal', () => {
+          window.location.href = '/TEACHER/Classes/class_list.html';
+        }, { once: true });
+        return;
       }
 
       const user = JSON.parse(localStorage.getItem('user') || '{}');

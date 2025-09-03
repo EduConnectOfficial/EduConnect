@@ -12,7 +12,7 @@
   <link href="./ass_upload.css" rel="stylesheet"/>
 
   <style>
-   </style>
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -28,7 +28,8 @@
           <input type="text" id="searchBox" class="form-control" placeholder="Search assignments..."/>
           <i class="fas fa-search position-absolute"></i>
         </div>
-        <button class="profile-btn btn btn-link text-decoration-none"">
+        <!-- fixed extra quote here -->
+        <button class="profile-btn btn btn-link text-decoration-none">
           <i class="fas fa-user-circle fa-2x"></i>
           <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
@@ -113,6 +114,22 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Modal (replaces alert) -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
         </div>
       </div>
     </div>
@@ -274,6 +291,28 @@
     // ==== course -> modules linkage ====
     courseSelect.addEventListener("change", (e) => loadModules(e.target.value));
 
+    // ====== Info modal helper (used instead of alert) ======
+    // (Bootstrap is loaded at the very end of body; we safely reference it on submit after the page is ready.)
+    function showInfoModal({ title = 'Notice', html = '', autoHideMs = 0, onHidden = null } = {}) {
+      const el = document.getElementById('infoModal');
+      const titleEl = document.getElementById('infoModalLabel');
+      const bodyEl = document.getElementById('infoModalBody');
+      titleEl.textContent = title;
+      bodyEl.innerHTML = html;
+
+      const modal = new bootstrap.Modal(el);
+      const handler = () => {
+        el.removeEventListener('hidden.bs.modal', handler);
+        if (typeof onHidden === 'function') onHidden();
+      };
+      el.addEventListener('hidden.bs.modal', handler, { once: true });
+
+      modal.show();
+      if (autoHideMs && autoHideMs > 0) {
+        setTimeout(() => modal.hide(), autoHideMs);
+      }
+    }
+
     // ==== submit ====
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -323,9 +362,15 @@
           return;
         }
 
-        alert("✅ Assignment created!");
-        // Go to course's assignment list
-        window.location.href = `/TEACHER/assignment/assignment_list.html?courseId=${encodeURIComponent(courseId)}`;
+        // ✅ Success: show modal, auto-close, then redirect
+        showInfoModal({
+          title: "Success",
+          html: "✅ Assignment created!",
+          autoHideMs: 1200,
+          onHidden: () => {
+            window.location.href = `/TEACHER/assignment/assignment_list.html?courseId=${encodeURIComponent(courseId)}`;
+          }
+        });
       } catch (err) {
         console.error(err);
         formError.textContent = "Server error while creating assignment.";
@@ -347,93 +392,84 @@
       await loadCourses();
     })();
   </script>
-<script>
-(function enhanceDateTimeForMobile(){
-  const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
-  if (!isTouch) return; // desktop/tablet with mouse -> keep native datetime-local
 
-  // Build a split UI (date + time) next to a hidden original datetime-local
-  function makeSplit(id) {
-    const original = document.getElementById(id);
-    if (!original) return null;
+  <script>
+    (function enhanceDateTimeForMobile(){
+      const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+      if (!isTouch) return; // desktop/tablet with mouse -> keep native datetime-local
 
-    // Hide original but keep in DOM so existing JS keeps working
-    original.classList.add('dt-hidden');
+      function makeSplit(id) {
+        const original = document.getElementById(id);
+        if (!original) return null;
 
-    // Insert split container after the original field
-    const wrap = document.createElement('div');
-    wrap.className = 'dt-split';
-    original.insertAdjacentElement('afterend', wrap);
+        original.classList.add('dt-hidden');
 
-    // Create inputs
-    const date = document.createElement('input');
-    date.type = 'date';
-    date.className = 'form-control';
-    date.id = id + '__date';
+        const wrap = document.createElement('div');
+        wrap.className = 'dt-split';
+        original.insertAdjacentElement('afterend', wrap);
 
-    const time = document.createElement('input');
-    time.type = 'time';
-    time.className = 'form-control';
-    time.id = id + '__time';
-    time.step = 60; // 1-minute steps
+        const date = document.createElement('input');
+        date.type = 'date';
+        date.className = 'form-control';
+        date.id = id + '__date';
 
-    wrap.append(date, time);
+        const time = document.createElement('input');
+        time.type = 'time';
+        time.className = 'form-control';
+        time.id = id + '__time';
+        time.step = 60;
 
-    // If original has value, prefill split inputs
-    if (original.value) {
-      const d = new Date(original.value);
-      if (!isNaN(d)) {
-        date.value = d.toISOString().slice(0,10);
-        time.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        wrap.append(date, time);
+
+        if (original.value) {
+          const d = new Date(original.value);
+          if (!isNaN(d)) {
+            date.value = d.toISOString().slice(0,10);
+            time.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+          }
+        }
+
+        return { original, date, time, wrap };
       }
-    }
 
-    return { original, date, time, wrap };
-  }
+      const pub = makeSplit('publishAt');
+      const due = makeSplit('dueAt');
 
-  const pub = makeSplit('publishAt');
-  const due = makeSplit('dueAt');
+      if (!pub && !due) return;
 
-  if (!pub && !due) return;
+      function toLocalDatetimeValue(dateVal, timeVal){
+        if (!dateVal || !timeVal) return '';
+        const [hh, mm] = timeVal.split(':').map(Number);
+        const d = new Date(dateVal);
+        if (isNaN(d)) return '';
+        d.setHours(hh || 0, mm || 0, 0, 0);
+        const y = d.getFullYear();
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const da = String(d.getDate()).padStart(2,'0');
+        const h = String(d.getHours()).padStart(2,'0');
+        const mi = String(d.getMinutes()).padStart(2,'0');
+        return `${y}-${m}-${da}T${h}:${mi}`;
+      }
 
-  function toLocalDatetimeValue(dateVal, timeVal){
-    if (!dateVal || !timeVal) return '';
-    const [hh, mm] = timeVal.split(':').map(Number);
-    const d = new Date(dateVal);
-    if (isNaN(d)) return '';
-    d.setHours(hh || 0, mm || 0, 0, 0);
-    // produce "YYYY-MM-DDTHH:MM" for input[type=datetime-local]
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const da = String(d.getDate()).padStart(2,'0');
-    const h = String(d.getHours()).padStart(2,'0');
-    const mi = String(d.getMinutes()).padStart(2,'0');
-    return `${y}-${m}-${da}T${h}:${mi}`;
-  }
+      function syncOriginals(){
+        if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
+        if (due) due.original.value = toLocalDatetimeValue(due.date.value, due.time.value);
+        if (pub && due) {
+          due.date.min = pub.date.value || '';
+        }
+      }
 
-  function syncOriginals(){
-    if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
-    if (due) due.original.value = toLocalDatetimeValue(due.date.value, due.time.value);
-    // keep constraint: Due date cannot be before Publish date
-    if (pub && due) {
-      due.date.min = pub.date.value || '';
-    }
-  }
+      ['input','change'].forEach(ev => {
+        if (pub){ pub.date.addEventListener(ev, syncOriginals); pub.time.addEventListener(ev, syncOriginals); }
+        if (due){ due.date.addEventListener(ev, syncOriginals); due.time.addEventListener(ev, syncOriginals); }
+      });
 
-  // Live sync while picking
-  ['input','change'].forEach(ev => {
-    if (pub){ pub.date.addEventListener(ev, syncOriginals); pub.time.addEventListener(ev, syncOriginals); }
-    if (due){ due.date.addEventListener(ev, syncOriginals); due.time.addEventListener(ev, syncOriginals); }
-  });
+      const form = document.getElementById('assignmentForm');
+      if (form) form.addEventListener('submit', syncOriginals, true);
 
-  // Ensure values are ready BEFORE your existing submit handler runs
-  const form = document.getElementById('assignmentForm');
-  if (form) form.addEventListener('submit', syncOriginals, true); // capture phase
-
-  // Initial constraint set
-  syncOriginals();
-})();
-</script>
+      syncOriginals();
+    })();
+  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -39,7 +39,52 @@
    margin-left: 220px;
    width: calc(100% - 220px);
  }
+/* ===== Modal Customization ===== */
 
+/* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
+}
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Modal footer button with gradient */
+.modal-footer .btn,
+#successOkBtn, 
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
+}
+.modal-body {
+  color:black
+}
  /* Header */
  .header-top {
    width: 100%;

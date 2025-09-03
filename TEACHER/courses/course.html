@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -14,6 +13,12 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
   <!-- Your original CSS -->
   <link rel="stylesheet" href="../courses/course.css" />
+
+  <style>
+    /* small visual cue for selected assign cards */
+    .card.border-primary { border-width: 2px !important; }
+    .card.bg-light { background-color: #f8fafc !important; }
+  </style>
 </head>
 
 <body>
@@ -23,7 +28,7 @@
 
     <!-- Main Content -->
     <div class="main">
-       <!-- Header -->
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
@@ -35,7 +40,6 @@
           <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
-
 
       <!-- Upload Form -->
       <div class="upload-container mt-3 p-4">
@@ -49,27 +53,39 @@
 
             <div class="mb-3">
               <label for="courseCategory" class="form-label">Category</label>
-              <input type="text" class="form-control" id="courseCategory" placeholder="e.g. Beginner, Intermediate"
-                required />
+              <input type="text" class="form-control" id="courseCategory" placeholder="e.g. Beginner, Intermediate" required />
             </div>
 
             <div class="mb-3">
               <label for="courseDescription" class="form-label">Course Description</label>
-              <textarea class="form-control" id="courseDescription" rows="4"
-                placeholder="Write a short course description..." required></textarea>
+              <textarea class="form-control" id="courseDescription" rows="4" placeholder="Write a short course description..." required></textarea>
             </div>
 
-            <!-- New Assign-to-Classes Section -->
+            <!-- Assign-to-Classes -->
             <div class="mb-3">
               <label class="form-label">Assign to Classes</label>
-              <div id="assignedClassesContainer" class="row g-3">
-                <!-- JS will inject one col/card per class -->
-              </div>
+              <div id="assignedClassesContainer" class="row g-3"></div>
               <div class="text-white mt-3">Click a card to select which classes get access.</div>
             </div>
 
             <button type="submit" class="btn btn-upload w-100">Upload Course</button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic INFO Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
         </div>
       </div>
     </div>
@@ -93,7 +109,7 @@
               e.preventDefault();
               const p = toggle.closest('.has-submenu');
               p.classList.toggle('open');
-              toggle.setAttribute('aria-expanded', String(!JSON.parse(toggle.getAttribute('aria-expanded'))));
+              toggle.setAttribute('aria-expanded', String(!JSON.parse(toggle.getAttribute('aria-expanded')||'false')));
             });
           });
         })
@@ -112,6 +128,18 @@
     }
     document.getElementById("Username").textContent = userData.username;
 
+    /* ===== Modal helper ===== */
+    const infoModalEl = document.getElementById('infoModal');
+    const infoModal   = new bootstrap.Modal(infoModalEl);
+    const infoTitleEl = document.getElementById('infoModalLabel');
+    const infoBodyEl  = document.getElementById('infoModalBody');
+
+    function showInfo(title = 'Notice', html = '') {
+      infoTitleEl.textContent = title;
+      infoBodyEl.innerHTML = html;
+      infoModal.show();
+    }
+
     // 1) Fetch teacher's classes and render as selectable cards
     async function loadClasses() {
       try {
@@ -121,23 +149,19 @@
 
         const container = document.getElementById("assignedClassesContainer");
         classes.forEach(c => {
-          // col wrapper
           const col = document.createElement("div");
           col.className = "col-6 col-md-4";
 
-          // the card itself
           const card = document.createElement("div");
-          card.className = "card ";
+          card.className = "card";
           card.style.cursor = "pointer";
 
-          // hidden checkbox
           const chk = document.createElement("input");
           chk.type = "checkbox";
           chk.value = c.id;
           chk.className = "d-none";
           card.appendChild(chk);
 
-          // content
           const body = document.createElement("div");
           body.className = "card-body";
           body.innerHTML = `
@@ -146,7 +170,6 @@
           `;
           card.appendChild(body);
 
-          // toggle selection
           card.addEventListener("click", () => {
             const isChecked = !chk.checked;
             chk.checked = isChecked;
@@ -159,6 +182,7 @@
         });
       } catch (e) {
         console.error("Could not load classes:", e);
+        showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
       }
     }
     loadClasses();
@@ -171,11 +195,17 @@
         title:       document.getElementById("courseTitle").value.trim(),
         category:    document.getElementById("courseCategory").value.trim(),
         description: document.getElementById("courseDescription").value.trim(),
-        uploadedBy:  userData.userId,   // better for filtering/ownership later
+        uploadedBy:  userData.userId,
         assignedClasses: Array.from(
           document.querySelectorAll("#assignedClassesContainer input:checked")
         ).map(i => i.value)
       };
+
+      // Basic front-end validation
+      if (!payload.title || !payload.category || !payload.description) {
+        showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Category</strong>, and <strong>Description</strong>.');
+        return;
+      }
 
       try {
         const res = await fetch(`${API}/upload-course`, {
@@ -184,19 +214,23 @@
           body:    JSON.stringify(payload)
         });
         const data = await res.json();
+
         if (data.success) {
-          alert("✅ Course uploaded!");
-          window.location.href = "../courses/course_list.html";
+          // Success modal then redirect
+          showInfo('Success', '✅ Course uploaded!');
+          const redirect = () => window.location.href = "../courses/course_list.html";
+          // redirect when OK/close
+          infoModalEl.addEventListener('hidden.bs.modal', redirect, { once: true });
         } else {
-          alert("❌ " + data.message);
+          showInfo('Upload Failed', (data.message ? `❌ ${data.message}` : '❌ Upload failed.'));
         }
       } catch (err) {
         console.error(err);
-        alert("🚨 Server error");
+        showInfo('Server Error', '🚨 A server error occurred while uploading the course.');
       }
     });
 
-     function logoutUser() {
+    function logoutUser() {
       localStorage.removeItem('user');
       window.location.href = '/TEACHER/login/login.html';
     }

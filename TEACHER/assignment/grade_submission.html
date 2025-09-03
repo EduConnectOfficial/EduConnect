@@ -38,7 +38,6 @@
     .status-graded{background:#eff6ff;color:#1d4ed8;border-color:#c7dbff}
 
     .whitespace-prewrap{white-space:pre-wrap}
-    
   </style>
 </head>
 <body>
@@ -62,12 +61,14 @@
       </header>
 
       <section class="content container-fluid p-4 mt-4">
-        <h1 class="fw-bold mb-0">Assignment Submission Inbox</h1></section>
+        <h1 class="fw-bold mb-0">Assignment Submission Inbox</h1>
+      </section>
+
       <!-- Content -->
       <section class="content container-fluid py-3">
         <!-- Title & meta -->
         <div class="row align-items-center mb-2">
-          <div class="col-md-7">     
+          <div class="col-md-7">
             <div class="brand-grad small" id="assignmentMetaText">—</div>
             <div class="text-muted small" id="summaryText">—</div>
           </div>
@@ -197,6 +198,39 @@
     </div>
   </div>
 
+  <!-- Info Modal (replaces alert) -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal (replaces confirm) -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmYesBtn">Yes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -261,6 +295,42 @@
     let moduleTitle = '—';
     let submissions = [];
     let filtered = [];
+
+    // --- Modal helpers (new) ---
+    function showInfoModal(message, title = 'Notice') {
+      document.getElementById('infoModalLabel').textContent = title;
+      document.getElementById('infoModalBody').textContent = message;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
+    }
+    function showConfirmModal(message, title = 'Confirm') {
+      return new Promise(resolve => {
+        const modalEl = document.getElementById('confirmModal');
+        document.getElementById('confirmModalLabel').textContent = title;
+        document.getElementById('confirmModalBody').textContent = message;
+
+        const yesBtn = document.getElementById('confirmYesBtn');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+        function cleanup() {
+          yesBtn.removeEventListener('click', onYes);
+          modalEl.removeEventListener('hidden.bs.modal', onHide);
+        }
+        function onYes() {
+          cleanup();
+          resolve(true);
+          modal.hide();
+        }
+        function onHide() {
+          cleanup();
+          resolve(false);
+        }
+
+        yesBtn.addEventListener('click', onYes, { once: true });
+        modalEl.addEventListener('hidden.bs.modal', onHide, { once: true });
+
+        modal.show();
+      });
+    }
 
     // --- Utils ---
     function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
@@ -495,62 +565,61 @@
     }
 
     function openViewModal(item){
-  if (!item) return;
+      if (!item) return;
 
-  // Header bits
-  vmStudentName.textContent = item.studentName || item.studentId || '—';
-  const metaParts = [
-    item.assignmentTitle || 'Untitled',
-    item.moduleTitle && item.moduleTitle !== '—' ? item.moduleTitle : null,
-    item.className || null,
-    `Submitted: ${fmt(item.submittedAt)}`,
-    item.dueAt ? `Due: ${fmt(item.dueAt)}` : null,
-  ].filter(Boolean);
-  vmMeta.textContent = metaParts.join(' • ');
+      // Header bits
+      vmStudentName.textContent = item.studentName || item.studentId || '—';
+      const metaParts = [
+        item.assignmentTitle || 'Untitled',
+        item.moduleTitle && item.moduleTitle !== '—' ? item.moduleTitle : null,
+        item.className || null,
+        `Submitted: ${fmt(item.submittedAt)}`,
+        item.dueAt ? `Due: ${fmt(item.dueAt)}` : null,
+      ].filter(Boolean);
+      vmMeta.textContent = metaParts.join(' • ');
 
-  vmStatusBadge.innerHTML = buildStatusBadge(item);
+      vmStatusBadge.innerHTML = buildStatusBadge(item);
 
-  // Files
-  if (item.files && item.files.length){
-    const fileLis = item.files.map(f => {
-      const name = escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file');
-      const href = f.filePath ? toApiUrl(f.filePath) : '#';
-      const sizeTxt = f.size ? ` (${Math.round(f.size / 1024)} KB)` : '';
-      return `<li class="mb-1"><a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
-    }).join('');
+      // Files
+      if (item.files && item.files.length){
+        const fileLis = item.files.map(f => {
+          const name = escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file');
+          const href = f.filePath ? toApiUrl(f.filePath) : '#';
+          const sizeTxt = f.size ? ` (${Math.round(f.size / 1024)} KB)` : '';
+          return `<li class="mb-1"><a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+        }).join('');
 
-    vmFiles.innerHTML = `
-      <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Files</div>
-      <ul class="ps-3 mb-0">${fileLis}</ul>`;
-  } else {
-    vmFiles.innerHTML = `
-      <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Files</div>
-      <div class="text-muted">—</div>`;
-  }
+        vmFiles.innerHTML = `
+          <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Files</div>
+          <ul class="ps-3 mb-0">${fileLis}</ul>`;
+      } else {
+        vmFiles.innerHTML = `
+          <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Files</div>
+          <div class="text-muted">—</div>`;
+      }
 
-  // Note
-  vmNote.innerHTML = `
-    <div class="fw-semibold mb-1"><i class="bi bi-chat-left-text"></i> Student Note</div>
-    <div class="whitespace-prewrap">${escapeHTML(item.text || '').trim() || '—'}</div>`;
+      // Note
+      vmNote.innerHTML = `
+        <div class="fw-semibold mb-1"><i class="bi bi-chat-left-text"></i> Student Note</div>
+        <div class="whitespace-prewrap">${escapeHTML(item.text || '').trim() || '—'}</div>`;
 
-  // Grade
-  const maxPts = (typeof item.maxPoints === 'number') ? item.maxPoints : null;
-  if (typeof item.grade === 'number'){
-    vmGrade.innerHTML = `<div class="fw-semibold">Score: ${item.grade}${maxPts != null ? ` / ${maxPts}` : ''}</div>`;
-  } else {
-    vmGrade.innerHTML = `<div class="text-muted">Not graded</div>`;
-  }
+      // Grade
+      const maxPts = (typeof item.maxPoints === 'number') ? item.maxPoints : null;
+      if (typeof item.grade === 'number'){
+        vmGrade.innerHTML = `<div class="fw-semibold">Score: ${item.grade}${maxPts != null ? ` / ${maxPts}` : ''}</div>`;
+      } else {
+        vmGrade.innerHTML = `<div class="text-muted">Not graded</div>`;
+      }
 
-  // Actions
-  vmDeleteBtn.onclick = () => deleteSubmission(item);
-  vmGradeBtn.onclick  = () => {
-    openGradeModal(item);
-    vm().hide(); // close view modal when opening grade modal
-  };
+      // Actions
+      vmDeleteBtn.onclick = () => deleteSubmission(item);
+      vmGradeBtn.onclick  = () => {
+        openGradeModal(item);
+        vm().hide(); // close view modal when opening grade modal
+      };
 
-  vm().show();
-}
-
+      vm().show();
+    }
 
     function openGradeModal(item){
       if (!item) return;
@@ -573,7 +642,7 @@
       const sId = gradeStudentIdEl.value;
       const grade = Number(gradeInputEl.value);
       const feedback = feedbackInputEl.value.trim();
-      if (Number.isNaN(grade)) { alert('Please enter a valid grade.'); return; }
+      if (Number.isNaN(grade)) { showInfoModal('Please enter a valid grade.', 'Invalid Grade'); return; }
 
       try{
         const res = await fetch(`${API}/api/assignments/${encodeURIComponent(aId)}/submissions/${encodeURIComponent(sId)}`, {
@@ -598,15 +667,21 @@
 
         applyFilters();
         bootstrap.Modal.getOrCreateInstance(gradeModalEl).hide(); // ensure close
+        showInfoModal('Grade saved successfully.', 'Saved');
       }catch(err){
         console.error(err);
-        alert('Failed to save grade. ' + (err.message || 'Unknown error'));
+        showInfoModal('Failed to save grade. ' + (err.message || 'Unknown error'), 'Error');
       }
     });
 
     // Delete submission (allow resubmission)
     async function deleteSubmission(item){
-      if (!confirm('Delete this submission? This will allow the student to resubmit.')) return;
+      const ok = await showConfirmModal(
+        'Delete this submission? This will allow the student to resubmit.',
+        'Delete Submission'
+      );
+      if (!ok) return;
+
       try{
         const res = await fetch(`${API}/api/assignments/${encodeURIComponent(item.assignmentId)}/submissions/${encodeURIComponent(item.studentId)}`, {
           method:'DELETE'
@@ -622,9 +697,11 @@
         // Close view modal if open
         const inst = bootstrap.Modal.getInstance(viewModalEl) || bootstrap.Modal.getOrCreateInstance(viewModalEl);
         inst.hide();
+
+        showInfoModal('Submission deleted.', 'Deleted');
       }catch(err){
         console.error(err);
-        alert('Failed to delete submission. ' + (err.message || 'Unknown error'));
+        showInfoModal('Failed to delete submission. ' + (err.message || 'Unknown error'), 'Error');
       }
     }
 

@@ -30,6 +30,8 @@
     }
     /* Always-visible pills row */
     .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
+    .small-muted { color: #6b7280; font-size: .9rem; }
+    .quiz-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:16px; height:100%; }
   </style>
 </head>
 
@@ -103,7 +105,7 @@
           </div>
         </div>
 
-        <!-- NEW: Always-visible pills -->
+        <!-- Always-visible pills -->
         <div class="pill-row">
           <span id="activeCountPill" class="badge rounded-pill text-bg-light">
             <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
@@ -168,12 +170,74 @@
     const btnActive = document.getElementById('btnActive');
     const btnArchived = document.getElementById('btnArchived');
     const btnAll = document.getElementById('btnAll');
-
-    // NEW: pill DOM
     const elActiveCount = document.getElementById('activeCount');
     const elArchivedCount = document.getElementById('archivedCount');
-    const elResultsCount = document.getElementById('quizCount');
-    const elResultsPill = document.getElementById('quizCountPill');
+
+    // ---------- Status Modal (replaces alert) ----------
+    const statusModalEl = document.createElement('div');
+    statusModalEl.innerHTML = `
+      <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header" id="statusHeader">
+              <h5 class="modal-title" id="statusTitle">Notice</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="statusBody">—</div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="statusOkBtn">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(statusModalEl.firstElementChild);
+    const statusHeader = document.getElementById('statusHeader');
+    const statusTitle  = document.getElementById('statusTitle');
+    const statusBody   = document.getElementById('statusBody');
+    const statusModal  = () => new bootstrap.Modal(document.getElementById('statusModal'));
+    function showStatus(message, { title, variant="info" } = {}) {
+      statusTitle.textContent = title || (variant === "error" ? "Error" : variant === "success" ? "Success" : "Notice");
+      statusBody.textContent  = message;
+      statusHeader.className  = "modal-header";
+      if (variant === "error")  statusHeader.classList.add('bg-danger','text-white');
+      if (variant === "success")statusHeader.classList.add('bg-success','text-white');
+      if (variant === "info")   statusHeader.classList.add('bg-info','text-white');
+      statusModal().show();
+    }
+
+    // ---------- Delete Confirmation Modal ----------
+    const deleteModalWrap = document.createElement('div');
+    deleteModalWrap.innerHTML = `
+      <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="deleteConfirmTitle">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title" id="deleteConfirmTitle"><i class="bi bi-exclamation-triangle me-1"></i>Confirm Delete</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="deleteConfirmBody">
+              Delete this quiz?<br><br>
+              This will <strong>PERMANENTLY</strong> remove:
+              <ul class="mb-0">
+                <li>the quiz and its questions</li>
+                <li>ALL student attempts/scores for this quiz</li>
+                <li>ANY essay submissions linked to this quiz</li>
+              </ul>
+              <div class="mt-3 text-danger fw-semibold">This cannot be undone.</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <!-- AUTO-CLOSE ON CLICK -->
+              <button type="button" class="btn btn-danger" id="deleteConfirmBtn" data-bs-dismiss="modal">
+                <i class="bi bi-trash me-1"></i> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(deleteModalWrap.firstElementChild);
+    const deleteConfirmBtn   = document.getElementById('deleteConfirmBtn');
+    let pendingDelete = null; // { id, btnEl }
 
     // State
     let coursesList = [];          // [{id,title,courseNumber,label}]
@@ -214,8 +278,7 @@
       coursesList = courses.map((c, idx) => {
         const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
         const title = c.title || c.name || 'Untitled';
-        theLabel = `#${n} — ${title}`;
-        const label = theLabel;
+        const label = `#${n} — ${title}`;
         courseMap.set(c.id, { title, courseNumber: n, label });
         return { id: c.id, title, courseNumber: n, label };
       });
@@ -306,7 +369,7 @@
       }
     }
 
-    // NEW: update active/archived counts (full snapshot)
+    // update active/archived counts
     function refreshQuizPills() {
       const activeCount = masterQuizzes.filter(z => !z._archived).length;
       const archivedCount = masterQuizzes.filter(z => z._archived).length;
@@ -339,11 +402,6 @@
       else list.sort((a, b) => (b._createdMs ?? 0) - (a._createdMs ?? 0));
 
       filtered = list;
-
-      // NEW: update Results pill (null-safe & auto-hide)
-      if (elResultsCount) elResultsCount.textContent = String(filtered.length);
-      if (elResultsPill) elResultsPill.classList.toggle('d-none', filtered.length <= 0);
-
       renderGrid();
     }
 
@@ -367,49 +425,51 @@
         });
         const j = await res.json().catch(() => ({}));
         if (!res.ok || !j.success) {
-          alert(j.message || 'Archive endpoint not found on server. Please add PATCH /quizzes/:id/archive.');
+          showStatus(j.message || 'Archive endpoint not found on server. Please add PATCH /quizzes/:id/archive.', { variant: 'error' });
           return;
         }
         await preloadAllQuizzes();
         applyFilters();
+        showStatus(on ? 'Quiz archived.' : 'Quiz unarchived.', { variant: 'success' });
       } catch (e) {
         console.error(e);
-        alert('Server error while updating archive state.');
+        showStatus('Server error while updating archive state.', { variant: 'error' });
       } finally {
         restore();
       }
     }
 
-    // DELETE
+    // DELETE with Confirmation Modal
     async function deleteQuiz(id, btnEl) {
-      const warn = `Delete this quiz?
+      pendingDelete = { id, btnEl };
+      new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+    }
 
-This will PERMANENTLY remove:
-• the quiz and its questions
-• ALL student attempts/scores for this quiz
-• ANY essay submissions linked to this quiz
-
-This cannot be undone. Continue?`;
-      if (!confirm(warn)) return;
+    // Handle confirm click (modal auto-closes via data-bs-dismiss on the button)
+    deleteConfirmBtn.addEventListener('click', async () => {
+      const ctx = pendingDelete;
+      if (!ctx) return;
+      const { id, btnEl } = ctx;
+      pendingDelete = null;
 
       const restore = withSpinner(btnEl);
       try {
         const res = await fetch(`${API}/quizzes/${id}`, { method: 'DELETE' });
         const j = await res.json().catch(() => ({}));
         if (res.ok && j.success) {
-          alert(j.message || 'Quiz deleted.');
+          showStatus(j.message || 'Quiz deleted.', { variant: 'success' });
           await preloadAllQuizzes();
           applyFilters();
         } else {
-          alert(j.message || 'Failed to delete quiz.');
+          showStatus(j.message || 'Failed to delete quiz.', { variant: 'error' });
         }
       } catch (e) {
         console.error(e);
-        alert('Server error while deleting the quiz.');
+        showStatus('Server error while deleting the quiz.', { variant: 'error' });
       } finally {
         restore();
       }
-    }
+    });
 
     function renderGrid() {
       if (!filtered.length) {
@@ -491,14 +551,14 @@ This cannot be undone. Continue?`;
       }).join('');
     }
 
-    // Build ID map for editing (optional; keeps your existing editor flow)
+    // Build ID map for editing
     let quizzesById = {};
     function rebuildQuizMap() { quizzesById = {}; masterQuizzes.forEach(q => quizzesById[q.id] = q); }
 
     function openEdit(id) {
       rebuildQuizMap();
       const quiz = quizzesById[id];
-      if (!quiz) return alert('Quiz not found.');
+      if (!quiz) { showStatus('Quiz not found.', { variant: 'error' }); return; }
 
       document.getElementById('titleEdit').value = quiz.title || '';
       document.getElementById('descEdit').value = quiz.description || '';
@@ -599,8 +659,8 @@ This cannot be undone. Continue?`;
     (async function init() {
       try {
         await loadCourses();
-        await preloadAllQuizzes(); // also refreshes pills
-        applyFilters();            // updates Results pill
+        await preloadAllQuizzes();
+        applyFilters();
       } catch (e) {
         console.error(e);
       }
@@ -758,16 +818,16 @@ This cannot be undone. Continue?`;
         });
         const j = await res.json();
         if (j.success) {
-          alert('Quiz updated.');
+          showStatus('Quiz updated.', { variant: 'success' });
           bootstrap.Modal.getInstance(document.getElementById('editQuizModal')).hide();
           await preloadAllQuizzes();
-          applyFilters(); // refresh Results pill
+          applyFilters(); // refresh grid
         } else {
-          alert(j.message || 'Failed to update quiz.');
+          showStatus(j.message || 'Failed to update quiz.', { variant: 'error' });
         }
       } catch (err) {
         console.error(err);
-        alert('Server error.');
+        showStatus('Server error.', { variant: 'error' });
       }
     });
   </script>

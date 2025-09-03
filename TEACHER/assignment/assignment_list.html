@@ -187,6 +187,39 @@
   </div>
   <!-- /EDIT MODAL -->
 
+  <!-- GENERIC INFO MODAL -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOk">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERIC CONFIRM MODAL -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Please Confirm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmNoBtn">Cancel</button>
+          <button type="button" class="btn btn-amber" id="confirmYesBtn">Yes, proceed</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast-fixed">
     <div id="actionToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -312,6 +345,44 @@
       el.querySelector('.toast-body').textContent = msg;
       const t = bootstrap.Toast.getOrCreateInstance(el, { delay: 1600 });
       t.show();
+    }
+
+    // ===== Modals helpers =====
+    function showInfoModal({ title = 'Notice', html = '', autoHideMs = 0, onHidden = null } = {}) {
+      const el = document.getElementById('infoModal');
+      document.getElementById('infoModalLabel').textContent = title;
+      document.getElementById('infoModalBody').innerHTML = html;
+      const modal = new bootstrap.Modal(el);
+      if (onHidden) el.addEventListener('hidden.bs.modal', onHidden, { once: true });
+      modal.show();
+      if (autoHideMs > 0) setTimeout(() => modal.hide(), autoHideMs);
+    }
+    function showConfirmModal({ title = 'Please Confirm', html = 'Are you sure?', yesText = 'Yes, proceed', noText = 'Cancel' } = {}) {
+      return new Promise(resolve => {
+        const el = document.getElementById('confirmModal');
+        document.getElementById('confirmModalLabel').textContent = title;
+        document.getElementById('confirmModalBody').innerHTML = html;
+        const yesBtn = document.getElementById('confirmYesBtn');
+        const noBtn = document.getElementById('confirmNoBtn');
+        yesBtn.textContent = yesText;
+        noBtn.textContent = noText;
+
+        const modal = new bootstrap.Modal(el);
+        const cleanup = (val) => {
+          yesBtn.removeEventListener('click', onYes);
+          noBtn.removeEventListener('click', onNo);
+          el.removeEventListener('hidden.bs.modal', onDismiss);
+          resolve(val);
+        };
+        function onYes(){ modal.hide(); cleanup(true); }
+        function onNo(){ modal.hide(); cleanup(false); }
+        function onDismiss(){ cleanup(false); }
+
+        yesBtn.addEventListener('click', onYes);
+        noBtn.addEventListener('click', onNo);
+        el.addEventListener('hidden.bs.modal', onDismiss, { once: true });
+        modal.show();
+      });
     }
 
     // Load courses (build map and labels)
@@ -484,12 +555,14 @@
         showToast(archived ? 'Archived. Students can no longer see this.' : 'Unarchived. Students can see this again.', archived ? 'warning' : 'success');
       } catch (e) {
         console.error(e);
-        showToast(e.message || 'Server error while updating.', 'danger');
+        showInfoModal({ title: 'Error', html: escapeHTML(e.message || 'Server error while updating.') });
       }
     }
     function archiveAssignment(id) {
-      if (!confirm('Archive this assignment? Students will no longer see it.')) return;
-      setArchiveState(id, true);
+      showConfirmModal({
+        title: 'Archive Assignment',
+        html: 'Archive this assignment? Students will no longer see it.'
+      }).then(ok => { if (ok) setArchiveState(id, true); });
     }
     function unarchiveAssignment(id) {
       setArchiveState(id, false);
@@ -498,7 +571,7 @@
     // Edit modal open
     async function openEditModal(assignmentId) {
       const elModalRoot = document.getElementById('editAssignmentModal'); // ensure present before using Bootstrap
-      if (!elModalRoot) return alert('Editor unavailable on this page.');
+      if (!elModalRoot) return showInfoModal({ title: 'Editor Unavailable', html: 'Editor unavailable on this page.' });
 
       elEditError.textContent = '';
       elSaveBtn.disabled = false;
@@ -525,7 +598,7 @@
         editModal.show();
       } catch (e) {
         console.error(e);
-        alert('Failed to open editor: ' + e.message);
+        showInfoModal({ title: 'Error', html: 'Failed to open editor: ' + escapeHTML(e.message) });
       }
     }
 
@@ -585,20 +658,27 @@
 
     // Delete assignment
     async function deleteAssignment(id) {
-      if (!confirm("Are you sure you want to delete this assignment? This cannot be undone.")) return;
-      try {
-        const res = await fetch(`${API}/api/assignments/${id}`, { method: 'DELETE' });
-        const js = await res.json();
-        if (!res.ok || !js.success) {
-          alert(js.message || "Failed to delete assignment.");
-          return;
+      showConfirmModal({
+        title: 'Delete Assignment',
+        html: '<strong>Permanently delete</strong> this assignment? This cannot be undone.',
+        yesText: 'Delete',
+        noText: 'Cancel'
+      }).then(async ok => {
+        if (!ok) return;
+        try {
+          const res = await fetch(`${API}/api/assignments/${id}`, { method: 'DELETE' });
+          const js = await res.json();
+          if (!res.ok || !js.success) {
+            showInfoModal({ title: 'Delete Failed', html: escapeHTML(js.message || 'Failed to delete assignment.') });
+            return;
+          }
+          showToast('Assignment deleted.', 'warning');
+          await preloadAllAssignments(); // refresh full list + pills
+        } catch (e) {
+          console.error(e);
+          showInfoModal({ title: 'Server Error', html: 'Server error while deleting.' });
         }
-        showToast('Assignment deleted.', 'warning');
-        await preloadAllAssignments(); // refresh full list + pills
-      } catch (e) {
-        console.error(e);
-        showToast('Server error while deleting.', 'danger');
-      }
+      });
     }
 
     // Render cards with Course + Module pills
