@@ -11,6 +11,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="quiz.list.css" />
+  <!-- Global dashboard CSS -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
 </head>
 
 <body>
@@ -65,6 +67,17 @@
                 <option value="az">Title A → Z</option>
               </select>
             </div>
+
+            <!-- Segmented Active/Archived/All -->
+            <div class="col-12 col-md-5 col-xl-3">
+              <label class="form-label">Show</label>
+              <div class="segmented" role="tablist" aria-label="Quiz visibility">
+                <button id="btnActive" class="seg-btn is-active" role="tab" aria-selected="true">Active</button>
+                <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
+                <button id="btnAll" class="seg-btn is-all" role="tab" aria-selected="false">All</button>
+              </div>
+            </div>
+
             <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
               <button id="newQuizBtn" class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" onclick="goCreateQuiz()">
                 <i class="bi bi-plus-circle me-1"></i>Create Quiz
@@ -125,21 +138,24 @@
     const elGrid = document.getElementById('quizGrid');
     const elSort = document.getElementById('sortBy');
     const elSearch = document.getElementById('searchBox');
+    const btnActive = document.getElementById('btnActive');
+    const btnArchived = document.getElementById('btnArchived');
+    const btnAll = document.getElementById('btnAll');
 
     // State
-    let coursesList = [];              // [{id,title,courseNumber,label}]
-    const courseMap = new Map();       // id -> {title, courseNumber, label}
-    let masterQuizzes = [];            // ALL quizzes across teacher's courses (preloaded)
+    let coursesList = [];          // [{id,title,courseNumber,label}]
+    const courseMap = new Map();   // id -> {title, courseNumber, label}
+    let masterQuizzes = [];        // ALL quizzes for teacher's courses
     let filtered = [];
     let currentCourseId = '';
     let currentModuleId = '';
-    const moduleCache = new Map();     // moduleId -> { title, moduleNumber }
+    let statusFilter = 'active';   // 'active' | 'archived' | 'all'
+    const moduleCache = new Map(); // moduleId -> { title, moduleNumber, courseId }
 
     // Utils
-    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
     function goCreateQuiz() { window.location.href = "/TEACHER/quizzes/quiz.html"; }
     function escapeHTML(str = '') { return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
-    function preview(text, n = 140) { const t = (text || '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; }
+    function preview(text, n = 160) { const t = (text || '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; }
     function tsToMs(ts) {
       if (!ts) return null;
       const s = ts._seconds ?? ts.seconds;
@@ -149,8 +165,6 @@
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d.getTime();
     }
-
-    // Button spinner helper
     function withSpinner(btnEl) {
       if (!btnEl || !(btnEl instanceof HTMLElement)) return () => { };
       const original = btnEl.innerHTML;
@@ -162,7 +176,7 @@
     // Load courses
     async function loadCourses() {
       const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
-      const courses = await res.json(); // plain array
+      const courses = await res.json();
       courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       coursesList = courses.map((c, idx) => {
         const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
@@ -171,13 +185,12 @@
         courseMap.set(c.id, { title, courseNumber: n, label });
         return { id: c.id, title, courseNumber: n, label };
       });
-
       const opts = ['<option value="">All courses</option>'];
       coursesList.forEach(c => opts.push(`<option value="${c.id}">${escapeHTML(c.label)}</option>`));
       elCourse.innerHTML = opts.join('');
     }
 
-    // Fetch module meta and cache it
+    // Module meta cache
     async function getModuleMeta(moduleId) {
       if (!moduleId) return null;
       if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
@@ -193,7 +206,6 @@
       }
     }
 
-    // Populate module selector for a chosen course
     async function populateModuleFilterForCourse(courseId) {
       elModule.disabled = !courseId;
       if (!courseId) {
@@ -214,21 +226,19 @@
       }
     }
 
-    // PRELOAD: all quizzes (only for teacher's courses)
+    // PRELOAD all quizzes (include archived so segmented filter is instant)
     async function preloadAllQuizzes() {
       elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading quizzes…</div></div>`;
       try {
         const res = await fetch(`${API}/quizzes?includeArchived=1`);
         const data = await res.json();
         const all = Array.isArray(data.quizzes) ? data.quizzes : [];
-        const visible = all.filter(q => q.archived !== true && q.isArchived !== true);
 
-
-        // Only keep quizzes whose courseId is one of teacher's courses
+        // Only keep quizzes whose courseId belongs to this teacher's courses
         const allowedCourseIds = new Set(coursesList.map(c => c.id));
         const mine = all.filter(q => allowedCourseIds.has(q.courseId));
 
-        // hydrate with module meta for labels
+        // Hydrate module meta
         const uniqueModuleIds = [...new Set(mine.map(q => q.moduleId).filter(Boolean))];
         await Promise.all(uniqueModuleIds.map(getModuleMeta));
 
@@ -236,7 +246,7 @@
           const m = q.moduleId ? moduleCache.get(q.moduleId) : null;
           return {
             ...q,
-            _archived: !!q.archived,
+            _archived: !!(q.archived || q.isArchived),
             _dueMs: tsToMs(q.dueAt),
             _createdMs: tsToMs(q.createdAt) ?? 0,
             _course: courseMap.get(q.courseId) || null,
@@ -244,7 +254,7 @@
           };
         });
 
-        // Default: all courses/modules, sort by nearest due
+        // Reset filters
         currentCourseId = '';
         currentModuleId = '';
         elCourse.value = '';
@@ -252,30 +262,21 @@
         elModule.disabled = true;
         elSort.value = 'due';
         elSearch.value = '';
-        applyFilters();
+        setSegmentedActive('active'); // default like Assignments
       } catch (e) {
         console.error(e);
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center text-danger">Failed to load quizzes.</div></div>`;
       }
     }
 
-    // Apply search/sort/filter to preloaded list
+    // Filters
     function applyFilters() {
       const q = (elSearch.value || '').toLowerCase().trim();
-
-      // base = all
       let list = masterQuizzes.slice();
 
-      // filter course
-      if (currentCourseId) {
-        list = list.filter(z => z.courseId === currentCourseId);
-      }
-      // filter module (only if a course is chosen)
-      if (currentCourseId && currentModuleId) {
-        list = list.filter(z => z.moduleId === currentModuleId);
-      }
+      if (currentCourseId) list = list.filter(z => z.courseId === currentCourseId);
+      if (currentCourseId && currentModuleId) list = list.filter(z => z.moduleId === currentModuleId);
 
-      // search
       if (q) {
         list = list.filter(z => {
           const hay = `${z.title || ''} ${z.description || ''} ${(z._course?.title) || ''} ${(z._module?.title) || ''}`.toLowerCase();
@@ -283,7 +284,10 @@
         });
       }
 
-      // sort
+      // Status filter (match Assignments)
+      if (statusFilter === 'active') list = list.filter(z => !z._archived);
+      if (statusFilter === 'archived') list = list.filter(z => z._archived);
+
       const s = elSort.value;
       if (s === 'az') list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       else if (s === 'due') list.sort((a, b) => (a._dueMs ?? Infinity) - (b._dueMs ?? Infinity));
@@ -297,9 +301,9 @@
       if (!meta) return '—';
       const n = meta.moduleNumber;
       const t = (meta.title || '').trim();
-      if (n != null && t) return `Module ${n} • ${t}`;
+      if (n != null && t) return `Module ${n} • ${escapeHTML(t)}`;
       if (n != null) return `Module ${n}`;
-      return t || '—';
+      return escapeHTML(t || '—');
     }
 
     // Archive / Unarchive
@@ -317,6 +321,7 @@
           return;
         }
         await preloadAllQuizzes();
+        applyFilters();
       } catch (e) {
         console.error(e);
         alert('Server error while updating archive state.');
@@ -325,7 +330,7 @@
       }
     }
 
-    // DELETE (with cascade)
+    // DELETE
     async function deleteQuiz(id, btnEl) {
       const warn = `Delete this quiz?
 
@@ -342,8 +347,9 @@ This cannot be undone. Continue?`;
         const res = await fetch(`${API}/quizzes/${id}`, { method: 'DELETE' });
         const j = await res.json().catch(() => ({}));
         if (res.ok && j.success) {
-          alert(j.message || 'Quiz deleted (all related scores removed).');
+          alert(j.message || 'Quiz deleted.');
           await preloadAllQuizzes();
+          applyFilters();
         } else {
           alert(j.message || 'Failed to delete quiz.');
         }
@@ -373,29 +379,30 @@ This cannot be undone. Continue?`;
         const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
 
         const courseBadge = qz._course ? `<span class="badge-course"><i class="bi bi-book me-1"></i>${escapeHTML(qz._course.label)}</span>` : '';
-        const moduleBadge = qz._module ? `<span class="badge-module"><i class="bi bi-box me-1"></i>${escapeHTML(fmtModule(qz._module))}</span>` : '';
+        const moduleBadge = qz._module ? `<span class="badge-module"><i class="bi bi-box me-1"></i>${fmtModule(qz._module)}</span>` : '';
 
-        const archivedBadge = qz._archived ? `<span class="badge-archived ms-2"><i class="bi bi-archive me-1"></i>Archived</span>` : '';
+        const archivedPill = qz._archived
+          ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>`
+          : '';
 
-        // Buttons: Primary = Unpublish/Archive OR Publish; Secondary = Delete; Tertiary = Edit
-        const primaryLabel = qz._archived ? 'Publish' : 'Unpublish / Archive';
-        const primaryIcon = qz._archived ? 'bi-upload' : 'bi-archive';
-        const primaryTitle = qz._archived
-          ? 'Publish: make this quiz visible to students again'
-          : 'Unpublish/Archive: hide from students but keep for you';
+        const headerHtml = `
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
+              ${archivedPill}
+            </div>
+            <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
+          </div>
+        `;
 
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
             <div class="quiz-card">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="d-flex align-items-center">
-                  <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
-                  ${archivedBadge}
-                </div>
-                <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
-              </div>
+              ${headerHtml}
 
-              <div class="mb-2 d-flex flex-wrap gap-1">${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}</div>
+              <div class="mb-2 d-flex flex-wrap gap-1">
+                ${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}
+              </div>
 
               <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
 
@@ -411,15 +418,20 @@ This cannot be undone. Continue?`;
               </div>
 
               <div class="d-flex justify-content-end gap-2 mt-3">
-                <button class="btn btn-sm btn-secondary" title="${primaryTitle}"
-                        onclick="setArchive('${qz.id}', ${!qz._archived}, this)">
-                  <i class="bi ${primaryIcon} me-1"></i>${primaryLabel}
-                </button>
-                <button class="btn btn-sm btn-warning" onclick="openEdit('${qz.id}')">
+                ${qz._archived
+            ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
+                               onclick="setArchive('${qz.id}', false, this)">
+                         <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                       </button>`
+            : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
+                               onclick="setArchive('${qz.id}', true, this)">
+                         <i class="bi bi-archive"></i> Archive
+                       </button>`
+          }
+                <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
                   <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-sm btn-danger"
-                        title="Also removes all student scores/attempts for this quiz"
+                <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
                         onclick="deleteQuiz('${qz.id}', this)">
                   <i class="fas fa-trash"></i> Delete
                 </button>
@@ -430,28 +442,28 @@ This cannot be undone. Continue?`;
       }).join('');
     }
 
-    // EDIT SUPPORT
+    // Build ID map for editing (optional; keeps your existing editor flow)
     let quizzesById = {};
-    function rebuildQuizMap(){ quizzesById = {}; masterQuizzes.forEach(q => quizzesById[q.id] = q); }
+    function rebuildQuizMap() { quizzesById = {}; masterQuizzes.forEach(q => quizzesById[q.id] = q); }
 
-    function openEdit(id){
+    function openEdit(id) {
       rebuildQuizMap();
       const quiz = quizzesById[id];
       if (!quiz) return alert('Quiz not found.');
 
       document.getElementById('titleEdit').value = quiz.title || '';
-      document.getElementById('descEdit').value  = quiz.description || '';
+      document.getElementById('descEdit').value = quiz.description || '';
 
       if (quiz.dueAt?.seconds || quiz.dueAt?._seconds) {
         const secs = quiz.dueAt.seconds ?? quiz.dueAt._seconds;
         const d = new Date(secs * 1000);
-        document.getElementById('dueAtEdit').value = d.toISOString().slice(0,16);
+        document.getElementById('dueAtEdit').value = d.toISOString().slice(0, 16);
       } else {
         document.getElementById('dueAtEdit').value = "";
       }
 
       document.getElementById('attemptsEdit').value =
-        (quiz.attemptsAllowed==null || quiz.attemptsAllowed===0) ? 0 : quiz.attemptsAllowed;
+        (quiz.attemptsAllowed == null || quiz.attemptsAllowed === 0) ? 0 : quiz.attemptsAllowed;
 
       const s = quiz.settings || {};
       const timerEnabledEl = document.getElementById('timerEnabledEdit');
@@ -466,10 +478,9 @@ This cannot be undone. Continue?`;
         const on = timerEnabledEl.checked;
         timerMinutesEl.disabled = !on;
         graceSecondsEl.disabled = !on;
-        if (!on){ timerMinutesEl.value = ''; graceSecondsEl.value = ''; }
+        if (!on) { timerMinutesEl.value = ''; graceSecondsEl.value = ''; }
       };
 
-      // Behavior
       const shuffleEl = document.getElementById('shuffleEdit');
       const pageEnabledEl = document.getElementById('paginationEnabledEdit');
       const perPageEl = document.getElementById('perPageEdit');
@@ -485,25 +496,24 @@ This cannot be undone. Continue?`;
         if (!pageEnabledEl.checked) perPageEl.value = 1;
       };
 
-      // Questions
       const body = document.getElementById('editQuizBody');
       body.innerHTML = '';
       (quiz.questions || []).forEach((qq, i) => {
         body.innerHTML += `
           <div class="mb-3 border p-3 rounded">
-            <label class="form-label">Question ${i+1}</label>
-            <input type="text" name="question${i}" class="form-control" value="${escapeHTML(qq.question||'')}" required>
+            <label class="form-label">Question ${i + 1}</label>
+            <input type="text" name="question${i}" class="form-control" value="${escapeHTML(qq.question || '')}" required>
 
             <div class="mt-2">
               <label class="form-label">Choices</label>
-              ${['A','B','C','D'].map(L => `
-                <input type="text" name="${L}${i}" class="form-control mb-1" placeholder="${L}" value="${escapeHTML(qq.choices?.[L]||'')}" ${L==='A'||L==='B'?'required':''}>
+              ${['A', 'B', 'C', 'D'].map(L => `
+                <input type="text" name="${L}${i}" class="form-control mb-1" placeholder="${L}" value="${escapeHTML(qq.choices?.[L] || '')}" ${L === 'A' || L === 'B' ? 'required' : ''}>
               `).join('')}
             </div>
 
             <label class="form-label mt-2">Correct Answer</label>
             <select name="correct${i}" class="form-select">
-              ${['A','B','C','D'].map(L => `<option value="${L}" ${qq.correctAnswer===L?'selected':''}>${L}</option>`).join('')}
+              ${['A', 'B', 'C', 'D'].map(L => `<option value="${L}" ${qq.correctAnswer === L ? 'selected' : ''}>${L}</option>`).join('')}
             </select>
           </div>
         `;
@@ -513,23 +523,6 @@ This cannot be undone. Continue?`;
       new bootstrap.Modal(document.getElementById('editQuizModal')).show();
     }
 
-    async function deleteQuiz(id){
-      if (!confirm('Delete this quiz?')) return;
-      try{
-        const res = await fetch(`${API}/quizzes/${id}`, { method:'DELETE' });
-        const j = await res.json();
-        if (j.success) {
-          alert('Deleted.');
-          await preloadAllQuizzes();
-        } else {
-          alert(j.message || 'Failed to delete quiz.');
-        }
-      }catch(e){
-        console.error(e);
-        alert('Server error.');
-      }
-    }
-
     // Events
     elCourse.addEventListener('change', async () => {
       currentCourseId = elCourse.value || '';
@@ -537,19 +530,29 @@ This cannot be undone. Continue?`;
       await populateModuleFilterForCourse(currentCourseId);
       applyFilters();
     });
-    elModule.addEventListener('change', () => {
-      currentModuleId = elModule.value || '';
-      applyFilters();
-    });
+    elModule.addEventListener('change', () => { currentModuleId = elModule.value || ''; applyFilters(); });
     elSort.addEventListener('change', applyFilters);
     elSearch.addEventListener('input', applyFilters);
 
+    function setSegmentedActive(which) {
+      statusFilter = which;
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
+      applyFilters();
+    }
+    btnActive?.addEventListener('click', () => setSegmentedActive('active'));
+    btnArchived?.addEventListener('click', () => setSegmentedActive('archived'));
+    btnAll?.addEventListener('click', () => setSegmentedActive('all'));
+
     // Boot
-    (async function init(){
-      try{
+    (async function init() {
+      try {
         await loadCourses();
-        await preloadAllQuizzes();  // show everything immediately
-      }catch(e){
+        await preloadAllQuizzes();
+        applyFilters();
+      } catch (e) {
         console.error(e);
       }
     })();
@@ -582,7 +585,8 @@ This cannot be undone. Continue?`;
               <div class="col-md-6">
                 <label class="form-label">Attempts Allowed</label>
                 <div class="input-group">
-                  <input type="number" id="attemptsEdit" min="0" step="1" class="form-control" placeholder="0 = unlimited">
+                  <input type="number" id="attemptsEdit" min="0" step="1" class="form-control"
+                    placeholder="0 = unlimited">
                   <span class="input-group-text">0 = unlimited</span>
                 </div>
               </div>
@@ -600,11 +604,13 @@ This cannot be undone. Continue?`;
               <div class="row g-3 mt-1">
                 <div class="col-md-6">
                   <label class="form-label">Time Limit (minutes)</label>
-                  <input type="number" id="timerMinutesEdit" class="form-control" min="1" step="1" placeholder="e.g., 30" disabled>
+                  <input type="number" id="timerMinutesEdit" class="form-control" min="1" step="1"
+                    placeholder="e.g., 30" disabled>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Grace (seconds)</label>
-                  <input type="number" id="graceSecondsEdit" class="form-control" min="0" step="1" placeholder="e.g., 10" disabled>
+                  <input type="number" id="graceSecondsEdit" class="form-control" min="0" step="1"
+                    placeholder="e.g., 10" disabled>
                 </div>
               </div>
               <div class="form-text mt-1">Auto-submits after time + grace.</div>
@@ -671,7 +677,7 @@ This cannot be undone. Continue?`;
       while (fd.has(`question${i}`)) {
         qs.push({
           question: fd.get(`question${i}`) || '',
-          choices: { A: fd.get(`A${i}`)||'', B: fd.get(`B${i}`)||'', C: fd.get(`C${i}`)||'', D: fd.get(`D${i}`)||'' },
+          choices: { A: fd.get(`A${i}`) || '', B: fd.get(`B${i}`) || '', C: fd.get(`C${i}`) || '', D: fd.get(`D${i}`) || '' },
           correctAnswer: fd.get(`correct${i}`) || 'A'
         });
         i++;
@@ -698,7 +704,7 @@ This cannot be undone. Continue?`;
       try {
         const res = await fetch(`${API}/quizzes/${quizId}`, {
           method: 'PUT',
-          headers: {'Content-Type':'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title, description, questions: qs, settings,
             dueAt, attemptsAllowed: Number.isInteger(attemptsAllowed) ? attemptsAllowed : 0
@@ -708,7 +714,8 @@ This cannot be undone. Continue?`;
         if (j.success) {
           alert('Quiz updated.');
           bootstrap.Modal.getInstance(document.getElementById('editQuizModal')).hide();
-          await preloadAllQuizzes();   // refresh full list so filters still work
+          await preloadAllQuizzes();
+          applyFilters();
         } else {
           alert(j.message || 'Failed to update quiz.');
         }
@@ -723,4 +730,4 @@ This cannot be undone. Continue?`;
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
-</html> 
+</html>
