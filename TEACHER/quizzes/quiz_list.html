@@ -13,6 +13,24 @@
   <link rel="stylesheet" href="quiz.list.css" />
   <!-- Global dashboard CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
+
+  <style>
+    /* Pills + soft badges (inline to ensure present) */
+    .pill{
+      display:inline-flex;align-items:center;gap:.4rem;
+      padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+      border:1px solid var(--border, #e5e7eb);background:#fff;color:#374151;white-space:nowrap;
+    }
+    .pill .bi{font-size:.9rem}
+    .pill-archived{ background:#f3f4f6;border-color:#e5e7eb;color:#374151; }
+    .badge-soft{
+      display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;
+      padding:2px 10px;font-size:.75rem;color:var(--brand-accent-2, #B03C10);
+      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
+    }
+    /* Always-visible pills row */
+    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
+  </style>
 </head>
 
 <body>
@@ -42,8 +60,7 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-ui-checks-grid"></i> Your Course Quizzes</h2>
-            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.
-            </div>
+            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.</div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -84,6 +101,16 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- NEW: Always-visible pills -->
+        <div class="pill-row">
+          <span id="activeCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
+          </span>
+          <span id="archivedCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-archive me-1"></i><span id="archivedCount">0</span> Archived
+          </span>
         </div>
 
         <div id="quizGrid" class="row g-3"></div>
@@ -142,6 +169,12 @@
     const btnArchived = document.getElementById('btnArchived');
     const btnAll = document.getElementById('btnAll');
 
+    // NEW: pill DOM
+    const elActiveCount = document.getElementById('activeCount');
+    const elArchivedCount = document.getElementById('archivedCount');
+    const elResultsCount = document.getElementById('quizCount');
+    const elResultsPill = document.getElementById('quizCountPill');
+
     // State
     let coursesList = [];          // [{id,title,courseNumber,label}]
     const courseMap = new Map();   // id -> {title, courseNumber, label}
@@ -181,7 +214,8 @@
       coursesList = courses.map((c, idx) => {
         const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
         const title = c.title || c.name || 'Untitled';
-        const label = `#${n} — ${title}`;
+        theLabel = `#${n} — ${title}`;
+        const label = theLabel;
         courseMap.set(c.id, { title, courseNumber: n, label });
         return { id: c.id, title, courseNumber: n, label };
       });
@@ -262,11 +296,22 @@
         elModule.disabled = true;
         elSort.value = 'due';
         elSearch.value = '';
-        setSegmentedActive('active'); // default like Assignments
+        setSegmentedActive('active'); // default + will call applyFilters()
+
+        // Update pills from full snapshot
+        refreshQuizPills();
       } catch (e) {
         console.error(e);
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center text-danger">Failed to load quizzes.</div></div>`;
       }
+    }
+
+    // NEW: update active/archived counts (full snapshot)
+    function refreshQuizPills() {
+      const activeCount = masterQuizzes.filter(z => !z._archived).length;
+      const archivedCount = masterQuizzes.filter(z => z._archived).length;
+      if (elActiveCount) elActiveCount.textContent = String(activeCount);
+      if (elArchivedCount) elArchivedCount.textContent = String(archivedCount);
     }
 
     // Filters
@@ -284,7 +329,7 @@
         });
       }
 
-      // Status filter (match Assignments)
+      // Status filter
       if (statusFilter === 'active') list = list.filter(z => !z._archived);
       if (statusFilter === 'archived') list = list.filter(z => z._archived);
 
@@ -294,6 +339,11 @@
       else list.sort((a, b) => (b._createdMs ?? 0) - (a._createdMs ?? 0));
 
       filtered = list;
+
+      // NEW: update Results pill (null-safe & auto-hide)
+      if (elResultsCount) elResultsCount.textContent = String(filtered.length);
+      if (elResultsPill) elResultsPill.classList.toggle('d-none', filtered.length <= 0);
+
       renderGrid();
     }
 
@@ -378,8 +428,8 @@ This cannot be undone. Continue?`;
         const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
         const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
 
-        const courseBadge = qz._course ? `<span class="badge-course"><i class="bi bi-book me-1"></i>${escapeHTML(qz._course.label)}</span>` : '';
-        const moduleBadge = qz._module ? `<span class="badge-module"><i class="bi bi-box me-1"></i>${fmtModule(qz._module)}</span>` : '';
+        const courseBadge = qz._course ? `<span class="badge-soft"><i class="bi bi-book"></i>${escapeHTML(qz._course.label)}</span>` : '';
+        const moduleBadge = qz._module ? `<span class="badge-soft"><i class="bi bi-box"></i>${fmtModule(qz._module)}</span>` : '';
 
         const archivedPill = qz._archived
           ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>`
@@ -419,15 +469,14 @@ This cannot be undone. Continue?`;
 
               <div class="d-flex justify-content-end gap-2 mt-3">
                 ${qz._archived
-            ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
-                               onclick="setArchive('${qz.id}', false, this)">
+                  ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
+                             onclick="setArchive('${qz.id}', false, this)">
                          <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-                       </button>`
-            : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
-                               onclick="setArchive('${qz.id}', true, this)">
+                     </button>`
+                  : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
+                             onclick="setArchive('${qz.id}', true, this)">
                          <i class="bi bi-archive"></i> Archive
-                       </button>`
-          }
+                     </button>`}
                 <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
                   <i class="fas fa-edit"></i> Edit
                 </button>
@@ -550,8 +599,8 @@ This cannot be undone. Continue?`;
     (async function init() {
       try {
         await loadCourses();
-        await preloadAllQuizzes();
-        applyFilters();
+        await preloadAllQuizzes(); // also refreshes pills
+        applyFilters();            // updates Results pill
       } catch (e) {
         console.error(e);
       }
@@ -585,8 +634,7 @@ This cannot be undone. Continue?`;
               <div class="col-md-6">
                 <label class="form-label">Attempts Allowed</label>
                 <div class="input-group">
-                  <input type="number" id="attemptsEdit" min="0" step="1" class="form-control"
-                    placeholder="0 = unlimited">
+                  <input type="number" id="attemptsEdit" min="0" step="1" class="form-control" placeholder="0 = unlimited">
                   <span class="input-group-text">0 = unlimited</span>
                 </div>
               </div>
@@ -604,13 +652,11 @@ This cannot be undone. Continue?`;
               <div class="row g-3 mt-1">
                 <div class="col-md-6">
                   <label class="form-label">Time Limit (minutes)</label>
-                  <input type="number" id="timerMinutesEdit" class="form-control" min="1" step="1"
-                    placeholder="e.g., 30" disabled>
+                  <input type="number" id="timerMinutesEdit" class="form-control" min="1" step="1" placeholder="e.g., 30" disabled>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Grace (seconds)</label>
-                  <input type="number" id="graceSecondsEdit" class="form-control" min="0" step="1"
-                    placeholder="e.g., 10" disabled>
+                  <input type="number" id="graceSecondsEdit" class="form-control" min="0" step="1" placeholder="e.g., 10" disabled>
                 </div>
               </div>
               <div class="form-text mt-1">Auto-submits after time + grace.</div>
@@ -715,7 +761,7 @@ This cannot be undone. Continue?`;
           alert('Quiz updated.');
           bootstrap.Modal.getInstance(document.getElementById('editQuizModal')).hide();
           await preloadAllQuizzes();
-          applyFilters();
+          applyFilters(); // refresh Results pill
         } else {
           alert(j.message || 'Failed to update quiz.');
         }

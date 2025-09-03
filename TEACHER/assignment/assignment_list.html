@@ -23,18 +23,22 @@
       border:1px solid var(--border, #e5e7eb);background:#fff;color:#374151;white-space:nowrap;
     }
     .pill .bi{font-size:.9rem}
-    .pill-course{
-      background:#fff7ed;border-color:#fed7aa;color:#9a3412; /* orange */
-    }
-    .pill-module{
-      background:#ecfdf5;border-color:#a7f3d0;color:#065f46; /* emerald */
-    }
-    .pill-archived{
-      background:#f3f4f6;border-color:#e5e7eb;color:#374151; /* gray */
+    .pill-course{ background:#fff7ed;border-color:#fed7aa;color:#9a3412; }
+    .pill-module{ background:#ecfdf5;border-color:#a7f3d0;color:#065f46; }
+    .pill-archived{ background:#f3f4f6;border-color:#e5e7eb;color:#374151; }
+
+    /* Soft badge used for points display */
+    .badge-soft{
+      display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;
+      padding:2px 10px;font-size:.75rem;color:var(--brand-accent-2, #B03C10);
+      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
     }
 
     /* keep toast anchored */
     .toast-fixed{position:fixed;right:16px;bottom:16px;z-index:1056}
+
+    /* Pills row (always-visible counts) */
+    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
   </style>
 </head>
 
@@ -101,7 +105,16 @@
               </button>
             </div>
           </div>
+        </div>
 
+        <!-- NEW: Always-visible count pills -->
+        <div class="pill-row">
+          <span id="activeCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
+          </span>
+          <span id="archivedCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-archive me-1"></i><span id="archivedCount">0</span> Archived
+          </span>
         </div>
 
         <div id="assignmentGrid" class="row g-3"></div>
@@ -232,6 +245,12 @@
     const btnArchived = document.getElementById('btnArchived');
     const btnAll = document.getElementById('btnAll');
 
+    // NEW: pill DOM
+    const elActiveCount = document.getElementById('activeCount');
+    const elArchivedCount = document.getElementById('archivedCount');
+    const elResultsCount = document.getElementById('assignmentCount');
+    const elResultsPill = document.getElementById('assignmentCountPill');
+
     // Edit modal DOM
     let editModal; // bootstrap modal instance
     const elEditId = document.getElementById('editAssignmentId');
@@ -248,12 +267,12 @@
     const elSaveText = elSaveBtn.querySelector('.save-text');
 
     // State
-    let coursesList = [];                // [{id,title,courseNumber}, ...]
-    let courseMap = new Map();           // id -> {title, courseNumber, label}
-    let masterAssignments = [];          // ALL assignments across courses (preloaded)
+    let coursesList = [];
+    let courseMap = new Map();
+    let masterAssignments = [];
     let filtered = [];
-    let currentCourseId = '';            // '' means "All courses"
-    let statusFilter = 'active';         // 'active' | 'archived' | 'all'
+    let currentCourseId = '';
+    let statusFilter = 'active';
 
     // Cache for module lookups (moduleId -> { title, moduleNumber })
     const moduleCache = new Map();
@@ -365,7 +384,7 @@
       });
     }
 
-    // PRELOAD: load assignments across ALL courses (includes archived for teacher control)
+    // PRELOAD: load assignments across ALL courses (includes archived)
     async function preloadAllAssignments() {
       if (!coursesList.length) return;
       elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading assignments…</div></div>`;
@@ -404,8 +423,18 @@
       elSort.value = 'due';
       elSearch.value = '';
       statusFilter = 'active';
-      setSegmentedActive('active');
-      applyFilters();
+      setSegmentedActive('active'); // will call applyFilters()
+
+      // Update always-visible pills from full snapshot
+      refreshAssignmentPills();
+    }
+
+    // NEW: update active/archived counts from full snapshot
+    function refreshAssignmentPills() {
+      const activeCount = masterAssignments.filter(a => a.archived !== true).length;
+      const archivedCount = masterAssignments.filter(a => a.archived === true).length;
+      if (elActiveCount) elActiveCount.textContent = String(activeCount);
+      if (elArchivedCount) elArchivedCount.textContent = String(archivedCount);
     }
 
     // Apply search/sort/filter
@@ -431,6 +460,11 @@
       else list.sort((a, b) => (b._createdMs ?? b._pubMs ?? 0) - (a._createdMs ?? a._pubMs ?? 0));   // newest
 
       filtered = list;
+
+      // NEW: update Results pill (null-safe & auto-hide on 0)
+      if (elResultsCount) elResultsCount.textContent = String(filtered.length);
+      if (elResultsPill) elResultsPill.classList.toggle('d-none', filtered.length <= 0);
+
       renderGrid();
     }
 
@@ -446,7 +480,7 @@
         if (!res.ok || js.success === false) {
           throw new Error(js.message || 'Failed to update archive state.');
         }
-        await preloadAllAssignments();
+        await preloadAllAssignments(); // refresh list + pills
         showToast(archived ? 'Archived. Students can no longer see this.' : 'Unarchived. Students can see this again.', archived ? 'warning' : 'success');
       } catch (e) {
         console.error(e);
@@ -463,6 +497,9 @@
 
     // Edit modal open
     async function openEditModal(assignmentId) {
+      const elModalRoot = document.getElementById('editAssignmentModal'); // ensure present before using Bootstrap
+      if (!elModalRoot) return alert('Editor unavailable on this page.');
+
       elEditError.textContent = '';
       elSaveBtn.disabled = false;
       elSaveSpinner.classList.add('visually-hidden');
@@ -484,7 +521,7 @@
         // Load modules list for this course & preselect current
         await loadModulesForCourse(a.courseId, a.moduleId);
 
-        if (!editModal) editModal = new bootstrap.Modal(document.getElementById('editAssignmentModal'));
+        if (!editModal) editModal = new bootstrap.Modal(elModalRoot);
         editModal.show();
       } catch (e) {
         console.error(e);
@@ -493,55 +530,58 @@
     }
 
     // Save edit (PATCH)
-    elEditForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      elEditError.textContent = '';
+    const elEditFormRef = document.getElementById('editForm');
+    if (elEditFormRef) {
+      elEditFormRef.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        elEditError.textContent = '';
 
-      const id = elEditId.value;
-      const title = elEditTitle.value.trim();
-      const content = elEditContent.value.trim();
-      const pointsStr = elEditPoints.value;
-      const publishVal = elEditPublish.value;
-      const dueVal = elEditDue.value;
-      const moduleId = elEditModule.value;
+        const id = elEditId.value;
+        const title = elEditTitle.value.trim();
+        const content = elEditContent.value.trim();
+        const pointsStr = elEditPoints.value;
+        const publishVal = elEditPublish.value;
+        const dueVal = elEditDue.value;
+        const moduleId = elEditModule.value;
 
-      if (!title || !content) {
-        elEditError.textContent = 'Title and Content are required.';
-        return;
-      }
-
-      const payload = { title, content };
-      if (pointsStr !== '') payload.points = Number(pointsStr);
-      if (publishVal) payload.publishAt = String(new Date(publishVal).getTime());
-      if (dueVal) payload.dueAt = String(new Date(dueVal).getTime());
-      if (moduleId) payload.moduleId = moduleId;
-
-      elSaveBtn.disabled = true;
-      elSaveSpinner.classList.remove('visually-hidden');
-      elSaveText.textContent = 'Saving…';
-
-      try {
-        const res = await fetch(`${API}/api/assignments/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const js = await res.json();
-        if (!res.ok || js.success === false) {
-          throw new Error(js.message || js.error || 'Failed to save changes.');
+        if (!title || !content) {
+          elEditError.textContent = 'Title and Content are required.';
+          return;
         }
 
-        await preloadAllAssignments();   // refresh full list for consistency
-        editModal.hide();
-      } catch (err) {
-        console.error(err);
-        elEditError.textContent = err.message || 'Server error while saving.';
-      } finally {
-        elSaveBtn.disabled = false;
-        elSaveSpinner.classList.add('visually-hidden');
-        elSaveText.textContent = 'Save Changes';
-      }
-    });
+        const payload = { title, content };
+        if (pointsStr !== '') payload.points = Number(pointsStr);
+        if (publishVal) payload.publishAt = String(new Date(publishVal).getTime());
+        if (dueVal) payload.dueAt = String(new Date(dueVal).getTime());
+        if (moduleId) payload.moduleId = moduleId;
+
+        elSaveBtn.disabled = true;
+        elSaveSpinner.classList.remove('visually-hidden');
+        elSaveText.textContent = 'Saving…';
+
+        try {
+          const res = await fetch(`${API}/api/assignments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const js = await res.json();
+          if (!res.ok || js.success === false) {
+            throw new Error(js.message || js.error || 'Failed to save changes.');
+          }
+
+          await preloadAllAssignments();   // refresh full list + pills
+          if (editModal) editModal.hide();
+        } catch (err) {
+          console.error(err);
+          elEditError.textContent = err.message || 'Server error while saving.';
+        } finally {
+          elSaveBtn.disabled = false;
+          elSaveSpinner.classList.add('visually-hidden');
+          elSaveText.textContent = 'Save Changes';
+        }
+      });
+    }
 
     // Delete assignment
     async function deleteAssignment(id) {
@@ -554,7 +594,7 @@
           return;
         }
         showToast('Assignment deleted.', 'warning');
-        await preloadAllAssignments(); // refresh full list
+        await preloadAllAssignments(); // refresh full list + pills
       } catch (e) {
         console.error(e);
         showToast('Server error while deleting.', 'danger');
@@ -575,7 +615,6 @@
           ? `<span class="pill pill-course"><i class="bi bi-collection"></i>${escapeHTML(a.courseLabel)}</span>`
           : '';
 
-        // Module pill label: "#N — Title" if both exist; otherwise whichever is present
         let moduleLabel = '';
         if (a.moduleNumber != null && (a.moduleTitle || '').trim()) moduleLabel = `#${a.moduleNumber} — ${escapeHTML(a.moduleTitle)}`;
         else if (a.moduleNumber != null) moduleLabel = `#${a.moduleNumber}`;
@@ -659,11 +698,11 @@
         await loadCourses();
         const params = new URLSearchParams(location.search);
         const preCourse = params.get('courseId');
-        await preloadAllAssignments(); // load all (includes archived)
+        await preloadAllAssignments(); // load all (includes archived) + refresh pills
         if (preCourse && courseMap.has(preCourse)) {
           currentCourseId = preCourse;
           elCourse.value = preCourse;
-          applyFilters();
+          applyFilters(); // will also refresh results pill
         }
       } catch (e) {
         console.error(e);

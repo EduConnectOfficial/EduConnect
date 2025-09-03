@@ -60,6 +60,18 @@
     .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
     .btn-amber:hover{filter:brightness(1.06);color:#fff}
 
+    /* Segmented control */
+    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
+    .segmented .seg-btn{
+      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
+      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
+      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
+    }
+    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
+    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
+
     /* Cards / pills */
     .course-card{
       border:1px solid var(--border);border-radius:var(--radius);background:var(--card);
@@ -85,6 +97,9 @@
 
     /* Empty state */
     .empty-card{background:#fff;border:1px solid var(--border);border-radius:14px}
+
+    /* Pills row spacing */
+    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
   </style>
 </head>
 
@@ -129,7 +144,7 @@
           <input id="searchBox" type="text" placeholder="Search my courses..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn btn">
+        <button class="profile-btn btn" type="button">
           <i class="fas fa-user-circle fa-2x"></i>
           <span id="dashboardUsername" class="username ms-2 fw-semibold"></span>
         </button>
@@ -139,15 +154,16 @@
       <section class="content">
         <h1 class="page-title">Module Management — Select a Course</h1>
 
-        <!-- ui-card controls (ONLY sorting) -->
+        <!-- ui-card controls -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-collection"></i> Your Courses</h2>
-            <div class="ui-subtext">Everything shows up right away. Use sort to change the order.</div>
+            <div class="ui-subtext">Everything shows up right away. Use filters if you need to narrow it down.</div>
           </div>
 
           <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6 col-xl-4">
+            <!-- Sort -->
+            <div class="col-12 col-md-4 col-xl-3">
               <label class="form-label">Sort</label>
               <select id="sortBy" class="form-select" aria-label="Sort courses">
                 <option value="num_asc" selected>Course # (1 → 999)</option>
@@ -157,7 +173,17 @@
               </select>
             </div>
 
-            <div class="col-12 col-xl-2 ms-auto d-flex justify-content-xl-end">
+            <!-- Active / Archived / All -->
+            <div class="col-12 col-md-6 col-xl-5">
+              <label class="form-label">Show</label>
+              <div class="segmented" role="tablist" aria-label="Course visibility">
+                <button id="btnActive"   class="seg-btn is-active"   role="tab" aria-selected="true">Active</button>
+                <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
+                <button id="btnAll"      class="seg-btn is-all"      role="tab" aria-selected="false">All</button>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-4 d-flex justify-content-xl-end">
               <a class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" href="/TEACHER/courses/course.html">
                 <i class="bi bi-plus-lg me-1"></i> Add Course
               </a>
@@ -165,12 +191,15 @@
           </div>
         </div>
 
-        <!-- Count pill -->
-        <div class="mb-2">
-          <span id="courseCountPill" class="badge rounded-pill text-bg-light d-none">
-            <i class="bi bi-journal-text me-1"></i>
-            <span id="courseCount">0</span> courses
+        <!-- ALWAYS-VISIBLE count pills (active & archived + total results) -->
+        <div class="pill-row">
+          <span id="activeCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
           </span>
+          <span id="archivedCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-archive me-1"></i><span id="archivedCount">0</span> Archived
+          </span>
+          
         </div>
 
         <div id="courseList" class="row g-4"></div>
@@ -210,8 +239,32 @@
     // State
     let allCourses = [];
     let currentSort = 'num_asc';  // num_asc | num_desc | az | new
+    let archiveFilter = 'active'; // active | archived | all
 
-    // Load courses (we include archived so they appear; we are not filtering them here)
+    // ALWAYS-visible pills: count active vs archived from full snapshot
+    async function refreshCoursePills() {
+      try {
+        if (!userData?.userId) return;
+        const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
+        const r = await fetch(url);
+        const payload = await r.json();
+        const courses = Array.isArray(payload) ? payload : (payload.courses || []);
+        const activeCount   = courses.filter(c => !c.archived).length;
+        const archivedCount = courses.filter(c =>  c.archived).length;
+        const activeEl = document.getElementById('activeCount');
+        const archEl = document.getElementById('archivedCount');
+        if (activeEl) activeEl.textContent = String(activeCount);
+        if (archEl) archEl.textContent = String(archivedCount);
+      } catch (err) {
+        console.error('refreshCoursePills error:', err);
+        const activeEl = document.getElementById('activeCount');
+        const archEl = document.getElementById('archivedCount');
+        if (activeEl) activeEl.textContent = '0';
+        if (archEl) archEl.textContent = '0';
+      }
+    }
+
+    // Load courses (include archived so we can filter locally)
     async function loadCourses() {
       const courseList = document.getElementById("courseList");
       courseList.innerHTML = `<div class="col-12"><div class="empty-card p-4 text-center text-muted">Loading…</div></div>`;
@@ -227,22 +280,32 @@
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
         allCourses = courses.slice();
 
-        applySearchAndRender();
+        applyFiltersAndRender();
+        refreshCoursePills();
       } catch (err) {
         console.error("Failed to load courses:", err);
         courseList.innerHTML = `<div class="col-12 text-danger">Error loading courses.</div>`;
       }
     }
 
-    function applySearchAndRender(){
+    function applyFiltersAndRender(){
       const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
 
-      let list = allCourses.filter(c =>
-        !q ||
-        (c.title||'').toLowerCase().includes(q) ||
-        (c.category||'').toLowerCase().includes(q) ||
-        String(c.courseNumber||'').toLowerCase().includes(q)
-      );
+      let list = allCourses.filter(c => {
+        const matchesSearch =
+          !q ||
+          (c.title||'').toLowerCase().includes(q) ||
+          (c.category||'').toLowerCase().includes(q) ||
+          String(c.courseNumber||'').toLowerCase().includes(q);
+
+        const isArchived = !!c.archived;
+        const matchesArchive =
+          archiveFilter === 'all' ||
+          (archiveFilter === 'active' && !isArchived) ||
+          (archiveFilter === 'archived' && isArchived);
+
+        return matchesSearch && matchesArchive;
+      });
 
       // Sort
       if (currentSort === 'num_asc') {
@@ -255,10 +318,12 @@
         list.sort((a,b)=> (tsToMs(b.createdAt) ?? (Number(b.courseNumber)||0)) - (tsToMs(a.createdAt) ?? (Number(a.courseNumber)||0)));
       }
 
-      // Count pill
+      // Count pill (now null-safe)
       const count = list.length;
-      document.getElementById('courseCount').textContent = String(count);
-      document.getElementById('courseCountPill').classList.toggle('d-none', count<=0);
+      const countEl = document.getElementById('courseCount');
+      if (countEl) countEl.textContent = String(count);
+      const pillEl = document.getElementById('courseCountPill');
+      if (pillEl) pillEl.classList.toggle('d-none', count<=0);
 
       renderCourses(list);
     }
@@ -273,7 +338,7 @@
             <div class="empty-card text-center p-5">
               <div class="mb-2"><i class="bi bi-inbox" style="font-size:2rem; opacity:.6;"></i></div>
               <h5 class="mb-1">No courses found</h5>
-              <div class="text-muted">Try adjusting your search.</div>
+              <div class="text-muted">Try adjusting your search or filters.</div>
             </div>
           </div>`;
         return;
@@ -325,8 +390,26 @@
     }
 
     // Events
-    document.getElementById('searchBox').addEventListener('input', () => applySearchAndRender());
-    document.getElementById('sortBy').addEventListener('change', e => { currentSort = e.target.value; applySearchAndRender(); });
+    document.getElementById('searchBox').addEventListener('input', () => applyFiltersAndRender());
+    document.getElementById('sortBy').addEventListener('change', e => { currentSort = e.target.value; applyFiltersAndRender(); });
+
+    // segmented filter (Active / Archived / All)
+    function setSegmentedActive(which) {
+      archiveFilter = which;
+      const btnActive = document.getElementById('btnActive');
+      const btnArchived = document.getElementById('btnArchived');
+      const btnAll = document.getElementById('btnAll');
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
+      if (which === 'active')   { btnActive.classList.add('is-active');   btnActive.setAttribute('aria-selected','true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
+      if (which === 'all')      { btnAll.classList.add('is-active');      btnAll.setAttribute('aria-selected','true'); }
+      applyFiltersAndRender();
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btnActive').addEventListener('click',   () => setSegmentedActive('active'));
+      document.getElementById('btnArchived').addEventListener('click', () => setSegmentedActive('archived'));
+      document.getElementById('btnAll').addEventListener('click',      () => setSegmentedActive('all'));
+    });
 
     // Init
     loadCourses();

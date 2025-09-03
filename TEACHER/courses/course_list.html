@@ -15,7 +15,8 @@
   <link rel="stylesheet" href="course_list.css" />
 
   <style>
-   
+    /* optional: tiny spacing tweak for pills */
+    .pill-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
   </style>
 </head>
 
@@ -113,11 +114,13 @@
           </div>
         </div>
 
-        <!-- Count pill -->
-        <div class="mb-2">
-          <span id="courseCountPill" class="badge rounded-pill text-bg-light d-none">
-            <i class="bi bi-journal-text me-1"></i>
-            <span id="courseCount">0</span> courses
+        <!-- ALWAYS-VISIBLE count pills (active & archived) -->
+        <div class="pill-row">
+          <span id="activeCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
+          </span>
+          <span id="archivedCountPill" class="badge rounded-pill text-bg-light">
+            <i class="bi bi-archive me-1"></i><span id="archivedCount">0</span> Archived
           </span>
         </div>
 
@@ -236,15 +239,29 @@
     function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0;
       if(typeof s==='number') return s*1000+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d)?null:d.getTime(); }
 
-    function updateCourseCountPill(count){
-      const pill=document.getElementById('courseCountPill'); const num=document.getElementById('courseCount');
-      num.textContent = count; pill.classList.toggle('d-none', count<=0);
-    }
-
     function buildCategoryOptions(){
       const sel = document.getElementById('categoryFilter');
       const cats = Array.from(new Set(allCourses.map(c => (c.category||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
       sel.innerHTML = '<option value="">All categories</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    }
+
+    // ALWAYS-visible pills: count active vs archived from full snapshot
+    async function refreshCoursePills() {
+      try {
+        if (!userData?.userId) return;
+        const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
+        const r = await fetch(url);
+        const payload = await r.json();
+        const courses = Array.isArray(payload) ? payload : (payload.courses || []);
+        const activeCount   = courses.filter(c => !c.archived).length;
+        const archivedCount = courses.filter(c =>  c.archived).length;
+        document.getElementById('activeCount').textContent = String(activeCount);
+        document.getElementById('archivedCount').textContent = String(archivedCount);
+      } catch (err) {
+        console.error('refreshCoursePills error:', err);
+        document.getElementById('activeCount').textContent = '0';
+        document.getElementById('archivedCount').textContent = '0';
+      }
     }
 
     // Load courses (includes archived so we can switch locally)
@@ -257,6 +274,8 @@
         allCourses = courses.slice();
         buildCategoryOptions();
         applyFiltersAndRender();
+        // update pills from a fresh snapshot
+        refreshCoursePills();
       } catch (e) {
         console.error(e); alert("Failed to load courses");
       }
@@ -294,7 +313,6 @@
         list.sort((a,b) => (tsToMs(b.createdAt) ?? (Number(b.courseNumber)||0)) - (tsToMs(a.createdAt) ?? (Number(a.courseNumber)||0)));
       }
 
-      updateCourseCountPill(list.length);
       renderCourses(list);
     }
 
@@ -407,9 +425,7 @@
               col.innerHTML = `
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" id="cls_${cls.id}" value="${cls.id}">
-                  <label class="form-check-label" for="cls_${cls.id}">
-                    ${cls.name} (${cls.gradeLevel}-${cls.section})
-                  </label>
+                  <label class="form-check-label" for="cls_${cls.id}">${cls.name} (${cls.gradeLevel}-${cls.section})</label>
                 </div>`;
               cont.appendChild(col);
 
@@ -494,6 +510,7 @@
         if (j.success) {
           bootstrap.Modal.getInstance(document.getElementById('archiveCourseModal')).hide();
           await loadCourses();
+          await refreshCoursePills();
         } else {
           alert("Action failed: " + (j.message || 'Unknown error'));
         }
@@ -518,6 +535,7 @@
         if (j.success) {
           bootstrap.Modal.getInstance(document.getElementById('deleteCourseModal')).hide();
           await loadCourses();
+          await refreshCoursePills();
         } else {
           alert("Delete failed: " + (j.message || 'Unknown error'));
         }
@@ -526,8 +544,9 @@
     });
 
     // Init
-    document.addEventListener('DOMContentLoaded', () => {
-      loadCourses();
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadCourses();
+      await refreshCoursePills();
     });
 
     function logoutUser() {
