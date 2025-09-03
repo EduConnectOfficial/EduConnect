@@ -8,6 +8,24 @@ const { uploadBulk } = require('../config/multerConfig');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
 
+// --- helpers: role guards (strict students-only) ---
+function isStudentUser(u = {}) {
+  const role = String(u.role || u.userType || '').toLowerCase();
+
+  // must have a real studentId
+  const hasStudentId =
+    typeof u.studentId === 'string' && u.studentId.trim() !== '';
+
+  // any teacher signal -> block
+  const isTeacherSignal =
+    u.isTeacher === true ||
+    role === 'teacher' ||
+    (typeof u.teacherId === 'string' && u.teacherId.trim() !== '');
+
+  // allow unknown/mixed roles as long as not teacher and has studentId
+  return hasStudentId && !isTeacherSignal;
+}
+
 // === GET /api/classes/:id ===
 router.get('/api/classes/:id', asyncHandler(async (req, res) => {
   const ref = firestore.collection('classes').doc(req.params.id);
@@ -415,7 +433,7 @@ router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, r
   return res.json({ success: true });
 }));
 
-// === Student lookup (exact studentId) — legacy
+// === Student lookup (exact studentId) — hardened to students-only
 router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   const { studentId } = req.query;
   if (!studentId || String(studentId).trim() === '') {
@@ -424,6 +442,11 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   const snap = await firestore.collection('users').where('studentId', '==', String(studentId).trim()).limit(1).get();
   if (snap.empty) return res.json({ success: true, found: false });
   const u = snap.docs[0].data();
+
+  if (!isStudentUser(u)) {
+    return res.json({ success: true, found: false });
+  }
+
   return res.json({
     success: true,
     found: true,
@@ -431,14 +454,14 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
       studentId: u.studentId || '',
       firstName: u.firstName || '',
       middleName: u.middleName || '',
-      lastName:  u.lastName || '',
+      lastName:  u.lastName  || '',
       email:     u.email || '',
       photoURL:  u.photoURL || ''
     }
   });
 }));
 
-// === Student SEARCH (by ID or name; resilient case handling) ===
+// === Student SEARCH (by ID or name; STRICT STUDENTS ONLY) ===
 router.get('/api/students/search', asyncHandler(async (req, res) => {
   const q = String(req.query.query || '').trim();
   if (!q) return res.status(400).json({ success: false, message: 'query is required.' });
@@ -460,10 +483,10 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     } catch { /* ignore */ }
   }
 
-  // Helpers
+  // Helpers for prefix queries
   const lc = q.toLowerCase();
-  const cap = lc.replace(/^\p{L}/u, ch => ch.toUpperCase()); // capitalize first letter (unicode-ish)
-  const candidates = Array.from(new Set([lc, cap, q]));      // try a few variants
+  const cap = lc.replace(/^\p{L}/u, ch => ch.toUpperCase());
+  const candidates = Array.from(new Set([lc, cap, q]));
 
   async function prefixRange(field, val, lim = 10) {
     try {
@@ -474,7 +497,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
         .get();
       snap.forEach(d => resultsMap.set(d.id, d.data()));
     } catch {
-      // If the field/index doesn't exist, just ignore this attempt
+      // ignore if no index
     }
   }
 
@@ -494,8 +517,9 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     ]);
   }
 
-  // Build response
-  const students = Array.from(resultsMap.values())
+  // Build response (strict filter)
+  const studentsOnly = Array.from(resultsMap.values())
+    .filter(isStudentUser)
     .slice(0, 20)
     .map(u => ({
       studentId: u.studentId || '',
@@ -504,7 +528,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
       email:     u.email     || ''
     }));
 
-  return res.json({ success: true, students });
+  return res.json({ success: true, students: studentsOnly });
 }));
 
 // === STUDENT: GET ENROLLMENTS ===

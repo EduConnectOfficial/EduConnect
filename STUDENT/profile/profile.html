@@ -34,7 +34,6 @@
     .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px); }
     .dashboard.sidebar-expanded .main { margin-left: 220px; width: calc(100% - 220px); }
 
- 
     .logo-header { height: 44px; }
     .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 10px; }
     .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100%; }
@@ -187,6 +186,23 @@
     </div>
   </div>
 
+  <!-- Generic App Modal (replaces alerts) -->
+  <div class="modal fade" id="appModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header">
+          <h5 class="modal-title" id="appModalLabel"><i class="bi bi-info-circle me-2"></i><span id="appModalTitle">Notice</span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="appModalBody">...</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="appModalCloseBtn">Close</button>
+          <button type="button" class="btn btn-primary d-none" id="appModalPrimaryBtn">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar JS -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -227,6 +243,39 @@
 
   <!-- Profile Logic -->
   <script>
+    // ===== Modal helper (replaces alert) =====
+    const appModalEl = document.getElementById('appModal');
+    const appModal = new bootstrap.Modal(appModalEl);
+    const appModalTitle = document.getElementById('appModalTitle');
+    const appModalBody  = document.getElementById('appModalBody');
+    const appModalPrimaryBtn = document.getElementById('appModalPrimaryBtn');
+
+    function showAppModal({ title = 'Notice', message = '', primaryText = null, onPrimary = null, onHide = null }) {
+      appModalTitle.textContent = title;
+      appModalBody.textContent = message;
+
+      // cleanup previous handlers
+      appModalPrimaryBtn.classList.add('d-none');
+      appModalPrimaryBtn.replaceWith(appModalPrimaryBtn.cloneNode(true));
+      const freshPrimary = document.getElementById('appModalPrimaryBtn');
+
+      if (primaryText) {
+        freshPrimary.textContent = primaryText;
+        freshPrimary.classList.remove('d-none');
+        if (typeof onPrimary === 'function') {
+          freshPrimary.onclick = onPrimary;
+        }
+      }
+
+      // onHide (one-time)
+      appModalEl.addEventListener('hidden.bs.modal', function handler() {
+        appModalEl.removeEventListener('hidden.bs.modal', handler);
+        if (typeof onHide === 'function') onHide();
+      });
+
+      appModal.show();
+    }
+
     // ===== Utilities =====
     function initialsFrom(str) {
       if (!str) return "";
@@ -287,7 +336,10 @@
       const okType = /^image\/(png|jpe?g|webp)$/i.test(f.type);
       const okSize = f.size <= MAX_MB * 1024 * 1024;
       if (!okType || !okSize) {
-        alert(`Please select a PNG/JPG/WEBP up to ${MAX_MB} MB.`);
+        showAppModal({
+          title: "Invalid Image",
+          message: `Please select a PNG/JPG/WEBP up to ${MAX_MB} MB.`,
+        });
         profilePicInput.value = "";
         return;
       }
@@ -314,7 +366,16 @@
     (async () => {
       try {
         const res = await fetch(`${API}/users/${userId}`, { headers: authHeaders() });
-        if (res.status === 401) { alert("Session expired. Please log in again."); return logoutUser(); }
+        if (res.status === 401) {
+          showAppModal({
+            title: "Session Expired",
+            message: "Please log in again.",
+            primaryText: "Log in",
+            onPrimary: () => { logoutUser(); },
+            onHide: () => { logoutUser(); }
+          });
+          return;
+        }
         const data = await res.json().catch(() => ({}));
         const { success, user } = data || {};
         if (success && user) {
@@ -358,7 +419,6 @@
       fd.append("middleName", document.getElementById("middleName").value);
       fd.append("lastName", document.getElementById("lastName").value);
       fd.append("username", document.getElementById("username").value);
-      // DO NOT send studentId or email
       if (profilePicInput.files.length) fd.append("profilePic", profilePicInput.files[0]);
 
       try {
@@ -367,10 +427,24 @@
           headers: authHeaders(), // don't set Content-Type for FormData
           body: fd
         });
-        if (res.status === 401) { alert("Session expired. Please log in again."); return logoutUser(); }
+        if (res.status === 401) {
+          showAppModal({
+            title: "Session Expired",
+            message: "Please log in again.",
+            primaryText: "Log in",
+            onPrimary: () => { logoutUser(); },
+            onHide: () => { logoutUser(); }
+          });
+          return;
+        }
         const result = await res.json().catch(() => ({}));
         if (res.ok && result.success) {
-          alert("✅ Profile updated!");
+          // success modal
+          showAppModal({
+            title: "Profile Updated",
+            message: "Your profile has been updated successfully."
+          });
+
           if (result.updatedUser) {
             const uu = result.updatedUser;
             storedUser.username = uu.username ?? storedUser.username;
@@ -392,11 +466,17 @@
           }
           localStorage.setItem("user", JSON.stringify(storedUser));
         } else {
-          alert(result.message || "❌ Failed to update profile");
+          showAppModal({
+            title: "Update Failed",
+            message: result.message || "We couldn't update your profile. Please try again."
+          });
         }
       } catch (err) {
         console.error("❌ Update failed:", err);
-        alert("❌ Update failed");
+        showAppModal({
+          title: "Update Failed",
+          message: "An unexpected error occurred while updating your profile."
+        });
       } finally {
         submitBtn.disabled = false; submitBtn.textContent = oldText;
       }
@@ -485,7 +565,17 @@
           headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ currentPassword, newPassword })
         });
-        if (res.status === 401) { alert("Session expired. Please log in again."); done(); return logoutUser(); }
+        if (res.status === 401) {
+          showAppModal({
+            title: "Session Expired",
+            message: "Please log in again.",
+            primaryText: "Log in",
+            onPrimary: () => { logoutUser(); },
+            onHide: () => { logoutUser(); }
+          });
+          done();
+          return;
+        }
 
         const result = await res.json().catch(() => ({}));
         if (!res.ok || !result.success) { showErr(result.error || `HTTP ${res.status}`); done(); return; }
