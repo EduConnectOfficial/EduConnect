@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 
-  <!-- Shared student styles (keep yours) -->
+  <!-- Shared student styles -->
   <link rel="stylesheet" href="../grades/grades.css"/>
 
   <!-- Chart.js -->
@@ -24,7 +24,6 @@
     .metric { font-size:1.3rem; font-weight:700; }
     .subtle { color:#6b7280; }
     .table thead th { background:#fafafa; }
-    /* Fixed chart canvas heights to avoid growth */
     .chart-wrap { height:260px; }
     .chart-wrap canvas { width:100% !important; height:260px !important; display:block; }
     .page-title.brand { margin-bottom:10px; }
@@ -48,7 +47,7 @@
           <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -208,7 +207,6 @@
 
   <!-- Auth + Header initials -->
   <script>
-    // Redirect to login if no user info
     const USER = JSON.parse(localStorage.getItem("user") || "{}");
     if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
       window.location.href = "../login/login.html";
@@ -261,7 +259,6 @@
     };
 
     let quizChart, assignChart;
-
     function destroy(c) { try { c && c.destroy && c.destroy(); } catch {} }
 
     function renderBar(canvasId, labels, values, label, key) {
@@ -288,19 +285,40 @@
       return u.userId || u.studentId || u.uid || u.id || u.email || '';
     }
 
-    async function getJson(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${res.status}`);
-      return res.json();
+    // Endpoint fallback helper
+    async function getAnalyticsJson(student) {
+      const urls = [
+        `${API_BASE}/student-analytics?student=${encodeURIComponent(student)}`,
+        `${API_BASE}/api/student-analytics?student=${encodeURIComponent(student)}`,
+        `${API_BASE}/api/student/analytics?student=${encodeURIComponent(student)}`
+      ];
+      for (const url of urls) {
+        try { const res = await fetch(url); if (res.ok) return res.json(); } catch {}
+      }
+      throw new Error('No analytics endpoint responded with 200.');
     }
 
     async function load() {
       const student = getStudentKey();
-      const url = `${API_BASE}/api/student/analytics?student=${encodeURIComponent(student)}`;
-      const data = await getJson(url);
+      const data = await getAnalyticsJson(student);
 
-      // Header
-      el('s_name').textContent = data.profile?.name || 'Student';
+      // ---------- Header (force full decrypted name) ----------
+      const first  = (data.profile?.firstName  || '').trim();
+      const middle = (data.profile?.middleName || '').trim();
+      const last   = (data.profile?.lastName   || '').trim();
+      const fullFromApi = [first, middle, last].filter(Boolean).join(' ').trim();
+
+      const fullFromLocal =
+        [USER.firstName, USER.middleName, USER.lastName].filter(Boolean).join(' ').trim() ||
+        (USER.fullName || '').trim();
+
+      el('s_name').textContent =
+        fullFromApi ||
+        fullFromLocal ||
+        (data.profile?.name || '').trim() ||
+        (data.profile?.email || '').trim() ||
+        'Student';
+
       el('s_id').textContent = data.profile?.studentId || '—';
       el('s_avg_quiz').textContent = pct(data.summary?.averageQuizScore);
       el('s_avg_asg').textContent = pct(data.summary?.averageAssignmentGrade);
@@ -370,14 +388,23 @@
         : '<tr><td colspan="4" class="text-center text-muted">No modules completed</td></tr>';
     }
 
-    /* Exports */
+    // CSV/PDF helpers with fallbacks
+    async function getBlobWithFallback(student, kind /* 'csv' | 'pdf' */) {
+      const urls = [
+        `${API_BASE}/student-analytics/${kind}?student=${encodeURIComponent(student)}`,
+        `${API_BASE}/api/student-analytics/${kind}?student=${encodeURIComponent(student)}`,
+        `${API_BASE}/api/student/analytics/${kind}?student=${encodeURIComponent(student)}`
+      ];
+      for (const url of urls) {
+        try { const res = await fetch(url); if (res.ok) return res.blob(); } catch {}
+      }
+      throw new Error(`${kind.toUpperCase()} endpoint not found or failed`);
+    }
+
     async function exportCsv() {
       const student = getStudentKey();
-      const url = `${API_BASE}/api/student/analytics/csv?student=${encodeURIComponent(student)}`;
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('CSV error');
-        const blob = await res.blob();
+        const blob = await getBlobWithFallback(student, 'csv');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `student_analytics_${student}.csv`;
@@ -387,17 +414,14 @@
         a.remove();
       } catch (e) {
         console.error(e);
-        alert('CSV export failed.');
+        alert('CSV export failed. Ensure the backend has /student-analytics/csv.');
       }
     }
 
     async function downloadPdf() {
       const student = getStudentKey();
-      const url = `${API_BASE}/api/student/analytics/pdf?student=${encodeURIComponent(student)}`;
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('PDF error');
-        const blob = await res.blob();
+        const blob = await getBlobWithFallback(student, 'pdf');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `student_analytics_${student}.pdf`;
@@ -407,7 +431,7 @@
         a.remove();
       } catch (e) {
         console.error(e);
-        alert('PDF download failed.');
+        alert('PDF download failed. Ensure the backend has /student-analytics/pdf.');
       }
     }
 

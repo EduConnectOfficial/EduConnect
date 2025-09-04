@@ -165,20 +165,56 @@ router.get('/quiz-essays', async (req, res, next) => {
 
     // paginate in memory
     const start = (page - 1) * pageSize;
-    const pageItems = all.slice(start, start + pageSize).map(x => ({
-      id: x.id,
-      courseId: x.courseId || null,
-      moduleId: x.moduleId || null,
-      studentName: x.studentName || x.studentEmail || 'Student',
-      studentEmail: x.studentEmail || '',
-      questionTitle: x.questionTitle || `Essay #${(x.questionIndex ?? 0)+1}`,
-      questionText: x.questionText || x.questionTitle || '',
-      answer: x.answer || '',
-      status: x.status || 'pending',
-      score: x.score ?? null,
-      maxScore: x.maxScore ?? 10,
-      createdAt: x.createdAt || null
-    }));
+
+    const { decryptField } = require('../utils/fieldCrypto');
+    function decryptNamesFromUser(u = {}) {
+      return {
+        firstName: decryptField(u.firstNameEnc || ''),
+        middleName: decryptField(u.middleNameEnc || ''),
+        lastName: decryptField(u.lastNameEnc || ''),
+      };
+    }
+
+    async function getDecryptedName(studentId, fallbackName, fallbackEmail) {
+      try {
+        let userSnap = await firestore.collection('users').doc(studentId).get();
+        let user = null;
+        if (userSnap.exists) user = userSnap.data();
+        else {
+          const userQuery = await firestore.collection('users').where('studentId', '==', studentId).limit(1).get();
+          if (!userQuery.empty) user = userQuery.docs[0].data();
+        }
+        if (user) {
+          const names = decryptNamesFromUser(user);
+          const fullName = [names.firstName, names.middleName, names.lastName]
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (fullName) return fullName;
+          if (user.fullName && user.fullName.trim()) return user.fullName.trim();
+          if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        }
+      } catch {}
+      return fallbackName || fallbackEmail || 'Student';
+    }
+
+    const pageItems = await Promise.all(
+      all.slice(start, start + pageSize).map(async x => ({
+        id: x.id,
+        courseId: x.courseId || null,
+        moduleId: x.moduleId || null,
+        studentName: await getDecryptedName(x.studentId, x.studentName, x.studentEmail),
+        studentEmail: x.studentEmail || '',
+        questionTitle: x.questionTitle || `Essay #${(x.questionIndex ?? 0)+1}`,
+        questionText: x.questionText || x.questionTitle || '',
+        answer: x.answer || '',
+        status: x.status || 'pending',
+        score: x.score ?? null,
+        maxScore: x.maxScore ?? 10,
+        createdAt: x.createdAt || null
+      }))
+    );
 
     res.json({ success:true, total: all.length, items: pageItems });
   } catch (err) { next(err); }

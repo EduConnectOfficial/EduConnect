@@ -4,9 +4,35 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore } = require('../config/firebase');
 
 function buildBasicStats(users) {
+  const { decryptField } = require('../utils/fieldCrypto');
+  function decryptNamesFromUser(u = {}) {
+    return {
+      firstName: decryptField(u.firstNameEnc || ''),
+      middleName: decryptField(u.middleNameEnc || ''),
+      lastName: decryptField(u.lastNameEnc || ''),
+    };
+  }
+
   const totalUsers    = users.length;
   const activeUsers   = users.filter(u => u.active === true).length;
   const inactiveUsers = totalUsers - activeUsers;
+
+  // Add decrypted full names to each user
+  const usersWithNames = users.map(u => {
+    const names = decryptNamesFromUser(u);
+    const fullName = [names.firstName, names.middleName, names.lastName]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return {
+      ...u,
+      fullName: fullName || u.fullName || u.username || 'User',
+      firstName: names.firstName || '',
+      middleName: names.middleName || '',
+      lastName: names.lastName || '',
+    };
+  });
 
   // placeholders you can replace later
   const topCourse           = 'Photography Basics';
@@ -22,6 +48,7 @@ function buildBasicStats(users) {
     mostCompletedModule,
     averageQuizScore,
     dailyActiveUsers,
+    users: usersWithNames,
   };
 }
 

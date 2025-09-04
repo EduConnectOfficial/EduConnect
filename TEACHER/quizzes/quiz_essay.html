@@ -34,7 +34,7 @@
     .sticky-title{position:sticky;top:0;background:#fff;z-index:2;padding:.25rem 0}
     .quiz-q,.student-ans{white-space:pre-wrap}
 
-    /* ui-card themed toolbar (same look as other pages) */
+    /* ui-card themed toolbar */
     .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
     .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
     .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -43,7 +43,7 @@
       background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
       color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
     }
-    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center; color:#ffe9ca}
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center;color:#ffe9ca}
     .ui-subtext{font-size:1rem;color:#ffe9ca}
   </style>
 </head>
@@ -71,7 +71,7 @@
       <section class="content px-4 py-3">
         <h1 class="fw-bold mb-3">Essay Grading</h1>
 
-        <!-- THEMED TOOLBAR (Sorting only, no active/archived/all) -->
+        <!-- THEMED TOOLBAR -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Essay Queue</h2>
@@ -91,7 +91,6 @@
               </select>
             </div>
 
-            <!-- Existing filters kept as-is -->
             <div class="col-12 col-lg-2">
               <label class="form-label fw-semibold">Status</label>
               <select class="form-select" id="statusSelect">
@@ -443,6 +442,7 @@
       const norm = rawItems.map(r => {
         return {
           id: r.id || r.submissionId || r.attemptId || r.docId || r._id,
+
           questionTitle: r.questionTitle || r.question_text || r.questionText || r.question || '',
           questionText:  r.questionText  || r.questionTitle || r.question || '',
           answer:        r.answer ?? r.studentAnswer ?? r.essay ?? '',
@@ -451,8 +451,13 @@
           maxScore: (r.maxScore != null) ? Number(r.maxScore) : (r.totalScore != null ? Number(r.totalScore) : 10),
           createdAt: r.createdAt || r.submittedAt || r.created || r.timestamp || null,
 
-          studentName:  r.studentName || r.student || r.student_display || r.studentEmail || 'Student',
+          // ✅ Use decrypted full name ONLY (no email fallback)
+          studentName:  r.studentName || r.student || r.student_display || 'Student',
+          // keep email if you want it hidden for debugging; not used anywhere else
           studentEmail: r.studentEmail || r.email || null,
+          // ✅ Prefer a stable ID for grouping
+          studentId: r.studentId || r.uid || r.userId || null,
+
           quizId:   r.quizId || r.quiz_id || r.quiz || '',
           attemptId: r.attemptId || r.attempt_id || null,
 
@@ -469,8 +474,9 @@
       const map = new Map();
       for (const x of items) {
         const key = [
-          x.studentEmail || '',
-          x.studentName  || '',
+          // ✅ No email in key. Prefer stable IDs, then name.
+          x.studentId || '',
+          x.studentName || '',
           x.quizId || '',
           x.attemptId || '',
           x.courseId || '',
@@ -481,7 +487,7 @@
           map.set(key, {
             key,
             studentName: x.studentName,
-            studentEmail: x.studentEmail,
+            // do not store email (not displayed or searched)
             quizId: x.quizId,
             attemptId: x.attemptId,
             courseId: x.courseId,
@@ -559,16 +565,16 @@
         if (fCourse && g.courseId !== fCourse) return false;
         if (fModule && g.moduleId !== fModule) return false;
         if (q) {
-          const hay = `${g.studentName} ${g.studentEmail||''} ${g.quizId} ${
+          const hay = `${g.studentName} ${g.quizId} ${
             (courseLabelCache.get(g.courseId)||'')} ${(moduleLabelCache.get(g.moduleId)||'')} ${
             g.essays.map(e => `${e.questionText} ${e.answer}`).join(' ')
-          }`.toLowerCase();
+          }`.toLowerCase(); // ✅ no email in search
           if (!hay.includes(q)) return false;
         }
         return true;
       });
 
-      // ---- Sorting (new) ----
+      // ---- Sorting ----
       const sort = sortByEl.value;
       view.sort((a,b)=>{
         if (sort === 'submitted_asc')  return toMs(a.createdAt) - toMs(b.createdAt);

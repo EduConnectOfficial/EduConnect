@@ -23,7 +23,7 @@
     <div class="login-box text-center">
       <img src="/assets/login_text.png" alt="Login" class="img-fluid mb-4" style="max-width: 200px;" />
 
-      <form id="loginForm" autocomplete="off">
+      <form id="loginForm" autocomplete="off" novalidate>
         <div class="mb-3 text-start">
           <label for="username" class="form-label text-light">Username</label>
           <input type="text" id="username" class="form-control" placeholder="Enter your username" />
@@ -37,7 +37,7 @@
           <label class="form-check-label" for="showPassword">Show Password</label>
         </div>
 
-        <button type="submit" class="btn login-btn w-100 mb-3">Login</button>
+        <button type="submit" id="loginBtn" class="btn login-btn w-100 mb-3">Login</button>
         <div id="loginError" class="text-danger mt-2"></div>
       </form>
 
@@ -45,6 +45,26 @@
         <a href="/ADMIN/passwordReset/password_reset.html">Forgot Password?</a><br>
         Don't have an account? <a href="../signup/signup.html">Sign up</a>
       </p>
+    </div>
+  </div>
+
+  <!-- Modal (notices & attempts) -->
+  <div class="modal fade" id="attemptModal" tabindex="-1" aria-hidden="true" aria-labelledby="attemptModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="attemptModalLabel" class="modal-title">Admin Login Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <p class="text-dark" id="attemptMessage" class="mb-0"></p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -61,50 +81,169 @@
 
   <!-- Login Logic -->
   <script>
-    document.getElementById("loginForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
+    const API_BASE = "http://localhost:5000";
+    const form = document.getElementById("loginForm");
+    const btn = document.getElementById("loginBtn");
+    const errorBox = document.getElementById("loginError");
 
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const errorBox = document.getElementById("loginError");
+    const attemptModal = new bootstrap.Modal(document.getElementById("attemptModal"));
+    const attemptMessage = document.getElementById("attemptMessage");
+
+    let countdownTimer = null;
+    let failedAttempts = 0;
+    const MAX_ATTEMPTS = 5;
+
+    // session storage per-username
+    const attemptsKey = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
+    const getAttempts = (u) => Number(sessionStorage.getItem(attemptsKey(u))) || 0;
+    const setAttempts = (u, n) => sessionStorage.setItem(attemptsKey(u), String(n));
+    const clearAttempts = (u) => sessionStorage.removeItem(attemptsKey(u));
+
+    function setBtnBusy(busy) {
+      if (busy) {
+        btn.disabled = true;
+        btn.dataset.prev = btn.innerHTML;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status"></span>Logging in...`;
+      } else {
+        btn.disabled = false;
+        if (btn.dataset.prev) btn.innerHTML = btn.dataset.prev;
+        delete btn.dataset.prev;
+      }
+    }
+
+    const normalize = (v) => String(v || "").trim();
+    const normalizeUserKey = (v) => normalize(v).toLowerCase();
+
+    async function usernameExists(username) {
+      try {
+        const q = new URLSearchParams({ username });
+        const r = await fetch(`${API_BASE}/check-username?${q.toString()}`);
+        if (!r.ok) return false;
+        const j = await r.json();
+        return !!j && j.taken === true;
+      } catch { return true; }
+    }
+
+    function formatMMSS(totalSeconds) {
+      const s = Math.max(0, Math.floor(totalSeconds));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+    }
+
+    function startCountdown(lockedUntilMs) {
+      if (!lockedUntilMs) return;
+      if (countdownTimer) clearInterval(countdownTimer);
+
+      const tick = () => {
+        const now = Date.now();
+        const remain = Math.ceil((lockedUntilMs - now) / 1000);
+        if (remain <= 0) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          errorBox.textContent = "Lock expired. You can try again.";
+          errorBox.classList.add("minor");
+          btn.disabled = false;
+          return;
+        }
+        errorBox.textContent = `Account temporarily locked. Try again in ${formatMMSS(remain)}.`;
+        errorBox.classList.add("minor");
+      };
+
+      btn.disabled = true;
+      tick();
+      countdownTimer = setInterval(tick, 1000);
+    }
+
+    // unified attempt notice
+    function showAttemptNotice() {
+      let msg = `You have made ${failedAttempts} failed login attempt(s).`;
+      if (failedAttempts < MAX_ATTEMPTS) {
+        msg += ` After ${MAX_ATTEMPTS} failed attempts, your account will be temporarily locked.`;
+      } else {
+        msg += ` Your account may now be temporarily locked. If you continue failing, it may be deactivated.`;
+      }
+      attemptMessage.textContent = msg;
+      attemptModal.show();
+    }
+
+    function showModal(msg) {
+      attemptMessage.textContent = msg;
+      attemptModal.show();
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (countdownTimer) return;
+
+      const username = normalize(document.getElementById("username").value);
+      const password = normalize(document.getElementById("password").value);
 
       if (!username || !password) {
-        errorBox.textContent = "Please fill in both fields.";
+        showModal("Please fill in both fields.");
         return;
       }
 
       errorBox.textContent = "";
+      setBtnBusy(true);
 
       try {
-        const response = await fetch("http://localhost:5000/login", {
+        const exists = await usernameExists(username);
+        if (!exists) {
+          showModal("No account found with that username.");
+          setBtnBusy(false);
+          return;
+        }
+
+        const response = await fetch(`${API_BASE}/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password })
         });
 
-        const data = await response.json();
-        console.log("Login response:", data);
+        let data = {};
+        try { data = await response.json(); } catch { data = {}; }
 
+        if (response.ok && data.user?.isAdmin) {
+          if (normalizeUserKey(data.user.username) !== normalizeUserKey(username)) {
+            showModal("Login response mismatch. Please try again.");
+            setBtnBusy(false);
+            return;
+          }
+          clearAttempts(username);
+          localStorage.setItem("user", JSON.stringify(data.user));
+          window.location.href = "/ADMIN/dashboard/dashboard.html";
+          return;
+        }
 
         if (response.ok) {
- if (data.user && data.user.isITsupport === true) {
-            localStorage.setItem("user", JSON.stringify(data.user));
-            console.log("IT Support login successful, redirecting...");
-            window.location.href = "../dashboard/dashboard.html";
-          } else {
-            errorBox.textContent = "Access denied. IT Support accounts only.";
-          }
-        } else {
-          errorBox.textContent = data.error || "Invalid username or password.";
+          showModal("Access denied. Admin accounts only.");
+          return;
         }
+
+        if (response.status === 423) {
+          startCountdown(data.lockedUntil || 0);
+          return;
+        }
+
+        if (response.status === 403) {
+          showModal(data.error || "Account is deactivated. Please reset your password.");
+          return;
+        }
+
+        // 401 or invalid creds
+        failedAttempts = getAttempts(username) + 1;
+        setAttempts(username, failedAttempts);
+        showAttemptNotice();
 
       } catch (err) {
         console.error("Login error:", err);
-        errorBox.textContent = "Could not connect to the server.";
+        showModal("Could not connect to the server.");
+      } finally {
+        if (!countdownTimer) setBtnBusy(false);
       }
     });
   </script>
 
 </body>
-
 </html>

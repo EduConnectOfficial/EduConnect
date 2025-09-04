@@ -259,7 +259,14 @@
       }
       window.currentUser = u;
       const nameEl = document.getElementById('Username');
-      if (nameEl) nameEl.textContent = (u.username || 'Teacher').toString().trim();
+      if (nameEl) {
+        const fullName = [u.firstName, u.middleName, u.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        nameEl.textContent = fullName || (u.username || 'Teacher').toString().trim();
+      }
     })();
 
     const teacherId =

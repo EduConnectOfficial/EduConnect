@@ -6,10 +6,11 @@ const { firestore, admin } = require('../config/firebase');
  * Formats:
  *   - Students: S-YYYY-00001
  *   - Teachers: T-YYYY-00001
+ *   - Admins:   A-YYYY-00001
  *   - Others:   U-YYYY-00001
  *
  * Uses a transaction for concurrency safety.
- * @param {'student'|'teacher'|'user'|string} role
+ * @param {'student'|'teacher'|'admin'|'user'|string} role
  * @returns {Promise<string>} e.g. "S-2025-00001"
  */
 async function generateRoleId(role = 'user') {
@@ -19,6 +20,7 @@ async function generateRoleId(role = 'user') {
   const prefix =
     role === 'student' ? 'S' :
     role === 'teacher' ? 'T' :
+    role === 'admin'   ? 'A' :
     'U';
 
   const counterRef = firestore.collection('counters').doc(`${role}-${year}`);
@@ -53,9 +55,10 @@ async function generateRoleId(role = 'user') {
 /**
  * Resolve a user's Firestore DocumentReference from *any* identifier:
  * - Firestore user document id
- * - userId field (if you mirror it)
- * - studentId field (e.g., S-YYYY-xxxxx)
- * - teacherId field (e.g., T-YYYY-xxxxx)
+ * - userId field
+ * - studentId (S-YYYY-xxxxx)
+ * - teacherId (T-YYYY-xxxxx)
+ * - adminId   (A-YYYY-xxxxx)
  * - email (fallback if it looks like an email)
  *
  * @param {string} anyId
@@ -90,7 +93,13 @@ async function getUserRefByAnyId(anyId) {
     if (!byTeacher.empty) return byTeacher.docs[0].ref;
   } catch {}
 
-  // 5) email (only if it looks like an email)
+  // 5) adminId field
+  try {
+    const byAdmin = await users.where('adminId', '==', id).limit(1).get();
+    if (!byAdmin.empty) return byAdmin.docs[0].ref;
+  } catch {}
+
+  // 6) email (only if it looks like an email)
   if (id.includes('@')) {
     try {
       const byEmail = await users.where('email', '==', id).limit(1).get();
@@ -102,8 +111,8 @@ async function getUserRefByAnyId(anyId) {
 }
 
 /**
- * Map a list of roster identifiers (usually studentId like S-YYYY-xxxxx,
- * sometimes teacherId or even direct doc ids) to user document IDs.
+ * Map a list of roster identifiers (studentId / teacherId / adminId / user doc ids)
+ * to user document IDs.
  *
  * @param {string[]} rosterIds
  * @returns {Promise<string[]>} array of Firestore doc ids
@@ -134,10 +143,18 @@ async function mapRosterIdsToUserIds(rosterIds = []) {
     } catch {}
   }
 
-  // (C) Query by teacherId in chunks (if any of your rosters can include them)
+  // (C) Query by teacherId in chunks
   for (const group of chunk(rosterIds, 10)) {
     try {
       const q = await users.where('teacherId', 'in', group).get();
+      q.forEach(d => out.add(d.id));
+    } catch {}
+  }
+
+  // (D) Query by adminId in chunks
+  for (const group of chunk(rosterIds, 10)) {
+    try {
+      const q = await users.where('adminId', 'in', group).get();
       q.forEach(d => out.add(d.id));
     } catch {}
   }

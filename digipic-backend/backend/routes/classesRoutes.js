@@ -7,6 +7,7 @@ const { firestore, admin } = require('../config/firebase');
 const { uploadBulk } = require('../config/multerConfig');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
+const { decryptField } = require('../utils/fieldCrypto'); // <-- NEW
 
 // --- helpers: role guards (strict students-only) ---
 function isStudentUser(u = {}) {
@@ -24,6 +25,15 @@ function isStudentUser(u = {}) {
 
   // allow unknown/mixed roles as long as not teacher and has studentId
   return hasStudentId && !isTeacherSignal;
+}
+
+// Small helper to decrypt names from a user doc
+function decryptNamesFromUser(u = {}) {
+  return {
+    firstName: decryptField(u.firstNameEnc || ''),
+    middleName: decryptField(u.middleNameEnc || ''),
+    lastName: decryptField(u.lastNameEnc || ''),
+  };
 }
 
 // === GET /api/classes/:id ===
@@ -268,10 +278,13 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
       if (row.userId) {
         const uDoc = await firestore.collection('users').doc(row.userId).get();
         if (uDoc.exists) {
-          const u = uDoc.data();
+          const u = uDoc.data() || {};
+          const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          fullName = fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim();
+          // Prefer decrypted names; fallback to username
+          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
       } else if (row.studentId) {
@@ -280,10 +293,12 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           .limit(1)
           .get();
         if (!q.empty) {
-          const u = q.docs[0].data();
+          const u = q.docs[0].data() || {};
+          const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          fullName = fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim();
+          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
       }
@@ -441,20 +456,22 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   }
   const snap = await firestore.collection('users').where('studentId', '==', String(studentId).trim()).limit(1).get();
   if (snap.empty) return res.json({ success: true, found: false });
-  const u = snap.docs[0].data();
+  const u = snap.docs[0].data() || {};
 
   if (!isStudentUser(u)) {
     return res.json({ success: true, found: false });
   }
+
+  const names = decryptNamesFromUser(u);
 
   return res.json({
     success: true,
     found: true,
     student: {
       studentId: u.studentId || '',
-      firstName: u.firstName || '',
-      middleName: u.middleName || '',
-      lastName:  u.lastName  || '',
+      firstName: names.firstName || '',
+      middleName: names.middleName || '',
+      lastName:  names.lastName  || '',
       email:     u.email || '',
       photoURL:  u.photoURL || ''
     }
@@ -483,11 +500,8 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     } catch { /* ignore */ }
   }
 
-  // Helpers for prefix queries
-  const lc = q.toLowerCase();
-  const cap = lc.replace(/^\p{L}/u, ch => ch.toUpperCase());
-  const candidates = Array.from(new Set([lc, cap, q]));
-
+  // Helpers for prefix queries — we *must* rely on denormalized fields
+  // because names are encrypted at rest.
   async function prefixRange(field, val, lim = 10) {
     try {
       const snap = await usersCol
@@ -497,36 +511,43 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
         .get();
       snap.forEach(d => resultsMap.set(d.id, d.data()));
     } catch {
-      // ignore if no index
+      // ignore if index missing
     }
   }
+
+  const lc = q.toLowerCase();
+  const candidates = Array.from(new Set([lc, q]));
 
   // Prefer lower-cased denormalized fields if present
   for (const p of candidates) {
     await Promise.all([
-      prefixRange('firstNameLower', p.toLowerCase()),
-      prefixRange('lastNameLower',  p.toLowerCase()),
+      prefixRange('firstNameLower', p),
+      prefixRange('lastNameLower',  p),
     ]);
   }
 
-  // Fallback to original-cased fields
-  for (const p of candidates) {
-    await Promise.all([
-      prefixRange('firstName', p),
-      prefixRange('lastName',  p),
-    ]);
-  }
+  // (Optional) If you still store legacy plaintext names (not recommended),
+  // uncomment these to support fallback searching:
+  // for (const p of candidates) {
+  //   await Promise.all([
+  //     prefixRange('firstName', p),
+  //     prefixRange('lastName',  p),
+  //   ]);
+  // }
 
-  // Build response (strict filter)
+  // Build response (strict students only), decrypt names for output
   const studentsOnly = Array.from(resultsMap.values())
     .filter(isStudentUser)
     .slice(0, 20)
-    .map(u => ({
-      studentId: u.studentId || '',
-      firstName: u.firstName || '',
-      lastName:  u.lastName  || '',
-      email:     u.email     || ''
-    }));
+    .map(u => {
+      const names = decryptNamesFromUser(u);
+      return {
+        studentId: u.studentId || '',
+        firstName: names.firstName || '',
+        lastName:  names.lastName  || '',
+        email:     u.email     || ''
+      };
+    });
 
   return res.json({ success: true, students: studentsOnly });
 }));
@@ -553,8 +574,10 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
       try {
         const tdoc = await firestore.collection('users').doc(tid).get();
         if (tdoc.exists) {
-          const t = tdoc.data();
-          teacherMap[tid] = `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.username || 'Teacher';
+          const t = tdoc.data() || {};
+          const names = decryptNamesFromUser(t);
+          const full = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          teacherMap[tid] = full || t.username || 'Teacher';
         }
       } catch {}
     }));

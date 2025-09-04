@@ -10,27 +10,12 @@
   <link rel="stylesheet" href="signup1.css" />
 
   <style>
-    .otp-container {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 1rem;
-    }
-
-    .otp-input {
-      width: 40px;
-      height: 50px;
-      text-align: center;
-      font-size: 1.5rem;
-      border: 1px solid #ced4da;
-      border-radius: 5px;
-    }
-
-    .otp-input:focus {
-      outline: none;
-      border-color: #86b7fe;
-      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
+    .otp-container{display:flex;justify-content:center;gap:10px;margin-bottom:1rem}
+    .otp-input{width:42px;height:52px;text-align:center;font-size:1.4rem;border:1px solid #ced4da;border-radius:8px}
+    .otp-input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.25)}
+    .disabled-link{pointer-events:none;opacity:.6;text-decoration:none}
+    .muted{opacity:.85}
+    .modal-body{color:#000 !important}
   </style>
 </head>
 
@@ -43,27 +28,71 @@
   <!-- Verification Form -->
   <div class="login-container">
     <div class="login-box text-center">
-      <h4 class="mb-3">Enter Verification Code</h4>
-      <p class="mb-4 text-white">We sent a 6-digit code to your email. Please enter it below.</p>
+      <h4 class="mb-2">Enter Verification Code</h4>
+      <p id="sentTo" class="mb-3 text-white muted"></p>
 
-      <form id="verifyCodeForm">
+      <form id="verifyCodeForm" novalidate>
         <div class="otp-container">
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" autocomplete="one-time-code"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric"/>
         </div>
 
         <div id="verificationError" class="text-danger mb-3"></div>
 
-        <button type="submit" class="btn login-btn w-100 mb-3">Verify</button>
+        <button id="verifyBtn" type="submit" class="btn login-btn w-100 mb-2">Verify</button>
 
-        <p class="text-white">
-          Didn't receive the code? <a href="#" id="resendCode">Resend</a>
-        </p>
+        <div class="d-flex justify-content-center gap-2 align-items-center">
+          <span class="text-white">Didn't receive the code?</span>
+          <a href="#" id="resendCode">Resend</a>
+          <span id="resendTimer" class="text-white-50 small"></span>
+        </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="successModalLabel">Success</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">User verified and registered successfully.</p>
+          <div class="mb-2">
+            <div class="fw-semibold">Your User ID:</div>
+            <div><code class="bg-light px-2 py-1 d-inline-block" id="successUserId">—</code></div>
+          </div>
+          <div>
+            <div class="fw-semibold">Your Admin ID:</div>
+            <div><code class="bg-light px-2 py-1 d-inline-block" id="successAdminId">—</code></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" id="successOkBtn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Modal -->
+  <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="feedbackModalLabel">Notification</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="feedbackModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -71,95 +100,213 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const inputs = document.querySelectorAll('.otp-input');
+    const API_BASE = "http://localhost:5000";
+
+    const inputs = Array.from(document.querySelectorAll(".otp-input"));
+    const verifyForm = document.getElementById("verifyCodeForm");
+    const verifyBtn = document.getElementById("verifyBtn");
     const verificationError = document.getElementById("verificationError");
     const resendLink = document.getElementById("resendCode");
+    const resendTimer = document.getElementById("resendTimer");
+    const sentTo = document.getElementById("sentTo");
 
-    // Autofocus next input
+    const email = sessionStorage.getItem("pendingEmail");
+
+    // Masked "sent to" line
+    if (email) {
+      const masked = email.replace(/(^.).*(@.*$)/, (_, a, b) => a + "••••" + b);
+      sentTo.textContent = `We sent a 6-digit code to ${masked}. Please enter it below.`;
+    } else {
+      sentTo.textContent = "We sent a 6-digit code to your email. Please enter it below.";
+    }
+
+    const joinCode = () => inputs.map(i => i.value.trim()).join("");
+
+    // OTP behaviour (digits only, paste support, arrows/backspace nav)
     inputs.forEach((input, i) => {
-      input.addEventListener('input', () => {
-        if (input.value.length === 1 && i < inputs.length - 1) {
-          inputs[i + 1].focus();
-        }
+      input.addEventListener("beforeinput", (e) => {
+        if (e.inputType === "insertText" && !/^\d$/.test(e.data)) e.preventDefault();
       });
 
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !input.value && i > 0) {
-          inputs[i - 1].focus();
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "");
+        if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
+        verificationError.textContent = "";
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowLeft" && i > 0) inputs[i - 1].focus();
+        if (e.key === "ArrowRight" && i < inputs.length - 1) inputs[i + 1].focus();
+      });
+
+      input.addEventListener("paste", (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData("text");
+        if (/^\d{6}$/.test(text)) {
+          e.preventDefault();
+          for (let k = 0; k < 6; k++) inputs[k].value = text[k];
+          inputs[5].focus();
         }
       });
     });
 
-    // Handle verification form submit
-    document.getElementById("verifyCodeForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    // Resend cooldown
+    let cooldown = 0;
+    let timerId = null;
+    function setResendState(active) {
+      if (active) {
+        resendLink.classList.remove("disabled-link");
+        resendTimer.textContent = "";
+      } else {
+        resendLink.classList.add("disabled-link");
+      }
+    }
+    function startCooldown(seconds = 60) {
+      if (timerId) clearInterval(timerId);
+      cooldown = seconds;
+      setResendState(false);
+      updateTimer();
+      timerId = setInterval(updateTimer, 1000);
+    }
+    function updateTimer() {
+      if (cooldown <= 0) {
+        clearInterval(timerId);
+        timerId = null;
+        resendTimer.textContent = "";
+        setResendState(true);
+        return;
+      }
+      resendTimer.textContent = `(${cooldown}s)`;
+      cooldown -= 1;
+    }
 
-      const code = Array.from(inputs).map(input => input.value.trim()).join('');
-      const email = sessionStorage.getItem("pendingEmail");
+    // Modals
+    function showSuccessModal({ userId = null, adminId = null, redirectTo = null, autoCloseMs = null }) {
+      const el = document.getElementById("successModal");
+      const m  = new bootstrap.Modal(el);
+
+      document.getElementById("successUserId").textContent  = userId  || "—";
+      document.getElementById("successAdminId").textContent = adminId || "—";
+
+      document.getElementById("successOkBtn").onclick = () => { if (redirectTo) window.location.href = redirectTo; };
+      el.addEventListener("hidden.bs.modal", function onHidden() {
+        el.removeEventListener("hidden.bs.modal", onHidden);
+        if (redirectTo) window.location.href = redirectTo;
+      });
+
+      m.show();
+
+      if (autoCloseMs && Number.isFinite(autoCloseMs)) {
+        setTimeout(() => {
+          m.hide();
+          if (redirectTo) window.location.href = redirectTo;
+        }, autoCloseMs);
+      }
+    }
+
+    function showFeedbackModal(message, title = "Notification") {
+      document.getElementById("feedbackModalLabel").textContent = title;
+      document.getElementById("feedbackModalBody").textContent  = message;
+      new bootstrap.Modal(document.getElementById("feedbackModal")).show();
+    }
+
+    // Submit verification
+    verifyForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const code = joinCode();
 
       if (!/^\d{6}$/.test(code)) {
         verificationError.textContent = "Please enter a valid 6-digit code.";
+        inputs[0].focus();
         return;
       }
-
       if (!email) {
         verificationError.textContent = "Email not found. Please register again.";
         return;
       }
 
       verificationError.textContent = "";
+      verifyBtn.disabled = true;
+      const prevHTML = verifyBtn.innerHTML;
+      verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying...`;
 
       try {
-        const response = await fetch("http://localhost:5000/verify-code", {
+        const res = await fetch(`${API_BASE}/verify-code`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, code })
         });
+        const data = await res.json();
 
-        const data = await response.json();
+        if (res.ok) {
+          // read ids (either top-level or nested under data.user)
+          const userId  = data.userId  || (data.user && data.user.userId);
+          const adminId = data.adminId || (data.user && data.user.adminId);
 
-        if (response.ok) {
-          alert(data.message || "Verification successful!");
+          if (userId)  sessionStorage.setItem("verifiedUserId", userId);
+          if (adminId) sessionStorage.setItem("adminId", adminId);
+
+          // clean pending state
           sessionStorage.removeItem("pendingEmail");
           sessionStorage.removeItem("pendingUserData");
-          window.location.href = "/ADMIN/login/login.html";
+
+          // success modal then redirect
+          showSuccessModal({
+            userId,
+            adminId,
+            redirectTo: "/ADMIN/login/login.html"
+            // autoCloseMs: 2000,
+          });
+
         } else {
           verificationError.textContent = data.error || "Invalid or expired code.";
+          if (!timerId) startCooldown(30);
         }
       } catch (err) {
-        verificationError.textContent = "Failed to connect to server.";
         console.error(err);
+        verificationError.textContent = "Failed to connect to server.";
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = prevHTML;
       }
     });
 
-    // Handle resend code
-    resendLink.addEventListener("click", async (e) => {
+    // Resend code
+    document.getElementById("resendCode").addEventListener("click", async (e) => {
       e.preventDefault();
-      const email = sessionStorage.getItem("pendingEmail");
-
+      if (resendLink.classList.contains("disabled-link")) return;
       if (!email) {
         verificationError.textContent = "Missing email from session.";
         return;
       }
-
       try {
-        const response = await fetch("http://localhost:5000/resend-code", {
+        setResendState(false);
+        const res = await fetch(`${API_BASE}/resend-code`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email })
         });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert("New verification code sent to your email.");
+        const data = await res.json();
+        if (res.ok) {
+          showFeedbackModal("New verification code sent to your email.", "Code Resent");
+          inputs.forEach(i => i.value = "");
+          inputs[0].focus();
+          startCooldown(60);
         } else {
-          alert(data.error || "Could not resend code.");
+          setResendState(true);
+          showFeedbackModal(data.error || "Could not resend code.", "Resend Failed");
         }
       } catch (error) {
-        alert("Server error while resending verification code.");
         console.error(error);
+        setResendState(true);
+        showFeedbackModal("Server error while resending verification code.", "Server Error");
       }
+    });
+
+    // Init
+    window.addEventListener("DOMContentLoaded", () => {
+      inputs[0].focus();
+      startCooldown(30);
     });
   </script>
 </body>

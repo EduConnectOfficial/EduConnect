@@ -9,7 +9,40 @@ html, body {
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   color: white;
 }
+.modal-body {
+  color:black
+}
+/* Signup container aligned like login */
+.signup-container,
+.login-container {
+  height: auto;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
 
+/* Signup box aligned with login box */
+.signup-box,
+.login-box {
+  background-color: #5c2213;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 300px;   /* tighter width so it doesn’t stretch too wide */
+
+  margin: auto;
+  text-align: center;
+}
+
+/* Adjust headings */
+.signup-box h2 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  color: #fff6dd;
+}
 
 .main-container {
   min-height: 100vh;
@@ -27,6 +60,7 @@ html, body {
   padding: 40px;
   box-sizing: border-box;
 }
+
 
 .left-panel {
   flex: 1;
@@ -70,13 +104,7 @@ html, body {
   left: 30px;
 }
 
-/* Center container */
-.login-container {
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+
 
 /* Card-style form box */
 .login-box {
@@ -166,4 +194,165 @@ html, body {
   font-size: 0.85rem;
   margin-top: 5px;
   display: block;
+}
+
+
+/* Tablet and below */
+@media (max-width: 992px) {
+  .main-container {
+    flex-direction: column; /* stack panels vertically */
+  }
+
+  .left-panel, .right-panel {
+    flex: none;
+    width: 100%;
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .left-panel {
+    align-items: center;
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .left-panel h2 {
+    font-size: 2rem;
+  }
+  .left-panel p {
+    font-size: 1rem;
+  }
+
+  .login-box {
+    max-width: 90%;
+    padding: 1.5rem;
+  }
+}
+
+/* Mobile (phones) */
+@media (max-width: 480px) {
+  .logo {
+    width: 100px;
+    max-width: 25vw;
+  }
+
+  .top-logo {
+    position: relative;
+    top: 0;
+    left: 0;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .left-panel h2 {
+    font-size: 1.6rem;
+  }
+  .left-panel p {
+    font-size: 0.9rem;
+  }
+
+  .login-box {
+    padding: 1rem;
+  }
+
+  .login-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+  }
+
+
+
+  .options {
+    font-size: 0.85rem;
+  }
+}
+/* Hide create account / options links on mobile */
+@media (max-width: 576px) {
+  .left-panel {
+    display: none;
+  }
+}
+/* Medium screens */
+@media (max-width: 1280px) {
+  .logo {
+    width: 100px;
+    max-width: 25vw;
+  }
+
+  .top-logo {
+    position: relative;
+    top: 0;
+    left: 0;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .left-panel h2 {
+    font-size: 1.6rem;
+  }
+  .left-panel p {
+    font-size: 0.9rem;
+  }
+
+  .login-box {
+    padding: 1rem;
+  }
+
+  .login-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+  }
+
+
+  .options {
+    font-size: 0.85rem;
+  }
+}
+/* Hide create account / options links on mobile */
+@media (max-width: 1280px) {
+  .left-panel {
+    display: none;
+  }
+}
+/* ===== Modal Customization ===== */
+
+/* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
+}
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Modal footer button with gradient */
+.modal-footer .btn,
+#successOkBtn, 
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
 }

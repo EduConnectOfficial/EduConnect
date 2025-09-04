@@ -1,5 +1,6 @@
 // backend/routes/teacherAnalyticsRoutes.js
 const router = require('express').Router();
+const { firestore } = require('../config/firebase');
 const PDFDocument = require('pdfkit');
 const { asyncHandler } = require('../middleware/asyncHandler');
 
@@ -9,6 +10,18 @@ const {
   buildTeacherQuizAnalytics,         // new quizzes
   buildTeacherAssignmentAnalytics,   // new assignments
 } = require('../utils/analyticsUtils');
+
+// Decrypt helper for user docs
+const { decryptField } = require('../utils/fieldCrypto');
+const { getUserRefByAnyId } = require('../utils/idUtils');
+
+function decryptNamesFromUser(u = {}) {
+  return {
+    firstName: decryptField(u.firstNameEnc || ''),
+    middleName: decryptField(u.middleNameEnc || ''),
+    lastName: decryptField(u.lastNameEnc || ''),
+  };
+}
 
 // (Optional) sanity log
 console.log('[analytics fns]', {
@@ -26,6 +39,28 @@ router.get('/quiz-analytics', asyncHandler(async (req, res) => {
   if (!teacherId) return res.status(400).json({ success: false, message: 'teacherId is required' });
 
   const data = await buildTeacherQuizAnalytics({ teacherId, classId });
+
+  // Decrypt student names if possible
+  if (Array.isArray(data.progress)) {
+    for (const s of data.progress) {
+      if (s.studentId) {
+        try {
+          const userRef = await getUserRefByAnyId(s.studentId);
+          if (userRef) {
+            const userSnap = await userRef.get();
+            const user = userSnap.data() || {};
+            const names = decryptNamesFromUser(user);
+            const fullName = [names.firstName, names.middleName, names.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (fullName) s.name = fullName;
+          }
+        } catch {}
+      }
+    }
+  }
   return res.json(data);
 }));
 
@@ -327,6 +362,28 @@ router.get('/assignment-analytics', asyncHandler(async (req, res) => {
   if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
 
   const data = await buildTeacherAssignmentAnalytics({ teacherId, classId });
+
+  // Decrypt student names if possible
+  if (Array.isArray(data.progress)) {
+    for (const s of data.progress) {
+      if (s.studentId) {
+        try {
+          const userRef = await getUserRefByAnyId(s.studentId);
+          if (userRef) {
+            const userSnap = await userRef.get();
+            const user = userSnap.data() || {};
+            const names = decryptNamesFromUser(user);
+            const fullName = [names.firstName, names.middleName, names.lastName]
+              .filter(Boolean)
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (fullName) s.name = fullName;
+          }
+        } catch {}
+      }
+    }
+  }
   return res.json(data);
 }));
 

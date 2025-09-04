@@ -5,6 +5,7 @@ const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { getUserRefByAnyId } = require('../utils/idUtils');
+const { decryptField } = require('../utils/fieldCrypto'); // decrypt names
 
 /* ----------------------------- helpers ----------------------------- */
 function chunk(arr, size = 10) {
@@ -19,6 +20,7 @@ const toMillis = (x) => {
   const t = Date.parse(x);
   return Number.isFinite(t) ? t : null;
 };
+
 async function fetchTitlesMap({ collection, ids }) {
   const map = {};
   const uniq = Array.from(new Set((ids || []).filter(Boolean)));
@@ -43,11 +45,21 @@ async function fetchTitlesMap({ collection, ids }) {
   return map;
 }
 
+// Decrypt helper for user docs
+function decryptNamesFromUser(u = {}) {
+  return {
+    firstName: decryptField(u.firstNameEnc || ''),
+    middleName: decryptField(u.middleNameEnc || ''),
+    lastName: decryptField(u.lastNameEnc || ''),
+  };
+}
+
 /* ----------------------------- route ------------------------------ */
 router.get(
   '/student-analytics',
   asyncHandler(async (req, res) => {
-    const teacherId = String(req.query.teacherId || '').trim(); // optional
+    // teacherId kept for compatibility, not used below
+    const teacherId = String(req.query.teacherId || '').trim();
     const studentKey = String(req.query.student || '').trim();
     if (!studentKey) {
       return res.status(400).json({ success: false, message: 'student is required' });
@@ -58,16 +70,29 @@ router.get(
     if (!userRef) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
+
     const userSnap = await userRef.get();
     const user = userSnap.data() || {};
+
+    // Build profile name from DECRYPTED fields (First Middle Last)
+    const names = decryptNamesFromUser(user);
+    const fullName = [names.firstName, names.middleName, names.lastName]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     const profile = {
       userId: userRef.id,
       studentId: user.studentId || null,
       name:
-        (user.fullName && user.fullName.trim()) ||
-        `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
-        user.username ||
+        fullName ||                                 // prefer decrypted full name
+        (user.fullName && user.fullName.trim()) ||  // legacy/materialized (if any)
+        user.username ||                            // fallback to username
         'Student',
+      firstName: names.firstName || '',
+      middleName: names.middleName || '',
+      lastName: names.lastName || '',
       email: user.email || null,
     };
 

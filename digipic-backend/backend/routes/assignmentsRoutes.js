@@ -579,12 +579,21 @@ router.get(
       .collection('submissions')
       .get();
 
+    const { decryptField } = require('../utils/fieldCrypto');
+    function decryptNamesFromUser(u = {}) {
+      return {
+        firstName: decryptField(u.firstNameEnc || ''),
+        middleName: decryptField(u.middleNameEnc || ''),
+        lastName: decryptField(u.lastNameEnc || ''),
+      };
+    }
+
     const submissions = [];
     for (const doc of subsSnap.docs) {
       const data = doc.data();
       const sid = data.studentId || doc.id;
 
-      // Resolve student display name
+      // Resolve student display name (prefer decrypted full name)
       let studentName = sid;
       try {
         let userSnap = await firestore.collection('users').doc(sid).get();
@@ -595,7 +604,14 @@ router.get(
           if (!userQuery.empty) user = userQuery.docs[0].data();
         }
         if (user) {
-          if (user.fullName && user.fullName.trim()) studentName = user.fullName.trim();
+          const names = decryptNamesFromUser(user);
+          const fullName = [names.firstName, names.middleName, names.lastName]
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (fullName) studentName = fullName;
+          else if (user.fullName && user.fullName.trim()) studentName = user.fullName.trim();
           else studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || sid;
         }
       } catch { /* ignore and keep sid */ }

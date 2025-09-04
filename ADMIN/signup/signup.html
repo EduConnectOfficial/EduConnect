@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Admin - Sign Up</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="signup1.css" />
 </head>
+
 <body>
   <div class="main-container">
     <div class="top-logo text-center my-4">
-      <img src="/assets/educonnect_logo.png" alt="Digipic Logo" class="logo" />
+      <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
     </div>
+
     <div class="left-panel">
       <h2>Create your<br><strong>Account</strong></h2>
-      <p>Share your photo work<br>and get projects!</p>
+      <p>Manage EduConnect settings and users with your admin access.</p>
     </div>
 
     <div class="right-panel">
-      <div class="form-box login-box">
-        <img src="/assets/signup_text.png" alt="Sign Up" class="img-fluid mb-4" style="max-width:200px"/>
+      <div class="form-box login-box text-center">
+        <img src="/assets/signup_text.png" alt="Sign Up" class="img-fluid mb-4" style="max-width:200px" />
 
         <form id="signupForm" novalidate>
           <!-- Username -->
@@ -39,8 +43,7 @@
           <!-- Middle Name -->
           <div class="mb-3 text-start">
             <label for="middleName" class="form-label">Middle Name</label>
-            <input type="text" id="middleName" class="form-control"
-              placeholder="Enter your middle name (optional)" />
+            <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
           </div>
 
           <!-- Last Name -->
@@ -59,13 +62,13 @@
           <!-- Password -->
           <div class="mb-3 text-start">
             <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" class="form-control" placeholder="Create a password" required/>
+            <input type="password" id="password" class="form-control" placeholder="Create a password" required />
           </div>
 
           <!-- Confirm Password -->
           <div class="mb-3 text-start">
             <label for="confirmPassword" class="form-label">Confirm Password</label>
-            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required/>
+            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required />
             <ul class="list-unstyled mt-2" id="passwordCriteria">
               <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
               <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
@@ -77,7 +80,7 @@
 
           <!-- Show/Hide Password -->
           <div class="form-check text-start mb-3">
-            <input class="form-check-input" type="checkbox" id="togglePassword"/>
+            <input class="form-check-input" type="checkbox" id="togglePassword" />
             <label class="form-check-label" for="togglePassword">Show Password</label>
           </div>
 
@@ -96,155 +99,309 @@
     </div>
   </div>
 
-  <script>
-    // Element refs
-    const username       = document.getElementById('username');
-    const usernameStatus = document.getElementById('usernameStatus');
-    const email          = document.getElementById('email');
-    const emailStatus    = document.getElementById('emailStatus');
-    const password       = document.getElementById('password');
-    const confirmPass    = document.getElementById('confirmPassword');
-    const submitBtn      = document.getElementById('submitBtn');
-    const signupForm     = document.getElementById('signupForm');
-    const pwError        = document.getElementById('passwordError');
-    const signupError    = document.getElementById('signupError');
+  <!-- Success / Next-step Modal (same UX as Teacher) -->
+  <div class="modal fade" id="signupModal" tabindex="-1" aria-hidden="true" aria-labelledby="signupModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="signupModalLabel" class="modal-title">
+            <i class="bi bi-envelope-check me-2"></i>Verify your email
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          We sent a verification code to <strong><span id="modalEmail"></span></strong>.
+          Please check your inbox to continue.
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="goVerifyBtn" class="btn btn-primary">Go to verification</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    const checks = {
-      length:        document.getElementById('lengthCheck'),
-      uppercase:     document.getElementById('uppercaseCheck'),
-      number:        document.getElementById('numberCheck'),
-      specialChar:   document.getElementById('specialCharCheck'),
-      match:         document.getElementById('matchCheck'),
-    };
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    // Elements
+    const usernameInput = document.getElementById("username");
+    const usernameStatus = document.getElementById("usernameStatus");
+    const emailInput = document.getElementById("email");
+    const emailStatus = document.getElementById("emailStatus");
+
+    const firstNameInput = document.getElementById("firstName");
+    const middleNameInput = document.getElementById("middleName");
+    const lastNameInput  = document.getElementById("lastName");
+    const passwordInput  = document.getElementById("password");
+    const confirmInput   = document.getElementById("confirmPassword");
+
+    const submitBtn      = document.getElementById("submitBtn");
+    const signupForm     = document.getElementById("signupForm");
+    const pwError        = document.getElementById("passwordError");
+    const signupError    = document.getElementById("signupError");
+
+    // Password criteria list items
+    const lengthCheck      = document.getElementById("lengthCheck");
+    const uppercaseCheck   = document.getElementById("uppercaseCheck");
+    const numberCheck      = document.getElementById("numberCheck");
+    const specialCharCheck = document.getElementById("specialCharCheck");
+    const matchCheck       = document.getElementById("matchCheck");
+
+    // Modal refs
+    const modalEl      = document.getElementById("signupModal");
+    const modalEmailEl = document.getElementById("modalEmail");
+    const goVerifyBtn  = document.getElementById("goVerifyBtn");
+    const verifyModal  = new bootstrap.Modal(modalEl, { backdrop: "static", keyboard: false });
+
+    // Helpers
+    const trimmed = v => (v || "").trim();
+    const normalizeUsername = v => trimmed(v).replace(/\s+/g, "");
+    const normalizeEmail    = v => trimmed(v).toLowerCase();
+
+    function debounce(fn, ms = 350) {
+      let t;
+      return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    }
+
+    function setStatus(el, { text = "", ok = null } = {}) {
+      el.textContent = text;
+      el.classList.remove("text-success", "text-danger");
+      if (ok === true)  el.classList.add("text-success");
+      if (ok === false) el.classList.add("text-danger");
+    }
+
+    function maskEmail(email) {
+      if (!email || !email.includes("@")) return email;
+      const [local, domain] = email.split("@");
+      if (local.length <= 2) return local[0] + "•••@" + domain;
+      return local.slice(0, 2) + "•••@" + domain;
+    }
+    function showVerifyModal(email) {
+      modalEmailEl.textContent = maskEmail(email || "");
+      verifyModal.show();
+    }
+    goVerifyBtn.addEventListener("click", () => {
+      window.location.href = "/ADMIN/signup/verification.html";
+    });
+    modalEl.addEventListener("hidden.bs.modal", () => {
+      window.location.href = "/ADMIN/signup/verification.html";
+    });
 
     // Show/hide password
-    document.getElementById('togglePassword').addEventListener('change', () => {
-      const t = document.getElementById('togglePassword').checked ? 'text' : 'password';
-      password.type = t;
-      confirmPass.type = t;
+    document.getElementById("togglePassword").addEventListener("change", () => {
+      const t = document.getElementById("togglePassword").checked ? "text" : "password";
+      passwordInput.type = t;
+      confirmInput.type  = t;
     });
 
-    // Utility: set status text & color
-    function setStatus(el, msg, ok) {
-      el.textContent = msg;
-      el.classList.toggle('text-success', ok);
-      el.classList.toggle('text-danger', !ok);
+    // Live password UI
+    function updateRequirement(el, cond) {
+      const icon = el.querySelector("i");
+      icon.classList.toggle("bi-check-circle", cond);
+      icon.classList.toggle("text-success", cond);
+      icon.classList.toggle("bi-x-circle", !cond);
+      icon.classList.toggle("text-danger", !cond);
+    }
+    function meetsPasswordPolicy(pw, confirm) {
+      const okLen  = pw.length >= 8;
+      const okUp   = /[A-Z]/.test(pw);
+      const okNum  = /\d/.test(pw);
+      const okSpec = /[^A-Za-z0-9]/.test(pw);
+      const okMatch= pw === confirm && pw !== "";
+      updateRequirement(lengthCheck, okLen);
+      updateRequirement(uppercaseCheck, okUp);
+      updateRequirement(numberCheck, okNum);
+      updateRequirement(specialCharCheck, okSpec);
+      updateRequirement(matchCheck, okMatch);
+      return okLen && okUp && okNum && okSpec && okMatch;
     }
 
-    // Check username/email availability
-    async function checkTaken(field, url, statusEl) {
-      const val = field.value.trim();
-      if (!val) {
-        statusEl.textContent = '';
-        return false;
-      }
+    // Availability checks (with cancellation)
+    let usernameController = null;
+    let emailController    = null;
+    let isUsernameOk = false;
+    let isEmailOk    = false;
+
+    async function checkUsername() {
+      const u = normalizeUsername(usernameInput.value);
+      isUsernameOk = false;
+      setStatus(usernameStatus, { text: "", ok: null });
+      if (!u) { updateSubmitState(); return; }
+
+      if (usernameController) usernameController.abort();
+      usernameController = new AbortController();
+
       try {
-        const res = await fetch(`${url}?${field.id}=${encodeURIComponent(val)}`);
-        const js  = await res.json();
+        setStatus(usernameStatus, { text: "Checking...", ok: null });
+        const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`, {
+          signal: usernameController.signal
+        });
+        const js = await res.json();
         if (js.taken) {
-          setStatus(statusEl, `❌ ${field.id.charAt(0).toUpperCase()+field.id.slice(1)} already taken`, false);
-          return true;
+          isUsernameOk = false;
+          setStatus(usernameStatus, { text: "❌ Username already taken", ok: false });
         } else {
-          setStatus(statusEl, `✅ ${field.id.charAt(0).toUpperCase()+field.id.slice(1)} is available`, true);
-          return false;
+          isUsernameOk = true;
+          setStatus(usernameStatus, { text: "✅ Username available", ok: true });
         }
-      } catch {
-        statusEl.textContent = '';
-        return false;
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          isUsernameOk = false;
+          setStatus(usernameStatus, { text: "Couldn’t verify username right now.", ok: false });
+        }
+      } finally {
+        updateSubmitState();
       }
     }
 
-    // Validate entire form to enable/disable submit
-    async function validateForm() {
-      const uTaken = await checkTaken(username, 'http://localhost:5000/check-username', usernameStatus);
-      const eTaken = await checkTaken(email,    'http://localhost:5000/check-email',    emailStatus);
-      submitBtn.disabled = uTaken || eTaken;
-    }
-    username.addEventListener('blur',  validateForm);
-    email.addEventListener('blur',     validateForm);
+    async function checkEmail() {
+      const e = normalizeEmail(emailInput.value);
+      isEmailOk = false;
+      setStatus(emailStatus, { text: "", ok: null });
+      if (!e) { updateSubmitState(); return; }
 
-    // Live password criteria
-    function updateCheck(el, cond) {
-      const icon = el.querySelector('i');
-      icon.classList.toggle('bi-check-circle', cond);
-      icon.classList.toggle('text-success',    cond);
-      icon.classList.toggle('bi-x-circle',     !cond);
-      icon.classList.toggle('text-danger',     !cond);
-    }
-    function livePassword() {
-      const p = password.value;
-      updateCheck(checks.length,      p.length >= 8);
-      updateCheck(checks.uppercase,   /[A-Z]/.test(p));
-      updateCheck(checks.number,      /\d/.test(p));
-      updateCheck(checks.specialChar, /[^A-Za-z0-9]/.test(p));
-      updateCheck(checks.match,       p === confirmPass.value && p !== '');
-    }
-    password.addEventListener('input', livePassword);
-    confirmPass.addEventListener('input', livePassword);
+      if (emailController) emailController.abort();
+      emailController = new AbortController();
 
-    // Submission
-    signupForm.addEventListener('submit', async e => {
+      try {
+        setStatus(emailStatus, { text: "Checking...", ok: null });
+        const res = await fetch(`${API_BASE}/check-email?email=${encodeURIComponent(e)}`, {
+          signal: emailController.signal
+        });
+        const js = await res.json();
+        if (js.taken) {
+          isEmailOk = false;
+          setStatus(emailStatus, { text: "❌ Email already taken", ok: false });
+        } else {
+          isEmailOk = true;
+          setStatus(emailStatus, { text: "✅ Email available", ok: true });
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          isEmailOk = false;
+          setStatus(emailStatus, { text: "Couldn’t verify email right now.", ok: false });
+        }
+      } finally {
+        updateSubmitState();
+      }
+    }
+
+    const checkUsernameDebounced = debounce(checkUsername, 300);
+    const checkEmailDebounced    = debounce(checkEmail, 300);
+
+    usernameInput.addEventListener("input", () => {
+      usernameInput.value = normalizeUsername(usernameInput.value);
+      checkUsernameDebounced();
+    });
+    usernameInput.addEventListener("blur", checkUsername);
+
+    emailInput.addEventListener("input", checkEmailDebounced);
+    emailInput.addEventListener("blur", () => {
+      emailInput.value = normalizeEmail(emailInput.value);
+      checkEmail();
+    });
+
+    // Enable/disable submit
+    function allRequiredFilled() {
+      return (
+        normalizeUsername(usernameInput.value) &&
+        trimmed(firstNameInput.value) &&
+        trimmed(lastNameInput.value) &&
+        trimmed(emailInput.value) &&
+        trimmed(passwordInput.value) &&
+        trimmed(confirmInput.value)
+      );
+    }
+    function updateSubmitState() {
+      const pwOk = meetsPasswordPolicy(passwordInput.value, confirmInput.value);
+      submitBtn.disabled = !(allRequiredFilled() && isUsernameOk && isEmailOk && pwOk);
+    }
+
+    ["input","blur"].forEach(evt => {
+      [usernameInput, firstNameInput, lastNameInput, emailInput, passwordInput, confirmInput]
+        .forEach(el => el.addEventListener(evt, updateSubmitState));
+    });
+    passwordInput.addEventListener("input", () => { meetsPasswordPolicy(passwordInput.value, confirmInput.value); updateSubmitState(); });
+    confirmInput .addEventListener("input", () => { meetsPasswordPolicy(passwordInput.value, confirmInput.value); updateSubmitState(); });
+
+    // Submit
+    signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      signupError.textContent = "";
+      pwError.textContent = "";
 
-      // block if username/email taken
-      if (usernameStatus.textContent.includes('❌') || emailStatus.textContent.includes('❌')) {
-        signupError.textContent = 'Fix the above errors before submitting.';
+      const u  = normalizeUsername(usernameInput.value);
+      const em = normalizeEmail(emailInput.value);
+      const pw = passwordInput.value.trim();
+      const cp = confirmInput.value.trim();
+
+      if (!meetsPasswordPolicy(pw, cp)) {
+        pwError.textContent = "Please meet all password requirements.";
+        return;
+      }
+      if (!isUsernameOk || !isEmailOk) {
+        signupError.textContent = "Please resolve username/email availability first.";
         return;
       }
 
-      // password rules
-      const p = password.value, cp = confirmPass.value;
-      if (p.length < 8) {
-        pwError.textContent = 'Password must be ≥ 8 characters.';
-        return;
-      } else if (!/[A-Z]/.test(p)) {
-        pwError.textContent = 'Include at least one uppercase letter.';
-        return;
-      } else if (!/[^A-Za-z0-9]/.test(p)) {
-        pwError.textContent = 'Include at least one special character.';
-        return;
-      } else if (!/\d/.test(p)) {
-        pwError.textContent = 'Include at least one number.';
-        return;
-      } else if (p !== cp) {
-        pwError.textContent = 'Passwords do not match.';
-        return;
-      }
-      pwError.textContent = '';
-
-      // payload
-      const data = {
-        firstName:  document.getElementById('firstName').value.trim(),
-        middleName: document.getElementById('middleName').value.trim(),
-        lastName:   document.getElementById('lastName').value.trim(),
-        username:   username.value.trim(),
-        email:      email.value.trim(),
-        password:   p,
+      const payload = {
+        firstName:  trimmed(firstNameInput.value),
+        middleName: trimmed(middleNameInput.value),
+        lastName:   trimmed(lastNameInput.value),
+        username:   u,
+        email:      em,
+        password:   pw,
         active:     true,
-        isITsupport: true,
-        isUser:     false,
-        isAdmin:    false
+        // Role flags – admin flow
+        isUser:      false,
+        isAdmin:     true,
+        isTeacher:   false,
+        isStudent:   false
       };
 
+      submitBtn.disabled = true;
+      const prevText = submitBtn.textContent;
+      submitBtn.textContent = "Submitting...";
+
       try {
-        const res = await fetch('http://localhost:5000/signup', {
-          method:  'POST',
-          headers: {'Content-Type':'application/json'},
-          body:    JSON.stringify(data)
+        const res = await fetch(`${API_BASE}/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
-        const js  = await res.json();
-        if (res.ok) {
-          sessionStorage.setItem('pendingEmail', data.email);
-          sessionStorage.setItem('pendingUserData', JSON.stringify(data));
-          alert('Verification code sent to your email!');
-          window.location.href = '/ADMIN/signup/verification.html';
-        } else {
-          signupError.textContent = js.error || 'Signup failed.';
+        const js = await res.json();
+
+        if (!res.ok) {
+          signupError.textContent = js.error || "Signup failed.";
+          submitBtn.disabled = false;
+          submitBtn.textContent = prevText;
+          return;
         }
-      } catch {
-        signupError.textContent = 'Could not connect to the server.';
+
+        // Persist minimal info for verify step
+        sessionStorage.setItem("pendingEmail", payload.email);
+        sessionStorage.setItem("pendingUserData", JSON.stringify({
+          firstName: payload.firstName,
+          lastName:  payload.lastName,
+          username:  payload.username
+        }));
+
+        // Show masked email + route to Admin verification
+        showVerifyModal(payload.email);
+
+      } catch (err) {
+        console.error(err);
+        signupError.textContent = "Could not connect to the server.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = prevText;
       }
     });
+
+    // Initial state
+    submitBtn.disabled = true;
   </script>
 </body>
 </html>
