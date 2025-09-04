@@ -18,6 +18,9 @@
     /* small visual cue for selected assign cards */
     .card.border-primary { border-width: 2px !important; }
     .card.bg-light { background-color: #f8fafc !important; }
+
+    /* empty state */
+    #assigned-empty { display:none; }
   </style>
 </head>
 
@@ -64,6 +67,14 @@
             <!-- Assign-to-Classes -->
             <div class="mb-3">
               <label class="form-label">Assign to Classes</label>
+
+              <!-- Loading / status -->
+              <div id="assigned-status" class="small text-muted mb-2">Loading your classes…</div>
+
+              <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2">
+                No classes found for your account.
+              </div>
+
               <div id="assignedClassesContainer" class="row g-3"></div>
               <div class="text-white mt-3">Click a card to select which classes get access.</div>
             </div>
@@ -91,6 +102,9 @@
     </div>
   </div>
 
+  <!-- Bootstrap JS FIRST so it's available to app scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <!-- Sidebar + Dropdown Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -117,126 +131,177 @@
     });
   </script>
 
-  <!-- Main Logic -->
+  <!-- Main Logic (runs after Bootstrap is loaded) -->
   <script>
-    const API = "http://localhost:5000";
-    const userData = JSON.parse(localStorage.getItem("user")) || {};
+    window.addEventListener('DOMContentLoaded', () => {
+      const API = "http://localhost:5000";
+      const userData = JSON.parse(localStorage.getItem("user")) || {};
 
-    // Redirect if not logged in
-    if (!userData.username) {
-      window.location.href = "../login/login.html";
-    }
-    document.getElementById("Username").textContent = userData.username;
-
-    /* ===== Modal helper ===== */
-    const infoModalEl = document.getElementById('infoModal');
-    const infoModal   = new bootstrap.Modal(infoModalEl);
-    const infoTitleEl = document.getElementById('infoModalLabel');
-    const infoBodyEl  = document.getElementById('infoModalBody');
-
-    function showInfo(title = 'Notice', html = '') {
-      infoTitleEl.textContent = title;
-      infoBodyEl.innerHTML = html;
-      infoModal.show();
-    }
-
-    // 1) Fetch teacher's classes and render as selectable cards
-    async function loadClasses() {
-      try {
-        const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(userData.userId)}`);
-        const { classes, success } = await res.json();
-        if (!success) return;
-
-        const container = document.getElementById("assignedClassesContainer");
-        classes.forEach(c => {
-          const col = document.createElement("div");
-          col.className = "col-6 col-md-4";
-
-          const card = document.createElement("div");
-          card.className = "card";
-          card.style.cursor = "pointer";
-
-          const chk = document.createElement("input");
-          chk.type = "checkbox";
-          chk.value = c.id;
-          chk.className = "d-none";
-          card.appendChild(chk);
-
-          const body = document.createElement("div");
-          body.className = "card-body";
-          body.innerHTML = `
-            <h5 class="card-title">${c.name}</h5>
-            <p class="card-text mb-0">Grade ${c.gradeLevel}, Section ${c.section}</p>
-          `;
-          card.appendChild(body);
-
-          card.addEventListener("click", () => {
-            const isChecked = !chk.checked;
-            chk.checked = isChecked;
-            card.classList.toggle("border-primary", isChecked);
-            card.classList.toggle("bg-light", isChecked);
-          });
-
-          col.appendChild(card);
-          container.appendChild(col);
-        });
-      } catch (e) {
-        console.error("Could not load classes:", e);
-        showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
-      }
-    }
-    loadClasses();
-
-    // 2) Submit form
-    document.getElementById("courseUploadForm").addEventListener("submit", async e => {
-      e.preventDefault();
-
-      const payload = {
-        title:       document.getElementById("courseTitle").value.trim(),
-        category:    document.getElementById("courseCategory").value.trim(),
-        description: document.getElementById("courseDescription").value.trim(),
-        uploadedBy:  userData.userId,
-        assignedClasses: Array.from(
-          document.querySelectorAll("#assignedClassesContainer input:checked")
-        ).map(i => i.value)
-      };
-
-      // Basic front-end validation
-      if (!payload.title || !payload.category || !payload.description) {
-        showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Category</strong>, and <strong>Description</strong>.');
+      // Redirect if not logged in
+      if (!userData.username) {
+        window.location.href = "../login/login.html";
         return;
       }
+      document.getElementById("Username").textContent = userData.username;
 
-      try {
-        const res = await fetch(`${API}/upload-course`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify(payload)
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          // Success modal then redirect
-          showInfo('Success', '✅ Course uploaded!');
-          const redirect = () => window.location.href = "../courses/course_list.html";
-          // redirect when OK/close
-          infoModalEl.addEventListener('hidden.bs.modal', redirect, { once: true });
-        } else {
-          showInfo('Upload Failed', (data.message ? `❌ ${data.message}` : '❌ Upload failed.'));
-        }
-      } catch (err) {
-        console.error(err);
-        showInfo('Server Error', '🚨 A server error occurred while uploading the course.');
+      /* ===== Modal helper ===== */
+      const infoModalEl = document.getElementById('infoModal');
+      const infoModal   = new bootstrap.Modal(infoModalEl);
+      const infoTitleEl = document.getElementById('infoModalLabel');
+      const infoBodyEl  = document.getElementById('infoModalBody');
+      function showInfo(title = 'Notice', html = '') {
+        infoTitleEl.textContent = title;
+        infoBodyEl.innerHTML = html;
+        infoModal.show();
       }
+
+      const assignedContainer = document.getElementById("assignedClassesContainer");
+      const assignedStatus    = document.getElementById("assigned-status");
+      const assignedEmpty     = document.getElementById("assigned-empty");
+
+      // 1) Fetch teacher's classes and render as selectable cards
+      async function loadClasses() {
+        try {
+          // be flexible about id key names
+          const teacherId =
+            userData.userId ||
+            userData.id ||
+            userData.uid ||
+            '';
+
+          if (!teacherId) {
+            assignedStatus.textContent = "Missing teacher ID in your session.";
+            assignedStatus.classList.replace('text-muted','text-danger');
+            return;
+          }
+
+          const url = `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
+          const res = await fetch(url, { headers: { "Accept": "application/json" } });
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+
+          const json = await res.json();
+          const classes = json?.classes || [];
+          const success = json?.success === undefined ? true : !!json.success;
+
+          // Clear previous
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "none";
+
+          if (!success) {
+            assignedStatus.textContent = "Could not load your classes.";
+            assignedStatus.classList.replace('text-muted','text-danger');
+            return;
+          }
+
+          if (!Array.isArray(classes) || classes.length === 0) {
+            assignedStatus.style.display = "none";
+            assignedEmpty.style.display = "block";
+            return;
+          }
+
+          // Render
+          classes.forEach(c => {
+            const id   = c.id || c._id || c.classId || "";
+            const name = c.name || c.className || "Untitled Class";
+            const grade = c.gradeLevel ?? c.grade ?? "-";
+            const section = c.section ?? c.sectionName ?? "-";
+
+            const col = document.createElement("div");
+            col.className = "col-6 col-md-4";
+
+            const card = document.createElement("div");
+            card.className = "card";
+            card.style.cursor = "pointer";
+
+            const chk = document.createElement("input");
+            chk.type = "checkbox";
+            chk.value = id;
+            chk.className = "d-none";
+            card.appendChild(chk);
+
+            const body = document.createElement("div");
+            body.className = "card-body";
+            body.innerHTML = `
+              <h5 class="card-title mb-1">${name}</h5>
+              <p class="card-text mb-0">Grade ${grade}, Section ${section}</p>
+            `;
+            card.appendChild(body);
+
+            card.addEventListener("click", () => {
+              const isChecked = !chk.checked;
+              chk.checked = isChecked;
+              card.classList.toggle("border-primary", isChecked);
+              card.classList.toggle("bg-light", isChecked);
+            });
+
+            col.appendChild(card);
+            assignedContainer.appendChild(col);
+          });
+
+          assignedStatus.style.display = "none";
+        } catch (e) {
+          console.error("Could not load classes:", e);
+          assignedStatus.textContent = "Could not load your classes. Please refresh.";
+          assignedStatus.classList.replace('text-muted','text-danger');
+          showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
+        }
+      }
+      loadClasses();
+
+      // 2) Submit form
+      document.getElementById("courseUploadForm").addEventListener("submit", async e => {
+        e.preventDefault();
+
+        const assigned = Array.from(
+          document.querySelectorAll("#assignedClassesContainer input:checked")
+        ).map(i => i.value);
+
+        const payload = {
+          title:       document.getElementById("courseTitle").value.trim(),
+          category:    document.getElementById("courseCategory").value.trim(),
+          description: document.getElementById("courseDescription").value.trim(),
+          uploadedBy:  userData.userId || userData.id || userData.uid,
+          assignedClasses: assigned
+        };
+
+        // Basic front-end validation
+        if (!payload.title || !payload.category || !payload.description) {
+          showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Category</strong>, and <strong>Description</strong>.');
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API}/upload-course`, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(payload)
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            // Success modal then redirect
+            showInfo('Success', '✅ Course uploaded!');
+            const redirect = () => window.location.href = "../courses/course_list.html";
+            // redirect when OK/close
+            infoModalEl.addEventListener('hidden.bs.modal', redirect, { once: true });
+          } else {
+            showInfo('Upload Failed', (data.message ? `❌ ${data.message}` : '❌ Upload failed.'));
+          }
+        } catch (err) {
+          console.error(err);
+          showInfo('Server Error', '🚨 A server error occurred while uploading the course.');
+        }
+      });
+
+      // Optional: logout utility
+      window.logoutUser = function() {
+        localStorage.removeItem('user');
+        window.location.href = '/TEACHER/login/login.html';
+      };
     });
-
-    function logoutUser() {
-      localStorage.removeItem('user');
-      window.location.href = '/TEACHER/login/login.html';
-    }
   </script>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

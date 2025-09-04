@@ -826,3 +826,92 @@ textarea.form-control {
     border-radius: 12px !important;
     box-shadow: 0 6px 16px rgba(0,0,0,.15) !important;
   }
+
+  /* =========================
+   ASSIGNED CLASSES LAYOUT FIX
+   ========================= */
+
+/* Turn the container into a responsive grid */
+#assignedClassesContainer {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+/* Neutralize the Bootstrap col widths inside this container
+   so the grid controls the sizing */
+#assignedClassesContainer > [class^="col-"],
+#assignedClassesContainer > [class*=" col-"] {
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;           /* tighter chips */
+}
+
+/* Make the class “cards” compact & horizontal */
+#assignedClassesContainer .card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  margin: 0 !important;
+
+  /* keep your brand look, but softer */
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810) !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,.12) !important;
+
+  /* cancel any global full-width overrides */
+  flex: initial !important;
+  max-width: 100% !important;
+}
+
+/* Text inside stays on one line with ellipsis */
+#assignedClassesContainer .card * {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#assignedClassesContainer .card .card-title {
+  font-size: 1rem !important;
+  margin: 0 0 2px 0 !important;
+  color: #FFD8A9 !important;
+}
+#assignedClassesContainer .card .card-text {
+  font-size: .9rem !important;
+  margin: 0 !important;
+  color: #FFD8A9 !important;
+}
+
+/* Selected state: slimmer glow (reuses your styles) */
+#assignedClassesContainer .card.border-primary.bg-light {
+  border: 2px solid var(--glow-accent, #ff5a27) !important;
+  color: #4A1A0C !important;
+  box-shadow:
+    0 0 0 3px rgba(255, 90, 39, 0.18),
+    0 10px 24px rgba(255, 90, 39, 0.20),
+    0 4px 12px rgba(0,0,0,.06) !important;
+}
+
+/* Tablet: keep them horizontal, not too wide */
+@media (max-width: 1280px) {
+  #assignedClassesContainer {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Mobile: two-up grid for compact pills */
+@media (max-width: 480px) {
+  #assignedClassesContainer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  #assignedClassesContainer .card {
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+  }
+  #assignedClassesContainer .card .card-title { font-size: .95rem !important; }
+  #assignedClassesContainer .card .card-text  { font-size: .85rem !important; }
+}
