@@ -61,6 +61,78 @@ function wantsArchived(req) {
   return String(req.query.includeArchived).toLowerCase() === 'true';
 }
 
+/** Small util: decrypt first/middle/last and form full name */
+const { decryptField } = require('../utils/fieldCrypto');
+function decryptNamesFromUser(u = {}) {
+  return {
+    firstName: decryptField(u.firstNameEnc || '') || '',
+    middleName: decryptField(u.middleNameEnc || '') || '',
+    lastName: decryptField(u.lastNameEnc || '') || '',
+  };
+}
+function fullNameFromUser(u = {}) {
+  const names = decryptNamesFromUser(u);
+  const full = [names.firstName, names.middleName, names.lastName]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (full) return full;
+  if (u.fullName && String(u.fullName).trim()) return String(u.fullName).trim();
+  if (u.firstName || u.lastName) return `${u.firstName||''} ${u.lastName||''}`.trim();
+  return 'Student';
+}
+
+/** Batch-load class labels */
+async function getClassLabelsById(ids) {
+  const out = new Map();
+  const todo = Array.from(new Set((ids || []).filter(Boolean)));
+  while (todo.length) {
+    const chunk = todo.splice(0, 10);
+    const snap = await firestore.collection('classes').where('__name__', 'in', chunk).get();
+    const found = new Set();
+    snap.forEach(d => {
+      const c = d.data() || {};
+      const labelParts = [c.name || c.title, c.section].filter(Boolean);
+      const label = labelParts.length ? labelParts.join(' • ') : (c.name || c.title || d.id);
+      out.set(d.id, label);
+      found.add(d.id);
+    });
+    // any missing id -> echo the id as label
+    chunk.forEach(id => { if (!found.has(id)) out.set(id, id); });
+  }
+  return out;
+}
+
+/** Try to infer a student's classId for an assignment/course */
+async function inferClassIdForStudent({ assignmentDoc, studentId }) {
+  try {
+    if (!assignmentDoc) return null;
+    const a = assignmentDoc.data() || {};
+    const assigned = Array.isArray(a.classIds) ? a.classIds : [];
+    if (assigned.length === 1) return assigned[0];
+
+    // Need course assigned classes to intersect with student's enrollments
+    let courseAssigned = [];
+    if (a.courseId) {
+      const cSnap = await firestore.collection('courses').doc(a.courseId).get();
+      if (cSnap.exists) {
+        const c = cSnap.data() || {};
+        if (Array.isArray(c.assignedClasses)) courseAssigned = c.assignedClasses.filter(Boolean);
+      }
+    }
+    if (!courseAssigned.length) return null;
+
+    // Student enrollments
+    const uRef = await getUserRefByAnyId(studentId);
+    if (!uRef) return null;
+    const enrSnap = await uRef.collection('enrollments').get();
+    const myClasses = new Set(enrSnap.docs.map(d => d.id));
+    // intersection
+    const match = courseAssigned.find(cid => myClasses.has(cid));
+    return match || null;
+  } catch {
+    return null;
+  }
+}
+
 /* ===========================================================
    CREATE ASSIGNMENT  (archive-aware)
    POST /assignments
@@ -152,8 +224,6 @@ router.post(
 /* ===========================================================
    GET ONE ASSIGNMENT
    GET /assignments/:id
-   (Leave as-is; front-ends should decide whether to call this.
-    Hidden logic is enforced in list endpoints.)
 =========================================================== */
 router.get(
   '/assignments/:id',
@@ -180,7 +250,7 @@ router.patch(
     if (req.body.title !== undefined)   updates.title   = String(req.body.title).trim();
     if (req.body.content !== undefined) updates.content = String(req.body.content).trim();
     if (req.body.points !== undefined)  updates.points  = (req.body.points === null || req.body.points === '') ? null : Number(req.body.points);
-    if (req.body.archived !== undefined) updates.archived = !!req.body.archived; // allow explicit archive flips here if needed
+    if (req.body.archived !== undefined) updates.archived = !!req.body.archived;
 
     if (req.body.publishAt !== undefined) {
       const ts = toTimestampOrNull(req.body.publishAt);
@@ -249,8 +319,6 @@ router.delete(
 /* ===========================================================
    LIST ASSIGNMENTS BY MODULE (archive-aware)
    GET /modules/:moduleId/assignments
-   - Default: hide archived assignments and assignments from archived module
-   - Pass ?includeArchived=true to include archived
 =========================================================== */
 router.get(
   '/modules/:moduleId/assignments',
@@ -258,16 +326,13 @@ router.get(
     const { moduleId } = req.params;
     const includeArchived = wantsArchived(req);
 
-    // module existence + state
     const modStatus = await checkModuleArchived(moduleId);
     if (!modStatus.ok) return res.status(modStatus.code).json({ success:false, message:modStatus.message });
 
-    // If module is archived and we do NOT include archived, return empty
     if (modStatus.archived && !includeArchived) {
       return res.json({ success:true, assignments: [] });
     }
 
-    // Also verify parent course isn't archived (keeps behavior consistent)
     const courseStatus = await checkCourseArchived(modStatus.courseId);
     if (!courseStatus.ok) return res.status(courseStatus.code).json({ success:false, message:courseStatus.message });
     if (courseStatus.archived && !includeArchived) {
@@ -290,8 +355,6 @@ router.get(
 /* ===========================================================
    LIST ASSIGNMENTS BY COURSE (teacher, archive-aware)
    GET /courses/:courseId/assignments
-   - Default: hide archived assignments
-   - Pass ?includeArchived=true to include archived
 =========================================================== */
 router.get(
   '/courses/:courseId/assignments',
@@ -302,7 +365,6 @@ router.get(
     const status = await checkCourseArchived(courseId);
     if (!status.ok) return res.status(status.code).json({ success:false, message:status.message });
 
-    // If course archived and we do NOT include archived, show none
     if (status.archived && !includeArchived) return res.json({ success:true, assignments: [] });
 
     const snap = await firestore
@@ -321,8 +383,6 @@ router.get(
 /* ===========================================================
    CONSOLIDATED STUDENT ASSIGNMENTS (archive-aware)
    GET /students/:userId/assignments
-   - Excludes archived classes, archived courses, and archived assignments.
-   - Also excludes assignments whose module is archived (double-safety).
 =========================================================== */
 router.get(
   '/students/:userId/assignments',
@@ -337,7 +397,7 @@ router.get(
     const classIds = enrollSnap.docs.map(d => d.id);
     if (!classIds.length) return res.json({ success: true, assignments: [] });
 
-    // Keep only ACTIVE classIds (hide archived by default)
+    // Keep only ACTIVE classIds
     const { activeIds } = await splitClassIdsByArchived(classIds);
     if (!activeIds.length) return res.json({ success: true, assignments: [] });
 
@@ -355,7 +415,6 @@ router.get(
 
       snap.forEach(doc => {
         const data = doc.data() || {};
-        // ❗ Exclude archived courses here
         if (!courseSeen.has(doc.id) && data.archived !== true) {
           courseSeen.add(doc.id);
           courses.push({ id: doc.id, ...data });
@@ -384,7 +443,6 @@ router.get(
     let filtered = results.filter(a => a.archived !== true);
 
     // ❗ Double-safety: exclude assignments whose module is archived
-    // Build a map of moduleId -> archived boolean (batched reads)
     const moduleIds = Array.from(new Set(filtered.map(a => a.moduleId).filter(Boolean)));
     const modState = new Map();
     while (moduleIds.length) {
@@ -396,7 +454,6 @@ router.get(
         modState.set(doc.id, d.archived === true);
         found.add(doc.id);
       });
-      // Missing module docs considered not archived (orphan safety)
       chunk.forEach(id => { if (!found.has(id)) modState.set(id, false); });
     }
     filtered = filtered.filter(a => !a.moduleId || modState.get(a.moduleId) !== true);
@@ -426,6 +483,8 @@ router.get(
 /* ===========================================================
    STUDENT SUBMIT ASSIGNMENT
    POST /assignments/:id/submissions
+   - Stores classId on submission if provided OR if assignment
+     targets exactly one class; else tries enrollment∩course
 =========================================================== */
 router.post(
   '/assignments/:id/submissions',
@@ -463,15 +522,29 @@ router.post(
       mime: f.mimetype
     }));
 
+    // Prefer explicit body.classId; else single assignment class; else infer from enrollments∩course
+    const bodyClassId = (req.body.classId || req.body.classID || req.body.class)?.toString().trim() || null;
+    let classId = bodyClassId;
+    if (!classId) {
+      const assigned = Array.isArray(aDoc.data()?.classIds) ? aDoc.data().classIds : [];
+      if (assigned.length === 1) {
+        classId = assigned[0];
+      } else {
+        classId = await inferClassIdForStudent({ assignmentDoc: aDoc, studentId });
+      }
+    }
+
     const subRef = aRef.collection('submissions').doc(studentId);
     const payload = {
       studentId,
+      classId: classId || null, // <-- stored to support Class column
       text: text || '',
       files: fileBlobs,
       submittedAt: admin.firestore.FieldValue.serverTimestamp(),
       graded: false,
       grade: null,
-      feedback: null
+      feedback: null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
     await subRef.set(payload, { merge: true });
@@ -567,11 +640,32 @@ router.get(
 /* ===========================================================
    LIST ALL SUBMISSIONS FOR AN ASSIGNMENT
    GET /assignments/:id/submissions
+   - Returns: studentName (decrypted), classId, className
+   - Fills missing classId via (single assigned) or enrollments∩course
 =========================================================== */
 router.get(
   '/assignments/:id/submissions',
   asyncHandler(async (req, res) => {
     const assignmentId = req.params.id;
+
+    const aDoc = await firestore.collection('assignments').doc(assignmentId).get();
+    if (!aDoc.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
+
+    const a = aDoc.data() || {};
+    const assigned = Array.isArray(a.classIds) ? a.classIds : [];
+    const singleAssignedClassId = assigned.length === 1 ? assigned[0] : null;
+
+    // Preload course.assignedClasses for inference
+    let courseAssigned = [];
+    if (a.courseId) {
+      try {
+        const cSnap = await firestore.collection('courses').doc(a.courseId).get();
+        if (cSnap.exists) {
+          const c = cSnap.data() || {};
+          if (Array.isArray(c.assignedClasses)) courseAssigned = c.assignedClasses.filter(Boolean);
+        }
+      } catch {}
+    }
 
     const subsSnap = await firestore
       .collection('assignments')
@@ -579,20 +673,47 @@ router.get(
       .collection('submissions')
       .get();
 
-    const { decryptField } = require('../utils/fieldCrypto');
-    function decryptNamesFromUser(u = {}) {
-      return {
-        firstName: decryptField(u.firstNameEnc || ''),
-        middleName: decryptField(u.middleNameEnc || ''),
-        lastName: decryptField(u.lastNameEnc || ''),
-      };
+    // First pass: collect subs and the classIds we must label
+    const raw = [];
+    const classIdsNeeded = new Set();
+
+    // Always add all assigned classIds for labeling (for filters)
+    if (Array.isArray(assigned)) {
+      assigned.forEach(cid => { if (cid) classIdsNeeded.add(cid); });
     }
 
-    const submissions = [];
     for (const doc of subsSnap.docs) {
-      const data = doc.data();
+      const data = doc.data() || {};
       const sid = data.studentId || doc.id;
 
+      let classId = data.classId || data.classID || data.class || null;
+
+      // If missing, try single-assigned fallback…
+      if (!classId && singleAssignedClassId) classId = singleAssignedClassId;
+
+      // …else infer from student enrollments ∩ course.assignedClasses
+      if (!classId && courseAssigned.length) {
+        try {
+          const uRef = await getUserRefByAnyId(sid);
+          if (uRef) {
+            const enrSnap = await uRef.collection('enrollments').get();
+            const myClasses = new Set(enrSnap.docs.map(d => d.id));
+            const match = courseAssigned.find(cid => myClasses.has(cid));
+            if (match) classId = match;
+          }
+        } catch {}
+      }
+
+      if (classId) classIdsNeeded.add(classId);
+      raw.push({ sid, data, classId });
+    }
+
+    // Batch load class labels once
+    const classLabels = await getClassLabelsById(Array.from(classIdsNeeded));
+
+    // Build final submissions with decrypted names + class labels
+    const submissions = [];
+    for (const { sid, data, classId } of raw) {
       // Resolve student display name (prefer decrypted full name)
       let studentName = sid;
       try {
@@ -603,17 +724,7 @@ router.get(
           const userQuery = await firestore.collection('users').where('studentId', '==', sid).limit(1).get();
           if (!userQuery.empty) user = userQuery.docs[0].data();
         }
-        if (user) {
-          const names = decryptNamesFromUser(user);
-          const fullName = [names.firstName, names.middleName, names.lastName]
-            .filter(Boolean)
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (fullName) studentName = fullName;
-          else if (user.fullName && user.fullName.trim()) studentName = user.fullName.trim();
-          else studentName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || sid;
-        }
+        if (user) studentName = fullNameFromUser(user);
       } catch { /* ignore and keep sid */ }
 
       submissions.push({
@@ -621,6 +732,10 @@ router.get(
         studentId: sid,
         studentName,
         assignmentId,
+        classId: classId || null,
+        className: classId
+          ? (classLabels.get(classId) || '—')
+          : (singleAssignedClassId ? (classLabels.get(singleAssignedClassId) || '—') : '—'),
       });
     }
 
@@ -647,8 +762,8 @@ function collectSubmissionFiles(filesArr) {
   }));
 }
 
-async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
-  // Validate assignment and check archive status (block if archived/module archived)
+async function saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyClassId = null }) {
+  // Validate assignment and check archive status
   const aRef = firestore.collection('assignments').doc(assignmentId);
   const aDoc = await aRef.get();
   if (!aDoc.exists) {
@@ -670,9 +785,21 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs }) {
     }
   }
 
+  // Prefer body class; else single assigned; else infer via enrollments∩course
+  let classId = (bodyClassId || '').toString().trim() || null;
+  if (!classId) {
+    const assigned = Array.isArray(aDoc.data()?.classIds) ? aDoc.data().classIds : [];
+    if (assigned.length === 1) {
+      classId = assigned[0];
+    } else {
+      classId = await inferClassIdForStudent({ assignmentDoc: aDoc, studentId });
+    }
+  }
+
   const subRef = aRef.collection('submissions').doc(studentId);
   const payload = {
     studentId,
+    classId: classId || null, // <-- store for UI
     text: (text || '').toString().trim(),
     files: filesBlobs,
     submittedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -698,8 +825,9 @@ router.post(
     }
     const filesBlobs = collectSubmissionFiles(req.files);
     const text = req.body.note || req.body.text || '';
+    const bodyClassId = (req.body.classId || req.body.classID || req.body.class) || null;
     try {
-      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
+      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyClassId });
       return res.json(result);
     } catch (err) {
       return res.status(err.statusCode || 500).json({ success:false, message: err.message || 'Failed to save submission.' });
@@ -715,8 +843,9 @@ router.post(
     const { assignmentId, studentId } = req.params;
     const filesBlobs = collectSubmissionFiles(req.files);
     const text = req.body.note || req.body.text || '';
+    const bodyClassId = (req.body.classId || req.body.classID || req.body.class) || null;
     try {
-      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs });
+      const result = await saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyClassId });
       return res.json(result);
     } catch (err) {
       return res.status(err.statusCode || 500).json({ success:false, message: err.message || 'Failed to save submission.' });

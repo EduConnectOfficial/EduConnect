@@ -86,25 +86,25 @@
         <form id="filterForm" class="filter-bar mb-3">
           <div class="row g-3">
             <div class="col-sm-3">
-              <label for="filterClass" class="form-label">Class</label>
+              <label for="filterClass" class="form-label mb-1">Class</label>
               <select id="filterClass" class="form-select">
                 <option value="">All Classes</option>
               </select>
             </div>
             <div class="col-sm-3">
-              <label for="filterModule" class="form-label">Module</label>
+              <label for="filterModule" class="form-label mb-1">Module</label>
               <select id="filterModule" class="form-select">
                 <option value="">All Modules</option>
               </select>
             </div>
             <div class="col-sm-2">
-              <label for="filterDue" class="form-label">Due Date</label>
-              <input type="date" id="filterDue" class="form-control"/>
+              <label for="filterDue" class="form-label mb-1">Due Date</label>
+              <input type="date" id="filterDue" class="form-control" />
             </div>
             <div class="col-sm-2">
-              <label for="filterStatus" class="form-label">Status</label>
+              <label for="filterStatus" class="form-label mb-1">Status</label>
               <select id="filterStatus" class="form-select">
-                <option value="">On-time & Late & Graded</option>
+                <option value="">All Statuses</option>
                 <option value="on-time">On-time</option>
                 <option value="late">Late</option>
                 <option value="graded">Graded</option>
@@ -124,9 +124,9 @@
                 <th>Student</th>
                 <th>Class</th>
                 <th>Module</th>
-                <th>Title</th>
+                <th>Assignment</th>
                 <th>Submitted At</th>
-                <th>Due Date</th>
+                <th>Due At</th>
                 <th>Status</th>
                 <th class="text-center">Actions</th>
               </tr>
@@ -198,7 +198,7 @@
     </div>
   </div>
 
-  <!-- Info Modal (replaces alert) -->
+  <!-- Info Modal -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -214,7 +214,7 @@
     </div>
   </div>
 
-  <!-- Confirm Modal (replaces confirm) -->
+  <!-- Confirm Modal -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -296,7 +296,7 @@
     let submissions = [];
     let filtered = [];
 
-    // --- Modal helpers (new) ---
+    // --- Modal helpers ---
     function showInfoModal(message, title = 'Notice') {
       document.getElementById('infoModalLabel').textContent = title;
       document.getElementById('infoModalBody').textContent = message;
@@ -360,7 +360,7 @@
       return `<span class="status-pill ${cls}">${txt}</span>`;
     }
 
-    // Class name cache (optional, if submissions include classId)
+    // Class name cache
     const classNameById = new Map();
     async function getClassName(classId) {
       if (!classId) return '—';
@@ -394,20 +394,24 @@
       return a;
     }
 
-    // Load submissions for this assignment
+    // Load submissions for this assignment (keep classId, set placeholder className)
     async function loadSubmissions(){
       try {
         const resp = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`);
         if (!resp.ok) return [];
         const js = await resp.json();
         if (!js.success || !Array.isArray(js.submissions)) return [];
+
         const dueAt = toDate(assignmentMeta?.dueAt);
         return js.submissions.map(s => {
           const submittedAt = toDate(s?.submittedAt) || toDate(s?.createdAt);
+          const classId = s.classId || s.classID || s.class || null;
+
           const item = {
             studentId   : s.studentId,
             studentName : s.studentName || s.studentId,
-            className   : s.className || '—',
+            classId     : classId,
+            className   : s.className || (classId ? 'Loading…' : '—'),
             assignmentId,
             assignmentTitle: assignmentMeta?.title || 'Untitled',
             moduleTitle : moduleTitle,
@@ -422,14 +426,35 @@
           item.maxPoints = (typeof assignmentMeta?.points === 'number') ? assignmentMeta.points : null;
           return item;
         });
-      } catch { return []; }
+      } catch {
+        return [];
+      }
+    }
+
+    // Resolve missing class names, refresh filters + table
+    async function resolveMissingClassNames(list){
+      const promises = [];
+      for (const row of list) {
+        const needsLookup =
+          row && row.classId &&
+          (!row.className || row.className === '—' || row.className === 'Loading…');
+        if (needsLookup) {
+          promises.push(
+            getClassName(row.classId).then(name => { row.className = name || '—'; })
+          );
+        }
+      }
+      if (!promises.length) return;
+      await Promise.all(promises);
+      populateFilters(submissions);
+      applyFilters();
     }
 
     // Filters
     function populateFilters(list){
       const classSet = new Set(), moduleSet = new Set();
       list.forEach(x => {
-        if (x.className && x.className !== '—') classSet.add(x.className);
+        if (x.className && x.className !== '—' && x.className !== 'Loading…') classSet.add(x.className);
         if (x.moduleTitle && x.moduleTitle !== '—') moduleSet.add(x.moduleTitle);
       });
       elClass.innerHTML =
@@ -533,11 +558,9 @@
     const viewModalEl   = document.getElementById('viewModal');
     const gradeModalEl  = document.getElementById('gradeModal');
 
-    // Always create-or-get instances to ensure .hide() works
     function vm(){ return bootstrap.Modal.getOrCreateInstance(viewModalEl); }
     function gm(){ return bootstrap.Modal.getOrCreateInstance(gradeModalEl); }
 
-    // View modal fields
     const vmStudentName = document.getElementById('vmStudentName');
     const vmMeta        = document.getElementById('vmMeta');
     const vmStatusBadge = document.getElementById('vmStatusBadge');
@@ -547,7 +570,6 @@
     const vmDeleteBtn   = document.getElementById('vmDeleteBtn');
     const vmGradeBtn    = document.getElementById('vmGradeBtn');
 
-    // Grade modal fields
     const gradeStudentNameEl = document.getElementById('gradeStudentName');
     const gradeLabelEl       = document.getElementById('gradeLabel');
     const gradeHelpEl        = document.getElementById('gradeHelp');
@@ -567,7 +589,6 @@
     function openViewModal(item){
       if (!item) return;
 
-      // Header bits
       vmStudentName.textContent = item.studentName || item.studentId || '—';
       const metaParts = [
         item.assignmentTitle || 'Untitled',
@@ -615,7 +636,7 @@
       vmDeleteBtn.onclick = () => deleteSubmission(item);
       vmGradeBtn.onclick  = () => {
         openGradeModal(item);
-        vm().hide(); // close view modal when opening grade modal
+        vm().hide();
       };
 
       vm().show();
@@ -635,7 +656,7 @@
       gm().show();
     }
 
-    // Save grade (modal closes on success)
+    // Save grade
     document.getElementById('gradeForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const aId = gradeAssignmentIdEl.value;
@@ -653,7 +674,6 @@
         const js = await res.json();
         if (!res.ok || js.success === false) throw new Error(js.message || `HTTP ${res.status}`);
 
-        // Update local state
         const updateLocal = (arr) => {
           const idx = arr.findIndex(x => x.assignmentId === aId && x.studentId === sId);
           if (idx >= 0){
@@ -666,7 +686,7 @@
         updateLocal(filtered);
 
         applyFilters();
-        bootstrap.Modal.getOrCreateInstance(gradeModalEl).hide(); // ensure close
+        bootstrap.Modal.getOrCreateInstance(gradeModalEl).hide();
         showInfoModal('Grade saved successfully.', 'Saved');
       }catch(err){
         console.error(err);
@@ -674,7 +694,7 @@
       }
     });
 
-    // Delete submission (allow resubmission)
+    // Delete submission
     async function deleteSubmission(item){
       const ok = await showConfirmModal(
         'Delete this submission? This will allow the student to resubmit.',
@@ -689,12 +709,10 @@
         const js = await res.json().catch(()=>({success: res.ok}));
         if (!res.ok || js.success === false) throw new Error(js.message || `HTTP ${res.status}`);
 
-        // Remove locally
         submissions = submissions.filter(x => !(x.assignmentId === item.assignmentId && x.studentId === item.studentId));
         filtered    = filtered.filter(x => !(x.assignmentId === item.assignmentId && x.studentId === item.studentId));
         applyFilters();
 
-        // Close view modal if open
         const inst = bootstrap.Modal.getInstance(viewModalEl) || bootstrap.Modal.getOrCreateInstance(viewModalEl);
         inst.hide();
 
@@ -727,8 +745,11 @@
 
       try{
         submissions = await loadSubmissions();
+        // initial paint (may show "Loading…" in Class)
         populateFilters(submissions);
         applyFilters();
+        // resolve class names and refresh UI
+        resolveMissingClassNames(submissions);
       }catch(e){
         console.error(e);
         elBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load submissions.</td></tr>`;
