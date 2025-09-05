@@ -13,7 +13,7 @@
   <!-- Global -->
   <link rel="stylesheet" href="../announcements/announcements.css"/>
 
-  <!-- Theme styles for this page -->
+  <!-- Theme + modal centering -->
   <style>
     :root{
       --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
@@ -27,6 +27,11 @@
     .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
 
     /* Header */
+    .header-top{
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#fff;border-bottom:1px solid rgba(255,255,255,.08);
+      position:sticky;top:0;z-index:10;
+    }
     .logo-header{height:44px}
     .search-box{max-width:520px;width:100%}
     .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
@@ -95,14 +100,42 @@
     .badge.bg-light.text-dark{background:linear-gradient(90deg,#fff3e6,#ffe6cc)!important;color:#7A2810!important;border:1px solid rgba(176,60,16,.25)}
     .bi-exclamation-circle-fill{vertical-align:-.125em}
 
-    /* Modals */
-    .modal-header{
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;border-bottom:none
-    }
-    .modal-content{border-radius:12px;border:1px solid var(--border)}
-    .modal-footer{border-top:1px solid var(--border)}
     .form-control:focus,.form-select:focus{border-color:var(--brand-accent-2);box-shadow:0 0 0 .2rem rgba(255,106,0,.18)}
+
+    /* ===== Center-center Bootstrap modals (all modals) ===== */
+    .modal.show{
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      --bs-modal-margin:0;
+      padding:0 !important;
+    }
+    .modal.show .modal-dialog{
+      margin:0 !important;
+      max-width:560px;
+      width:calc(100% - 2rem);
+    }
+    .modal.show .modal-content{
+      border:none;
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+      max-height:min(90vh, 800px);
+    }
+    .modal-content .modal-header{
+      background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+      color:#fff; border-bottom:none; padding:12px 16px; position:sticky; top:0; z-index:2;
+    }
+    .modal-content .modal-title{ margin:0; font-weight:800; color:#FFD8A9 }
+    .modal-content .btn-close{ filter:invert(1) grayscale(100%) brightness(200%); opacity:.9 }
+    .modal-content .btn-close:hover{ opacity:1; transform:scale(1.05) }
+    @media (max-width:576px){
+      .modal.show .modal-dialog{ width:calc(100% - 1.5rem); max-width:100% }
+    }
+
+    /* For the mobile datetime enhancer */
+    .dt-hidden{display:none}
+    .dt-split{display:grid; grid-template-columns:1fr 1fr; gap:.5rem}
   </style>
 </head>
 <body>
@@ -301,6 +334,23 @@
     </div>
   </div>
 
+  <!-- Reusable Confirm Modal (for Archive/Unarchive) -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="confirmCancelBtn" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-amber" id="confirmOkBtn">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -323,6 +373,9 @@
     });
   </script>
 
+  <!-- Bootstrap JS (bundle) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <!-- Main JS (sorting + archive/unarchive) -->
   <script>
     const API_BASE = "http://localhost:5000";
@@ -335,6 +388,35 @@
       window.location.href = "/TEACHER/login/login.html";
     }
     document.getElementById("Username").textContent = userData.username || "";
+
+    // ===== Confirm modal helper =====
+    const _confirmEl   = document.getElementById('confirmModal');
+    const _confirm     = new bootstrap.Modal(_confirmEl);
+    const _confirmT    = document.getElementById('confirmModalLabel');
+    const _confirmB    = document.getElementById('confirmModalBody');
+    const _confirmOK   = document.getElementById('confirmOkBtn');
+    const _confirmCancel = document.getElementById('confirmCancelBtn');
+
+    function showConfirm(title='Confirm', html='Are you sure?'){
+      _confirmT.textContent = title;
+      _confirmB.innerHTML   = html;
+      return new Promise(resolve=>{
+        const onOk     = ()=>{ cleanup(); _confirm.hide(); resolve(true);  };
+        const onCancel = ()=>{ cleanup(); resolve(false); };
+
+        function cleanup(){
+          _confirmOK.removeEventListener('click', onOk);
+          _confirmCancel.removeEventListener('click', onCancel);
+          _confirmEl.removeEventListener('hidden.bs.modal', onCancel);
+        }
+
+        _confirmOK.addEventListener('click', onOk, { once:true });
+        _confirmCancel.addEventListener('click', onCancel, { once:true });
+        _confirmEl.addEventListener('hidden.bs.modal', onCancel, { once:true });
+
+        _confirm.show();
+      });
+    }
 
     // State
     let CLASS_LIST = [];
@@ -562,30 +644,34 @@
     });
 
     async function archiveAnnouncement(id) {
-      if (!confirm("Archive this announcement? It will be marked expired.")) return;
+      const ok = await showConfirm(
+        'Archive Announcement',
+        'Archive this announcement? It will be marked as <strong>expired</strong> and hidden from students.'
+      );
+      if (!ok) return;
+
       const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}/archive`, {
         method: "POST",
         headers: {"Content-Type":"application/json"}
       });
       const js = await res.json();
-      if (!js.success) {
-        alert(js.message || "Failed to archive announcement");
-        return;
-      }
+      if (!js.success) { alert(js.message || "Failed to archive announcement"); return; }
       await loadAnnouncements();
     }
 
     async function unarchiveAnnouncement(id) {
-      if (!confirm("Unarchive this announcement? It will be visible again based on its publish date.")) return;
+      const ok = await showConfirm(
+        'Unarchive Announcement',
+        'Unarchive this announcement? It will become visible again based on its publish date.'
+      );
+      if (!ok) return;
+
       const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}/unarchive`, {
         method: "POST",
         headers: {"Content-Type":"application/json"}
       });
       const js = await res.json();
-      if (!js.success) {
-        alert(js.message || "Failed to unarchive announcement");
-        return;
-      }
+      if (!js.success) { alert(js.message || "Failed to unarchive announcement"); return; }
       await loadAnnouncements();
     }
 
@@ -614,8 +700,8 @@
     })();
   </script>
 
+  <!-- Mobile-friendly datetime enhancer -->
   <script>
-  /* ===== Mobile-friendly <input type="datetime-local"> enhancer ===== */
   (function enhanceDateTimeForMobile(){
     const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
     if (!isTouch) return;
@@ -709,7 +795,5 @@
     }
   })();
   </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

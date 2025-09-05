@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -42,7 +41,6 @@
 
     .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px) }
 
-    
     .logo-header { height: 44px }
 
     .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 20px }
@@ -76,9 +74,36 @@
       box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
     }
 
+    /* Modal theming + center-center */
     .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none }
     .modal-content { border-radius: 12px; border: 1px solid var(--border) }
     .modal-footer { border-top: 1px solid var(--border) }
+
+    .modal.show{
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      --bs-modal-margin:0;
+      padding:0 !important;
+    }
+    .modal.show .modal-dialog{
+      margin:0 !important;
+      max-width:560px;
+      width:calc(100% - 2rem);
+    }
+    .modal.show .modal-content{
+      overflow:hidden;
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+      max-height:min(90vh, 800px);
+    }
+    .modal-content .btn-close{ filter: invert(1) grayscale(100%) brightness(200%); opacity:.9 }
+    .modal-content .btn-close:hover{ opacity:1; transform:scale(1.05) }
+
+    /* Success variant for modal header */
+    .modal-header.is-success{
+      background: linear-gradient(90deg,#1f995c,#2db974);
+      color:#eafff1;
+    }
 
     /* Read-only look for Teacher ID */
     #teacherId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
@@ -93,7 +118,8 @@
     <!-- Main -->
     <div class="main">
       <!-- Header -->
-      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2"
+              style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff;">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
           <input type="text" class="form-control" placeholder="Search..." />
@@ -203,6 +229,41 @@
     </div>
   </div>
 
+  <!-- ===== Generic INFO Modal (replaces alert()) ===== -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Success Modal (shown after successful photo change) ===== -->
+  <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header is-success">
+          <h5 class="modal-title" id="successModalLabel">Success</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="display-6 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+          <div id="successModalBody">Your profile photo has been updated.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal">Great</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -238,7 +299,31 @@
     const SERVER_BASE = "http://localhost:5000";
     const API = `${SERVER_BASE}/api`;
 
-    // ===== Auth + Guards =====================================================
+    /* ===== Info modal helper ===== */
+    const infoModalEl = document.getElementById('infoModal');
+    const infoModal   = new bootstrap.Modal(infoModalEl);
+    const infoTitleEl = document.getElementById('infoModalLabel');
+    const infoBodyEl  = document.getElementById('infoModalBody');
+    function showInfo(title = 'Notice', html = '', opts = {}) {
+      infoTitleEl.textContent = title;
+      infoBodyEl.innerHTML = html;
+      if (opts.onClose) {
+        const handler = () => { infoModalEl.removeEventListener('hidden.bs.modal', handler); opts.onClose(); };
+        infoModalEl.addEventListener('hidden.bs.modal', handler, { once: true });
+      }
+      infoModal.show();
+    }
+
+    /* ===== Success modal helper ===== */
+    const successModalEl = document.getElementById('successModal');
+    const successModal   = new bootstrap.Modal(successModalEl);
+    const successBodyEl  = document.getElementById('successModalBody');
+    function showSuccess(html = 'Done!') {
+      successBodyEl.innerHTML = html;
+      successModal.show();
+    }
+
+    // ===== Auth + Guards =====
     const userData = JSON.parse(localStorage.getItem("user"));
     if (!userData || !userData.userId) {
       window.location.href = "../login/login.html";
@@ -266,7 +351,7 @@
       window.location.href = "/TEACHER/login/login.html";
     }
 
-    // ===== Photo preview + validation ========================================
+    // ===== Photo preview + validation =====
     const profilePicInput = document.getElementById("profilePic");
     const profilePreview = document.getElementById("profilePreview");
     const MAX_MB = 5;
@@ -279,11 +364,11 @@
       const f = profilePicInput.files[0];
       if (!f) return;
       if (!VALID_TYPES.includes(f.type)) {
-        alert("Please choose a PNG, JPG, or WEBP image.");
+        showInfo('Invalid image', 'Please choose a <strong>PNG</strong>, <strong>JPG</strong>, or <strong>WEBP</strong> image.');
         profilePicInput.value = ""; return;
       }
       if (f.size > MAX_MB * 1024 * 1024) {
-        alert(`Image is too large. Max ${MAX_MB}MB.`);
+        showInfo('Image too large', `Max size is <strong>${MAX_MB}MB</strong>.`);
         profilePicInput.value = ""; return;
       }
       resetPreviewURL();
@@ -293,7 +378,7 @@
 
     window.addEventListener("beforeunload", resetPreviewURL);
 
-    // ===== Teacher ID (read-only) ============================================
+    // ===== Teacher ID (read-only) =====
     function resolveTeacherId(u) { return u.teacherId || u.empId || u.facultyId || u.idNumber || ""; }
     function lockTeacherId(v) {
       const el = document.getElementById("teacherId");
@@ -304,7 +389,7 @@
       }
     }
 
-    // ===== Load user ==========================================================
+    // ===== Load user =====
     let liveUser = null;
     (async () => {
       try {
@@ -330,10 +415,11 @@
         }
       } catch (err) {
         console.error("Error fetching user:", err);
+        showInfo('Load Error', 'Could not load your profile. Please refresh the page.');
       }
     })();
 
-    // ===== Update profile (Change Photo) =====================================
+    // ===== Update profile (including photo) =====
     const profileForm = document.getElementById("profileForm");
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -347,7 +433,8 @@
       fd.append("lastName", document.getElementById("lastName").value);
       fd.append("username", document.getElementById("username").value);
       // DO NOT append teacherId or email (server is source of truth)
-      if (profilePicInput.files.length) fd.append("profilePic", profilePicInput.files[0]);
+      const hadNewPhoto = profilePicInput.files.length > 0;
+      if (hadNewPhoto) fd.append("profilePic", profilePicInput.files[0]);
 
       try {
         const res = await fetch(`${API}/users/${userId}/profile`, {
@@ -362,7 +449,7 @@
         const out = ct.includes("application/json") ? JSON.parse(text) : { success: false, message: text };
 
         if (res.ok && out.success) {
-          alert("✅ Profile updated successfully!");
+          showInfo('Success', '✅ Profile updated successfully!');
 
           if (out.updatedUser?.username) {
             userData.username = out.updatedUser.username;
@@ -371,7 +458,14 @@
           if (out.updatedUser?.photoURL) {
             resetPreviewURL();
             profilePreview.src = `${SERVER_BASE}${out.updatedUser.photoURL}?t=${Date.now()}`;
+
+            // Show dedicated success modal if picture changed
+            if (hadNewPhoto || out.updatedUser.photoURL !== userData.photoURL) {
+              showSuccess('✅ Profile photo updated successfully.');
+            }
+
             userData.photoURL = out.updatedUser.photoURL;
+            profilePicInput.value = ''; // clear file input after success
           }
           // Re-lock teacher ID if server echoed it
           if (out.updatedUser) {
@@ -379,17 +473,17 @@
           }
           localStorage.setItem("user", JSON.stringify(userData));
         } else {
-          alert(out.message || "❌ Failed to update profile.");
+          showInfo('Update Failed', out.message || '❌ Failed to update profile.');
         }
       } catch (err) {
         console.error("Profile update failed:", err);
-        alert("❌ Profile update failed. See console for details.");
+        showInfo('Network Error', '❌ Profile update failed. Please try again.');
       } finally {
         submitBtn.disabled = false; submitBtn.textContent = oldText;
       }
     });
 
-    // ===== Change password + auto re-login ===================================
+    // ===== Change password + auto re-login =====
     const newPw = document.getElementById("newPassword");
     const confirmPw = document.getElementById("confirmPassword");
     const msg = document.getElementById("changePasswordMsg");
