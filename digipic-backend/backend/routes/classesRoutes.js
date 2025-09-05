@@ -478,79 +478,101 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   });
 }));
 
-// === Student SEARCH (by ID or name; STRICT STUDENTS ONLY) ===
+// === Student SEARCH (by ID or name; STRICT STUDENTS ONLY, DECRYPT NAMES) ===
 router.get('/api/students/search', asyncHandler(async (req, res) => {
-  const q = String(req.query.query || '').trim();
-  if (!q) return res.status(400).json({ success: false, message: 'query is required.' });
-
-  const usersCol = firestore.collection('users');
-  const resultsMap = new Map(); // id -> user data
-
-  // If it looks like an ID, try exact match first (supports several formats)
-  const idLike =
-    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(q) ||  // e.g., S-2025-00001 or A-2025-00001
-    /^S-\d{4}-\d{5}$/i.test(q) ||           // strict S-YYYY-XXXXX
-    /^S\d+$/i.test(q) ||                    // S12345
-    /^\d{4}-\d{5}$/.test(q);                // 2025-00001
-
-  if (idLike) {
-    try {
-      const idSnap = await usersCol.where('studentId', '==', q).limit(1).get();
-      idSnap.forEach(d => resultsMap.set(d.id, d.data()));
-    } catch { /* ignore */ }
+  const qRaw = String(req.query.query || '').trim();
+  if (!qRaw) {
+    return res.status(400).json({ success: false, message: 'query is required.' });
+  }
+  if (qRaw.length < 2) {
+    // keep a small floor to avoid scanning for single letters
+    return res.json({ success: true, students: [] });
   }
 
-  // Helpers for prefix queries — we *must* rely on denormalized fields
-  // because names are encrypted at rest.
-  async function prefixRange(field, val, lim = 10) {
+  const usersCol = firestore.collection('users');
+  const qLower = qRaw.toLowerCase();
+
+  // Helper to build decrypted payload
+  const buildDecrypted = (u = {}) => {
+    const names = decryptNamesFromUser(u);
+    const studentId = u.studentId || '';
+    return {
+      studentId,
+      firstName: names.firstName || '',
+      middleName: names.middleName || '',
+      lastName:  names.lastName  || '',
+      email:     u.email || '',
+      active:    u.active !== false
+    };
+  };
+
+  // Helper: looks like an ID?
+  const idLike =
+    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(qRaw) ||  // e.g., S-2025-00001 or A-2025-00001
+    /^S-\d{4}-\d{5}$/i.test(qRaw)        ||
+    /^S\d+$/i.test(qRaw)                 ||
+    /^\d{4}-\d{5}$/.test(qRaw);
+
+  // ---- 1) Fast path: exact studentId match
+  if (idLike) {
     try {
-      const snap = await usersCol
-        .where(field, '>=', val)
-        .where(field, '<', val + '\uf8ff')
-        .limit(lim)
-        .get();
-      snap.forEach(d => resultsMap.set(d.id, d.data()));
+      const exactSnap = await usersCol.where('studentId', '==', qRaw).limit(1).get();
+      if (!exactSnap.empty) {
+        const u = exactSnap.docs[0].data() || {};
+        if (isStudentUser(u)) {
+          const stu = buildDecrypted(u);
+          if (stu.studentId) {
+            return res.json({ success: true, students: [stu] });
+          }
+        }
+      }
     } catch {
-      // ignore if index missing
+      // ignore; we'll fall back to the name scan
     }
   }
 
-  const lc = q.toLowerCase();
-  const candidates = Array.from(new Set([lc, q]));
+  // ---- 2) Bounded scan of student users, decrypt names, filter in memory
+  // Tune LIMIT to your dataset. Keep this bounded so it can't blow up.
+  const LIMIT = 500; // adjust sensibly; can expose ?limit= for admins if needed
+  const snap = await usersCol.where('isStudent', '==', true).limit(LIMIT).get();
 
-  // Prefer lower-cased denormalized fields if present
-  for (const p of candidates) {
-    await Promise.all([
-      prefixRange('firstNameLower', p),
-      prefixRange('lastNameLower',  p),
-    ]);
-  }
+  const matches = [];
+  for (const doc of snap.docs) {
+    const u = doc.data() || {};
+    if (!isStudentUser(u)) continue;                 // must be a proper student
+    if (!u.studentId || String(u.studentId).trim() === '') continue; // must have studentId
 
-  // (Optional) If you still store legacy plaintext names (not recommended),
-  // uncomment these to support fallback searching:
-  // for (const p of candidates) {
-  //   await Promise.all([
-  //     prefixRange('firstName', p),
-  //     prefixRange('lastName',  p),
-  //   ]);
-  // }
+    // Decrypt names for matching
+    const names = decryptNamesFromUser(u);
+    const fn = String(names.firstName || '').toLowerCase();
+    const mn = String(names.middleName || '').toLowerCase();
+    const ln = String(names.lastName  || '').toLowerCase();
+    const full = (fn + ' ' + ln).trim();
+    const em = String(u.email || '').toLowerCase();
+    const sid = String(u.studentId || '').toLowerCase();
 
-  // Build response (strict students only), decrypt names for output
-  const studentsOnly = Array.from(resultsMap.values())
-    .filter(isStudentUser)
-    .slice(0, 20)
-    .map(u => {
-      const names = decryptNamesFromUser(u);
-      return {
+    // Match by studentId, any name part, full name, or email (substring)
+    if (
+      sid.includes(qLower) ||
+      fn.includes(qLower)  ||
+      mn.includes(qLower)  ||
+      ln.includes(qLower)  ||
+      full.includes(qLower)||
+      em.includes(qLower)
+    ) {
+      matches.push({
         studentId: u.studentId || '',
         firstName: names.firstName || '',
         lastName:  names.lastName  || '',
-        email:     u.email     || ''
-      };
-    });
+        email:     u.email || ''
+      });
+    }
+  }
 
-  return res.json({ success: true, students: studentsOnly });
+  // Cap the response size
+  return res.json({ success: true, students: matches.slice(0, 25) });
 }));
+
 
 // === STUDENT: GET ENROLLMENTS ===
 // GET /api/students/:userId/enrollments?includeTeacher=true
