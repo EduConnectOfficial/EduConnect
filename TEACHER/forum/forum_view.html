@@ -7,16 +7,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="../forum/forum.css" />
-  <style>
-    /* Threaded Replies */
-    .reply { padding: 10px 0; }
-    .reply + .reply { border-top: 1px solid #eee; }
-    .reply .reply { border-top: none; }
-    .reply-thread { margin-top: 8px; border-left: 2px solid #ddd; padding-left: 15px; }
-    .reply strong { font-size: 14px; }
-    .reply .text-muted.small { font-size: 12px; }
-    .reply .btn-link { font-size: 13px; }
-  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -41,17 +31,12 @@
 
             <!-- THREAD -->
             <div class="ui-card card-themed mb-4" id="threadContainer">
-              <div class="p-3 border-bottom d-flex justify-content-between align-items-start" id="threadDetails">
-                <div class="flex-grow-1 me-3">
-                  <div class="alert alert-info mb-0">Loading thread...</div>
-                </div>
-                <button class="btn btn-danger d-none" id="deleteThreadBtn">
-                  <i class="bi bi-trash"></i> Delete Thread
-                </button>
+              <div class="p-3 border-bottom" id="threadDetails">
+                <div class="alert alert-info mb-0">Loading thread...</div>
               </div>
             </div>
 
-            <!-- Comment Card -->
+            <!-- COMMENTS -->
             <div class="ui-card card-themed">
               <div class="ui-card-head d-flex justify-content-between align-items-center">
                 <h2 class="ui-card-title m-0"><i class="bi bi-chat-text"></i> Comments</h2>
@@ -60,11 +45,18 @@
 
               <!-- Top-level Comment Form -->
               <form id="replyForm" class="p-3 border-bottom">
-                <div class="mb-3">
-                  <textarea id="replyText" class="form-control" rows="3" placeholder="What are your thoughts?" required></textarea>
-                </div>
-                <div class="d-flex justify-content-end">
-                  <button type="submit" class="btn btn-amber">Comment</button>
+                <div class="fb-composer">
+                  <div class="fb-avatar" id="meAvatar">ME</div>
+                  <div class="flex-grow-1">
+                    <div class="composer-box">
+                      <textarea id="replyText" class="form-control border-0 bg-transparent p-0"
+                                rows="1" placeholder="Write a comment..." required
+                                style="resize:none"></textarea>
+                    </div>
+                    <div class="composer-actions">
+                      <button type="submit" class="btn btn-amber btn-sm mt-2">Comment</button>
+                    </div>
+                  </div>
                 </div>
               </form>
 
@@ -81,307 +73,265 @@
   </div>
 
   <!-- Sidebar loader -->
-   <script>
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
-        .then(html => {
-          document.getElementById("sidebar-container").innerHTML = html;
-          const sidebar = document.querySelector(".sidebar"),
-                dash    = document.querySelector(".dashboard");
-          if (sidebar && dash) {
-            sidebar.addEventListener("mouseenter", () => dash.classList.add("sidebar-expanded"));
-            sidebar.addEventListener("mouseleave", () => dash.classList.remove("sidebar-expanded"));
-          }
-          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-            toggle.addEventListener('click', e => {
-              e.preventDefault();
-              const p = toggle.closest('.has-submenu');
-              p.classList.toggle('open');
-              toggle.setAttribute('aria-expanded', String(!JSON.parse(toggle.getAttribute('aria-expanded'))));
-            });
-          });
-        })
+        .then(html => { document.getElementById("sidebar-container").innerHTML = html; })
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
-  <script>
-    const API_BASE = (location.port === '5501')
-      ? 'http://localhost:5000/api/forum'
-      : '/api/forum';
 
+  <script>
+    const API_BASE = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
     const qs = sel => document.querySelector(sel);
 
-    function escapeHtml(str='') {
-      return String(str).replace(/[&<>"']/g, s => (
-        {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]
-      ));
-    }
-
-    function toLocal(dt) {
-      if (!dt) return '';
-      if (dt._seconds) return new Date(dt._seconds * 1000).toLocaleString();
-      return new Date(dt).toLocaleString();
-    }
-
-    async function fetchJSON(url, opts) {
-      const res = await fetch(url, opts);
-      let json;
-      try { json = await res.json(); } catch { json = {}; }
-      if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
-      return json;
-    }
+    function escapeHtml(str=''){return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+    function toLocal(dt){if(!dt)return'';if(dt._seconds)return new Date(dt._seconds*1000).toLocaleString();return new Date(dt).toLocaleString();}
+    async function fetchJSON(url,opts){const res=await fetch(url,opts);let json;try{json=await res.json();}catch{json={};}if(!res.ok)throw new Error(json.message||`HTTP ${res.status}`);return json;}
 
     // Auth (teacher)
     const userData = JSON.parse(localStorage.getItem("user"));
     if (!userData || !userData.email || !userData.isTeacher) {
       window.location.href = "../login/login.html";
     } else {
-      document.getElementById("Username").textContent = userData.username || userData.email || "Teacher";
-      if (!userData.uid) {
-        userData.uid = userData.email;
-        localStorage.setItem("user", JSON.stringify(userData));
-      }
+      const dname = userData.fullName || userData.username || userData.email || "Teacher";
+      const initials = (n=>{if(!n)return"?";const p=String(n).trim().split(/\s+/).filter(Boolean);const a=p[0]?.[0]||"";const b=(p.length>1?p[p.length-1][0]:(p[0]?.[1]||""));return(a+b).toUpperCase();})(dname);
+      document.getElementById("Username").textContent = initials;
+      document.getElementById("Username").title = dname;
+      if (!userData.uid) { userData.uid = userData.email; localStorage.setItem("user", JSON.stringify(userData)); }
+      const meAvatarEl = document.getElementById("meAvatar"); if (meAvatarEl) meAvatarEl.textContent = initials;
     }
+
+    // Helpers
+    function initialsFromName(n){if(!n)return"?";const parts=String(n).trim().split(/\s+/).filter(Boolean);if(!parts.length)return"?";const a=parts[0][0]||"";const b=(parts.length>1?parts[parts.length-1][0]:(parts[0][1]||""));return(a+b).toUpperCase();}
+    function authorDisplayName(obj){return obj?.author?.fullName || obj?.authorFullName || "User";}
+    function timeHtml(dt){const t=toLocal(dt);return `<span class="time" title="${escapeHtml(t)}">${escapeHtml(t)}</span>`;}
 
     const threadId = new URLSearchParams(window.location.search).get("id");
-    let thread = null;
+    let thread=null;
 
-    async function loadThread() {
-      try {
-        const j = await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`);
-        thread = j.data;
+    async function loadThread(){
+      try{
+        const j=await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`);
+        thread=j.data;
+        const threadAuthorName=authorDisplayName(thread);
+        const initials=initialsFromName(threadAuthorName);
+        const isThreadOwner = userData?.uid && (String(thread.author?.uid) === String(userData.uid));
 
-        qs("#threadDetails").innerHTML = `
-          <div class="flex-grow-1 me-3">
-            <h3 class="mb-2">${escapeHtml(thread.title || '')}</h3>
-            <p class="mb-3">${escapeHtml(thread.text || '')}</p>
-            <div class="text-muted small">
-              Posted by <strong>${escapeHtml(thread.author?.username || 'Unknown')}</strong>
-              • ${escapeHtml(thread.courseTitle || '')}
-              • ${toLocal(thread.createdAt)}
+        // Thread actions:
+        // - Edit only if teacher owns the thread
+        // - Delete always allowed for teachers (per your rule for comments; mirroring here for threads)
+        const actionHtml=`
+          <div class="dropdown ms-2">
+            <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thread actions">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              ${isThreadOwner ? `<li><button class="dropdown-item action-edit-thread"><i class="bi bi-pencil-square"></i> Edit</button></li>` : ``}
+              <li><button class="dropdown-item text-danger action-delete-thread"><i class="bi bi-trash3"></i> Delete</button></li>
+            </ul>
+          </div>`;
+
+        qs("#threadDetails").innerHTML=`
+          <div class="thread-head w-100">
+            <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+            <div class="title-wrap flex-grow-1">
+              <h3>${escapeHtml(thread.title || '')}</h3>
+              <div class="meta">
+                <strong>${escapeHtml(threadAuthorName)}</strong>
+                • ${escapeHtml(thread.courseTitle || '')}
+                • ${timeHtml(thread.createdAt)}
+              </div>
+              <p class="mt-2 mb-0" style="overflow-wrap:anywhere">${escapeHtml(thread.text || '')}</p>
             </div>
-          </div>
-          <button class="btn btn-danger" id="deleteThreadBtn">
-            <i class="bi bi-trash"></i> Delete Thread
-          </button>
-        `;
+            ${actionHtml}
+          </div>`;
 
-        // bind delete
-       qs("#deleteThreadBtn").addEventListener("click", async () => {
-  if (!confirm("Delete this thread? This cannot be undone.")) return;
-  try {
-    await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`, { method: 'DELETE' });
-    location.href = 'forum_list.html';
-  } catch (err) {
-    console.error(err);
-    alert('Failed to delete thread.');
-  }
-});
+        // thread actions
+        qs(".action-delete-thread")?.addEventListener("click", async ()=>{
+          if(!confirm("Delete this thread? This cannot be undone."))return;
+          try{ await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'}); location.href='forum_list.html'; }
+          catch(err){ console.error(err); alert('Failed to delete thread.'); }
+        });
+
+        if (isThreadOwner) {
+          qs(".action-edit-thread")?.addEventListener("click", async ()=>{
+            const newTitle=prompt("Edit thread title:",thread.title||""); if(newTitle==null)return;
+            const newText=prompt("Edit thread text:",thread.text||""); if(newText==null)return;
+            try{
+              await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
+                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle,text:newText})
+              });
+              await loadThread();
+            }catch(err){ console.error(err); alert("Editing thread requires a PATCH /api/forum/threads/:id route on the backend."); }
+          });
+        }
 
         loadReplies();
-      } catch (err) {
+      }catch(err){
         console.error(err);
-        qs("#threadDetails").innerHTML = `<div class="alert alert-danger w-100 mb-0">Failed to load thread.</div>`;
+        qs("#threadDetails").innerHTML=`<div class="alert alert-danger w-100 mb-0">Failed to load thread.</div>`;
       }
     }
 
-    function buildReplyTree(flat) {
-      const map = {};
-      flat.forEach(r => { r.children = []; map[r.id] = r; });
-
-      const roots = [];
-      flat.forEach(r => {
-        if (r.parentId && map[r.parentId]) map[r.parentId].children.push(r);
-        else roots.push(r);
-      });
-
-      // newest roots first; children oldest-first
-      roots.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-      (function sortChildren(arr){
-        arr.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
-        arr.forEach(c => sortChildren(c.children));
-      })(roots);
-
+    function buildReplyTree(flat){
+      const map={}; flat.forEach(r=>{r.children=[];map[r.id]=r;});
+      const roots=[];
+      flat.forEach(r=>{ if(r.parentId && map[r.parentId]) map[r.parentId].children.push(r); else roots.push(r); });
+      roots.sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+      (function sortChildren(arr){ arr.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)); arr.forEach(c=>sortChildren(c.children)); })(roots);
       return roots;
     }
 
-    function renderRepliesRecursive(replies, container, level=0, parentAuthor=null) {
-      replies.forEach(r => {
-        const div = document.createElement("div");
-        div.className = "reply";
-        if (level > 0) div.classList.add("reply-thread");
+    function renderRepliesRecursive(replies, container, level=0, parentName=null){
+      replies.forEach(r=>{
+        const wrap=document.createElement("div");
+        wrap.className="fb-comment";
+        const name=authorDisplayName(r);
+        const initials=initialsFromName(name);
+        const hasChildren=(r.children&&r.children.length)?r.children.length:0;
+        const collapseId=`replies-${r.id}`;
+        const isOwn = userData?.uid && (String(r.author?.uid) === String(userData.uid)); // <-- OWNERSHIP
 
-        const collapseId = "replies-" + r.id;
-        const authorName = r.author?.username || 'Unknown';
-
-        div.innerHTML = `
-          <div class="mb-1 d-flex justify-content-between align-items-start">
-            <div>
-              <strong>${escapeHtml(authorName)}</strong>
-              <span class="text-muted small">• ${toLocal(r.createdAt)}</span>
-              ${parentAuthor ? `<div class="small text-muted">↪ Replying to <strong>@${escapeHtml(parentAuthor)}</strong></div>` : ""}
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-danger delete-reply-btn" data-id="${r.id}">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-2">${escapeHtml(r.text || '')}</div>
-
-          <button class="btn btn-sm btn-link p-0 text-muted reply-btn" data-id="${r.id}">
-            <i class="bi bi-reply"></i> Reply
-          </button>
-          <div class="reply-form-container mt-2"></div>
-
-          ${r.children.length ? `
-            <button class="btn btn-sm btn-link p-0 text-muted mt-1 toggle-replies-btn"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#${collapseId}"
-                    aria-expanded="false">
-              <i class="bi bi-chevron-down"></i> View ${r.children.length} repl${r.children.length>1?"ies":"y"}
+        // Build the dropdown items:
+        // - Edit only if own
+        // - Delete always available
+        const dropdownHtml = `
+          <div class="bubble-kebab dropdown">
+            <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Comment actions">
+              <i class="bi bi-three-dots"></i>
             </button>
-            <div class="collapse mt-2" id="${collapseId}">
-              <div class="children-container"></div>
-            </div>` : ""}
-        `;
+            <ul class="dropdown-menu dropdown-menu-end">
+              ${isOwn ? `<li><button class="dropdown-item action-edit-reply"><i class="bi bi-pencil-square"></i> Edit</button></li>` : ``}
+              <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash3"></i> Delete</button></li>
+            </ul>
+          </div>`;
 
-        container.appendChild(div);
+        wrap.innerHTML=`
+          <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+          <div class="fb-body">
+            <div class="fb-bubble">
+              ${dropdownHtml}
+              <div class="name-line">${escapeHtml(name)} ${timeHtml(r.createdAt)}</div>
+              <div class="fb-text">${escapeHtml(r.text || '')}</div>
+              ${parentName ? `<div class="small text-muted mt-1">↪ Replying to <strong>${escapeHtml(parentName)}</strong></div>` : ""}
+            </div>
+            <div class="fb-actions">
+              <span class="fb-action reply-btn"><i class="bi bi-reply"></i> Reply</span>
+              ${hasChildren ? `<button class="btn btn-sm btn-link p-0 fb-toggle" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}</button>` : ""}
+            </div>
+            ${hasChildren ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
+          </div>`;
 
-        // Delete this reply
-        div.querySelector(".delete-reply-btn").addEventListener("click", async () => {
-  if (!confirm("Delete this comment?")) return;
-  try {
-    await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`, { method: 'DELETE' });
-    await loadReplies();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to delete comment.");
-  }
-});
+        container.appendChild(wrap);
 
+        // delete (always)
+        wrap.querySelector(".action-delete-reply")?.addEventListener("click", async ()=>{
+          if(!confirm("Delete this comment?"))return;
+          try{
+            await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{method:'DELETE'});
+            await loadReplies();
+          } catch(err){
+            console.error(err); alert("Failed to delete comment.");
+          }
+        });
 
-        // nested replies
-        if (r.children.length) {
-          const childWrap = div.querySelector(".children-container");
-          renderRepliesRecursive(r.children, childWrap, level+1, authorName);
-
-          const toggleBtn = div.querySelector(".toggle-replies-btn");
-          const collapseEl = div.querySelector(`#${collapseId}`);
-          collapseEl.addEventListener("show.bs.collapse", () => {
-            toggleBtn.innerHTML = `<i class="bi bi-chevron-up"></i> Hide replies`;
-          });
-          collapseEl.addEventListener("hide.bs.collapse", () => {
-            toggleBtn.innerHTML = `<i class="bi bi-chevron-down"></i> View ${r.children.length} repl${r.children.length>1?"ies":"y"}`;
+        // edit (only if own)
+        if (isOwn) {
+          wrap.querySelector(".action-edit-reply")?.addEventListener("click", async ()=>{
+            const updated=prompt("Edit comment:", r.text||""); if(updated==null) return;
+            try{
+              await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{
+                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:updated})
+              });
+              await loadReplies();
+            }catch(err){
+              console.error(err); alert("Editing comments requires a PATCH /api/forum/threads/:threadId/replies/:replyId route on the backend.");
+            }
           });
         }
 
-        // show inline reply form
-        div.querySelector(".reply-btn").addEventListener("click", () => showReplyForm(r.id, div));
+        // reply
+        wrap.querySelector(".reply-btn").addEventListener("click", ()=> showReplyForm(r.id, wrap));
+
+        // children
+        if(hasChildren){
+          const childWrap=wrap.querySelector(".children-container");
+          renderRepliesRecursive(r.children, childWrap, level+1, name);
+          const toggleBtn=wrap.querySelector(`[data-bs-target="#${collapseId}"]`);
+          const collapseEl=wrap.querySelector(`#${collapseId}`);
+          collapseEl.addEventListener("show.bs.collapse", ()=>{ toggleBtn.innerHTML=`<i class="bi bi-chevron-up"></i> Hide replies`; });
+          collapseEl.addEventListener("hide.bs.collapse", ()=>{ toggleBtn.innerHTML=`<i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}`; });
+        }
       });
     }
 
-    async function loadReplies() {
-      try {
-        const j = await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`);
-        const flatReplies = j.data || [];
-        const tree = buildReplyTree(flatReplies);
-
-        const wrap = qs("#repliesList");
-        const count = qs("#replyCount");
-        wrap.innerHTML = '';
-        count.textContent = `${flatReplies.length} comment${flatReplies.length===1?'':'s'}`;
-
-        if (!flatReplies.length) {
-          wrap.innerHTML = `<div class="text-muted">No comments yet.</div>`;
-          return;
-        }
-
+    async function loadReplies(){
+      try{
+        const j=await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`);
+        const flat=j.data||[];
+        const tree=buildReplyTree(flat);
+        const wrap=qs("#repliesList"); const count=qs("#replyCount");
+        wrap.innerHTML=''; count.textContent=`${flat.length} comment${flat.length===1?'':'s'}`;
+        if(!flat.length){ wrap.innerHTML=`<div class="text-muted">No comments yet.</div>`; return; }
         renderRepliesRecursive(tree, wrap);
-      } catch (err) {
-        console.error(err);
-        qs("#repliesList").innerHTML = `<div class="alert alert-danger">Failed to load comments.</div>`;
-      }
+      }catch(err){ console.error(err); qs("#repliesList").innerHTML=`<div class="alert alert-danger">Failed to load comments.</div>`; }
     }
 
-    function showReplyForm(parentId, replyDiv) {
-      const container = replyDiv.querySelector(".reply-form-container");
-      if (container.querySelector("form")) { container.innerHTML = ""; return; }
+    function showReplyForm(parentId, replyDiv){
+      const container = replyDiv.querySelector(".reply-form-container") || (function(){
+        const c=document.createElement("div"); c.className="reply-form-container mt-2"; replyDiv.querySelector(".fb-body").appendChild(c); return c;
+      })();
+      if (container.querySelector("form")) { container.innerHTML=""; return; }
+
+      const meName = userData.fullName || userData.username || userData.email || "Me";
+      const meInitials = initialsFromName(meName);
 
       container.innerHTML = `
-        <form class="nested-reply-form">
-          <div class="mb-2">
-            <textarea class="form-control form-control-sm" rows="2" placeholder="Write a reply..." required></textarea>
+        <div class="fb-composer mt-2">
+          <div class="fb-avatar">${escapeHtml(meInitials)}</div>
+          <div class="flex-grow-1">
+            <div class="composer-box">
+              <textarea class="form-control form-control-sm border-0 bg-transparent p-0" rows="2" placeholder="Write a reply..." required></textarea>
+            </div>
+            <div class="composer-actions">
+              <button type="submit" class="btn btn-sm btn-amber mt-2">Reply</button>
+            </div>
           </div>
-          <div class="d-flex justify-content-end">
-            <button type="submit" class="btn btn-sm btn-amber">Reply</button>
-          </div>
-        </form>
-      `;
+        </div>`;
 
-      container.querySelector("form").addEventListener("submit", async (e) => {
+      container.querySelector(".btn-amber").addEventListener("click", async (e)=>{
         e.preventDefault();
-        const text = e.target.querySelector("textarea").value.trim();
-        if (!text) return;
-        try {
-          await postReply(text, parentId);
-          await loadReplies();
-
-          const collapse = replyDiv.querySelector(".collapse");
-          if (collapse && !collapse.classList.contains("show")) {
-            new bootstrap.Collapse(collapse, { show: true });
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Could not post reply.");
-        }
+        const ta=container.querySelector("textarea");
+        const text=ta.value.trim(); if(!text) return;
+        try{
+          await postReply(text, parentId); await loadReplies();
+          const collapse=replyDiv.querySelector(".collapse");
+          if(collapse && !collapse.classList.contains("show")){ new bootstrap.Collapse(collapse,{show:true}); }
+        }catch(err){ console.error(err); alert("Could not post reply."); }
       });
     }
 
-    async function postReply(text, parentId = null) {
-      await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          parentId,
-          author: {
-            uid: userData.uid,
-            username: userData.username,
-            email: userData.email
-          }
-        }),
+    async function postReply(text, parentId=null){
+      await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text, parentId, author:{ uid:userData.uid } })
       });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      if (!threadId) {
-        alert('Missing thread ID.');
-        return;
-      }
-
+    document.addEventListener("DOMContentLoaded", ()=>{
+      if(!threadId){ alert('Missing thread ID.'); return; }
       loadThread();
-
-      qs("#replyForm").addEventListener("submit", async (e) => {
+      qs("#replyForm").addEventListener("submit", async (e)=>{
         e.preventDefault();
-        const text = qs("#replyText").value.trim();
-        if (!text) return;
-        try {
-          await postReply(text);
-          e.target.reset();
-          await loadReplies();
-        } catch (err) {
-          console.error(err);
-          alert("Could not post comment.");
-        }
+        const text=qs("#replyText").value.trim(); if(!text) return;
+        try{ await postReply(text); e.target.reset(); await loadReplies(); }
+        catch(err){ console.error(err); alert("Could not post comment."); }
       });
     });
-     function logoutUser(){
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/TEACHER/login/login.html";
-    }
+
+    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
