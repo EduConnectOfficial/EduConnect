@@ -88,6 +88,7 @@
                 <option value="student_az">Student A → Z</option>
                 <option value="course_az">Course A → Z</option>
                 <option value="module_az">Module A → Z</option>
+                <option value="quiz_az">Quiz A → Z</option>
               </select>
             </div>
 
@@ -280,7 +281,7 @@
   <script>
     const API_BASE = "http://localhost:5000";
 
-    // ---- Auth guard + username ----
+    /* ---------- Auth & header ---------- */
     (function () {
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       const u = stored.user || stored;
@@ -299,7 +300,7 @@
       window.location.href = "/TEACHER/login/login.html";
     }
 
-    // ====== UI refs ======
+    /* ---------- UI refs ---------- */
     const statusSelectEl   = document.getElementById('statusSelect');
     const pageSizeSelectEl = document.getElementById('pageSizeSelect');
     const freeSearchEl     = document.getElementById('freeSearch');
@@ -313,7 +314,7 @@
     const moduleFilterEl   = document.getElementById('moduleFilter');
     const sortByEl         = document.getElementById('sortBy');
 
-    // Modal refs
+    /* Modal refs */
     const qListEl     = document.getElementById('qList');
     const qTextEl     = document.getElementById('qText');
     const ansTextEl   = document.getElementById('ansText');
@@ -333,7 +334,7 @@
     const gradeModalEl      = document.getElementById('gradeModal');
     const gradeModal        = new bootstrap.Modal(gradeModalEl);
 
-    // ====== State ======
+    /* ---------- State ---------- */
     const teacherId =
       new URLSearchParams(location.search).get('teacherId') ||
       (window.currentUser && window.currentUser.userId) || '';
@@ -342,15 +343,14 @@
     let total = 0;
     let pageSize = parseInt(pageSizeSelectEl.value, 10);
     let lastItems = [];
-    let grouped = []; // array of groups (one row per submission)
+    let grouped = [];
     let selectedGroup = null;
-    let selIndex = 0; // which essay within a group is selected
+    let selIndex = 0;
 
-    // Caches
     const courseLabelCache = new Map();
     const moduleLabelCache = new Map();
 
-    // ====== Helpers ======
+    /* ---------- helpers ---------- */
     function withTeacher(urlOrPath) {
       const base = urlOrPath.startsWith('http') ? urlOrPath : `${API_BASE}${urlOrPath}`;
       const u = new URL(base);
@@ -432,7 +432,7 @@
       }
     }
 
-    // ====== Normalizer ======
+    /* ---------- Normalizer ---------- */
     function normalizeListResponse(resp) {
       const rawItems = Array.isArray(resp) ? resp
                     : Array.isArray(resp.items) ? resp.items
@@ -451,15 +451,12 @@
           maxScore: (r.maxScore != null) ? Number(r.maxScore) : (r.totalScore != null ? Number(r.totalScore) : 10),
           createdAt: r.createdAt || r.submittedAt || r.created || r.timestamp || null,
 
-          // ✅ Use decrypted full name ONLY (no email fallback)
-          studentName:  r.studentName || r.student || r.student_display || 'Student',
-          // keep email if you want it hidden for debugging; not used anywhere else
-          studentEmail: r.studentEmail || r.email || null,
-          // ✅ Prefer a stable ID for grouping
-          studentId: r.studentId || r.uid || r.userId || null,
+          studentName:  r.studentName || 'Student',
+          studentId:    r.studentId || r.uid || r.userId || null,
 
-          quizId:   r.quizId || r.quiz_id || r.quiz || '',
-          attemptId: r.attemptId || r.attempt_id || null,
+          quizId:     r.quizId || r.quiz_id || '',
+          quizTitle:  r.quizTitle || r.quiz_name || '',   // 👈 hydrated from API
+          attemptId:  r.attemptId || r.attempt_id || null,
 
           courseId: r.courseId || r.course_id || '',
           moduleId: r.moduleId || r.module_id || ''
@@ -474,7 +471,6 @@
       const map = new Map();
       for (const x of items) {
         const key = [
-          // ✅ No email in key. Prefer stable IDs, then name.
           x.studentId || '',
           x.studentName || '',
           x.quizId || '',
@@ -487,8 +483,8 @@
           map.set(key, {
             key,
             studentName: x.studentName,
-            // do not store email (not displayed or searched)
             quizId: x.quizId,
+            quizTitle: x.quizTitle || '',     // keep title
             attemptId: x.attemptId,
             courseId: x.courseId,
             moduleId: x.moduleId,
@@ -499,6 +495,8 @@
         const g = map.get(key);
         g.essays.push(x);
         if (!g.createdAt || (x.createdAt && new Date(x.createdAt) < new Date(g.createdAt))) g.createdAt = x.createdAt;
+        // prefer any non-empty title we see
+        if (!g.quizTitle && x.quizTitle) g.quizTitle = x.quizTitle;
       }
       const groups = [...map.values()].map(g => {
         const statuses = g.essays.map(e => e.status);
@@ -549,7 +547,6 @@
       lastItems = items || [];
       grouped   = groupBySubmission(lastItems);
 
-      // label caches for current page
       await Promise.all([...new Set(grouped.map(g => g.courseId)).values()].filter(Boolean).map(getCourseLabel));
       await Promise.all([...new Set(grouped.map(g => g.moduleId)).values()].filter(Boolean).map(getModuleLabel));
 
@@ -565,10 +562,10 @@
         if (fCourse && g.courseId !== fCourse) return false;
         if (fModule && g.moduleId !== fModule) return false;
         if (q) {
-          const hay = `${g.studentName} ${g.quizId} ${
+          const hay = `${g.studentName} ${g.quizTitle || ''} ${
             (courseLabelCache.get(g.courseId)||'')} ${(moduleLabelCache.get(g.moduleId)||'')} ${
             g.essays.map(e => `${e.questionText} ${e.answer}`).join(' ')
-          }`.toLowerCase(); // ✅ no email in search
+          }`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -581,6 +578,7 @@
         if (sort === 'student_az')     return (a.studentName||'').localeCompare(b.studentName||'');
         if (sort === 'course_az')      return (courseLabelCache.get(a.courseId)||'').localeCompare(courseLabelCache.get(b.courseId)||'');
         if (sort === 'module_az')      return (moduleLabelCache.get(a.moduleId)||'').localeCompare(moduleLabelCache.get(b.moduleId)||'');
+        if (sort === 'quiz_az')        return (a.quizTitle||'').localeCompare(b.quizTitle||'');
         /* default: newest submitted first */
         return toMs(b.createdAt) - toMs(a.createdAt);
       });
@@ -600,7 +598,7 @@
         const mLabel = escapeHTML(moduleLabelCache.get(g.moduleId) || '—');
         const badge  = statusBadge(g.status);
         const submitted = asDate(g.createdAt);
-        const quizLabel = escapeHTML(g.quizId || '—');
+        const quizLabel = escapeHTML(g.quizTitle || '—');      /* 👈 TITLE, not ID */
         const count = g.essays.length;
 
         return `
@@ -631,7 +629,7 @@
       listSummary.textContent = `${total} essay item${total === 1 ? '' : 's'} • page size ${pageSize}`;
     }
 
-    // ====== Group modal ======
+    /* ---------- Group modal ---------- */
     function fillSidebar(group) {
       qListEl.innerHTML = group.essays.map((e, i) => {
         const preview = (e.answer || '').slice(0, 60).replace(/\n/g,' ') + ((e.answer||'').length>60?'…':'');
@@ -672,7 +670,7 @@
       selIndex = 0;
 
       modalStudentLine.textContent = group.studentName || 'Student';
-      modalQuizLine.textContent    = `Quiz: ${group.quizId || '—'}`;
+      modalQuizLine.textContent    = `Quiz: ${group.quizTitle || '—'}`;  /* 👈 TITLE */
       const cLabel = courseLabelCache.get(group.courseId) || '—';
       const mLabel = moduleLabelCache.get(group.moduleId) || '—';
       modalCourseModule.textContent = `Course: ${cLabel} • Module: ${mLabel}`;
@@ -712,7 +710,7 @@
       await Promise.all(promises);
     }
 
-    // ====== Events ======
+    /* ---------- Events ---------- */
     essayTbody.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-action="open-group"]');
       if (!btn) return;
@@ -819,7 +817,7 @@
     prevBtn.addEventListener('click', () => { if (page > 1) { page--; loadEssays().catch(console.error); }});
     nextBtn.addEventListener('click', () => { page++; loadEssays().catch(console.error); });
 
-    // ====== Boot ======
+    /* ---------- Boot ---------- */
     document.addEventListener('DOMContentLoaded', async () => {
       if (!teacherId) {
         alert("Missing teacherId. Please log in again.");

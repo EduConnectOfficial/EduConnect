@@ -23,12 +23,12 @@ async function getTeacherCourseIds(teacherId) {
     .where('uploadedBy', '==', teacherId).get();
   q1.forEach(d => ids.add(d.id));
 
-  // courses where teacher is listed in an array (if you use it)
+  // optional: courses where teacher listed in array
   try {
     const q2 = await firestore.collection('courses')
       .where('teachers', 'array-contains', teacherId).get();
     q2.forEach(d => ids.add(d.id));
-  } catch (_) { /* field may not exist; ignore */ }
+  } catch (_) {}
 
   return Array.from(ids);
 }
@@ -42,20 +42,18 @@ async function fetchEssaysByCourseIds(courseIds, status) {
   for (const batch of chunks) {
     let q = firestore.collection('quizEssaySubmissions')
       .where('courseId', 'in', batch);
-
     if (status) q = q.where('status', '==', status);
 
-    // no orderBy ⇒ sort in memory to avoid composite index
     const snap = await q.get();
     snap.forEach(d => all.push({ id: d.id, ...d.data() }));
   }
 
-  // sort newest first by createdAt
+  // newest first
   all.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
   return all;
 }
 
-/** Recompute a single attempt (and its parent summary + user's average) */
+/** recompute summary after grading a single attempt path */
 async function recomputeAttemptFromPath(attemptRefPath) {
   if (!attemptRefPath) return;
 
@@ -69,7 +67,7 @@ async function recomputeAttemptFromPath(attemptRefPath) {
   const quizId = attemptRoot.id;
   const userRef = attemptRoot.parent.parent;           // users/{uid}
 
-  // sum graded essays
+  // sum graded essays for this attempt
   const essaysSnap = await firestore
     .collection('quizEssaySubmissions')
     .where('attemptRefPath', '==', attemptRef.path)
@@ -93,7 +91,6 @@ async function recomputeAttemptFromPath(attemptRefPath) {
   const combinedTotal   = autoTotal + gradedTotal;
   const combinedPercent = combinedTotal ? roundPct((combinedScore/combinedTotal)*100) : 0;
 
-  // update attempt
   await attemptRef.set({
     autoPercent,
     gradedScore,
@@ -111,9 +108,9 @@ async function recomputeAttemptFromPath(attemptRefPath) {
   all.forEach(doc => {
     attemptsUsed++;
     const a = doc.data() || {};
-    const p  = typeof a.percent        === 'number' ? a.percent
-             : (typeof a.autoPercent   === 'number' ? a.autoPercent : 0);
-    const gp = typeof a.gradedPercent  === 'number' ? a.gradedPercent : 0;
+    const p  = (typeof a.percent === 'number') ? a.percent
+            : (typeof a.autoPercent === 'number' ? a.autoPercent : 0);
+    const gp = (typeof a.gradedPercent === 'number') ? a.gradedPercent : 0;
     if (p  > bestPercent)       bestPercent       = p;
     if (gp > bestGradedPercent) bestGradedPercent = gp;
   });
@@ -140,12 +137,97 @@ async function recomputeAttemptFromPath(attemptRefPath) {
   await userRef.set({ averageQuizScore }, { merge: true });
 }
 
+/* ------------ Name & Quiz title hydration helpers ------------ */
+
+const { decryptField } = require('../utils/fieldCrypto');
+
+function buildFullName(u = {}) {
+  // Try encrypted fields first
+  const f  = decryptField(u.firstNameEnc  || '') || u.firstName || '';
+  const m  = decryptField(u.middleNameEnc || '') || u.middleName || '';
+  const l  = decryptField(u.lastNameEnc   || '') || u.lastName || '';
+  const full = [f, m, l].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+
+  if (full) return full;
+  if (u.fullName && u.fullName.trim()) return u.fullName.trim();
+  if (u.firstName || u.lastName) return `${u.firstName || ''} ${u.lastName || ''}`.trim();
+  return '';
+}
+
+function uidFromAttemptRefPath(path = '') {
+  // users/{uid}/quizAttempts/{quizId}/attempts/{attemptId}
+  const parts = path.split('/').filter(Boolean);
+  const i = parts.indexOf('users');
+  if (i >= 0 && parts[i+1]) return parts[i+1];
+  return '';
+}
+
+async function getUserDocByAny({ studentDocId, studentId, email, attemptRefPath }) {
+  // 1) direct users/{docId}
+  if (studentDocId) {
+    const snap = await firestore.collection('users').doc(studentDocId).get();
+    if (snap.exists) return { id: snap.id, ...snap.data() };
+  }
+
+  // 2) users.where('studentId'=='…')
+  if (studentId) {
+    const q = await firestore.collection('users').where('studentId', '==', studentId).limit(1).get();
+    if (!q.empty) {
+      const d = q.docs[0];
+      return { id: d.id, ...d.data() };
+    }
+  }
+
+  // 3) users.where('email'=='…')
+  if (email) {
+    const q = await firestore.collection('users').where('email', '==', email).limit(1).get();
+    if (!q.empty) {
+      const d = q.docs[0];
+      return { id: d.id, ...d.data() };
+    }
+  }
+
+  // 4) users/{uid} from attemptRefPath
+  const uid = uidFromAttemptRefPath(attemptRefPath || '');
+  if (uid) {
+    const snap = await firestore.collection('users').doc(uid).get();
+    if (snap.exists) return { id: snap.id, ...snap.data() };
+  }
+
+  return null;
+}
+
+async function getDecryptedDisplayName(x) {
+  // x can have: studentId (student number), userId (docId), studentEmail, attemptRefPath
+  const user = await getUserDocByAny({
+    studentDocId: x.userId || x.uid || null,
+    studentId: x.studentId || null,
+    email: x.studentEmail || x.email || null,
+    attemptRefPath: x.attemptRefPath || null
+  });
+
+  const full = user ? buildFullName(user) : '';
+  if (full) return full;
+
+  // LAST RESORT: never return email; keep UI clean.
+  return 'Student';
+}
+
+async function getQuizTitle(quizId) {
+  if (!quizId) return '';
+  try {
+    const snap = await firestore.collection('quizzes').doc(String(quizId)).get();
+    if (snap.exists) return snap.data()?.title || '';
+  } catch {}
+  return '';
+}
+
 /* ========================= Routes ========================= */
 
 /**
  * GET /api/teacher/quiz-essays
  * Query: teacherId (required), status? (pending|graded|needs_review), page?, pageSize?
- * Returns only essays where essay.courseId belongs to teacher.
+ * Returns only essays where essay.courseId belongs to the teacher.
  */
 router.get('/quiz-essays', async (req, res, next) => {
   try {
@@ -166,57 +248,43 @@ router.get('/quiz-essays', async (req, res, next) => {
     // paginate in memory
     const start = (page - 1) * pageSize;
 
-    const { decryptField } = require('../utils/fieldCrypto');
-    function decryptNamesFromUser(u = {}) {
+    // hydrate names + quiz titles for the page slice
+    const slice = all.slice(start, start + pageSize);
+
+    const items = await Promise.all(slice.map(async x => {
+      const studentName = await getDecryptedDisplayName(x);
+      const quizTitle = await getQuizTitle(x.quizId);
+
       return {
-        firstName: decryptField(u.firstNameEnc || ''),
-        middleName: decryptField(u.middleNameEnc || ''),
-        lastName: decryptField(u.lastNameEnc || ''),
-      };
-    }
-
-    async function getDecryptedName(studentId, fallbackName, fallbackEmail) {
-      try {
-        let userSnap = await firestore.collection('users').doc(studentId).get();
-        let user = null;
-        if (userSnap.exists) user = userSnap.data();
-        else {
-          const userQuery = await firestore.collection('users').where('studentId', '==', studentId).limit(1).get();
-          if (!userQuery.empty) user = userQuery.docs[0].data();
-        }
-        if (user) {
-          const names = decryptNamesFromUser(user);
-          const fullName = [names.firstName, names.middleName, names.lastName]
-            .filter(Boolean)
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (fullName) return fullName;
-          if (user.fullName && user.fullName.trim()) return user.fullName.trim();
-          if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
-        }
-      } catch {}
-      return fallbackName || fallbackEmail || 'Student';
-    }
-
-    const pageItems = await Promise.all(
-      all.slice(start, start + pageSize).map(async x => ({
         id: x.id,
         courseId: x.courseId || null,
         moduleId: x.moduleId || null,
-        studentName: await getDecryptedName(x.studentId, x.studentName, x.studentEmail),
+
+        // ✅ decrypted full name only; never email
+        studentName,
+
+        // keep email in payload only if you still need it elsewhere (not for display)
         studentEmail: x.studentEmail || '',
+
+        // quiz info
+        quizId: x.quizId || '',
+        quizTitle, // ✅ hydrated title
+
         questionTitle: x.questionTitle || `Essay #${(x.questionIndex ?? 0)+1}`,
         questionText: x.questionText || x.questionTitle || '',
         answer: x.answer || '',
         status: x.status || 'pending',
         score: x.score ?? null,
         maxScore: x.maxScore ?? 10,
-        createdAt: x.createdAt || null
-      }))
-    );
+        createdAt: x.createdAt || null,
 
-    res.json({ success:true, total: all.length, items: pageItems });
+        // for possible future use in UI grouping
+        studentId: x.studentId || x.uid || x.userId || null,
+        attemptRefPath: x.attemptRefPath || null,
+      };
+    }));
+
+    res.json({ success:true, total: all.length, items });
   } catch (err) { next(err); }
 });
 
@@ -240,7 +308,11 @@ router.get('/quiz-essays/:id', async (req, res, next) => {
       return res.status(403).json({ success:false, message:'Not authorized for this submission.' });
     }
 
-    res.json({ success:true, id: snap.id, ...x });
+    // enrich single item too (optional)
+    const studentName = await getDecryptedDisplayName(x);
+    const quizTitle = await getQuizTitle(x.quizId);
+
+    res.json({ success:true, id: snap.id, ...x, studentName, quizTitle });
   } catch (err) { next(err); }
 });
 
@@ -284,7 +356,7 @@ router.post('/quiz-essays/:id/grade', async (req, res, next) => {
       gradedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    // propagate
+    // propagate summary
     await recomputeAttemptFromPath(prev.attemptRefPath);
 
     res.json({ success:true, message:'Essay graded and attempt updated.' });
