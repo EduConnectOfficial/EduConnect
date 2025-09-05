@@ -3,6 +3,7 @@ const router = require('express').Router();
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
+const { decryptField } = require('../utils/fieldCrypto'); // <-- added
 
 // ---- tiny helpers (route-local) ----
 const chunk = (arr, size = 10) => {
@@ -11,10 +12,49 @@ const chunk = (arr, size = 10) => {
   return out;
 };
 const toDateMs = (ts) => ts?.toMillis?.() ?? (typeof ts === 'number' ? ts : null);
+
+// Hydrate/decrypt a user doc's name/email fields into plaintext fields
+function hydrateUserNames(uRaw) {
+  const u = uRaw || {};
+  const dec = (encKey, plainKey) => {
+    try {
+      if (u[encKey]) {
+        const v = decryptField(u[encKey]);
+        if (typeof v === 'string') return v;
+      }
+    } catch {}
+    return u[plainKey] || '';
+  };
+
+  const firstName  = dec('firstNameEnc',  'firstName');
+  const middleName = dec('middleNameEnc', 'middleName');
+  const lastName   = dec('lastNameEnc',   'lastName');
+  const email      = dec('emailEnc',      'email');
+
+  const fullNameFromParts = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Prefer existing fullName if it's non-empty; else build it from decrypted parts
+  const fullName = (typeof u.fullName === 'string' && u.fullName.trim())
+    ? u.fullName.trim()
+    : (fullNameFromParts || 'Student');
+
+  return {
+    ...u,
+    firstName,
+    middleName,
+    lastName,
+    email,
+    fullName,
+  };
+}
+
 const safeName = (u) =>
   (u?.fullName && u.fullName.trim())
     ? u.fullName.trim()
     : `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || u?.username || 'Student';
+
 const fmtDate = (ms) => (ms ? new Date(ms).toISOString().slice(0,10) : '—');
 
 // ==== TEACHER DASHBOARD STATS (real data) ====
@@ -48,13 +88,17 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
 
   const allRosterStudentIds = Array.from(new Set(Object.values(rosterByClass).flat()));
 
-  // map roster studentId -> user doc {docId, data}
+  // map roster studentId -> user doc {docId, data} (hydrated/decrypted)
   const studentIdToUserDoc = {};
   for (const ids of chunk(allRosterStudentIds, 10)) {
+    if (ids.length === 0) continue;
     const snap = await firestore.collection('users').where('studentId', 'in', ids).get();
     snap.forEach(doc => {
-      const u = doc.data();
-      if (u?.studentId) studentIdToUserDoc[u.studentId] = { docId: doc.id, data: u };
+      const raw = doc.data();
+      if (raw?.studentId) {
+        const hydrated = hydrateUserNames(raw);
+        studentIdToUserDoc[raw.studentId] = { docId: doc.id, data: hydrated };
+      }
     });
   }
 
@@ -71,6 +115,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   // 3) MODULES + QUIZZES
   let modulesPublished = 0;
   for (const ids of chunk(courseIds, 10)) {
+    if (ids.length === 0) continue;
     const mSnap = await firestore.collection('modules').where('courseId', 'in', ids).get();
     modulesPublished += mSnap.size;
   }
@@ -78,6 +123,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   let quizzesCreated = 0;
   const quizzes = [];
   for (const ids of chunk(courseIds, 10)) {
+    if (ids.length === 0) continue;
     const qSnap = await firestore.collection('quizzes').where('courseId', 'in', ids).get();
     quizzesCreated += qSnap.size;
     qSnap.forEach(doc => quizzes.push({ id: doc.id, ...doc.data() }));
@@ -101,21 +147,28 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   const getUserDataByAnyId = async (anyId) => {
     if (!anyId) return null;
     if (userCache.has(anyId)) return userCache.get(anyId);
+
+    // Try direct users/{docId}
     let snap = await firestore.collection('users').doc(anyId).get();
     if (snap.exists) {
-      const val = { id: snap.id, ...snap.data() };
-      userCache.set(anyId, val);
-      if (val.studentId) userCache.set(val.studentId, val);
-      return val;
+      const raw = { id: snap.id, ...snap.data() };
+      const hydrated = hydrateUserNames(raw);
+      userCache.set(anyId, hydrated);
+      if (hydrated.studentId) userCache.set(hydrated.studentId, hydrated);
+      return hydrated;
     }
+
+    // Try by studentId
     const q = await firestore.collection('users').where('studentId', '==', anyId).limit(1).get();
     if (!q.empty) {
       const d = q.docs[0];
-      const val = { id: d.id, ...d.data() };
-      userCache.set(anyId, val);
-      if (val.studentId) userCache.set(val.studentId, val);
-      return val;
+      const raw = { id: d.id, ...d.data() };
+      const hydrated = hydrateUserNames(raw);
+      userCache.set(anyId, hydrated);
+      if (hydrated.studentId) userCache.set(hydrated.studentId, hydrated);
+      return hydrated;
     }
+
     userCache.set(anyId, null);
     return null;
   };
@@ -141,7 +194,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   recentSubs.sort((x, y) => (y.submittedAt || 0) - (x.submittedAt || 0));
   const recentSubmissions = [];
   for (const item of recentSubs.slice(0, 6)) {
-    const u = await getUserDataByAnyId(item.studentKey);
+    const u = await getUserDataByAnyId(item.studentKey); // <-- hydrated user
     let className = '—';
     if (item.courseId && courseById[item.courseId]?.assignedClasses?.length) {
       const cls = courseById[item.courseId].assignedClasses
@@ -173,7 +226,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     (quizzesByCourse[cid] ||= []).push(q);
   });
 
-  const allUserDocs = Object.values(studentIdToUserDoc).map(x => x.data);
+  const allUserDocs = Object.values(studentIdToUserDoc).map(x => x.data); // hydrated
   const scoreBuckets = [0,0,0,0,0];
   const pushBucket = (pct) => {
     if (pct == null || Number.isNaN(pct)) return;
@@ -198,7 +251,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     // avg grade
     let sum = 0, cnt = 0;
     for (const sid of rosterIds) {
-      const u = studentIdToUserDoc[sid]?.data;
+      const u = studentIdToUserDoc[sid]?.data; // hydrated
       const g = (typeof u?.averageQuizScore === 'number')
         ? u.averageQuizScore
         : (typeof u?.averageAssignmentGrade === 'number' ? u.averageAssignmentGrade : null);
@@ -213,6 +266,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
       if (!userDocId || !courseIdsForClass.length) continue;
       let hasAny = false;
       for (const ids of chunk(courseIdsForClass, 10)) {
+        if (ids.length === 0) continue;
         const cmSnap = await firestore
           .collection('users').doc(userDocId)
           .collection('completedModules')
