@@ -33,19 +33,24 @@ body {
 .sidebar:hover {
     width: 220px;
 }
+
 .profile-btn {
-  display: flex;
-  align-items: center;      /* ✅ Vertically center icon and text */
-  gap: 8px;                 /* ✅ Optional: space between icon and username */
-  border: none;
-  background: none;
-  cursor: pointer;
+    display: flex;
+    align-items: center;
+    /* ✅ Vertically center icon and text */
+    gap: 8px;
+    /* ✅ Optional: space between icon and username */
+    border: none;
+    background: none;
+    cursor: pointer;
 }
 
 .profile-btn .username {
-  display: flex;
-  align-items: center;      /* ✅ Ensures the span content is vertically centered */
+    display: flex;
+    align-items: center;
+    /* ✅ Ensures the span content is vertically centered */
 }
+
 .sidebar .logo {
     font-size: 1.8rem;
     font-weight: bold;
@@ -386,10 +391,6 @@ textarea.form-control {
     /* New text color on hover */
 }
 
-.form-label {
-    color: #FFD8A9;
-}
-
 .form-select {
     font-size: 1rem;
     padding: 0.5rem;
@@ -511,4 +512,90 @@ textarea.form-control {
     padding: 0.45em 0.75em;
     border-radius: 12px;
     font-weight: 500;
+}
+
+/* Modal header with gradient background */
+.modal-header {
+    background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+    color: #fff;
+    border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+    /* makes the close icon white */
+    opacity: 0.9;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+/* ===== Center-center modals (Bootstrap 5) ===== */
+
+/* Use flexbox on the modal container to place the dialog dead-center */
+.modal.show {
+    display: flex !important;
+    align-items: center;
+    /* vertical center */
+    justify-content: center;
+    /* horizontal center */
+    /* Remove Bootstrap’s default top margin gap */
+    --bs-modal-margin: 0;
+    padding: 0 !important;
+    /* avoid side/top padding shifting the visual center */
+}
+
+/* Remove default margins and ensure the dialog itself doesn't offset */
+.modal.show .modal-dialog {
+    margin: 0 !important;
+    max-width: 640px;
+    /* tweak to your taste */
+    width: calc(100% - 2rem);
+    /* keep nice gutters on small screens */
+}
+
+/* If the content is tall, scroll *inside* the modal, not the page */
+.modal.show .modal-content {
+    max-height: min(90vh, 800px);
+    overflow: auto;
+    border-radius: 12px;
+    /* matches your UI vibe */
+}
+
+
+.btn-close-footer {
+    background-color: #6a737d !important;
+    /* light gray */
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 500;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+    background-color: #6a737d;
+    /* darker hover */
+    color: #fff;
+    transform: scale(1.04);
+}
+
+.btn-primary {
+    background: linear-gradient(to bottom, #FF6A00, #B03C10);
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 500;
+    transition: background 0.3s ease, transform 0.2s ease;
 }

@@ -205,20 +205,69 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- 🔷 Initials in header (kept function name, added CURRENT_USER_ID) -->
   <script>
-    // Header username & current userId
+    // Header initials & current userId
     let CURRENT_USER_ID = null;
     (function populateUsername() {
       try {
-        const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
+        const rawLocal = localStorage.getItem("user");
+        const rawSession = sessionStorage.getItem("user");
         let data = null;
-        if (raw) { try { data = JSON.parse(raw); } catch {} }
-        let username = (data && (data.username || (`${data.firstName ?? ""} ${data.lastName ?? ""}`.trim()) || ((data.email || '').split('@')[0] || ''))) || "";
-        if (!username && typeof raw === "string") username = raw;
+        if (rawLocal)  { try { data = JSON.parse(rawLocal); }  catch {} }
+        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch {} }
+
+        const getInitials = (info = {}) => {
+          const f = (info.firstName || "").trim();
+          const l = (info.lastName  || "").trim();
+          const u = (info.username  || "").trim();
+          const e = (info.email     || "").trim();
+
+          // Prefer First + Last initials when available
+          if (f || l) {
+            let letters = "";
+            if (f) letters += f[0];
+            if (l) letters += l[0];
+            else if (f.length > 1) letters += f[1]; // fallback: second letter of first name
+            letters = letters.toUpperCase();
+            if (letters.length >= 2) return letters.slice(0,2);
+            return (letters + "U").slice(0,2); // pad to 2
+          }
+
+          // Fallback: username first 2 alphanumerics
+          if (u) {
+            const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (cleaned) return (cleaned + "U").slice(0,2);
+          }
+
+          // Fallback: email local-part first 2 alphanumerics
+          if (e && e.includes("@")) {
+            const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (local) return (local + "U").slice(0,2);
+          }
+
+          return "UU";
+        };
+
+        const initials = getInitials(data || {});
         const el = document.getElementById("Username");
-        if (el) { el.textContent = username || "User"; el.title = username || "User"; }
+        if (el) {
+          el.textContent = initials;
+          // Title/tooltip shows best available full identifier
+          const full =
+            (data && [data.firstName, data.middleName, data.lastName].filter(Boolean).join(" ").trim()) ||
+            (data && data.username) ||
+            (data && data.email) ||
+            "User";
+          el.title = full;
+        }
+
         CURRENT_USER_ID = data?.userId || data?.uid || null;
-      } catch (e) { console.error("Failed to populate username:", e); }
+      } catch (e) {
+        console.error("Failed to populate initials:", e);
+        const el = document.getElementById("Username");
+        if (el) { el.textContent = "UU"; el.title = "User"; }
+      }
     })();
   </script>
 
@@ -342,10 +391,7 @@
         const row = document.createElement('tr');
         row.innerHTML =
           '<td>' + (i+1) + '</td>' +
-          '<td>' +
-            (user.username || '') +
-          
-          '</td>' +
+          '<td>' + (user.username || '') + '</td>' +
           '<td>' + (user.firstName || '') + '</td>' +
           '<td>' + (user.middleName || '') + '</td>' +
           '<td>' + (user.lastName || '') + '</td>' +
@@ -444,11 +490,10 @@
 
         // Delete
         deleteBtn.addEventListener('click', ()=>{
-          // Defensive double-checks
           const total = supers.length;
           const lastRemaining = total <= 1;
           if (deleteBtn.disabled || (CURRENT_USER_ID && user.userId === CURRENT_USER_ID) || lastRemaining) {
-            return; // blocked
+            return;
           }
 
           selectedUser = user;
@@ -495,7 +540,6 @@
         tableBody.appendChild(row);
       });
 
-      // enable Bootstrap tooltips for disabled delete buttons
       enableTooltips(tableBody);
     }
 
@@ -507,7 +551,7 @@
 
         const users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
         supers = users
-          .filter(u => u && u.isAdmin  === true)  // STRICT
+          .filter(u => u && u.isAdmin  === true)
           .map((u,i)=>({ ...u, __index:i }));
 
         if (!supers.length){
@@ -547,7 +591,6 @@
       elStatus.addEventListener('change', ()=>renderTable(supers));
       elSort.addEventListener('change', ()=>renderTable(supers));
 
-      // Edit modal save logic
       document.getElementById('editUserForm').addEventListener('submit', async function(e){
         e.preventDefault();
         if (!selectedUser) return;
