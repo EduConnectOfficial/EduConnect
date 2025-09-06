@@ -65,17 +65,37 @@
     .modal.show .modal-dialog{margin:0 !important;max-width:640px;width:calc(100% - 2rem);}
     .modal.show .modal-content{max-height:min(90vh,800px);overflow:auto;border-radius:12px}
 
-    /* Forum-specific bits */
-    .fb-composer{display:flex;gap:.75rem}
-    .fb-avatar{width:38px;height:38px;border-radius:50%;background:#f1f3f5;color:#495057;display:flex;align-items:center;justify-content:center;font-weight:800}
-    .composer-box{background:#f6f8fa;border:1px solid #e5e7eb;border-radius:12px;padding:.6rem .8rem}
-    .composer-actions{display:flex;gap:.5rem}
-    .fb-comment{display:flex;gap:.75rem;margin-bottom:12px}
-    .fb-bubble{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:.6rem .75rem;box-shadow:0 4px 12px rgba(0,0,0,.06)}
-    .bubble-kebab .kebab{border:none;background:transparent;color:#6c757d}
-    .fb-actions{font-size:.9rem;color:#6c757d;display:flex;gap:1rem;margin-top:.25rem}
-    .fb-children{margin-left:46px;margin-top:.25rem}
-    .name-line{font-weight:700;margin-bottom:.15rem}
+   /* Facebook-style layout */
+    .thread-head{display:flex;align-items:flex-start;gap:12px;}
+    .thread-head .fb-avatar{flex:0 0 44px;width:44px;height:44px;border-radius:999px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--brand-dark-1),var(--brand-dark-2));box-shadow:0 2px 6px rgba(0,0,0,.08);user-select:none;}
+    .thread-head .title-wrap{min-width:0;}
+    .thread-head h3{font-size:1.05rem;font-weight:800;margin:0 0 4px;}
+    .thread-head .meta{color:var(--muted);font-size:.86rem;}
+
+    .fb-composer{display:flex;align-items:flex-start;gap:10px;}
+    .fb-composer .fb-avatar{flex:0 0 36px;width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:.8rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--brand-accent-1),var(--brand-accent-2));}
+    .fb-composer .composer-box{flex:1 1 auto;background:#f4f6f8;border:1px solid var(--border);border-radius:999px;padding:10px 14px;}
+    .fb-composer .composer-actions{margin-top:8px;display:flex;justify-content:flex-end;}
+
+    .fb-comment{display:flex;gap:10px;padding:10px 0;}
+    .fb-comment + .fb-comment{border-top:1px solid #eee;}
+    .fb-comment .fb-avatar{flex:0 0 36px;width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:.8rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--brand-dark-1),var(--brand-dark-2));}
+    .fb-comment .fb-body{flex:1 1 auto;min-width:0;}
+    .fb-bubble{position:relative;display:inline-block;background:#f0f2f5;border-radius:18px;padding:10px 12px;max-width:100%;overflow-wrap:anywhere;}
+    .fb-bubble .name-line{font-size:.92rem;font-weight:700;margin-bottom:2px;}
+    .fb-bubble .time{color:var(--muted);font-weight:500;margin-left:6px;font-size:.84rem;}
+    .bubble-kebab{position:absolute;top:6px;right:6px;}
+    .kebab{border:none;background:transparent;padding:4px 6px;line-height:1;color:var(--muted);border-radius:8px;}
+    .kebab:hover{background:#e9ecef;color:var(--brand-accent-2);}
+    .dropdown-menu{border-radius:10px;border:1px solid var(--border);box-shadow:0 8px 20px rgba(0,0,0,.08);}
+    .dropdown-item i{width:16px;}
+
+    .fb-actions{margin-top:6px;display:flex;gap:12px;font-size:.9rem;color:var(--muted);align-items:center;}
+    .fb-action{cursor:pointer;user-select:none;}
+    .fb-action:hover{color:var(--brand-accent-2);}
+    .fb-children{margin-top:6px;margin-left:46px;border-left:2px solid #e4e6eb;padding-left:12px;}
+    .fb-toggle{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:.9rem;margin-top:6px;}
+    .fb-toggle:hover{color:var(--brand-accent-2);}
   </style>
 </head>
 <body>
@@ -219,12 +239,29 @@
     </div>
   </div>
 
-  <!-- Sidebar loader -->
+   <!-- Sidebar Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
-        .then(html => { document.getElementById("sidebar-container").innerHTML = html; })
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sidebar = document.querySelector(".sidebar"),
+                dash    = document.querySelector(".dashboard");
+          if (sidebar && dash) {
+            sidebar.addEventListener("mouseenter", () => dash.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dash.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const p = toggle.closest('.has-submenu');
+              p.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
@@ -420,22 +457,40 @@
               <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash"></i> Delete</button></li>
             </ul>
           </div>`;
+wrap.innerHTML = `
+  <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+  <div class="fb-body flex-grow-1">
+    <div class="fb-bubble">
 
-        wrap.innerHTML=`
-          <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
-          <div class="fb-body flex-grow-1">
-            <div class="fb-bubble">
-              ${dropdownHtml}
-              <div class="name-line">${escapeHtml(name)} ${timeHtml(r.createdAt)}</div>
-              <div class="fb-text">${escapeHtml(r.text || '')}</div>
-              ${parentName ? `<div class="small text-muted mt-1">↪ Replying to <strong>${escapeHtml(parentName)}</strong></div>` : ""}
-            </div>
-            <div class="fb-actions">
-              <span class="fb-action reply-btn"><i class="bi bi-reply"></i> Reply</span>
-              ${hasChildren ? `<button class="btn btn-sm btn-link p-0 fb-toggle" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}</button>` : ""}
-            </div>
-            ${hasChildren ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
-          </div>`;
+      <div class="name-row">
+        <div class="name">${escapeHtml(name)}</div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="time">${escapeHtml(toLocal(r.createdAt))}</div>
+          ${isOwn ? `
+            <div class="bubble-kebab dropdown">
+              <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Comment actions">
+                <i class="bi bi-three-dots"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><button class="dropdown-item action-edit-reply"><i class="bi bi-pencil-square"></i> Edit</button></li>
+                <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash3"></i> Delete</button></li>
+              </ul>
+            </div>` : ``}
+        </div>
+      </div>
+
+      <div class="msg-bubble">${escapeHtml(r.text || '')}</div>
+      ${parentName ? `<div class="small text-muted mt-1">↪ Replying to <strong>${escapeHtml(parentName)}</strong></div>` : ""}
+    </div>
+
+    <div class="fb-actions">
+      <span class="fb-action reply-btn"><i class="bi bi-reply"></i> Reply</span>
+      ${hasChildren ? `<button class="btn btn-sm btn-link p-0 fb-toggle" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}</button>` : ""}
+    </div>
+
+    ${hasChildren ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
+  </div>`;
+
 
         container.appendChild(wrap);
 
