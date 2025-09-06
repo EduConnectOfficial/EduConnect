@@ -111,6 +111,25 @@
  }
 
  /* Buttons */
+
+
+
+.btn-close-footer {
+  background-color: #6a737d !important;   /* light gray */
+  color: #fff !important;             
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;   /* darker hover */
+  color: #fff !important;
+  transform: scale(1.04);
+}
  .btn-amber {
    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
    color: #fff;

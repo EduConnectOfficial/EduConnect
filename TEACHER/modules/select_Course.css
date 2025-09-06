@@ -36,7 +36,22 @@
     margin-left: 220px;
     width: calc(100% - 220px)
   }
+.btn-close-footer {
+  background-color: #6a737d !important;   /* light gray */
+  color: #fff !important;             
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
 
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;   /* darker hover */
+  color: #fff !important;
+  transform: scale(1.04);
+}
 /* Modal header with gradient background */
 .modal-header {
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
