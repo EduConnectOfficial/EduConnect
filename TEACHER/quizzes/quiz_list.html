@@ -24,6 +24,57 @@
     /* tiny helper in edit modal */
     .qtype-badge{font-size:.7rem}
     .form-text-muted{color:#6b7280}
+    /* Course pill (warm amber) */
+.quiz-card .pill-course {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+/* Module pill (mint green) */
+.quiz-card .pill-module {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+/* Archived pill (neutral gray) */
+.quiz-card .pill-archived {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+/* Fix pill wrapping inside quiz cards */
+.quiz-card .d-flex.flex-wrap {
+  flex-wrap: wrap;
+  gap: .4rem;              /* consistent spacing */
+  max-width: 100%;         /* keep inside card */
+}
+
+.quiz-card .pill {
+  display: inline-flex;       /* keep icon + text aligned */
+  align-items: center;
+  gap: .3rem;
+  max-width: 100%;            /* respect card width */
+  overflow: hidden;           /* ensure child respects boundaries */
+}
+
+.quiz-card .pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;               /* critical inside flex */
+  display: inline-block;
+}
+
+
+.quiz-card .pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
   </style>
 </head>
 <body>
@@ -453,84 +504,97 @@
     });
 
     function renderGrid() {
-      if (!filtered.length) {
-        elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No quizzes found.</div></div>`;
-        return;
-      }
+  if (!filtered.length) {
+    elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No quizzes found.</div></div>`;
+    return;
+  }
 
-      elGrid.innerHTML = filtered.map((qz, idx) => {
-        const s = qz.settings || {};
-        const hasTimer = !!s.timerEnabled;
-        const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
-        const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
-        const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
+  elGrid.innerHTML = filtered.map((qz, idx) => {
+    const s = qz.settings || {};
+    const hasTimer = !!s.timerEnabled;
+    const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
+    const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
+    const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
 
-        const randTxt = (s.shuffleQuestions === false) ? 'Fixed order' : 'Randomized';
-        const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
-        const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
+    const randTxt = (s.shuffleQuestions === false) ? 'Fixed order' : 'Randomized';
+    const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
+    const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
 
-        const courseBadge = qz._course ? `<span class="badge-soft"><i class="bi bi-book"></i>${escapeHTML(qz._course.label)}</span>` : '';
-        const moduleBadge = qz._module ? `<span class="badge-soft"><i class="bi bi-box"></i>${fmtModule(qz._module)}</span>` : '';
+    // --- Course + Module Pills with ellipsis fix ---
+    const courseBadge = qz._course
+      ? `<span class="pill pill-course" title="${escapeHTML(qz._course.label)}">
+           <i class="bi bi-book"></i>
+           <span class="pill-text">${escapeHTML(qz._course.label)}</span>
+         </span>`
+      : '';
 
-        const archivedPill = qz._archived
-          ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>`
-          : '';
+    const moduleLabel = qz._module ? fmtModule(qz._module) : '';
+    const moduleBadge = moduleLabel
+      ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+           <i class="bi bi-box"></i>
+           <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+         </span>`
+      : '';
 
-        const headerHtml = `
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
-              ${archivedPill}
-            </div>
-            <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
+    const archivedPill = qz._archived
+      ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>`
+      : '';
+
+    const headerHtml = `
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
+          ${archivedPill}
+        </div>
+        <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
+      </div>
+    `;
+
+    return `
+      <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+        <div class="quiz-card">
+          ${headerHtml}
+
+          <div class="mb-2 d-flex flex-wrap gap-1">
+            ${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}
           </div>
-        `;
 
-        return `
-          <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
-            <div class="quiz-card">
-              ${headerHtml}
+          <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
 
-              <div class="mb-2 d-flex flex-wrap gap-1">
-                ${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}
-              </div>
-
-              <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
-
-              <div class="d-flex flex-wrap gap-1 mb-2">
-                <span class="badge-soft"><i class="bi bi-shuffle"></i>${randTxt}</span>
-                <span class="badge-soft"><i class="bi bi-grid-1x2"></i>${pageTxt}</span>
-                <span class="badge-soft"><i class="bi bi-arrow-left-right"></i>${backTxt}</span>
-              </div>
-
-              <div class="d-flex align-items-center justify-content-between small-muted">
-                <span><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueTxt}</span>
-                <span>Attempts: ${attemptsTxt}</span>
-              </div>
-
-              <div class="d-flex justify-content-end gap-2 mt-3">
-                ${qz._archived
-                  ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
-                             onclick="setArchive('${qz.id}', false, this)">
-                         <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-                     </button>`
-                  : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
-                             onclick="setArchive('${qz.id}', true, this)">
-                         <i class="bi bi-archive"></i> Archive
-                     </button>`}
-                <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
-                  <i class="fas fa-edit"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
-                        onclick="deleteQuiz('${qz.id}', this)">
-                  <i class="fas fa-trash"></i> Delete
-                </button>
-              </div>
-            </div>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge-soft"><i class="bi bi-shuffle"></i>${randTxt}</span>
+            <span class="badge-soft"><i class="bi bi-grid-1x2"></i>${pageTxt}</span>
+            <span class="badge-soft"><i class="bi bi-arrow-left-right"></i>${backTxt}</span>
           </div>
-        `;
-      }).join('');
-    }
+
+          <div class="d-flex align-items-center justify-content-between small-muted">
+            <span><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueTxt}</span>
+            <span>Attempts: ${attemptsTxt}</span>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            ${qz._archived
+              ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
+                         onclick="setArchive('${qz.id}', false, this)">
+                     <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                   </button>`
+              : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
+                         onclick="setArchive('${qz.id}', true, this)">
+                     <i class="bi bi-archive"></i> Archive
+                   </button>`}
+            <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
+                    onclick="deleteQuiz('${qz.id}', this)">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
     // Build ID map for editing
     let quizzesById = {};

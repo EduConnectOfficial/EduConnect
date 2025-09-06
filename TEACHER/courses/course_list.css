@@ -57,7 +57,54 @@
     .course-meta{color:var(--muted);font-size:.9rem}
     .course-actions .btn{min-width:90px}
 
-   
+/* --- Smaller cards --- */
+.course-card{
+  padding:12px;
+  gap:6px;
+  min-height:240px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  height:100%;
+}
+
+/* Base + fallback for all browsers */
+.course-title,
+.course-meta{
+  --lines:4;                 /* title overrides below */
+  line-height:1.25;
+  overflow:hidden;
+  word-break:break-word;
+  max-height:calc(1.25em * var(--lines));  /* fallback when clamp unsupported */
+}
+
+/* Put BOTH standard and vendor clamp in the SAME rule (linter requirement) */
+.course-title,
+.course-meta{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+
+  /* standard first, then vendor */
+  line-clamp:var(--lines);
+  -webkit-line-clamp:var(--lines);
+
+  /* cancel the fallback height when clamp applies */
+  max-height:none;
+}
+
+/* Specific lines */
+.course-title{ --lines:2; font-size:1.05rem; }
+.course-meta { --lines:4; font-size:.9rem; margin-top:4px; color:var(--muted); }
+
+/* Actions pinned to bottom */
+.course-actions{
+  margin-top:auto;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.course-actions .d-flex{ display:flex; gap:8px; }
+
     /* Empty state */
     .empty-card{background:#fff;border:1px solid var(--border);border-radius:14px}
     .btn-close-footer {

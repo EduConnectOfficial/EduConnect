@@ -110,6 +110,91 @@
       background-clip: text;
       color: transparent;
     }
+/* 1) Make each grid column flex so cards stretch to equal height */
+#coursesGrid > [class^="col-"],
+#coursesGrid > [class*=" col-"]{
+  display: flex;
+}
+
+/* 2) Card stacks vertically and fills the column */
+.course-card{
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+/* 3) Pin the buttons row to the bottom (matches your current markup) */
+.course-card > .d-flex.flex-wrap.gap-2{
+  margin-top: auto;                 /* push to bottom */
+  display: flex;                    /* ensure flex even if Bootstrap classes change */
+  gap: .5rem;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.course-card > .d-flex.flex-wrap.gap-2 .btn{
+  min-height: 36px;
+  min-width: 110px;
+  border-radius: 10px;
+}
+
+/* 4) Clamp the title to 2 lines (standard + vendor together to satisfy VS Code) */
+.course-title{
+  line-height: 1.25;
+  overflow: hidden;
+  word-break: break-word;
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+
+  /* Fallback height for engines without clamp */
+  max-height: calc(1.25em * 2);
+}
+
+/* 5) Clamp the description to ~3–5 lines (set to 4 lines here) */
+.course-card > p{
+  line-height: 1.35;
+  color: var(--muted);
+  overflow: hidden;
+  word-break: break-word;
+
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-clamp: 4;
+  -webkit-line-clamp: 4;
+
+  /* Fallback height */
+  max-height: calc(1.35em * 4);
+}
+
+/* (nice-to-have) soft fade at the bottom of clamped text */
+@supports (mask-image: linear-gradient(#000, transparent)){
+  .course-card > p{
+    -webkit-mask-image: linear-gradient(180deg,#000 75%,transparent);
+            mask-image: linear-gradient(180deg,#000 75%,transparent);
+  }
+}
+/* Keep the button group alignment as-is (reset if we centered earlier) */
+.course-actions,
+.course-card > .d-flex.flex-wrap.gap-2{
+  justify-content: flex-start !important;  /* don't center the buttons themselves */
+}
+
+/* Center the text (and any icon) inside each button */
+.course-actions .btn,
+.course-card > .d-flex.flex-wrap.gap-2 .btn,
+.btn-amber,
+.btn-amber-outline{
+  display: inline-flex;         /* let us center contents */
+  align-items: center;
+  justify-content: center;      /* <-- center the label */
+  text-align: center;
+}
+
+
 
     /* Card shell */
     .ui-card {

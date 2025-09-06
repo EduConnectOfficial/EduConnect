@@ -508,3 +508,90 @@
   /* Lesson nav buttons keep reasonable width */
   .lesson-nav .btn { min-width: 120px; }
 }
+/* === Uniform column + card sizing (Bootstrap grid friendly) === */
+
+/* Make each grid column stretch to the tallest card in its row */
+#courseList {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* Ensure every Bootstrap column behaves as a flex item and stretches */
+#courseList > [class^="col-"],
+#courseList > [class*=" col-"]{
+  display: flex;
+  align-items: stretch;
+}
+
+/* Make the actual card fill the column width and height */
+.course-card{
+  width: 100%;                /* <-- same width per column */
+  height: 100%;               /* equal height with neighbors */
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 6px;
+  min-height: 240px;
+}
+
+/* Content block grows; actions stay pinned at bottom */
+.course-card > div:first-child{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+
+/* ===== Title & DESCRIPTION clamping (reference applied) ===== */
+.course-title,
+.course-card > div:first-child > p.mb-0{
+  --lines:4;                 /* overridden below */
+  line-height:1.25;
+  overflow:hidden;
+  word-break:break-word;
+  max-height:calc(1.25em * var(--lines));  /* fallback when clamp unsupported */
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  line-clamp:var(--lines);
+  -webkit-line-clamp:var(--lines);
+  max-height:none;           /* cancel fallback when clamp works */
+}
+.course-title{ --lines:2; font-size:1.05rem; }
+.course-card > div:first-child > p.mb-0{
+  --lines:4;
+  font-size:.9rem;
+  margin-top:4px;
+  color:var(--muted);
+}
+
+/* Keep Category line readable (no clamp) */
+.course-card .course-meta.mb-1{
+  overflow:visible;
+  display:block;
+  max-height:none;
+  line-height:1.25;
+  color:var(--muted);
+}
+
+/* Actions pinned & aligned */
+.course-actions{
+  margin-top:auto;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.course-actions .d-flex{ display:flex; gap:8px; }
+.course-actions .btn{ min-width:110px; }
+
+/* Responsive: wrap buttons nicely on narrower screens */
+@media (max-width: 992px){
+  .course-card > div:first-child > p.mb-0{ --lines:3; }
+  .course-actions{
+    flex-wrap:wrap;
+    justify-content:stretch;
+  }
+  .course-actions .btn{
+    flex:1 1 48%;
+    min-width:0;
+  }
+}

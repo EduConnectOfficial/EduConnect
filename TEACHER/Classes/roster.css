@@ -293,20 +293,19 @@
  /* replace your old .meta-grid styles with this */
  .meta-strip {
      display: flex;
-     flex-wrap: nowrap;
+     flex-wrap: wrap;
      /* one line only */
      gap: 12px;
      overflow-x: auto;
      /* allow sideways scroll on small screens */
      padding-bottom: 4px;
-     -webkit-overflow-scrolling: touch;
-     scrollbar-gutter: stable;
+   
  }
 
  .meta-item {
-     flex: 0 0 auto;
+     flex: 1 1 auto;
      /* don’t shrink; sit in one row */
-     min-width: 360px;
+     min-width: 340px;
      /* tweak as you like */
      background: #fff;
      border: 1px dashed var(--border);
@@ -322,7 +321,7 @@
  .meta-item .value {
      font-weight: 700;
      white-space: nowrap;
-     font-size: 20px;
+     font-size: 1rem;
  }
 
  .logout-btn {

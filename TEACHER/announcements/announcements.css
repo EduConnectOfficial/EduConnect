@@ -525,3 +525,46 @@ html, body {
     max-width: 100%;
   }
 }
+/* Table cell alignment */
+.table td, .table th { vertical-align: middle; }
+
+/* Actions column: desktop keeps them in one line; mobile stacks gracefully */
+.actions-cell { /* on wide screens keep them from wrapping weirdly */
+  white-space: nowrap;
+}
+
+.actions-wrap{
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;           /* space between buttons */
+  flex-wrap: wrap;      /* allows wrap if space is tight */
+}
+
+/* Keep outline buttons transparent inside table (prevents the “white box” look) */
+.table .btn-outline-primary,
+.table .btn-outline-success,
+.table .btn-outline-danger {
+  background-color: transparent;
+}
+
+/* Make the last column wide enough on desktop so buttons don’t squeeze */
+@media (min-width: 769px){
+  #announcementTable th:last-child,
+  #announcementTable td:last-child {
+    width: 220px;       /* tune as you like */
+  }
+}
+
+/* Mobile: stack buttons, full width for easy tapping */
+@media (max-width: 768px){
+  .actions-cell { white-space: normal; }
+  .actions-wrap{
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* 2 per row */
+    gap: .5rem;
+    width: 100%;
+  }
+  .actions-wrap .btn{
+    width: 100%;
+  }
+}

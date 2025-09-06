@@ -39,6 +39,66 @@
 
     /* Pills row (always-visible counts) */
     .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
+    /* Pills (course / module / archived) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1px solid var(--border, #e5e7eb);
+  background: #fff;
+  color: #374151;
+  max-width: 100%;
+  overflow: hidden;
+}
+.pill .bi {
+  font-size: .9rem;
+}
+.pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  display: inline-block;
+}
+.pill-course { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+.pill-module { background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+.pill-archived { background:#f3f4f6; border-color:#e5e7eb; color:#374151; }
+.assignment-card .desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  line-clamp: 4;             /* fallback for future spec */
+  -webkit-line-clamp: 4;     /* limit lines (3–5 is fine, adjust number) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.4;
+  max-height: calc(1.4em * 4); /* sync with line-clamp count */
+  font-size: .9rem;
+  color: #6b7280; /* muted gray */
+}
+.assignment-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* equal height cards */
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* push the buttons row to the bottom */
+.assignment-card .card-footer-actions {
+  margin-top: auto;  /* pushes it down */
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
   </style>
 </head>
 
@@ -175,7 +235,7 @@
 
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
             <button id="saveEditBtn" type="submit" class="btn btn-amber">
               <span class="save-text">Save Changes</span>
               <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
@@ -213,7 +273,7 @@
         </div>
         <div class="modal-body" id="confirmModalBody">Are you sure?</div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="confirmNoBtn">Cancel</button>
+          <button type="button" class="btn-close-footer" data-bs-dismiss="modal" id="confirmNoBtn">Cancel</button>
           <button type="button" class="btn btn-amber" id="confirmYesBtn">Yes, proceed</button>
         </div>
       </div>
@@ -692,17 +752,27 @@
         const pts = (typeof a.points === 'number') ? `${a.points} pts` : '';
 
         const coursePill = a.courseLabel
-          ? `<span class="pill pill-course"><i class="bi bi-collection"></i>${escapeHTML(a.courseLabel)}</span>`
-          : '';
+  ? `<span class="pill pill-course" title="${escapeHTML(a.courseLabel)}">
+       <i class="bi bi-collection"></i>
+       <span class="pill-text">${escapeHTML(a.courseLabel)}</span>
+     </span>`
+  : '';
 
-        let moduleLabel = '';
-        if (a.moduleNumber != null && (a.moduleTitle || '').trim()) moduleLabel = `#${a.moduleNumber} — ${escapeHTML(a.moduleTitle)}`;
-        else if (a.moduleNumber != null) moduleLabel = `#${a.moduleNumber}`;
-        else if ((a.moduleTitle || '').trim()) moduleLabel = escapeHTML(a.moduleTitle);
+let moduleLabel = '';
+if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+  moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+} else if (a.moduleNumber != null) {
+  moduleLabel = `Module ${a.moduleNumber}`;
+} else if ((a.moduleTitle || '').trim()) {
+  moduleLabel = a.moduleTitle;
+}
 
-        const modulePill = moduleLabel
-          ? `<span class="pill pill-module"><i class="bi bi-box"></i>${moduleLabel}</span>`
-          : '';
+const modulePill = moduleLabel
+  ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+       <i class="bi bi-box"></i>
+       <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+     </span>`
+  : '';
 
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
@@ -717,33 +787,36 @@
 
               <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
 
-              <div class="text-muted small mb-2">${escapeHTML(preview(a.content, 140))}</div>
+             <div class="desc mb-2" title="${escapeHTML(a.content || '')}">
+  ${escapeHTML(a.content || '')}
+</div>
+
 
               <div class="d-flex align-items-center justify-content-between small mb-3">
                 <span class="text-muted"><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueStr}</span>
                 <span class="text-muted">${a.submissionCount ?? '—'} submissions</span>
               </div>
+<div class="card-footer-actions">
+  ${
+    a.archived === true
+      ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
+           <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+         </button>`
+      : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
+           <i class="bi bi-archive"></i> Archive
+         </button>`
+  }
+  <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${a.id}')">
+    <i class="bi bi-pencil"></i> Edit
+  </button>
+  <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
+    <i class="bi bi-trash"></i> Delete
+  </button>
+  <button class="btn btn-sm btn-amber" onclick="goToGraded('${a.courseId}','${a.id}')">
+    <i class="bi bi-list-check"></i> Grade
+  </button>
+</div>
 
-              <div class="d-flex justify-content-end gap-2">
-                ${
-                  a.archived === true
-                    ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
-                         <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-                       </button>`
-                    : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
-                         <i class="bi bi-archive"></i> Archive
-                       </button>`
-                }
-                <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${a.id}')">
-                  <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
-                <button class="btn btn-sm btn-amber" onclick="goToGraded('${a.courseId}','${a.id}')">
-                  <i class="bi bi-list-check"></i> Grade
-                </button>
-              </div>
             </div>
           </div>
         `;

@@ -45,6 +45,80 @@
     .ui-card.w-lg{ --ui-card-max:1000px; }
     .ui-card.w-xl{ --ui-card-max:1200px; }
     .ui-card.w-full{ --ui-card-max:100%; }
+/* ===== Attachment row tidy (desktop) ===== */
+.file-attachment-group{
+  /* your markup uses: .row g-2 align-items-end ... */
+  display:flex;                 /* keep row as flex */
+  align-items:center !important;/* center the two columns vertically */
+  gap:12px;
+}
+
+.file-attachment-group > .col-5{
+  /* file input + size text (keeps size on a new line) */
+  flex:0 0 40%;
+  max-width:40%;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.file-attachment-group > .col-7{
+  /* description + remove button on one line */
+  flex:1 1 60%;
+  max-width:60%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+/* Unify control heights */
+.file-attachment-group .attachment-file,
+.file-attachment-group .attachment-desc{
+  height:44px;
+}
+
+/* Make Remove match the input height and stay centered */
+.file-attachment-group .remove-attachment{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:44px;               /* same as inputs */
+  padding:0 14px;
+  border-radius:8px;
+  white-space:nowrap;
+}
+
+/* Keep the dashed “pill” around the file input subtle */
+.file-attachment-group .file-pill{
+  border:1px dashed var(--border);
+  border-radius:8px;
+  padding:.35rem .5rem;
+  background:#fafafa;
+}
+
+/* Size label under file chooser */
+.file-attachment-group .attach-size{
+  line-height:1.1;
+}
+
+/* ===== Mobile behavior (≤480px): stack cleanly ===== */
+@media (max-width:480px){
+  .file-attachment-group{
+    align-items:stretch !important;
+    gap:8px;
+  }
+  .file-attachment-group > .col-5,
+  .file-attachment-group > .col-7{
+    flex:0 0 100%;
+    max-width:100%;
+    display:block;           /* stack */
+  }
+  .file-attachment-group .remove-attachment{
+    width:100%;
+    min-height:44px;
+  }
+}
+
 
     @media (max-width:480px){ .ui-card.constrain{ max-width:calc(100% - 1rem); } }
 
@@ -61,6 +135,7 @@
     .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
     .page-title.brand{background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
   </style>
+
 </head>
 
 <body>
@@ -261,7 +336,7 @@
           </div>
           <div class="col-7 d-flex align-items-center gap-2">
             <input type="text" class="form-control attachment-desc" placeholder="Attachment Description (optional)">
-            <button type="button" class="btn-sm remove-attachment">Remove</button>
+            <button type="button" class="btn remove-attachment">Remove</button>
           </div>
         `;
 
