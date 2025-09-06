@@ -2,7 +2,12 @@
 const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { uploadAssign, uploadSubmission } = require('../config/multerConfig');
+const {
+  uploadAssign,
+  uploadSubmission,
+  TEACHER_MAX_MB,
+  STUDENT_MAX_MB,
+} = require('../config/multerConfig');
 const { getUserRefByAnyId } = require('../utils/idUtils');
 
 /* ---------------- Helpers ---------------- */
@@ -133,13 +138,48 @@ async function inferClassIdForStudent({ assignmentDoc, studentId }) {
   }
 }
 
+/* --------------- Multer error wrapper (nice messages) --------------- */
+function runMulter(mw, maxMb) {
+  return (req, res, next) => {
+    mw(req, res, (err) => {
+      if (!err) return next();
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          success: false,
+          message: `Each file must be ≤ ${maxMb} MB.`,
+        });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(413).json({
+          success: false,
+          message: 'Too many files uploaded.',
+        });
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+          success: false,
+          message: `Unexpected file field: "${err.field}".`,
+        });
+      }
+      // fallback
+      return next(err);
+    });
+  };
+}
+
 /* ===========================================================
    CREATE ASSIGNMENT  (archive-aware)
    POST /assignments
+   Accepts multipart:
+     - files[] (0..n)
+     - rubrics (0..1)
 =========================================================== */
 router.post(
   '/assignments',
-  uploadAssign.array('files'),
+  runMulter(uploadAssign.fields([
+    { name: 'files',   maxCount: 30 },
+    { name: 'rubrics', maxCount: 1  },
+  ]), TEACHER_MAX_MB),
   asyncHandler(async (req, res) => {
     const {
       title, content, courseId, courseTitle, moduleId,
@@ -175,9 +215,20 @@ router.post(
     let links = req.body.links || req.body['links[]'] || [];
     if (typeof links === 'string') links = [links];
 
-    // Build attachments from files + links
-    const files = Array.isArray(req.files) ? req.files : [];
-    const fileAttachments = files.map(f => ({
+    // Build attachments from files + rubrics + links
+    const filesArr   = (req.files && Array.isArray(req.files.files))   ? req.files.files   : [];
+    const rubricsArr = (req.files && Array.isArray(req.files.rubrics)) ? req.files.rubrics : [];
+
+    const fileAttachments = filesArr.map(f => ({
+      type: 'file',
+      filePath: `/uploads/assignments/${f.filename}`,
+      originalName: f.originalname,
+      size: f.size,
+      mime: f.mimetype
+    }));
+
+    const rubricsAttachments = rubricsArr.map(f => ({
+      type: 'rubrics',
       filePath: `/uploads/assignments/${f.filename}`,
       originalName: f.originalname,
       size: f.size,
@@ -187,7 +238,7 @@ router.post(
     const linkAttachments = (links || [])
       .map(u => String(u).trim())
       .filter(u => u.length)
-      .map(u => ({ url: u }));
+      .map(u => ({ type: 'link', url: u }));
 
     const payload = {
       title: String(title).trim(),
@@ -200,11 +251,10 @@ router.post(
       publishAt: toTimestampOrNull(publishAt) || admin.firestore.Timestamp.now(),
       dueAt: toTimestampOrNull(dueAt) || null,
       createdBy: String(teacherId).trim(),
-      attachments: [...fileAttachments, ...linkAttachments],
+      attachments: [...fileAttachments, ...rubricsAttachments, ...linkAttachments],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
-      // Ensure present for filtering
       archived: false
     };
 
@@ -488,7 +538,7 @@ router.get(
 =========================================================== */
 router.post(
   '/assignments/:id/submissions',
-  uploadSubmission.array('files'),
+  runMulter(uploadSubmission.array('files'), STUDENT_MAX_MB),
   asyncHandler(async (req, res) => {
     const assignmentId = req.params.id;
     const { studentId } = req.body;
@@ -653,7 +703,7 @@ router.get(
 
     const a = aDoc.data() || {};
     const assigned = Array.isArray(a.classIds) ? a.classIds : [];
-    const singleAssignedClassId = assigned.length === 1 ? assigned[0] : null;
+    const singleAssignedClassId = assigned.length === 1 ? a.classIds[0] : null;
 
     // Preload course.assignedClasses for inference
     let courseAssigned = [];
@@ -673,25 +723,17 @@ router.get(
       .collection('submissions')
       .get();
 
-    // First pass: collect subs and the classIds we must label
     const raw = [];
     const classIdsNeeded = new Set();
-
-    // Always add all assigned classIds for labeling (for filters)
-    if (Array.isArray(assigned)) {
-      assigned.forEach(cid => { if (cid) classIdsNeeded.add(cid); });
-    }
+    if (Array.isArray(assigned)) assigned.forEach(cid => cid && classIdsNeeded.add(cid));
 
     for (const doc of subsSnap.docs) {
       const data = doc.data() || {};
       const sid = data.studentId || doc.id;
 
       let classId = data.classId || data.classID || data.class || null;
-
-      // If missing, try single-assigned fallback…
       if (!classId && singleAssignedClassId) classId = singleAssignedClassId;
 
-      // …else infer from student enrollments ∩ course.assignedClasses
       if (!classId && courseAssigned.length) {
         try {
           const uRef = await getUserRefByAnyId(sid);
@@ -708,13 +750,10 @@ router.get(
       raw.push({ sid, data, classId });
     }
 
-    // Batch load class labels once
     const classLabels = await getClassLabelsById(Array.from(classIdsNeeded));
 
-    // Build final submissions with decrypted names + class labels
     const submissions = [];
     for (const { sid, data, classId } of raw) {
-      // Resolve student display name (prefer decrypted full name)
       let studentName = sid;
       try {
         let userSnap = await firestore.collection('users').doc(sid).get();
@@ -725,7 +764,7 @@ router.get(
           if (!userQuery.empty) user = userQuery.docs[0].data();
         }
         if (user) studentName = fullNameFromUser(user);
-      } catch { /* ignore and keep sid */ }
+      } catch {}
 
       submissions.push({
         ...data,
@@ -744,11 +783,10 @@ router.get(
 );
 
 /* ===========================================================
-   COMPAT: SUBMIT ENDPOINTS
+   COMPAT: SUBMIT ENDPOINTS (student)
    - POST /assignments/:assignmentId/submit   (requires studentId in body)
    - POST /students/:studentId/assignments/:assignmentId/submit
 =========================================================== */
-const multer = require('multer');
 const uploadAny = uploadSubmission.any();
 
 function collectSubmissionFiles(filesArr) {
@@ -763,7 +801,6 @@ function collectSubmissionFiles(filesArr) {
 }
 
 async function saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyClassId = null }) {
-  // Validate assignment and check archive status
   const aRef = firestore.collection('assignments').doc(assignmentId);
   const aDoc = await aRef.get();
   if (!aDoc.exists) {
@@ -785,7 +822,6 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyC
     }
   }
 
-  // Prefer body class; else single assigned; else infer via enrollments∩course
   let classId = (bodyClassId || '').toString().trim() || null;
   if (!classId) {
     const assigned = Array.isArray(aDoc.data()?.classIds) ? aDoc.data().classIds : [];
@@ -799,7 +835,7 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyC
   const subRef = aRef.collection('submissions').doc(studentId);
   const payload = {
     studentId,
-    classId: classId || null, // <-- store for UI
+    classId: classId || null,
     text: (text || '').toString().trim(),
     files: filesBlobs,
     submittedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -816,7 +852,7 @@ async function saveSubmission({ assignmentId, studentId, text, filesBlobs, bodyC
 // 1) POST /assignments/:assignmentId/submit
 router.post(
   '/assignments/:assignmentId/submit',
-  uploadAny,
+  runMulter(uploadAny, STUDENT_MAX_MB),
   asyncHandler(async (req, res) => {
     const { assignmentId } = req.params;
     const { studentId } = req.body;
@@ -838,7 +874,7 @@ router.post(
 // 2) POST /students/:studentId/assignments/:assignmentId/submit
 router.post(
   '/students/:studentId/assignments/:assignmentId/submit',
-  uploadAny,
+  runMulter(uploadAny, STUDENT_MAX_MB),
   asyncHandler(async (req, res) => {
     const { assignmentId, studentId } = req.params;
     const filesBlobs = collectSubmissionFiles(req.files);

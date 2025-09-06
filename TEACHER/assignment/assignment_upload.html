@@ -12,6 +12,8 @@
   <link href="./ass_upload.css" rel="stylesheet"/>
 
   <style>
+    .file-too-large{ color:#b91c1c; font-weight:600; }
+    .small-muted { color:#6b7280; font-size:.9rem; }
   </style>
 </head>
 <body>
@@ -99,7 +101,14 @@
             <div class="mt-3">
               <label class="form-label">Attachments (optional)</label>
               <input id="files" type="file" class="form-control" multiple/>
+              <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>.</div>
               <div id="fileList" class="small-muted mt-1"></div>
+            </div>
+            <div class="mt-3">
+              <label class="form-label">Rubrics File (optional)</label>
+              <input id="rubricsFile" type="file" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"/>
+              <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>.</div>
+              <div id="rubricsFileList" class="small-muted mt-1"></div>
             </div>
 
             <!-- Error / debug -->
@@ -165,6 +174,8 @@
   <!-- Page Logic -->
   <script>
     const API_BASE = "http://localhost:5000";
+    const TEACHER_MAX_MB = 500;
+    const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
     // ==== Auth guard (teacher-only) ====
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
@@ -182,6 +193,8 @@
     const formError    = document.getElementById("formError");
     const fileInput    = document.getElementById("files");
     const fileList     = document.getElementById("fileList");
+    const rubricsFileInput = document.getElementById("rubricsFile");
+    const rubricsFileList  = document.getElementById("rubricsFileList");
     const submitBtn    = document.getElementById("submitBtn");
     const spinner      = submitBtn.querySelector(".spinner-border");
     const submitText   = submitBtn.querySelector(".submit-text");
@@ -189,6 +202,11 @@
     // ==== utils ====
     const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const toMillis = v => v ? new Date(v).getTime() : null;
+    const human = bytes => {
+      if (!Number.isFinite(bytes)) return '';
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1024 ? (mb/1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB';
+    };
 
     async function fetchFirst(urls, opts) {
       for (const u of urls) {
@@ -197,11 +215,10 @@
           if (res.ok) return res;
         } catch (_) { /* try next */ }
       }
-      // last attempt (returns last response or throws)
       return fetch(urls[0], opts);
     }
 
-    // ==== load courses (tries /api/courses then /courses) ====
+    // ==== load courses ====
     async function loadCourses() {
       courseSelect.innerHTML = `<option value="">Loading courses…</option>`;
       moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
@@ -235,7 +252,7 @@
       }
     }
 
-    // ==== load modules for a course (tries /api/courses/:id/modules then /courses/:id/modules) ====
+    // ==== load modules for a course ====
     async function loadModules(courseId) {
       moduleSelect.innerHTML = `<option value="">Loading…</option>`;
       moduleSelect.disabled = true;
@@ -281,18 +298,33 @@
       }
     }
 
-    // ==== file list preview ====
+    // ==== file list preview + client-side size validation (500 MB per file) ====
+    function renderFileList(el, files, maxBytes) {
+      if (!files.length) { el.textContent = ""; return { ok:true }; }
+      let ok = true;
+      el.innerHTML = files.map(f => {
+        const tooBig = f.size > maxBytes;
+        if (tooBig) ok = false;
+        return `<div class="${tooBig ? 'file-too-large' : ''}">
+          ${esc(f.name)} — ${human(f.size)}${tooBig ? ` (exceeds ${TEACHER_MAX_MB} MB)` : ''}</div>`;
+      }).join("");
+      return { ok };
+    }
+
     fileInput.addEventListener("change", () => {
       const files = Array.from(fileInput.files || []);
-      if (!files.length) { fileList.textContent = ""; return; }
-      fileList.innerHTML = files.map(f => `${esc(f.name)} (${Math.round(f.size/1024)} KB)`).join("<br/>");
+      renderFileList(fileList, files, TEACHER_MAX_BYTES);
+    });
+
+    rubricsFileInput.addEventListener("change", () => {
+      const files = Array.from(rubricsFileInput.files || []);
+      renderFileList(rubricsFileList, files, TEACHER_MAX_BYTES);
     });
 
     // ==== course -> modules linkage ====
     courseSelect.addEventListener("change", (e) => loadModules(e.target.value));
 
-    // ====== Info modal helper (used instead of alert) ======
-    // (Bootstrap is loaded at the very end of body; we safely reference it on submit after the page is ready.)
+    // ====== Info modal helper ======
     function showInfoModal({ title = 'Notice', html = '', autoHideMs = 0, onHidden = null } = {}) {
       const el = document.getElementById('infoModal');
       const titleEl = document.getElementById('infoModalLabel');
@@ -318,6 +350,15 @@
       e.preventDefault();
       formError.textContent = "";
 
+      const tooLargeRegular = Array.from(fileInput.files || []).find(f => f.size > TEACHER_MAX_BYTES);
+      const tooLargeRubrics = Array.from(rubricsFileInput.files || []).find(f => f.size > TEACHER_MAX_BYTES);
+      if (tooLargeRegular || tooLargeRubrics) {
+        formError.textContent = `Each file must be ≤ ${TEACHER_MAX_MB} MB. Too large: ${
+          esc((tooLargeRegular || tooLargeRubrics).name)
+        } (${human((tooLargeRegular || tooLargeRubrics).size)})`;
+        return;
+      }
+
       const courseId = courseSelect.value.trim();
       const moduleId = moduleSelect.value.trim();
       const title    = document.getElementById("title").value.trim();
@@ -334,7 +375,7 @@
       const dueAtVal     = document.getElementById("dueAt").value;
 
       const fd = new FormData();
-      fd.append("teacherId", TEACHER_ID);
+      fd.append("teacherId", userData.userId);
       fd.append("courseId", courseId);
       fd.append("moduleId", moduleId);
       fd.append("title", title);
@@ -344,6 +385,9 @@
       if (dueAtVal)     fd.append("dueAt", String(toMillis(dueAtVal)));
 
       Array.from(fileInput.files || []).forEach(f => fd.append("files", f));
+      if (rubricsFileInput.files && rubricsFileInput.files.length > 0) {
+        fd.append("rubrics", rubricsFileInput.files[0]);
+      }
 
       // UI lock
       submitBtn.disabled = true;
@@ -354,7 +398,7 @@
         const res = await fetch(`${API_BASE}/api/assignments`, { method: "POST", body: fd });
         const raw = await res.text();
         let js = {};
-        try { js = JSON.parse(raw); } catch { /* leave js empty */ }
+        try { js = JSON.parse(raw); } catch {}
 
         if (!res.ok || js.success === false) {
           const msg = (js && (js.message || js.error)) || `HTTP ${res.status} – ${raw.slice(0,200)}`;
@@ -362,7 +406,7 @@
           return;
         }
 
-        // ✅ Success: show modal, auto-close, then redirect
+        // ✅ Success
         showInfoModal({
           title: "Success",
           html: "✅ Assignment created!",
@@ -396,12 +440,11 @@
   <script>
     (function enhanceDateTimeForMobile(){
       const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
-      if (!isTouch) return; // desktop/tablet with mouse -> keep native datetime-local
+      if (!isTouch) return;
 
       function makeSplit(id) {
         const original = document.getElementById(id);
         if (!original) return null;
-
         original.classList.add('dt-hidden');
 
         const wrap = document.createElement('div');
@@ -428,7 +471,6 @@
             time.value = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
           }
         }
-
         return { original, date, time, wrap };
       }
 
