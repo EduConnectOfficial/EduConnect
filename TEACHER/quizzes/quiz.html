@@ -2,51 +2,106 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EduConnect Teacher - Upload Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EduConnect Teacher – Upload Quiz</title>
 
   <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Your quiz styles (keep it) -->
   <link rel="stylesheet" href="quiz.css" />
+
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --card-radius:14px;
+      /* Card max width control (you can override per card with inline style) */
+      --ui-card-max: 1100px;
+    }
+
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
+    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+
+    /* Header */
+    .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
+    .logo-header{height:45px}
+    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
+    .search-box input{border-radius:30px}
+    .profile-btn{color:#fff}
+
+    /* UI Card */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius);box-shadow:0 10px 24px rgba(0,0,0,.08);overflow:hidden}
+    .ui-card-head{
+      display:flex;justify-content:space-between;align-items:center;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .ui-subtext{opacity:.95}
+    .ui-card-body{padding:16px}
+
+    /* Constrain helper + width presets */
+    .constrain{max-width:var(--ui-card-max);margin-inline:auto}
+    .w-sm{--ui-card-max:640px}.w-md{--ui-card-max:800px}.w-lg{--ui-card-max:1000px}
+    .w-xl{--ui-card-max:1200px}.w-full{--ui-card-max:100%}
+
+    /* Buttons */
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.05);color:#fff}
+    .btn-amber-outline{background:#fff;color:var(--brand-accent-2);border:1px solid var(--brand-accent-2)}
+    .btn-amber-outline:hover{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border-color:transparent}
+
+    .hint{color:var(--muted);font-size:.9rem}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+
+    /* Pager dots */
+    .q-dots{display:flex;gap:6px;align-items:center}
+    .q-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
+    .q-dots .dot.active{background:#111827}
+
+    /* Question blocks */
+    .question-block{display:none;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+    .question-block.active{display:block}
+    .q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .q-type .chip{display:inline-block;padding:.25rem .6rem;border:1px solid var(--border);border-radius:999px;margin-right:6px;cursor:pointer;background:#fff}
+    .q-type .chip.active{background:#eff6ff;border-color:#c7dbff;color:#1d4ed8}
+
+    /* Modals – themed header + buttons */
+    .modal-header{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff;border-bottom:none}
+    .modal-header .btn-close{filter:brightness(0) invert(1);opacity:.9}
+    .modal-header .btn-close:hover{opacity:1}
+    .modal-footer .btn{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));border:none;color:#fff;border-radius:999px}
+    .modal-body{color:#000}
+
+    /* Small table preview style */
+    .preview-table{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+
+    /* Mobile polish */
+    @media (max-width: 480px){
+      .logo-header{display:none}
+      .header-top{padding:.6rem .8rem}
+      .search-box{margin:0;max-width:100%}
+      .ui-card-body{padding:12px}
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
     <div id="sidebar-container"></div>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        fetch("/components/sidebar.html")
-          .then(res => res.text())
-          .then(html => {
-            document.getElementById("sidebar-container").innerHTML = html;
-            const sidebar = document.querySelector(".sidebar");
-            const dashboard = document.querySelector(".dashboard");
-            if (sidebar && dashboard) {
-              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
-              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
-            }
-            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-              toggle.addEventListener('click', e => {
-                e.preventDefault();
-                const parent = toggle.closest('.has-submenu');
-                parent.classList.toggle('open');
-                const expanded = toggle.getAttribute('aria-expanded') === 'true';
-                toggle.setAttribute('aria-expanded', String(!expanded));
-              });
-            });
-          })
-          .catch(err => console.error("Failed to load sidebar:", err));
-      });
-    </script>
 
     <!-- Main -->
     <div class="main">
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input type="text" class="form-control" placeholder="Search..."/>
+          <input type="text" class="form-control" placeholder="Search…">
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -56,218 +111,218 @@
       </header>
 
       <!-- Content -->
-      <div class="upload-container container-fluid">
-        <div class="form-card">
-          <h2>Upload Quiz</h2>
+      <div class="container-fluid my-4">
+        <h1 class="fw-bold text-center mb-3" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;">
+          Upload Quiz
+        </h1>
 
-          <form id="quizForm">
-            <!-- Course/Module -->
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-bold">Select Course</label>
-                <select id="courseSelect" class="form-select" required>
-                  <option value="">-- Select a Course --</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-bold">Select Module</label>
-                <select id="moduleSelect" class="form-select" required disabled>
-                  <option value="">-- Select a Module --</option>
-                </select>
-              </div>
-            </div>
+        <!-- UI CARD (set width here) -->
+        <div class="ui-card constrain w-xl" style="--ui-card-max: 1100px;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-ui-checks-grid"></i> Create a Quiz</h2>
+            <div class="ui-subtext">Fill the details, add questions, or bulk import via CSV.</div>
+          </div>
 
-            <!-- Title / Description -->
-            <div class="row g-3 mt-1">
-              <div class="col-12 col-lg-6">
-                <label class="form-label fw-bold">Quiz Title</label>
-                <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
-              </div>
-              <div class="col-12 col-lg-6">
-                <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
-                <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
-              </div>
-            </div>
-
-            <!-- Due date & Attempts -->
-            <div class="row g-3 mt-1">
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-bold">Due Date & Time <span class="text-muted">(optional)</span></label>
-                <input type="datetime-local" id="dueAtInput" class="form-control">
-                <div class="hint mt-1">If set, quiz closes after this time.</div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label fw-bold">Attempts Allowed</label>
-                <input type="number" id="attemptsInput" class="form-control" min="0" step="1" value="1" required>
-                <div class="hint mt-1">0 means unlimited attempts.</div>
-              </div>
-            </div>
-
-            <hr class="my-4"/>
-
-            <!-- Timer -->
-            <div class="row g-3 align-items-center">
-              <div class="col-12 col-md-4">
-                <label class="form-label fw-bold d-flex align-items-center gap-2">
-                  <i class="bi bi-stopwatch"></i> Enable Timer
-                </label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="enableTimer">
-                  <label class="form-check-label" for="enableTimer">Limit the total time for this quiz</label>
+          <div class="ui-card-body">
+            <form id="quizForm">
+              <!-- Course/Module -->
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-bold">Select Course</label>
+                  <select id="courseSelect" class="form-select" required>
+                    <option value="">-- Select a Course --</option>
+                  </select>
                 </div>
-                <div class="hint mt-1">If enabled, students see a countdown in the quiz UI.</div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-bold">Select Module</label>
+                  <select id="moduleSelect" class="form-select" required disabled>
+                    <option value="">-- Select a Module --</option>
+                  </select>
+                </div>
               </div>
-              <div class="col-12 col-md-4">
-                <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
-                <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
-                <div class="hint mt-1">Whole minutes, minimum 1.</div>
-              </div>
-              <div class="col-12 col-md-4">
-                <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
-                <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
-                <div class="hint mt-1">Extra seconds before auto-submit.</div>
-              </div>
-            </div>
 
-            <hr class="my-4"/>
+              <!-- Title / Description -->
+              <div class="row g-3 mt-1">
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-bold">Quiz Title</label>
+                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
+                </div>
+                <div class="col-12 col-lg-6">
+                  <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
+                  <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
+                </div>
+              </div>
 
-            <!-- Order & Flow -->
-            <div class="row g-3">
-              <div class="col-12 col-lg-4">
-                <label class="form-label fw-bold d-flex align-items-center gap-2">
-                  <i class="bi bi-shuffle"></i> Question Order
-                </label>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="fixedOrderCheck">
-                  <label class="form-check-label" for="fixedOrderCheck">
-                    Fixed order (no randomize)
+              <!-- Due date & Attempts -->
+              <div class="row g-3 mt-1">
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-bold">Due Date & Time <span class="text-muted">(optional)</span></label>
+                  <input type="datetime-local" id="dueAtInput" class="form-control">
+                  <div class="hint mt-1">If set, quiz closes after this time.</div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-bold">Attempts Allowed</label>
+                  <input type="number" id="attemptsInput" class="form-control" min="0" step="1" value="1" required>
+                  <div class="hint mt-1">0 means unlimited attempts.</div>
+                </div>
+              </div>
+
+              <hr class="my-4"/>
+
+              <!-- Timer -->
+              <div class="row g-3 align-items-center">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-stopwatch"></i> Enable Timer
                   </label>
-                </div>
-                <div class="hint mt-1">Default is randomized when this is <strong>unchecked</strong>.</div>
-              </div>
-
-              <div class="col-12 col-lg-4">
-                <label class="form-label fw-bold d-flex align-items-center gap-2">
-                  <i class="bi bi-ui-checks-grid"></i> Pagination
-                </label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="enablePagination">
-                  <label class="form-check-label" for="enablePagination">Enable pagination</label>
-                </div>
-                <div class="mt-2">
-                  <label for="perPageInput" class="form-label">Questions per page</label>
-                  <input type="number" min="1" step="1" class="form-control" id="perPageInput" value="1" disabled>
-                </div>
-                <div class="hint mt-1">Minimum 1. If enabled, students will see one page at a time.</div>
-              </div>
-
-              <div class="col-12 col-lg-4">
-                <label class="form-label fw-bold d-flex align-items-center gap-2">
-                  <i class="bi bi-arrow-left-right"></i> Backtracking
-                </label>
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="allowBacktracking" checked>
-                  <label class="form-check-label" for="allowBacktracking">Allow backtracking</label>
-                </div>
-                <div class="hint mt-1">If off, students cannot return to earlier pages once they proceed.</div>
-              </div>
-            </div>
-
-            <hr class="my-4"/>
-
-            <!-- Bulk import (CSV only) -->
-            <div class="import-card p-3 mb-4">
-              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <div class="import-title"><span class="step">Step 1:</span> Download a CSV Template</div>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkHelpModal">
-                  <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
-                </button>
-              </div>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <button type="button" id="downloadCsvTplMcq"   class="btn btn-amber-outline">
-                  <i class="bi bi-download me-1"></i> CSV: Multiple Choice
-                </button>
-                <button type="button" id="downloadCsvTplTf"    class="btn btn-amber-outline">
-                  <i class="bi bi-download me-1"></i> CSV: True / False
-                </button>
-                <button type="button" id="downloadCsvTplEssay" class="btn btn-amber-outline">
-                  <i class="bi bi-download me-1"></i> CSV: Essay
-                </button>
-                <button type="button" id="downloadCsvTplAll"   class="btn btn-amber-outline">
-                  <i class="bi bi-download me-1"></i> CSV: All Types
-                </button>
-              </div>
-              <div class="hint mt-2">
-                Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
-                For True/False, use <span class="mono">TRUE</span> or <span class="mono">FALSE</span> in <span class="mono">correct</span>.
-              </div>
-
-              <hr class="my-3">
-
-              <div class="import-title mb-2"><span class="step">Step 2:</span> Upload your CSV</div>
-              <div class="row g-2 align-items-end">
-                <div class="col-12 col-md-8">
-                  <label class="form-label">Pick a <strong>.csv</strong> file</label>
-                  <input type="file" id="bulkFile" class="form-control" accept=".csv" />
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableTimer">
+                    <label class="form-check-label" for="enableTimer">Limit the total time for this quiz</label>
+                  </div>
+                  <div class="hint mt-1">If enabled, students see a countdown in the quiz UI.</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <button type="button" id="parseBulkBtn" class="btn btn-outline-secondary w-100">
-                    <i class="bi bi-eye"></i> Preview & Validate
+                  <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
+                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
+                  <div class="hint mt-1">Whole minutes, minimum 1.</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
+                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
+                  <div class="hint mt-1">Extra seconds before auto-submit.</div>
+                </div>
+              </div>
+
+              <hr class="my-4"/>
+
+              <!-- Order & Flow -->
+              <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-shuffle"></i> Question Order
+                  </label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="fixedOrderCheck">
+                    <label class="form-check-label" for="fixedOrderCheck">Fixed order (no randomize)</label>
+                  </div>
+                  <div class="hint mt-1">Default is randomized when this is <strong>unchecked</strong>.</div>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-ui-checks-grid"></i> Pagination
+                  </label>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enablePagination">
+                    <label class="form-check-label" for="enablePagination">Enable pagination</label>
+                  </div>
+                  <div class="mt-2">
+                    <label for="perPageInput" class="form-label">Questions per page</label>
+                    <input type="number" min="1" step="1" class="form-control" id="perPageInput" value="1" disabled>
+                  </div>
+                  <div class="hint mt-1">Minimum 1. If enabled, students will see one page at a time.</div>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left-right"></i> Backtracking
+                  </label>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="allowBacktracking" checked>
+                    <label class="form-check-label" for="allowBacktracking">Allow backtracking</label>
+                  </div>
+                  <div class="hint mt-1">If off, students cannot return to earlier pages once they proceed.</div>
+                </div>
+              </div>
+
+              <hr class="my-4"/>
+
+              <!-- Bulk import (CSV only) -->
+              <div class="p-3 mb-4 border rounded-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkHelpModal">
+                    <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
+                  </button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  <button type="button" id="downloadCsvTplMcq"   class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: Multiple Choice</button>
+                  <button type="button" id="downloadCsvTplTf"    class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: True / False</button>
+                  <button type="button" id="downloadCsvTplEssay" class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: Essay</button>
+                  <button type="button" id="downloadCsvTplAll"   class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: All Types</button>
+                </div>
+                <div class="hint mt-2">
+                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span class="mono">FALSE</span>.
+                </div>
+
+                <hr class="my-3">
+
+                <div class="fw-semibold mb-2"><span class="text-muted">Step 2:</span> Upload your CSV</div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-8">
+                    <label class="form-label">Pick a <strong>.csv</strong> file</label>
+                    <input type="file" id="bulkFile" class="form-control" accept=".csv" />
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <button type="button" id="parseBulkBtn" class="btn btn-outline-secondary w-100">
+                      <i class="bi bi-eye"></i> Preview & Validate
+                    </button>
+                  </div>
+                </div>
+
+                <div id="bulkResult" class="mt-3 d-none">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center">
+                    <div id="bulkSummary" class="small" aria-live="polite"></div>
+                    <button type="button" id="addValidBtn" class="btn btn-success" disabled>
+                      <i class="bi bi-plus-circle me-1"></i> Add valid questions to quiz
+                    </button>
+                  </div>
+                  <div class="preview-table mt-2">
+                    <table class="table table-sm table-striped mb-0">
+                      <thead>
+                        <tr>
+                          <th>#</th><th>Type</th><th>Question</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Correct</th><th>Status</th><th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="bulkTbody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Question pager toolbar -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0 fw-bold">Questions</label>
+                <div class="q-toolbar d-flex align-items-center gap-2">
+                  <span class="q-chip"><span id="qPageNow">0</span>/<span id="qPageTotal">0</span></span>
+                  <div id="qDots" class="q-dots" aria-hidden="true"></div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="qPrevBtn" disabled>Prev</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="qNextBtn" disabled>Next</button>
+                  </div>
+                  <button type="button" class="btn btn-amber-outline btn-sm" id="addQuestionBtnTop">
+                    <i class="bi bi-plus-circle me-1"></i> Add Question
                   </button>
                 </div>
               </div>
 
-              <div id="bulkResult" class="mt-3 d-none">
-                <div class="d-flex flex-wrap justify-content-between align-items-center">
-                  <div id="bulkSummary" class="small" aria-live="polite"></div>
-                  <button type="button" id="addValidBtn" class="btn btn-success" disabled>
-                    <i class="bi bi-plus-circle me-1"></i> Add valid questions to quiz
-                  </button>
-                </div>
-                <div class="preview-table mt-2">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead>
-                      <tr>
-                        <th>#</th><th>Type</th><th>Question</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Correct</th><th>Status</th><th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="bulkTbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+              <!-- Questions -->
+              <div id="question-container"></div>
 
-            <!-- Question pager toolbar -->
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <label class="form-label mb-0 fw-bold">Questions</label>
-              <div class="q-toolbar">
-                <span class="q-chip"><span id="qPageNow">0</span>/<span id="qPageTotal">0</span></span>
-                <div id="qDots" class="q-dots" aria-hidden="true"></div>
-                <div class="btn-group">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="qPrevBtn" disabled>Prev</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="qNextBtn" disabled>Next</button>
-                </div>
-                <button type="button" class="btn btn-amber-outline btn-sm" id="addQuestionBtnTop">
+              <div class="d-flex justify-content-between mt-3">
+                <button type="button" class="btn btn-amber-outline" id="addQuestionBtn">
                   <i class="bi bi-plus-circle me-1"></i> Add Question
                 </button>
+                <button type="submit" class="btn btn-amber">
+                  <i class="bi bi-cloud-upload me-1"></i> Upload Quiz
+                </button>
               </div>
-            </div>
-
-            <!-- Questions -->
-            <div id="question-container"></div>
-
-            <div class="d-flex justify-content-between mt-3">
-              <button type="button" class="btn btn-amber-outline" id="addQuestionBtn">
-                <i class="bi bi-plus-circle me-1"></i> Add Question
-              </button>
-              <button type="submit" class="btn btn-upload">
-                <i class="bi bi-cloud-upload me-1"></i> Upload Quiz
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
+        <!-- /UI CARD -->
       </div>
-
     </div>
   </div>
 
@@ -275,7 +330,7 @@
   <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header border-0">
+        <div class="modal-header">
           <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -286,14 +341,14 @@
             <code id="createdQuizId" class="ms-2"></code>
           </div>
         </div>
-        <div class="modal-footer border-0">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-bs-dismiss="modal">Done</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Bulking Help Modal (elder-friendly) -->
+  <!-- Bulking Help Modal -->
   <div class="modal fade" id="bulkHelpModal" tabindex="-1" aria-labelledby="bulkHelpLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
@@ -305,7 +360,6 @@
           <div class="fs-5 mb-3">
             This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
           </div>
-
           <ol class="fs-6">
             <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice, True/False, or Essay). You can also pick “All Types”.</li>
             <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
@@ -328,19 +382,9 @@
             <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows will be added.</li>
             <li class="mb-2">You may still edit the questions after adding them.</li>
           </ol>
-
-          <hr>
-          <div class="fs-6">
-            <strong>Tips for clarity:</strong>
-            <ul>
-              <li>Keep questions short and clear.</li>
-              <li>Use proper capitalization for answers.</li>
-              <li>If something looks confusing, try again with fewer rows first.</li>
-            </ul>
-          </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-primary" data-bs-dismiss="modal">Got it</button>
+          <button class="btn" data-bs-dismiss="modal">Got it</button>
         </div>
       </div>
     </div>
@@ -348,12 +392,38 @@
 
   <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Logic -->
   <script>
     const API = "http://localhost:5000";
 
-    // Auth guard (teacher)
+    /* ---------- Sidebar Loader ---------- */
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+
+    /* ---------- Auth Guard ---------- */
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     if (!userData?.userId || !userData?.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
@@ -366,7 +436,7 @@
     }
     const TEACHER_ID = userData.userId;
 
-    // -------- Utilities shared --------
+    /* ---------- Utilities ---------- */
     function escapeHTML(str=''){
       return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
@@ -377,7 +447,7 @@
       }).join(',')).join('\n');
     }
 
-    // Load courses & modules
+    /* ---------- Load Courses & Modules ---------- */
     async function loadCourses() {
       const courseSelect = document.getElementById("courseSelect");
       const moduleSelect = document.getElementById("moduleSelect");
@@ -393,9 +463,9 @@
         if (courses.length && 'uploadedBy' in courses[0]) {
           courses = courses.filter(c => c.uploadedBy === TEACHER_ID);
         }
-        courses.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); 
+        courses.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
         courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
-          courses.map(c => `<option value="${c.id}">${(c.title||'Untitled')}${c.courseNumber ? ' (#'+c.courseNumber+')' : ''}</option>`).join('');
+          courses.map(c => `<option value="${c.id}">${escapeHTML(c.title||'Untitled')}${c.courseNumber ? ' (#'+escapeHTML(c.courseNumber)+')' : ''}</option>`).join('');
 
         const params = new URLSearchParams(location.search);
         const preCourse = params.get('courseId');
@@ -431,7 +501,7 @@
         modules.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
 
         moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>` +
-          modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${m.title || 'Untitled'}</option>`).join('');
+          modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${escapeHTML(m.title || 'Untitled')}</option>`).join('');
         moduleSelect.disabled = false;
       } catch (err) {
         console.error(err);
@@ -439,7 +509,17 @@
       }
     }
 
-    // ------- Question Builder + Pager -------
+    document.getElementById("courseSelect").addEventListener("change", function(){
+      const cid = this.value;
+      if (cid) loadModules(cid);
+      else {
+        const moduleSelect = document.getElementById("moduleSelect");
+        moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
+        moduleSelect.disabled = true;
+      }
+    });
+
+    /* ---------- Question Builder + Pager ---------- */
     let qIndex = 0;
     const container = document.getElementById("question-container");
     const qPager = { cur: 0 };
@@ -447,10 +527,8 @@
     function renderQPager(){
       const blocks = [...document.querySelectorAll(".question-block")];
 
-      // activate current
       blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
 
-      // numbers
       const nowEl = document.getElementById("qPageNow");
       const totalEl = document.getElementById("qPageTotal");
       if (blocks.length === 0) {
@@ -461,7 +539,6 @@
         totalEl.textContent = String(blocks.length);
       }
 
-      // dots
       const dots = document.getElementById("qDots");
       dots.innerHTML = "";
       for (let i=0;i<blocks.length;i++){
@@ -473,7 +550,6 @@
         dots.appendChild(d);
       }
 
-      // pager buttons
       document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur>0);
       document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur<blocks.length-1);
     }
@@ -513,6 +589,9 @@
         `;
       }
       if (type === "tf") {
+        /* IMPORTANT: No “A. / B.” labels in the UI.
+           We still submit correct = 'A' (True) or 'B' (False) and save choices as
+           { A:'True', B:'False' } to match your backend schema. */
         return `
           <div class="form-label"><strong>Answer</strong></div>
           <div class="d-flex gap-3">
@@ -525,7 +604,7 @@
               <label class="form-check-label" for="tf_false_${idx}">False</label>
             </div>
           </div>
-          <div class="hint mt-2">Will be saved as choices A: True, B: False.</div>
+          <div class="hint mt-2">Saved as True/False (no letter prefixes).</div>
         `;
       }
       return `
@@ -596,11 +675,20 @@
       return block;
     }
 
-    // Timer & Flow UI wiring
+    document.getElementById("qPrevBtn").addEventListener("click", ()=>{
+      if (qPager.cur>0){ qPager.cur--; renderQPager(); }
+    });
+    document.getElementById("qNextBtn").addEventListener("click", ()=>{
+      const total = document.querySelectorAll(".question-block").length;
+      if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }
+    });
+    document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
+    document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
+
+    /* Timer / Pagination wiring */
     const enableTimerEl = document.getElementById("enableTimer");
     const timerMinutesEl = document.getElementById("timerMinutes");
     const gracePeriodEl  = document.getElementById("gracePeriod");
-
     const fixedOrderEl = document.getElementById("fixedOrderCheck");
     const enablePaginationEl = document.getElementById("enablePagination");
     const perPageEl = document.getElementById("perPageInput");
@@ -613,75 +701,19 @@
       timerMinutesEl.disabled = true;
       gracePeriodEl.disabled  = true;
     }
-    enableTimerEl?.addEventListener("change", () => {
+    enableTimerEl.addEventListener("change", () => {
       const on = enableTimerEl.checked;
       timerMinutesEl.disabled = !on;
       gracePeriodEl.disabled  = !on;
       if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
     });
-
     function updatePaginationUI() {
       const on = enablePaginationEl.checked;
       perPageEl.disabled = !on;
     }
     enablePaginationEl.addEventListener("change", updatePaginationUI);
 
-    // Helper: detect placeholder/empty question block
-    function isEmptyQuestionBlock(block){
-      const type = block?.dataset?.type || 'mcq';
-      const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
-      if (!qText) return true; // blank question text => placeholder
-
-      if (type === 'mcq') {
-        const A = block.querySelector("input[name='choiceA']")?.value?.trim() || "";
-        const B = block.querySelector("input[name='choiceB']")?.value?.trim() || "";
-        const C = block.querySelector("input[name='choiceC']")?.value?.trim() || "";
-        const D = block.querySelector("input[name='choiceD']")?.value?.trim() || "";
-        const idx = block.dataset.index;
-        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
-        return (!A && !B && !C && !D && !picked);
-      }
-      if (type === 'tf') {
-        const idx = block.dataset.index;
-        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
-        return !picked;
-      }
-      return false; // essay with text is considered non-empty
-    }
-
-    // DOM Ready
-    document.addEventListener("DOMContentLoaded", () => {
-      loadCourses();
-
-      document.getElementById("courseSelect").addEventListener("change", function(){
-        const cid = this.value;
-        if (cid) loadModules(cid);
-        else {
-          const moduleSelect = document.getElementById("moduleSelect");
-          moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
-          moduleSelect.disabled = true;
-        }
-      });
-
-      document.getElementById("qPrevBtn").addEventListener("click", ()=>{
-        if (qPager.cur>0){ qPager.cur--; renderQPager(); }
-      });
-      document.getElementById("qNextBtn").addEventListener("click", ()=>{
-        const total = document.querySelectorAll(".question-block").length;
-        if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }
-      });
-
-      document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
-      document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
-
-      // Default: one blank question open
-      addQuestion();
-      resetTimerUI();
-      updatePaginationUI();
-      renderQPager();
-    });
-
-    // ---------- BULK IMPORT (CSV only) ----------
+    /* ---------- Bulk Import ---------- */
     const bulkFileEl = document.getElementById('bulkFile');
     const parseBulkBtn = document.getElementById('parseBulkBtn');
     const bulkResult = document.getElementById('bulkResult');
@@ -689,7 +721,6 @@
     const bulkSummary = document.getElementById('bulkSummary');
     const addValidBtn = document.getElementById('addValidBtn');
 
-    // Template buttons
     const btnTplMcq   = document.getElementById('downloadCsvTplMcq');
     const btnTplTf    = document.getElementById('downloadCsvTplTf');
     const btnTplEssay = document.getElementById('downloadCsvTplEssay');
@@ -716,7 +747,6 @@
       return ['A','B','C','D'].includes(x) ? x : '';
     }
 
-    // CSV template builders
     function buildCsvTemplate(kind){
       const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
       let rows = [header];
@@ -789,14 +819,10 @@
         return out;
       });
 
-      const have = new Set(Object.keys(normed[0] || {}));
-      const missing = ['type','question'].filter(h => !have.has(h));
-
       const items = [];
       let validCount = 0, invalidCount = 0;
 
       normed.forEach((r, i)=>{
-        const rowNum = i+2;
         const type = normalizeType(r.type);
         const question = String(r.question||'').trim();
         const A = String(r.choicea||'').trim();
@@ -824,7 +850,7 @@
         if (ok) validCount++; else invalidCount++;
 
         items.push({
-          rowNum, ok, errors,
+          ok, errors,
           display: { type, question, A, B, C, D, correct },
           excluded: false,
           payload: {
@@ -837,7 +863,7 @@
         });
       });
 
-      return { items, validCount, invalidCount, missingHeaders: missing };
+      return { items, validCount, invalidCount, missingHeaders: [] };
     }
 
     function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }){
@@ -873,17 +899,15 @@
           </tr>
         `;
       }
-      const more = items.length > maxRows ? ` (+${items.length-maxRows} more…)` : '';
       const excludedCount = items.filter(x => x.ok && x.excluded).length;
       const addableCount = items.filter(x => x.ok && !x.excluded).length;
+      const more = items.length > maxRows ? ` (+${items.length-maxRows} more…)` : '';
       const miss = (missingHeaders && missingHeaders.length) ? ` Missing headers: ${missingHeaders.join(', ')}.` : '';
       bulkSummary.textContent = `Valid: ${validCount} • Invalid: ${invalidCount} • Excluded: ${excludedCount} • Will add: ${addableCount} • Total: ${items.length}${more}.${miss}`;
 
-      // Persist items (including excluded flags)
       addValidBtn.dataset.bulk = JSON.stringify(items);
     }
 
-    // Toggle remove/restore on preview table (event delegation)
     bulkTbody.addEventListener('click', (e)=>{
       const btn = e.target.closest('.bulk-toggle');
       if (!btn) return;
@@ -891,11 +915,11 @@
       const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
       if (Number.isInteger(idx) && items[idx] && items[idx].ok){
         items[idx].excluded = !items[idx].excluded;
-        renderBulkPreview({ 
+        renderBulkPreview({
           items,
           validCount: items.filter(x=>x.ok).length,
           invalidCount: items.filter(x=>!x.ok).length,
-          missingHeaders: [] 
+          missingHeaders: []
         });
       }
     });
@@ -905,7 +929,6 @@
       const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
       if (!validOnly.length){ alert('No valid (and not-removed) rows to add.'); return; }
 
-      // If the editor only has placeholder(s), clear them so CSV starts at #1
       const blocks = document.querySelectorAll(".question-block");
       const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
       if (allPlaceholders){
@@ -946,7 +969,29 @@
       alert(`Added ${slice.length} question(s) to the quiz.`);
     });
 
-    // ---------- SUBMIT ----------
+    function isEmptyQuestionBlock(block){
+      const type = block?.dataset?.type || 'mcq';
+      const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
+      if (!qText) return true;
+
+      if (type === 'mcq') {
+        const A = block.querySelector("input[name='choiceA']")?.value?.trim() || "";
+        const B = block.querySelector("input[name='choiceB']")?.value?.trim() || "";
+        const C = block.querySelector("input[name='choiceC']")?.value?.trim() || "";
+        const D = block.querySelector("input[name='choiceD']")?.value?.trim() || "";
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return (!A && !B && !C && !D && !picked);
+      }
+      if (type === 'tf') {
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return !picked;
+      }
+      return false;
+    }
+
+    /* ---------- SUBMIT ---------- */
     document.getElementById("quizForm").addEventListener("submit", async (e)=>{
       e.preventDefault();
 
@@ -994,7 +1039,6 @@
 
       if (!quiz.length) return alert("Please add at least one valid question.");
 
-      // Build settings to match backend normalizeSettings()
       let settings = {};
       if (enableTimerEl.checked) {
         const mins = parseInt(timerMinutesEl.value, 10);
@@ -1056,15 +1100,14 @@
           const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
           modal.show();
 
-          // Reset form and show a fresh blank question
+          // Reset for a fresh quiz
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
-          qIndex = 0;
-          resetTimerUI();
+          qIndex = 0; qPager.cur = 0; renderQPager();
+          resetTimerUI(); updatePaginationUI();
+
           document.getElementById("moduleSelect").innerHTML = `<option value="">-- Select a Module --</option>`;
           document.getElementById("moduleSelect").disabled = true;
-          qPager.cur = 0; renderQPager();
-          updatePaginationUI();
 
           addQuestion();
           renderQPager();
@@ -1078,17 +1121,19 @@
           alert("Failed to upload quiz: " + (out.message || "Unknown error"));
         }
       } catch (err) {
-        console.error("🔥 Upload error:", err);
+        console.error("Upload error:", err);
         alert("Server error occurred while uploading quiz.");
       }
     });
 
-    // Boot
-    const TEACHER_ID_CONST = TEACHER_ID; // just to avoid lints
-    (async function init(){ await loadCourses(); })();
+    /* ---------- Boot ---------- */
+    (async function init(){
+      addQuestion();         // start with one question
+      resetTimerUI();
+      updatePaginationUI();
+      renderQPager();
+      await loadCourses();
+    })();
   </script>
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

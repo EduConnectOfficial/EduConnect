@@ -1,94 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Course Upload</title>
 
-  <!-- Bootstrap CSS -->
+  <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <!-- Bootstrap Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
-  <!-- Your original CSS -->
+
+  <!-- Your course page css (kept) -->
   <link rel="stylesheet" href="../courses/course.css" />
 
-  <style>
-    /* small visual cue for selected assign cards */
-    .card.border-primary { border-width: 2px !important; }
-    .card.bg-light { background-color: #f8fafc !important; }
-
-    /* empty state */
-    #assigned-empty { display:none; }
-  </style>
 </head>
 
 <body>
   <div class="dashboard">
-    <!-- Sidebar Container -->
+    <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input type="text" class="form-control" placeholder="Search..."/>
-          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+          <input type="text" id="searchBox" class="form-control" placeholder="Search assignments..." />
+          <i class="fas fa-search position-absolute"></i>
         </div>
-        <button class="profile-btn btn btn-link text-decoration-none">
+        <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
           <i class="fas fa-user-circle fa-2x"></i>
           <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
 
-      <!-- Upload Form -->
-      <div class="upload-container mt-3 p-4">
-        <div class="form-card">
-          <h2 class="mb-4">Course Management - Upload Course</h2>
-          <form id="courseUploadForm">
-            <div class="mb-3">
-              <label for="courseTitle" class="form-label">Course Title</label>
-              <input type="text" class="form-control" id="courseTitle" placeholder="Enter course title" required />
+      <!-- Content -->
+      <div class="content container-fluid">
+        <h1 class="page-title brand">Course Upload</h1>
+
+        <!-- UI-CARD: Upload Form -->
+        <div class="ui-card card-themed constrain mb-3" style="--ui-card-max: 1120px;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-easel2"></i> Upload Course</h2>
+            <div class="ui-subtext">Give your course a title & description, then assign it to classes.</div>
+          </div>
+
+          <form id="courseUploadForm" class="px-1" novalidate>
+            <!-- Title -->
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label for="courseTitle" class="form-label fw-semibold">Course Title</label>
+                <input type="text" class="form-control" id="courseTitle" placeholder="Enter course title" required />
+              </div>
+              <div class="col-md-4">
+                <label for="courseCategory" class="form-label fw-semibold">Category</label>
+                <input type="text" class="form-control" id="courseCategory" placeholder="e.g., Beginner, Intermediate"
+                  required />
+              </div>
             </div>
 
-            <div class="mb-3">
-              <label for="courseCategory" class="form-label">Category</label>
-              <input type="text" class="form-control" id="courseCategory" placeholder="e.g. Beginner, Intermediate" required />
-            </div>
-
-            <div class="mb-3">
-              <label for="courseDescription" class="form-label">Course Description</label>
-              <textarea class="form-control" id="courseDescription" rows="4" placeholder="Write a short course description..." required></textarea>
+            <!-- Description -->
+            <div class="mt-3">
+              <label for="courseDescription" class="form-label fw-semibold">Course Description</label>
+              <textarea class="form-control" id="courseDescription" rows="4"
+                placeholder="Write a short course description..." required></textarea>
             </div>
 
             <!-- Assign-to-Classes -->
-            <div class="mb-3">
-              <label class="form-label">Assign to Classes</label>
+            <div class="mt-3">
+              <label class="form-label fw-semibold">Assign to Classes</label>
 
               <!-- Loading / status -->
-              <div id="assigned-status" class="small text-muted mb-2">Loading your classes…</div>
-
-              <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2">
+              <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
+              <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
                 No classes found for your account.
               </div>
 
               <div id="assignedClassesContainer" class="row g-3"></div>
-              <div class="text-white mt-3">Click a card to select which classes get access.</div>
+              <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
             </div>
 
-            <button type="submit" class="btn btn-upload w-100">Upload Course</button>
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="submit" class="btn btn-amber"><i class="bi bi-cloud-upload me-1"></i> Upload Course</button>
+            </div>
           </form>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Generic INFO Modal -->
+  <!-- Info Modal (gradient-styled via CSS above) -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="infoModalLabel">Notice</h5>
@@ -96,34 +102,32 @@
         </div>
         <div class="modal-body" id="infoModalBody">—</div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
+          <button type="button" class="btn" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Bootstrap JS FIRST so it's available to app scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Sidebar + Dropdown Logic -->
+  <!-- Sidebar loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
           document.getElementById("sidebar-container").innerHTML = html;
-          const sidebar = document.querySelector(".sidebar"),
-                dash    = document.querySelector(".dashboard");
-          if (sidebar && dash) {
-            sidebar.addEventListener("mouseenter", () => dash.classList.add("sidebar-expanded"));
-            sidebar.addEventListener("mouseleave", () => dash.classList.remove("sidebar-expanded"));
+
+          const sb = document.querySelector(".sidebar");
+          const db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
           }
-          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-            toggle.addEventListener('click', e => {
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
               e.preventDefault();
-              const p = toggle.closest('.has-submenu');
+              const p = t.closest('.has-submenu');
               p.classList.toggle('open');
-              toggle.setAttribute('aria-expanded', String(!JSON.parse(toggle.getAttribute('aria-expanded')||'false')));
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
             });
           });
         })
@@ -131,24 +135,27 @@
     });
   </script>
 
-  <!-- Main Logic (runs after Bootstrap is loaded) -->
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const API = "http://localhost:5000";
-      const userData = JSON.parse(localStorage.getItem("user")) || {};
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-      // Redirect if not logged in
-      if (!userData.username) {
-        window.location.href = "../login/login.html";
+  <!-- Page Logic -->
+  <script>
+    (function () {
+      const API = "http://localhost:5000";
+
+      // Auth guard
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!userData?.userId || !userData?.isTeacher) {
+        window.location.href = "/TEACHER/login/login.html";
         return;
       }
-      document.getElementById("Username").textContent = userData.username;
+      document.getElementById("Username").textContent = userData.username || "Teacher";
 
-      /* ===== Modal helper ===== */
+      // Modal helper
       const infoModalEl = document.getElementById('infoModal');
-      const infoModal   = new bootstrap.Modal(infoModalEl);
+      const infoModal = new bootstrap.Modal(infoModalEl);
       const infoTitleEl = document.getElementById('infoModalLabel');
-      const infoBodyEl  = document.getElementById('infoModalBody');
+      const infoBodyEl = document.getElementById('infoModalBody');
       function showInfo(title = 'Notice', html = '') {
         infoTitleEl.textContent = title;
         infoBodyEl.innerHTML = html;
@@ -156,65 +163,55 @@
       }
 
       const assignedContainer = document.getElementById("assignedClassesContainer");
-      const assignedStatus    = document.getElementById("assigned-status");
-      const assignedEmpty     = document.getElementById("assigned-empty");
+      const assignedStatus = document.getElementById("assigned-status");
+      const assignedEmpty = document.getElementById("assigned-empty");
 
-      // 1) Fetch teacher's classes and render as selectable cards
+      // Load teacher's classes
       async function loadClasses() {
         try {
-          // be flexible about id key names
-          const teacherId =
-            userData.userId ||
-            userData.id ||
-            userData.uid ||
-            '';
-
+          const teacherId = userData.userId || userData.id || userData.uid || '';
           if (!teacherId) {
             assignedStatus.textContent = "Missing teacher ID in your session.";
-            assignedStatus.classList.replace('text-muted','text-danger');
+            assignedStatus.classList.remove('small-muted');
+            assignedStatus.classList.add('text-danger');
             return;
           }
 
           const url = `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
           const res = await fetch(url, { headers: { "Accept": "application/json" } });
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-          }
-
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
           const classes = json?.classes || [];
           const success = json?.success === undefined ? true : !!json.success;
 
-          // Clear previous
           assignedContainer.innerHTML = "";
           assignedEmpty.style.display = "none";
 
           if (!success) {
             assignedStatus.textContent = "Could not load your classes.";
-            assignedStatus.classList.replace('text-muted','text-danger');
+            assignedStatus.classList.remove('small-muted');
+            assignedStatus.classList.add('text-danger');
             return;
           }
-
           if (!Array.isArray(classes) || classes.length === 0) {
             assignedStatus.style.display = "none";
             assignedEmpty.style.display = "block";
             return;
           }
 
-          // Render
+          // Render cards
           classes.forEach(c => {
-            const id   = c.id || c._id || c.classId || "";
+            const id = c.id || c._id || c.classId || "";
             const name = c.name || c.className || "Untitled Class";
-            const grade = c.gradeLevel ?? c.grade ?? "-";
-            const section = c.section ?? c.sectionName ?? "-";
+            const grade = c.gradeLevel ?? c.grade ?? "—";
+            const section = c.section ?? c.sectionName ?? "—";
 
             const col = document.createElement("div");
-            col.className = "col-6 col-md-4";
+            col.className = "col-12 col-sm-6 col-lg-4";
 
             const card = document.createElement("div");
-            card.className = "card";
-            card.style.cursor = "pointer";
+            card.className = "card assign-card";
+            card.tabIndex = 0;
 
             const chk = document.createElement("input");
             chk.type = "checkbox";
@@ -225,16 +222,26 @@
             const body = document.createElement("div");
             body.className = "card-body";
             body.innerHTML = `
-              <h5 class="card-title mb-1">${name}</h5>
-              <p class="card-text mb-0">Grade ${grade}, Section ${section}</p>
+              <div class="d-flex justify-content-between align-items-start">
+                <h5 class="card-title mb-1">${escapeHTML(name)}</h5>
+                <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+              </div>
+              <div class="ui-subtext">Grade ${escapeHTML(grade)} • Section ${escapeHTML(section)}</div>
             `;
             card.appendChild(body);
 
-            card.addEventListener("click", () => {
+            function toggle() {
               const isChecked = !chk.checked;
               chk.checked = isChecked;
-              card.classList.toggle("border-primary", isChecked);
-              card.classList.toggle("bg-light", isChecked);
+              card.classList.toggle("selected", isChecked);
+            }
+            card.addEventListener("click", e => {
+              // ignore text selection drag
+              if (window.getSelection && String(window.getSelection()).length) return;
+              toggle();
+            });
+            card.addEventListener("keydown", e => {
+              if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
             });
 
             col.appendChild(card);
@@ -245,29 +252,33 @@
         } catch (e) {
           console.error("Could not load classes:", e);
           assignedStatus.textContent = "Could not load your classes. Please refresh.";
-          assignedStatus.classList.replace('text-muted','text-danger');
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
           showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
         }
       }
-      loadClasses();
 
-      // 2) Submit form
+      // Escape helper
+      function escapeHTML(str = '') {
+        return String(str)
+          .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+      }
+
+      // Submit
       document.getElementById("courseUploadForm").addEventListener("submit", async e => {
         e.preventDefault();
 
-        const assigned = Array.from(
-          document.querySelectorAll("#assignedClassesContainer input:checked")
-        ).map(i => i.value);
+        const assigned = Array.from(document.querySelectorAll("#assignedClassesContainer input[type='checkbox']:checked")).map(i => i.value);
 
         const payload = {
-          title:       document.getElementById("courseTitle").value.trim(),
-          category:    document.getElementById("courseCategory").value.trim(),
+          title: document.getElementById("courseTitle").value.trim(),
+          category: document.getElementById("courseCategory").value.trim(),
           description: document.getElementById("courseDescription").value.trim(),
-          uploadedBy:  userData.userId || userData.id || userData.uid,
+          uploadedBy: userData.userId || userData.id || userData.uid,
           assignedClasses: assigned
         };
 
-        // Basic front-end validation
         if (!payload.title || !payload.category || !payload.description) {
           showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Category</strong>, and <strong>Description</strong>.');
           return;
@@ -275,18 +286,17 @@
 
         try {
           const res = await fetch(`${API}/upload-course`, {
-            method:  "POST",
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify(payload)
+            body: JSON.stringify(payload)
           });
-          const data = await res.json();
+          const data = await res.json().catch(() => ({ success: false }));
 
           if (data.success) {
-            // Success modal then redirect
             showInfo('Success', '✅ Course uploaded!');
-            const redirect = () => window.location.href = "../courses/course_list.html";
-            // redirect when OK/close
-            infoModalEl.addEventListener('hidden.bs.modal', redirect, { once: true });
+            infoModalEl.addEventListener('hidden.bs.modal', () => {
+              window.location.href = "../courses/course_list.html";
+            }, { once: true });
           } else {
             showInfo('Upload Failed', (data.message ? `❌ ${data.message}` : '❌ Upload failed.'));
           }
@@ -296,12 +306,15 @@
         }
       });
 
-      // Optional: logout utility
-      window.logoutUser = function() {
+      window.logoutUser = function () {
         localStorage.removeItem('user');
         window.location.href = '/TEACHER/login/login.html';
       };
-    });
+
+      // Go
+      loadClasses();
+    })();
   </script>
 </body>
+
 </html>

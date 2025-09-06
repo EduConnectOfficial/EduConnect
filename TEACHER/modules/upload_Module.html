@@ -6,12 +6,94 @@
   <title>EduConnect Teacher - Upload Module</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <!-- Your page CSS -->
   <link rel="stylesheet" href="upload.css" />
   <style>
-    /* optional: make step dots visible if your CSS doesn’t already */
-    .step-dots { display:flex; gap:6px; align-items:center }
-    .step-dots .dot { width:8px; height:8px; border-radius:999px; background:#e5e7eb }
-    .step-dots .dot.active { background:#111827 }
+    /* ===== Theme tokens (match your global theme) ===== */
+    :root{
+      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--brand-accent-1:#FF6A00;--brand-accent-2:#B03C10;
+      --card-radius:14px;
+
+      /* NEW: default UI-card max width (change here globally) */
+      --ui-card-max: 1000px;
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
+    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+
+    /* Header */
+    .upload-header{
+      background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));
+      position:sticky;top:0;z-index:10;box-shadow:0 4px 8px rgba(0,0,0,.08)
+    }
+    .logo-header{height:45px}
+    .btn-upload{
+      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
+      color:#fff;border:none
+    }
+    .btn-upload:hover{filter:brightness(1.05);color:#fff}
+
+    /* ===== UI-Card pattern (matches the rest of your app) ===== */
+    .ui-card{
+      background:var(--card);
+      border:1px solid rgba(0,0,0,.06);
+      border-radius:var(--card-radius);
+      box-shadow:0 10px 24px rgba(0,0,0,.10);
+      overflow:hidden;
+    }
+    .ui-card-head{
+      display:flex;justify-content:space-between;align-items:center;gap:.75rem;
+      padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;
+      border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .ui-subtext{font-size:.9rem;color:#FFD8A9}
+    .ui-card-body{padding:16px}
+
+    /* NEW: width helpers */
+    .ui-card.constrain{
+      width:100%;
+      max-width:var(--ui-card-max);
+      margin-inline:auto;
+    }
+    .ui-card.w-sm{ --ui-card-max:640px; }
+    .ui-card.w-md{ --ui-card-max:800px; }
+    .ui-card.w-lg{ --ui-card-max:1000px; } /* default */
+    .ui-card.w-xl{ --ui-card-max:1200px; }
+    .ui-card.w-full{ --ui-card-max:100%; }
+
+    @media (max-width:480px){
+      .ui-card.constrain{ max-width:calc(100% - 1rem); }
+    }
+
+    /* Step dots (kept from your snippet) */
+    .step-dots{display:flex;gap:6px;align-items:center}
+    .step-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
+    .step-dots .dot.active{background:#111827}
+
+    /* Pager + lesson cards */
+    .pager-chip{
+      display:inline-flex;align-items:center;gap:.35rem;
+      padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);font-size:.8rem;background:#fff;color:#374151
+    }
+    .lesson-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .lesson-page.card{border:1px solid var(--border)}
+    .btn-remove{
+      background:#fff;border:1px solid #dc3545;color:#dc3545;border-radius:.375rem;padding:.25rem .6rem
+    }
+    .btn-remove:hover{background:#fff5f5}
+    .file-pill{display:flex;align-items:center;gap:.5rem}
+     .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
+    .page-title.brand{
+      background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+
   </style>
 </head>
 
@@ -50,54 +132,64 @@
       <div class="upload-header d-flex justify-content-between align-items-center p-3 text-white">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <span id="dashboardUsername" class="ms-auto me-3 fw-bold"></span>
-        <a href="/TEACHER/dashboard/dashboard.html" class="btn btn-upload">← Dashboard</a>
+        <a href="/TEACHER/modules/select_Course.html" class="btn btn-upload">← Back</a>
       </div>
 
-      <!-- Upload Form -->
-      <div class="upload-container p-3 mt-5">
-        <div class="form-card">
-          <h2 class="mb-4">MODULE MANAGEMENT - UPLOAD MODULE</h2>
+      <!-- Upload Form in a UI-Card with adjustable width -->
+      <div class="content container-fluid py-4">
+          <h1 class="page-title brand">Module Upload</h1>
+        <!-- Use preset width OR set a custom width via style="--ui-card-max: 1120px" -->
+        <div class="ui-card card-themed constrain w-lg">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title">
+              <i class="bi bi-folder-plus"></i>
+              Upload Module
+            </h2>
+            <div class="ui-subtext">Create a module with lessons, files or video URLs.</div>
+          </div>
 
-          <form id="moduleUploadForm" enctype="multipart/form-data">
-            <!-- Basics -->
-            <div class="mb-3">
-              <label for="moduleTitle" class="form-label">Module Title</label>
-              <input type="text" class="form-control" id="moduleTitle" required placeholder="Enter module title" />
-            </div>
-
-            <div class="mb-3">
-              <label for="moduleType" class="form-label">Attachment Type</label>
-              <select class="form-select" id="moduleType" required>
-                <option value="file">File</option>
-                <option value="text">Video (URL)</option>
-                <option value="textonly">Text Only</option>
-              </select>
-            </div>
-
-            <!-- Lessons header / pager controls -->
-            <div class="mb-2 d-flex justify-content-between align-items-center">
-              <label class="form-label mb-0">Lessons (Sub Title, Content, and Attachment/Video URL)</label>
-              <div class="lesson-toolbar">
-                <span class="pager-chip"><span id="pageNow">1</span>/<span id="pageTotal">1</span></span>
-                <div id="stepDots" class="step-dots" aria-hidden="true"><span class="dot active"></span></div>
-                <div class="btn-group">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn">Prev</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn">Next</button>
-                </div>
-                <button type="button" class="btn btn-upload btn-sm" id="addLessonBtn">Add Lesson</button>
-                <button type="button" class="btn-remove" id="removeLessonBtn">Remove</button>
+          <div class="ui-card-body">
+            <form id="moduleUploadForm" enctype="multipart/form-data">
+              <!-- Basics -->
+              <div class="mb-3">
+                <label for="moduleTitle" class="form-label fw-semibold">Module Title</label>
+                <input type="text" class="form-control" id="moduleTitle" required placeholder="Enter module title" />
               </div>
-            </div>
 
-            <!-- Lessons container (paged) -->
-            <div id="lessonPager"></div>
+              <div class="mb-3">
+                <label for="moduleType" class="form-label fw-semibold">Attachment Type</label>
+                <select class="form-select" id="moduleType" required>
+                  <option value="file">File</option>
+                  <option value="text">Video (URL)</option>
+                  <option value="textonly">Text Only</option>
+                </select>
+              </div>
 
-            <hr class="my-4" />
+              <!-- Lessons header / pager controls -->
+              <div class="mb-2 d-flex justify-content-between align-items-center">
+                <label class="form-label mb-0 fw-semibold">Lessons (Sub Title, Content, and Attachment/Video URL)</label>
+                <div class="lesson-toolbar">
+                  <span class="pager-chip"><span id="pageNow">1</span>/<span id="pageTotal">1</span></span>
+                  <div id="stepDots" class="step-dots" aria-hidden="true"><span class="dot active"></span></div>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn">Prev</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn">Next</button>
+                  </div>
+                  <button type="button" class="btn btn-upload btn-sm" id="addLessonBtn">Add Lesson</button>
+                  <button type="button" class="btn-remove" id="removeLessonBtn">Remove</button>
+                </div>
+              </div>
 
-            <button type="submit" class="btn btn-upload w-100">Upload Module</button>
-          </form>
+              <!-- Lessons container (paged) -->
+              <div id="lessonPager"></div>
+
+              <hr class="my-4" />
+
+              <button type="submit" class="btn btn-upload w-100">Upload Module</button>
+            </form>
+          </div>
         </div>
-      </div>
+      </div> <!-- /content -->
     </div>
   </div>
 
@@ -133,11 +225,6 @@
     const infoTitleEl = document.getElementById('infoModalLabel');
     const infoBodyEl  = document.getElementById('infoModalBody');
 
-    /**
-     * showInfo(title, html, opts?)
-     * opts.onHidden: function to run after modal fully closes
-     * opts.autoHideMs: number -> auto-close after N ms
-     */
     function showInfo(title = 'Notice', html = '', opts = {}) {
       infoTitleEl.textContent = title;
       infoBodyEl.innerHTML = html;
@@ -167,7 +254,7 @@
     // Pager state
     const pager = {
       cur: 0,
-      pages: [] // each is a .lesson-page element (kept in DOM so file inputs keep their files)
+      pages: [] // keep DOM nodes so file inputs retain their files
     };
 
     // Build one lesson page
@@ -379,7 +466,7 @@
         });
       } catch (err) {
         console.error(err);
-        // Your original logic showed success even on catch; keeping that behavior:
+        // Keeps your previous optimistic behavior on catch:
         showInfo('Success', '✅ Module uploaded successfully!', {
           onHidden: () => {
             window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
