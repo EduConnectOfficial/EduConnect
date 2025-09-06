@@ -17,24 +17,19 @@
     :root{
       --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
       --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --card-radius:14px;
-      /* Card max width control (you can override per card with inline style) */
-      --ui-card-max: 1100px;
+      --card-radius:14px; --ui-card-max: 1100px;
     }
-
     html,body{height:100%;background:var(--bg);color:var(--text)}
     .dashboard{display:flex;min-height:100vh}
     .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
     .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
 
-    /* Header */
     .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
     .logo-header{height:45px}
     .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
     .search-box input{border-radius:30px}
     .profile-btn{color:#fff}
 
-    /* UI Card */
     .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius);box-shadow:0 10px 24px rgba(0,0,0,.08);overflow:hidden}
     .ui-card-head{
       display:flex;justify-content:space-between;align-items:center;
@@ -44,13 +39,8 @@
     .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
     .ui-subtext{opacity:.95}
     .ui-card-body{padding:16px}
-
-    /* Constrain helper + width presets */
     .constrain{max-width:var(--ui-card-max);margin-inline:auto}
-    .w-sm{--ui-card-max:640px}.w-md{--ui-card-max:800px}.w-lg{--ui-card-max:1000px}
-    .w-xl{--ui-card-max:1200px}.w-full{--ui-card-max:100%}
 
-    /* Buttons */
     .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
     .btn-amber:hover{filter:brightness(1.05);color:#fff}
     .btn-amber-outline{background:#fff;color:var(--brand-accent-2);border:1px solid var(--brand-accent-2)}
@@ -59,29 +49,34 @@
     .hint{color:var(--muted);font-size:.9rem}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
 
-    /* Pager dots */
     .q-dots{display:flex;gap:6px;align-items:center}
     .q-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
     .q-dots .dot.active{background:#111827}
 
-    /* Question blocks */
     .question-block{display:none;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
     .question-block.active{display:block}
     .q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .q-type .chip{display:inline-block;padding:.25rem .6rem;border:1px solid var(--border);border-radius:999px;margin-right:6px;cursor:pointer;background:#fff}
     .q-type .chip.active{background:#eff6ff;border-color:#c7dbff;color:#1d4ed8}
 
-    /* Modals – themed header + buttons */
     .modal-header{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff;border-bottom:none}
     .modal-header .btn-close{filter:brightness(0) invert(1);opacity:.9}
-    .modal-header .btn-close:hover{opacity:1}
     .modal-footer .btn{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));border:none;color:#fff;border-radius:999px}
     .modal-body{color:#000}
 
-    /* Small table preview style */
     .preview-table{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:10px}
 
-    /* Mobile polish */
+    .file-pill{border:1px dashed var(--border);border-radius:10px;padding:10px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+    .file-pill.bad{border-color:#fca5a5;background:#fff5f5}
+    .file-pill .size{color:var(--muted);font-size:.85rem}
+    .file-pill .warn{color:#b91c1c;font-weight:600;font-size:.85rem}
+
+    /* subtle disabled state for rubric */
+    .rubric-disabled{opacity:.7}
+    .rubric-note{font-size:.9rem}
+    .rubric-note .on{color:#166534}     /* green-ish */
+    .rubric-note .off{color:#7a1f1f}    /* red-ish */
+
     @media (max-width: 480px){
       .logo-header{display:none}
       .header-top{padding:.6rem .8rem}
@@ -92,12 +87,9 @@
 </head>
 <body>
   <div class="dashboard">
-    <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
-    <!-- Main -->
     <div class="main">
-      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
@@ -110,21 +102,19 @@
         </button>
       </header>
 
-      <!-- Content -->
       <div class="container-fluid my-4">
         <h1 class="fw-bold text-center mb-3" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;">
           Upload Quiz
         </h1>
 
-        <!-- UI CARD (set width here) -->
-        <div class="ui-card constrain w-xl" style="--ui-card-max: 1100px;">
+        <div class="ui-card constrain" style="--ui-card-max: 1100px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-ui-checks-grid"></i> Create a Quiz</h2>
             <div class="ui-subtext">Fill the details, add questions, or bulk import via CSV.</div>
           </div>
 
           <div class="ui-card-body">
-            <form id="quizForm">
+            <form id="quizForm" enctype="multipart/form-data">
               <!-- Course/Module -->
               <div class="row g-3">
                 <div class="col-12 col-md-6">
@@ -164,6 +154,24 @@
                   <label class="form-label fw-bold">Attempts Allowed</label>
                   <input type="number" id="attemptsInput" class="form-control" min="0" step="1" value="1" required>
                   <div class="hint mt-1">0 means unlimited attempts.</div>
+                </div>
+              </div>
+
+              <!-- Rubric (always visible; enabled only when ≥1 Essay present) -->
+              <div class="row g-3 mt-2" id="rubricSection">
+                <div class="col-12 col-lg-8">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-clipboard2-check"></i>
+                    Rubric File <span class="text-muted">(applies to Essay questions only)</span>
+                  </label>
+                  <input type="file" id="rubricsFile" class="form-control"
+                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" disabled aria-disabled="true">
+                  <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
+                    <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
+                    <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
+                    <span id="rubricStateNote" class="off">Add an Essay question to enable rubric upload.</span>
+                  </div>
+                  <div id="rubricPreview" class="mt-2"></div>
                 </div>
               </div>
 
@@ -314,78 +322,69 @@
                 <button type="button" class="btn btn-amber-outline" id="addQuestionBtn">
                   <i class="bi bi-plus-circle me-1"></i> Add Question
                 </button>
-                <button type="submit" class="btn btn-amber">
+                <button type="submit" class="btn btn-amber" id="submitBtn">
                   <i class="bi bi-cloud-upload me-1"></i> Upload Quiz
                 </button>
               </div>
             </form>
           </div>
         </div>
-        <!-- /UI CARD -->
       </div>
-    </div>
-  </div>
 
-  <!-- Success Modal -->
-  <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-2">Your quiz has been uploaded successfully.</p>
-          <div id="quizIdRow" class="mb-2 d-none">
-            <span class="text-muted">Quiz ID:</span>
-            <code id="createdQuizId" class="ms-2"></code>
+      <!-- Success Modal -->
+      <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel" aria-hidden="true">
+        <div class="modal-dialog"><div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn" data-bs-dismiss="modal">Done</button>
-        </div>
+          <div class="modal-body">
+            <p class="mb-2">Your quiz has been uploaded successfully.</p>
+            <div id="quizIdRow" class="mb-2 d-none">
+              <span class="text-muted">Quiz ID:</span>
+              <code id="createdQuizId" class="ms-2"></code>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn" data-bs-dismiss="modal">Done</button></div>
+        </div></div>
       </div>
-    </div>
-  </div>
 
-  <!-- Bulking Help Modal -->
-  <div class="modal fade" id="bulkHelpModal" tabindex="-1" aria-labelledby="bulkHelpLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="bulkHelpLabel">Quiz Bulking – Easy Step-by-Step Guide</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close help"></button>
-        </div>
-        <div class="modal-body">
-          <div class="fs-5 mb-3">
-            This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
+      <!-- Bulking Help Modal -->
+      <div class="modal fade" id="bulkHelpModal" tabindex="-1" aria-labelledby="bulkHelpLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="bulkHelpLabel">Quiz Bulking – Easy Step-by-Step Guide</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close help"></button>
           </div>
-          <ol class="fs-6">
-            <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice, True/False, or Essay). You can also pick “All Types”.</li>
-            <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
-              <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
-              <ul>
-                <li>For Multiple Choice, fill choices A–D and set <span class="mono">correct</span> to A, B, C, or D.</li>
-                <li>For True/False, leave choices blank and set <span class="mono">correct</span> to TRUE or FALSE.</li>
-                <li>For Essay, just write the question. Choices can be blank.</li>
-              </ul>
-            </li>
-            <li class="mb-2"><strong>Save your file as CSV</strong>. (In Excel: File → Save As → CSV.)</li>
-            <li class="mb-2"><strong>Upload the CSV</strong> using “Preview & Validate”. The system will check your rows.</li>
-            <li class="mb-2"><strong>Review the table</strong>:
-              <ul>
-                <li>Rows marked <span class="badge bg-success">OK</span> are valid.</li>
-                <li>Rows with <span class="badge bg-danger">Error</span> need fixing in your CSV (hover to see the reason).</li>
-                <li>You can <strong>Remove</strong> any valid row you don’t want to add.</li>
-              </ul>
-            </li>
-            <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows will be added.</li>
-            <li class="mb-2">You may still edit the questions after adding them.</li>
-          </ol>
-        </div>
-        <div class="modal-footer">
-          <button class="btn" data-bs-dismiss="modal">Got it</button>
-        </div>
+          <div class="modal-body">
+            <div class="fs-5 mb-3">
+              This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
+            </div>
+            <ol class="fs-6">
+              <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice, True/False, or Essay). You can also pick “All Types”.</li>
+              <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
+                <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+                <ul>
+                  <li>For Multiple Choice, fill choices A–D and set <span class="mono">correct</span> to A, B, C, or D.</li>
+                  <li>For True/False, leave choices blank and set <span class="mono">correct</span> to TRUE or FALSE.</li>
+                  <li>For Essay, just write the question. Choices can be blank.</li>
+                </ul>
+              </li>
+              <li class="mb-2"><strong>Save your file as CSV</strong>. (In Excel: File → Save As → CSV.)</li>
+              <li class="mb-2"><strong>Upload the CSV</strong> using “Preview & Validate”. The system will check your rows.</li>
+              <li class="mb-2"><strong>Review the table</strong>:
+                <ul>
+                  <li>Rows marked <span class="badge bg-success">OK</span> are valid.</li>
+                  <li>Rows with <span class="badge bg-danger">Error</span> need fixing in your CSV (hover to see the reason).</li>
+                  <li>You can <strong>Remove</strong> any valid row you don’t want to add.</li>
+                </ul>
+              </li>
+              <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows will be added.</li>
+              <li class="mb-2">You may still edit the questions after adding them.</li>
+            </ol>
+          </div>
+          <div class="modal-footer"><button class="btn" data-bs-dismiss="modal">Got it</button></div>
+        </div></div>
       </div>
     </div>
   </div>
@@ -397,6 +396,8 @@
 
   <script>
     const API = "http://localhost:5000";
+    const TEACHER_FILE_LIMIT_MB = 300; // adjust if needed
+    const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
 
     /* ---------- Sidebar Loader ---------- */
     document.addEventListener("DOMContentLoaded", () => {
@@ -430,13 +431,12 @@
     } else {
       document.getElementById("Username").textContent = userData.username || "";
     }
-    function logoutUser(){
-      localStorage.clear(); sessionStorage.clear();
-      window.location.href = "/TEACHER/login/login.html";
-    }
     const TEACHER_ID = userData.userId;
 
     /* ---------- Utilities ---------- */
+    const sizeLimitText = document.getElementById('sizeLimitText');
+    if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+
     function escapeHTML(str=''){
       return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
@@ -446,6 +446,7 @@
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
       }).join(',')).join('\n');
     }
+    function bytesToKB(b){ return Math.round((b || 0)/102.4)/10; }
 
     /* ---------- Load Courses & Modules ---------- */
     async function loadCourses() {
@@ -524,16 +525,52 @@
     const container = document.getElementById("question-container");
     const qPager = { cur: 0 };
 
+    const rubricsFileInput = document.getElementById('rubricsFile');
+    const rubricPreview = document.getElementById('rubricPreview');
+    const essayCountText = document.getElementById('essayCountText');
+    const rubricStateNote = document.getElementById('rubricStateNote');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function countEssayQuestions(){
+      return document.querySelectorAll(".question-block[data-type='essay']").length;
+    }
+    function updateEssayRubricState(){
+      const n = countEssayQuestions();
+      if (essayCountText) essayCountText.textContent = String(n);
+
+      if (n > 0){
+        rubricsFileInput.removeAttribute('disabled');
+        rubricsFileInput.setAttribute('aria-disabled', 'false');
+        rubricsFileInput.classList.remove('rubric-disabled');
+        if (rubricStateNote){
+          rubricStateNote.classList.remove('off');
+          rubricStateNote.classList.add('on');
+          rubricStateNote.textContent = 'Rubric upload enabled (applies to Essay questions).';
+        }
+      } else {
+        // disable & clear if no essays
+        rubricsFileInput.value = "";
+        rubricPreview.innerHTML = "";
+        rubricsFileInput.setAttribute('disabled', 'true');
+        rubricsFileInput.setAttribute('aria-disabled', 'true');
+        rubricsFileInput.classList.add('rubric-disabled');
+        if (rubricStateNote){
+          rubricStateNote.classList.remove('on');
+          rubricStateNote.classList.add('off');
+          rubricStateNote.textContent = 'Add an Essay question to enable rubric upload.';
+        }
+        submitBtn.disabled = false; // uploading quiz without rubric is fine
+      }
+    }
+
     function renderQPager(){
       const blocks = [...document.querySelectorAll(".question-block")];
-
       blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
 
       const nowEl = document.getElementById("qPageNow");
       const totalEl = document.getElementById("qPageTotal");
       if (blocks.length === 0) {
-        nowEl.textContent = '0';
-        totalEl.textContent = '0';
+        nowEl.textContent = '0'; totalEl.textContent = '0';
       } else {
         nowEl.textContent = String(Math.min(qPager.cur+1, blocks.length));
         totalEl.textContent = String(blocks.length);
@@ -589,9 +626,6 @@
         `;
       }
       if (type === "tf") {
-        /* IMPORTANT: No “A. / B.” labels in the UI.
-           We still submit correct = 'A' (True) or 'B' (False) and save choices as
-           { A:'True', B:'False' } to match your backend schema. */
         return `
           <div class="form-label"><strong>Answer</strong></div>
           <div class="d-flex gap-3">
@@ -604,12 +638,12 @@
               <label class="form-check-label" for="tf_false_${idx}">False</label>
             </div>
           </div>
-          <div class="hint mt-2">Saved as True/False (no letter prefixes).</div>
+          <div class="hint mt-2">Saved as True/False (no letter prefixes in UI).</div>
         `;
       }
       return `
-        <div class="alert alert-warning py-2 px-3">
-          Essay questions are not auto-graded. A placeholder choice is saved to match the schema.
+        <div class="alert alert-warning py-2 px-3 mb-2">
+          Essay questions are not auto-graded. Attach a rubric below (optional) to guide manual grading.
         </div>
       `;
     }
@@ -650,6 +684,7 @@
           const t = chip.dataset.type;
           block.dataset.type = t;
           block.querySelector(".q-body").innerHTML = renderBody(t, idx);
+          updateEssayRubricState();
         });
       });
 
@@ -665,13 +700,13 @@
           if (myIndex < qPager.cur) qPager.cur = Math.max(0, qPager.cur - 1);
         }
         renderQPager();
+        updateEssayRubricState();
       });
 
       container.appendChild(block);
-
       qPager.cur = [...document.querySelectorAll(".question-block")].length - 1;
       renderQPager();
-
+      updateEssayRubricState();
       return block;
     }
 
@@ -726,8 +761,6 @@
     const btnTplEssay = document.getElementById('downloadCsvTplEssay');
     const btnTplAll   = document.getElementById('downloadCsvTplAll');
 
-    const REQUIRED_HEADERS = ['type','question','choicea','choiceb','choicec','choiced','correct'];
-
     function normalizeHeader(s){ return String(s||'').trim().toLowerCase(); }
     function normalizeType(t){
       const x = String(t||'').trim().toLowerCase();
@@ -750,7 +783,6 @@
     function buildCsvTemplate(kind){
       const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
       let rows = [header];
-
       if (kind === 'mcq'){
         rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
         rows.push(['mcq','Which color is the sky?','Blue','Green','Red','Yellow','A']);
@@ -760,7 +792,7 @@
       } else if (kind === 'essay'){
         rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
         rows.push(['essay','Describe Newton’s three laws of motion.','','','','','']);
-      } else { // all
+      } else {
         rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
         rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
         rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
@@ -790,7 +822,14 @@
 
       let rows = [];
       try{
-        rows = await parseCSVFile(f);
+        rows = await new Promise((resolve, reject)=>{
+          Papa.parse(f, {
+            header: true,
+            skipEmptyLines: 'greedy',
+            complete: (res)=> resolve(res.data || []),
+            error: reject
+          });
+        });
       }catch(err){
         console.error(err);
         alert('Failed to read the CSV. Please check your format.');
@@ -800,17 +839,6 @@
       const result = validateBulkRows(rows);
       renderBulkPreview(result);
     });
-
-    function parseCSVFile(file){
-      return new Promise((resolve, reject)=>{
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: 'greedy',
-          complete: (res)=> resolve(res.data || []),
-          error: reject
-        });
-      });
-    }
 
     function validateBulkRows(rawRows){
       const normed = rawRows.map(r=>{
@@ -867,6 +895,11 @@
     }
 
     function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }){
+      const bulkResult = document.getElementById('bulkResult');
+      const bulkTbody = document.getElementById('bulkTbody');
+      const bulkSummary = document.getElementById('bulkSummary');
+      const addValidBtn = document.getElementById('addValidBtn');
+
       bulkResult.classList.remove('d-none');
       bulkTbody.innerHTML = '';
       addValidBtn.disabled = (validCount === 0);
@@ -908,10 +941,11 @@
       addValidBtn.dataset.bulk = JSON.stringify(items);
     }
 
-    bulkTbody.addEventListener('click', (e)=>{
+    document.getElementById('bulkTbody').addEventListener('click', (e)=>{
       const btn = e.target.closest('.bulk-toggle');
       if (!btn) return;
       const idx = Number(btn.dataset.idx);
+      const addValidBtn = document.getElementById('addValidBtn');
       const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
       if (Number.isInteger(idx) && items[idx] && items[idx].ok){
         items[idx].excluded = !items[idx].excluded;
@@ -924,7 +958,8 @@
       }
     });
 
-    addValidBtn.addEventListener('click', ()=>{
+    document.getElementById('addValidBtn').addEventListener('click', ()=>{
+      const addValidBtn = document.getElementById('addValidBtn');
       const data = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
       const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
       if (!validOnly.length){ alert('No valid (and not-removed) rows to add.'); return; }
@@ -962,10 +997,11 @@
           const idx = block.dataset.index;
           const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
           if (rb) rb.checked = true;
-        } // essay uses placeholder choice
+        }
       });
 
       renderQPager();
+      updateEssayRubricState();
       alert(`Added ${slice.length} question(s) to the quiz.`);
     });
 
@@ -990,6 +1026,30 @@
       }
       return false;
     }
+
+    /* ---------- Rubric input: preview + size gate ---------- */
+    rubricsFileInput.addEventListener('change', () => {
+      rubricPreview.innerHTML = '';
+      const f = rubricsFileInput.files && rubricsFileInput.files[0];
+      if (!f) { submitBtn.disabled = false; return; }
+
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      const pill = document.createElement('div');
+      pill.className = 'file-pill' + (tooBig ? ' bad' : '');
+      pill.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-text"></i>
+          <div>
+            <div class="fw-semibold">${escapeHTML(f.name)}</div>
+            <div class="size">${bytesToKB(f.size)} KB</div>
+          </div>
+        </div>
+        ${tooBig ? '<div class="warn"><i class="bi bi-exclamation-triangle me-1"></i> Exceeds limit</div>' : ''}
+      `;
+      rubricPreview.appendChild(pill);
+
+      submitBtn.disabled = tooBig;
+    });
 
     /* ---------- SUBMIT ---------- */
     document.getElementById("quizForm").addEventListener("submit", async (e)=>{
@@ -1027,19 +1087,26 @@
           if (!A || !B || !C || !D || !correct) {
             return alert("Complete all MCQ fields and pick the correct answer.");
           }
-          quiz.push({ question: qText, choices: { A, B, C, D }, correct });
+          quiz.push({ type, question: qText, choices: { A, B, C, D }, correct });
         } else if (type === "tf") {
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
           if (!correct) return alert("Please select True or False.");
-          quiz.push({ question: qText, choices: { A: "True", B: "False" }, correct });
-        } else {
-          quiz.push({ question: qText, choices: { A: "(Essay response)" }, correct: "A" });
+          quiz.push({ type, question: qText, choices: { A: "True", B: "False" }, correct });
+        } else { // essay
+          quiz.push({ type, question: qText, choices: { A: "(Essay response)" }, correct: "A" });
         }
       }
-
       if (!quiz.length) return alert("Please add at least one valid question.");
 
       let settings = {};
+      const enableTimerEl = document.getElementById("enableTimer");
+      const timerMinutesEl = document.getElementById("timerMinutes");
+      const gracePeriodEl  = document.getElementById("gracePeriod");
+      const fixedOrderEl = document.getElementById("fixedOrderCheck");
+      const enablePaginationEl = document.getElementById("enablePagination");
+      const perPageEl = document.getElementById("perPageInput");
+      const allowBacktrackingEl = document.getElementById("allowBacktracking");
+
       if (enableTimerEl.checked) {
         const mins = parseInt(timerMinutesEl.value, 10);
         const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
@@ -1057,27 +1124,43 @@
       let perPage = parseInt(perPageEl.value, 10);
       if (!Number.isInteger(perPage) || perPage < 1) perPage = 1;
       settings.pagination = { enabled: pagEnabled, perPage };
-
       settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
 
       const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
 
+      // Essay-only rubric rules
+      const essayCount = countEssayQuestions();
+      const rubricFile = rubricsFileInput?.files?.[0] || null;
+
+      if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
+        alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`);
+        return;
+      }
+
+      // Build payload
+      const payload = {
+        courseId, moduleId, title, description, dueAt,
+        attemptsAllowed: attemptsAllowedVal,
+        quiz, settings
+      };
+
       try {
-        const res = await fetch(`${API}/upload-quiz`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            courseId,
-            moduleId,
-            title,
-            description,
-            dueAt,
-            attemptsAllowed: attemptsAllowedVal,
-            quiz,
-            settings
-          })
-        });
-        const out = await res.json();
+        let res, out;
+        if (rubricFile && essayCount > 0) {
+          // Send multipart: rubric file + JSON payload
+          const fd = new FormData();
+          fd.append("rubrics", rubricFile);              // backend: field name 'rubrics'
+          fd.append("payload", JSON.stringify(payload)); // backend: JSON.parse(req.body.payload)
+          res = await fetch(`${API}/upload-quiz`, { method: "POST", body: fd });
+        } else {
+          // Either no rubric selected OR no essays (rubric ignored) -> send plain JSON
+          res = await fetch(`${API}/upload-quiz`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+        out = await res.json();
         if (out.success) {
           const quizId = out.quizId || null;
 
@@ -1100,17 +1183,23 @@
           const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
           modal.show();
 
-          // Reset for a fresh quiz
+          // Reset UI
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
           qIndex = 0; qPager.cur = 0; renderQPager();
-          resetTimerUI(); updatePaginationUI();
+          // timer/pagination
+          document.getElementById("enableTimer").checked = false;
+          document.getElementById("timerMinutes").disabled = true;
+          document.getElementById("gracePeriod").disabled = true;
+          document.getElementById("enablePagination").checked = false;
+          document.getElementById("perPageInput").disabled = true;
 
-          document.getElementById("moduleSelect").innerHTML = `<option value="">-- Select a Module --</option>`;
-          document.getElementById("moduleSelect").disabled = true;
+          // rubric reset & state refresh
+          rubricPreview.innerHTML = "";
+          updateEssayRubricState();
 
-          addQuestion();
-          renderQPager();
+          // start with a fresh first question
+          addQuestion(); renderQPager();
 
           // Clear bulk area
           document.getElementById('bulkFile').value = '';
@@ -1129,9 +1218,12 @@
     /* ---------- Boot ---------- */
     (async function init(){
       addQuestion();         // start with one question
-      resetTimerUI();
-      updatePaginationUI();
-      renderQPager();
+      // initialize state texts
+      const sizeLimitText = document.getElementById('sizeLimitText');
+      if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+      updateEssayRubricState();
+      // timer/pagination defaults
+      document.getElementById("perPageInput").disabled = true;
       await loadCourses();
     })();
   </script>

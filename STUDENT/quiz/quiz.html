@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>EduConnect Student - Available Quizzes</title>
@@ -28,7 +29,7 @@
           <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -86,7 +87,8 @@
         <!-- Quiz Cards Grid -->
         <div id="quizCards" class="row g-3"></div>
         <div id="emptyState" class="d-none alert alert-warning text-center">No quizzes found.</div>
-        <div id="errorState" class="d-none alert alert-danger text-center">Could not load quizzes. Please try again.</div>
+        <div id="errorState" class="d-none alert alert-danger text-center">Could not load quizzes. Please try again.
+        </div>
       </div>
     </div>
   </div>
@@ -188,53 +190,43 @@
       window.location.href = "/STUDENT/login/login.html";
     }
 
+    // ---- Single source of truth for userData + initials ----
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     if (!userData?.userId || !userData?.isStudent) {
       window.location.href = "/STUDENT/login/login.html";
     } else {
-     // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length >= 2
+            ? parts[0][0] + parts[parts.length - 1][0]
+            : local.slice(0, 2)
+          ).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length >= 2
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : parts[0].slice(0, 2)
+        ).toUpperCase();
+      }
 
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
-
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
-
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
-
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
+      const userId = userData.userId || userData.uid || userData.id || userData.email;
+      const displayName = userData.fullName || userData.username || userData.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      if (el) {
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+      if (!userData.uid) {
+        userData.uid = userId;
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
     }
   </script>
 
@@ -242,22 +234,22 @@ if (!userId) {
   <script>
     const courseSelect = document.getElementById("courseSelect");
     const moduleSelect = document.getElementById("moduleSelect");
-    const quizCards   = document.getElementById("quizCards");
-    const emptyState  = document.getElementById("emptyState");
-    const errorState  = document.getElementById("errorState");
-    const quizSearch  = document.getElementById("quizSearch");
-    const statusFilter= document.getElementById("statusFilter");
-    const sortBy      = document.getElementById("sortBy");
+    const quizCards = document.getElementById("quizCards");
+    const emptyState = document.getElementById("emptyState");
+    const errorState = document.getElementById("errorState");
+    const quizSearch = document.getElementById("quizSearch");
+    const statusFilter = document.getElementById("statusFilter");
+    const sortBy = document.getElementById("sortBy");
 
     let allQuizzes = [];
     let currentCourseId = "";
     let currentModuleId = "";
 
     const enrolledCourseIds = new Set();
-    const attemptsCache     = new Map(); // quizId -> { used, allowed, left, lock }
+    const attemptsCache = new Map(); // quizId -> { used, allowed, left, lock }
 
-    const coursesById       = new Map(); // courseId -> course
-    const modulesByCourse   = new Map(); // courseId -> Map(moduleId -> module)
+    const coursesById = new Map(); // courseId -> course
+    const modulesByCourse = new Map(); // courseId -> Map(moduleId -> module)
 
     // ---------- Helpers ----------
     const ts = (obj) => {
@@ -265,28 +257,34 @@ if (!userId) {
       if (obj instanceof Date) return obj;
       if (typeof obj === 'string' || typeof obj === 'number') return new Date(obj);
       if (obj && typeof obj.toDate === 'function') return obj.toDate();
-      if (typeof obj.seconds === 'number')   return new Date(obj.seconds * 1000);
-      if (typeof obj._seconds === 'number')  return new Date(obj._seconds * 1000);
+      if (typeof obj.seconds === 'number') return new Date(obj.seconds * 1000);
+      if (typeof obj._seconds === 'number') return new Date(obj._seconds * 1000);
       return null;
     };
-    const fmt      = (v) => { const d = ts(v); return d ? d.toLocaleString() : "—"; };
-    const fmtDate  = (v) => { const d = ts(v); return d ? d.toLocaleDateString() : "—"; };
-    const isNum    = v => (typeof v === 'number' && !Number.isNaN(v));
-    const toNum    = v => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
-    const num      = (v, def = 0) => (typeof v === 'number' && !isNaN(v)) ? v : def;
-    const fmtTime  = (sec) => {
+    const fmt = (v) => { const d = ts(v); return d ? d.toLocaleString() : "—"; };
+    const fmtDate = (v) => { const d = ts(v); return d ? d.toLocaleDateString() : "—"; };
+    const isNum = v => (typeof v === 'number' && !Number.isNaN(v));
+    const toNum = v => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
+    const num = (v, def = 0) => (typeof v === 'number' && !isNaN(v)) ? v : def;
+    const fmtTime = (sec) => {
       if (sec == null) return "—";
       const s = Math.max(0, parseInt(sec, 10));
       const m = Math.floor(s / 60), ss = s % 60;
       return `${m}m ${ss}s`;
     };
-    function isEssayQuestion(q){
+    function isEssayQuestion(q) {
       if (!q) return false;
       if (q.isEssay === true) return true;
       if ((q.type || '').toLowerCase() === 'essay') return true;
       const choices = q.choices || {};
       const nonEmpty = Object.values(choices).filter(v => v && String(v).trim() !== '');
       return nonEmpty.length === 0;
+    }
+    function pickRubricUrl(obj) {
+      if (!obj || typeof obj !== 'object') return '';
+      const keys = ['rubricUrl', 'rubricURL', 'rubric', 'rubric_link', 'rubric_url', 'rubricLink'];
+      for (const k of keys) { const v = obj[k]; if (typeof v === 'string' && v.trim()) return v.trim(); }
+      return '';
     }
 
     // ---------- Data loaders ----------
@@ -353,21 +351,21 @@ if (!userId) {
       }
     }
 
-    async function ensureModulesForCourse(courseId){
+    async function ensureModulesForCourse(courseId) {
       if (!courseId || modulesByCourse.has(courseId)) return;
-      try{
+      try {
         const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
         const js = await res.json();
         const modules = Array.isArray(js?.modules) ? js.modules : (Array.isArray(js) ? js : []);
         const map = new Map();
         modules.forEach(m => { if (m?.id) map.set(m.id, m); });
         modulesByCourse.set(courseId, map);
-      }catch(e){
+      } catch (e) {
         modulesByCourse.set(courseId, new Map()); // avoid refetch loop
       }
     }
 
-    async function ensureModulesForCourses(courseIds){
+    async function ensureModulesForCourses(courseIds) {
       const uniq = [...new Set(courseIds)].filter(Boolean);
       await Promise.all(uniq.map(ensureModulesForCourse));
     }
@@ -386,9 +384,9 @@ if (!userId) {
     function statusOf(quiz) {
       const now = Date.now();
       const openAt = ts(quiz.openAt) ? ts(quiz.openAt).getTime() : null;
-      const dueAt  = ts(quiz.dueAt)  ? ts(quiz.dueAt).getTime()  : null;
+      const dueAt = ts(quiz.dueAt) ? ts(quiz.dueAt).getTime() : null;
       if (openAt && now < openAt) return "Upcoming";
-      if (dueAt && now > dueAt)   return "Closed";
+      if (dueAt && now > dueAt) return "Closed";
       return "Open";
     }
 
@@ -422,16 +420,16 @@ if (!userId) {
       let raw = [];
       if (Array.isArray(js?.attempts)) raw = js.attempts;
       else if (Array.isArray(js?.results)) raw = js.results;
-      else if (Array.isArray(js?.data))    raw = js.data;
-      else if (Array.isArray(js))          raw = js;
+      else if (Array.isArray(js?.data)) raw = js.data;
+      else if (Array.isArray(js)) raw = js;
 
       const attempts = raw.map((r, i) => {
-        const autoScore     = toNum(r.autoScore)     ?? toNum(r.scoreAuto)   ?? null;
-        const autoTotal     = toNum(r.autoTotal)     ?? toNum(r.totalAuto)   ?? null;
-        const autoPercent   = toNum(r.autoPercent)   ?? null;
+        const autoScore = toNum(r.autoScore) ?? toNum(r.scoreAuto) ?? null;
+        const autoTotal = toNum(r.autoTotal) ?? toNum(r.totalAuto) ?? null;
+        const autoPercent = toNum(r.autoPercent) ?? null;
 
-        const gradedScore   = toNum(r.gradedScore)   ?? null;
-        const gradedTotal   = toNum(r.gradedTotal)   ?? null;
+        const gradedScore = toNum(r.gradedScore) ?? null;
+        const gradedTotal = toNum(r.gradedTotal) ?? null;
         const gradedPercent = toNum(r.gradedPercent) ?? null;
 
         const score =
@@ -466,7 +464,7 @@ if (!userId) {
         };
       });
 
-      const latest = attempts.length ? attempts[attempts.length - 1] : null;
+      let latest = attempts.length ? attempts[attempts.length - 1] : null;
       let best = null;
       attempts.forEach(a => {
         if (!isNum(a.percent)) return;
@@ -556,10 +554,10 @@ if (!userId) {
       // render cards
       list.forEach(quiz => {
         const created = ts(quiz.createdAt);
-        const due     = ts(quiz.dueAt);
-        const status  = statusOf(quiz);
+        const due = ts(quiz.dueAt);
+        const status = statusOf(quiz);
         const qs = Array.isArray(quiz.questions) ? quiz.questions.length
-                  : (quiz.totalQuestions || quiz.questionCount || 0);
+          : (quiz.totalQuestions || quiz.questionCount || 0);
         const dur = num(quiz.durationMinutes);
         const diff = quiz.difficulty || "—";
 
@@ -569,7 +567,7 @@ if (!userId) {
         const courseLabel = courseCode ? `${courseCode} — ${courseTitle}` : courseTitle;
 
         const modMap = modulesByCourse.get(quiz.courseId);
-        const mod    = modMap ? modMap.get(quiz.moduleId) : null;
+        const mod = modMap ? modMap.get(quiz.moduleId) : null;
         const moduleTitle = mod?.title || quiz.moduleTitle || quiz.moduleName || "Untitled Module";
         const moduleLabel = (typeof mod?.moduleNumber === 'number')
           ? `Module ${mod.moduleNumber}: ${moduleTitle}`
@@ -586,18 +584,23 @@ if (!userId) {
           ? "Unlimited attempts"
           : `Attempts: ${used}/${effAllowed}`;
 
-        const startDisabled = (status !== "Open") || locked;
-        const lockBadge = locked ? `<span class="badge text-bg-danger ms-1">Max attempts</span>` : "";
-
         const hasAutoQuestions = Array.isArray(quiz.questions) && quiz.questions.some(q => !isEssayQuestion(q));
         const essayOnly = Array.isArray(quiz.questions) && quiz.questions.length > 0 && !hasAutoQuestions;
 
-        // View Score disabled if no attempts or essay-only (until teacher grades)
-        const viewDisabled = (used === 0) || essayOnly;
-        const viewTitle = essayOnly
-          ? 'Scores will be visible after a teacher grades your essay.'
-          : 'No attempts yet';
+        // Build optional rubric button: show whenever a rubric exists (quiz or settings)
+        let rubricBtn = '';
+        const rubricUrl = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
+        if (rubricUrl) {
+          const safeUrl = String(rubricUrl).replace(/"/g, '&quot;');
+          rubricBtn = `<button class="btn btn-sm btn-outline-info"
+                               onclick="window.open('${safeUrl}', '_blank')"
+                               title="View Rubric">
+                          <i class="bi bi-file-earmark-text"></i> Show Rubric
+                       </button>`;
+        }
 
+        // NOTE: Start always links to overview (view page), regardless of attempts or status.
+        // The view page will block actual start if not eligible.
         const col = document.createElement("div");
         col.className = "col-12 col-md-6 col-xl-4";
         col.innerHTML = `
@@ -608,7 +611,7 @@ if (!userId) {
                 <div class="quiz-meta">
                   Created: ${created ? fmtDate(created) : "—"} • Status:
                   <span class="badge ${status === 'Open' ? 'text-bg-success' : status === 'Upcoming' ? 'text-bg-info' : 'text-bg-secondary'}">${status}</span>
-                  ${lockBadge}
+                  ${locked ? `<span class="badge text-bg-danger ms-1">Max attempts</span>` : ""}
                   ${essayOnly ? `<span class="badge text-bg-warning ms-1">Essay-only</span>` : ``}
                 </div>
               </div>
@@ -627,19 +630,20 @@ if (!userId) {
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-              <button class="btn btn-sm btn-outline-primary ${viewDisabled ? 'disabled' : ''}"
-                      ${viewDisabled ? `tabindex="-1" aria-disabled="true" title="${viewTitle}"` : ''}
+              <button class="btn btn-sm btn-outline-primary"
                       data-action="view-score"
                       data-quiz-id="${quiz.id}"
                       data-quiz-title="${(quiz.title || '').replace(/"/g, '&quot;')}">
                 <i class="bi bi-graph-up"></i> View Score
               </button>
 
-              <a class="btn btn-sm btn-amber ${startDisabled ? 'disabled' : ''}"
-                 ${startDisabled ? 'tabindex="-1" aria-disabled="true" title="You have no attempts left for this quiz."' : ''}
-                 href="${startDisabled ? '#' : `/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}`}">
+              <a class="btn btn-sm btn-amber"
+                 href="/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}"
+                 title="See details, rubric, and start">
                  Start
               </a>
+
+              ${rubricBtn}
             </div>
 
             <div class="mt-2 small text-muted">
@@ -673,10 +677,10 @@ if (!userId) {
     // View Score modal
     quizCards.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-action="view-score"]');
-      if (!btn || btn.classList.contains('disabled')) return;
+      if (!btn) return;
 
       const quizId = btn.getAttribute('data-quiz-id');
-      const title  = btn.getAttribute('data-quiz-title') || 'Quiz Results';
+      const title = btn.getAttribute('data-quiz-title') || 'Quiz Results';
 
       // Reset modal
       document.getElementById('scoreModalLabel').textContent = title;
@@ -701,19 +705,26 @@ if (!userId) {
           return;
         }
 
-        if (isNum(res.best?.percent))   document.getElementById('bestScore').textContent = `${res.best.percent}%`;
+        if (isNum(res.best?.percent)) document.getElementById('bestScore').textContent = `${res.best.percent}%`;
         if (isNum(res.latest?.percent)) document.getElementById('latestScore').textContent = `${res.latest.percent}%`;
         document.getElementById('attemptCount').textContent = String(res.attempts.length);
 
-        const rowsHtml = res.attempts.map(a => {
-          const hasAuto   = (a.autoTotal   != null && a.autoTotal   > 0);
+        // sort newest → oldest (latest on top)
+        const attemptsSorted = [...res.attempts].sort((a, b) => {
+          const tA = ts(a.submittedAt)?.getTime() ?? 0;
+          const tB = ts(b.submittedAt)?.getTime() ?? 0;
+          return tB - tA;
+        });
+
+        const rowsHtml = attemptsSorted.map(a => {
+          const hasAuto = (a.autoTotal != null && a.autoTotal > 0);
           const hasGraded = (a.gradedTotal != null && a.gradedTotal > 0);
 
           let score, total;
           if (hasAuto || hasGraded) {
-            const autoScore   = (a.autoScore   ?? 0);
+            const autoScore = (a.autoScore ?? 0);
             const gradedScore = (a.gradedScore ?? 0);
-            const autoTotal   = (hasAuto   ? a.autoTotal   : 0);
+            const autoTotal = (hasAuto ? a.autoTotal : 0);
             const gradedTotal = (hasGraded ? a.gradedTotal : 0);
             score = autoScore + gradedScore;
             total = autoTotal + gradedTotal;
@@ -728,15 +739,16 @@ if (!userId) {
           const scoreCell = (score != null && total != null) ? `${score}/${total}` : '—';
 
           return `
-            <tr>
-              <td>${a.n ?? ''}</td>
-              <td>${fmt(a.submittedAt)}</td>
-              <td>${scoreCell}</td>
-              <td>${typeof a.percent === 'number' ? `${a.percent}%` : '—'}</td>
-              <td>${fmtTime(a.timeTakenSeconds)}</td>
-            </tr>
-          `;
+    <tr>
+      <td>${a.n ?? ''}</td>
+      <td>${fmt(a.submittedAt)}</td>
+      <td>${scoreCell}</td>
+      <td>${typeof a.percent === 'number' ? `${a.percent}%` : '—'}</td>
+      <td>${fmtTime(a.timeTakenSeconds)}</td>
+    </tr>
+  `;
         }).join('');
+
 
         document.getElementById('attemptsTbody').innerHTML = rowsHtml;
         document.getElementById('scoreContent').classList.remove('d-none');
@@ -762,7 +774,11 @@ if (!userId) {
   <!-- Small-screen tweak -->
   <style>
     @media (max-width: 768px) {
-      .form-select, .form-control { text-align: center; }
+
+      .form-select,
+      .form-control {
+        text-align: center;
+      }
     }
   </style>
 
@@ -775,4 +791,5 @@ if (!userId) {
     }
   </script>
 </body>
+
 </html>

@@ -6,6 +6,12 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { commonUpload } = require('../config/multerConfig');
 
+// ---------------- File size limit (PER FILE) ----------------
+// Keep this in sync with your frontend (default 300 MB).
+// You can override via env: MODULE_FILE_LIMIT_MB=300
+const PER_FILE_LIMIT_MB = parseInt(process.env.MODULE_FILE_LIMIT_MB || '300', 10);
+const PER_FILE_LIMIT_BYTES = PER_FILE_LIMIT_MB * 1024 * 1024;
+
 // Helpers for upload fallback behavior
 const arrayUpload = commonUpload.array('attachmentFiles');
 const singleUpload = commonUpload.single('moduleFile');
@@ -21,6 +27,14 @@ const flexibleUpload = (req, res, next) => {
     next();
   });
 };
+
+/* Small helper to check per-file size after Multer.
+   NOTE: For true pre-write enforcement, also set `limits.fileSize`
+   in ../config/multerConfig to PER_FILE_LIMIT_BYTES. */
+function findOversizeFile(files) {
+  if (!files || !files.length) return null;
+  return files.find(f => typeof f.size === 'number' && f.size > PER_FILE_LIMIT_BYTES) || null;
+}
 
 /* -----------------------------------------------------------
    ARCHIVE HELPERS
@@ -89,10 +103,21 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   let attachmentDescs = req.body.attachmentDescs;
   if (attachmentDescs && !Array.isArray(attachmentDescs)) attachmentDescs = [attachmentDescs];
 
-  // Validation
+  // Validation: basic fields
   if (!moduleTitle || !moduleType || !courseId) {
     return res.status(400).json({ success: false, message: 'Missing required fields (title/type/course).' });
   }
+
+  // Validation: enforce per-file size limit early (if there are files at all)
+  const oversize = findOversizeFile(files);
+  if (oversize) {
+    const mb = (oversize.size / (1024 * 1024)).toFixed(1);
+    return res.status(400).json({
+      success: false,
+      message: `File "${oversize.originalname || oversize.filename}" is ${mb} MB, which exceeds the per-file limit of ${PER_FILE_LIMIT_MB} MB.`
+    });
+  }
+
   if (moduleType === 'file' && (!files || files.length === 0)) {
     return res.status(400).json({ success: false, message: 'At least one attachment file is required.' });
   }
@@ -144,6 +169,16 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Lesson index missing or mismatched for attachments.'
+      });
+    }
+
+    // (Safety) Double-check per-file size at this stage as well
+    const oversizeAgain = findOversizeFile(files);
+    if (oversizeAgain) {
+      const mb = (oversizeAgain.size / (1024 * 1024)).toFixed(1);
+      return res.status(400).json({
+        success: false,
+        message: `File "${oversizeAgain.originalname || oversizeAgain.filename}" is ${mb} MB, which exceeds the per-file limit of ${PER_FILE_LIMIT_MB} MB.`
       });
     }
 
@@ -211,7 +246,11 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ success: false, message: 'File too large. Maximum size is 50MB.' });
+      // Mirror frontend / route limit
+      return res.status(400).json({
+        success: false,
+        message: `File too large. Maximum per-file size is ${PER_FILE_LIMIT_MB} MB.`
+      });
     }
     return res.status(400).json({ success: false, message: `File upload error: ${error.message}` });
   }

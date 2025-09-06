@@ -1,33 +1,86 @@
 // ==== routes/quizRoutes.js ====
 const router = require('express').Router();
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 
 // utils
-const { parseDueAtToTimestamp } = require('../utils/timeUtils'); // keep your existing helper
-const { normalizeAttemptsAllowed } = require('../utils/validators'); // integer >=0, 0 => unlimited
-const { getUserRefByEmail } = require('../utils/userUtils'); // resolves users/{userId} by email
+const { parseDueAtToTimestamp } = require('../utils/timeUtils');
+const { normalizeAttemptsAllowed } = require('../utils/validators');
+const { getUserRefByEmail } = require('../utils/userUtils');
+
+// ---------- Rubric upload config (teacher) ----------
+const TEACHER_FILE_LIMIT_MB = parseInt(process.env.TEACHER_FILE_LIMIT_MB || '300', 10);
+const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
+
+const RUBRIC_DIR = path.join(__dirname, '..', 'uploads', 'quizzes', 'rubrics');
+fs.mkdirSync(RUBRIC_DIR, { recursive: true });
+
+const rubricStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, RUBRIC_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const base = path.basename(file.originalname || 'rubric', ext).replace(/[^\w.-]+/g, '_');
+    cb(null, `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${base}${ext}`);
+  }
+});
+
+const ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'text/plain',
+]);
+const ALLOWED_EXTS = /\.(pdf|doc|docx|xls|xlsx|csv|txt)$/i;
+
+function rubricFileFilter(_req, file, cb) {
+  const okMime = ALLOWED_MIMES.has(file.mimetype);
+  const okExt = ALLOWED_EXTS.test(file.originalname || '');
+  if (okMime || okExt) return cb(null, true);
+  cb(new Error('Invalid rubric file type. Allowed: PDF, DOC/DOCX, XLS/XLSX, CSV, TXT.'));
+}
+
+const uploadRubricSingle = multer({
+  storage: rubricStorage,
+  limits: { fileSize: TEACHER_FILE_LIMIT_BYTES },
+  fileFilter: rubricFileFilter
+}).single('rubrics');
+
+// Conditionally run multer when the request is multipart
+function maybeUploadRubric(req, res, next) {
+  const ct = String(req.headers['content-type'] || '');
+  if (!ct.toLowerCase().startsWith('multipart/form-data')) return next();
+  uploadRubricSingle(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ success: false, code: err.code, message: err.message });
+      }
+      return res.status(400).json({ success: false, message: err.message || 'Upload error' });
+    }
+    return next();
+  });
+}
 
 // ---- helpers for settings normalization ----
 function normalizeSettings(input = {}) {
   const out = {
     timerEnabled: false,
-    // randomization (default true). If teacher toggles it OFF, questions preserve authoring order.
     shuffleQuestions: true,
-    // pagination + backtracking policy
-    pagination: {
-      enabled: false,
-      perPage: 1
-    },
+    pagination: { enabled: false, perPage: 1 },
     backtrackingAllowed: true
   };
 
-  // timer
   if (input && typeof input === 'object') {
     if (input.timerEnabled === true) {
-      const mins  = parseInt(input.durationMinutes, 10);
+      const mins = parseInt(input.durationMinutes, 10);
       const grace = input.graceSeconds != null ? parseInt(input.graceSeconds, 10) : 0;
-      if (!Number.isInteger(mins)  || mins < 1) throw new Error('Invalid durationMinutes (minimum 1).');
+      if (!Number.isInteger(mins) || mins < 1) throw new Error('Invalid durationMinutes (minimum 1).');
       if (!Number.isInteger(grace) || grace < 0) throw new Error('Invalid graceSeconds (>= 0).');
       out.timerEnabled = true;
       out.durationMinutes = mins;
@@ -36,12 +89,10 @@ function normalizeSettings(input = {}) {
       out.graceMs = grace * 1000;
     }
 
-    // shuffle toggle (default true)
     if (typeof input.shuffleQuestions === 'boolean') {
       out.shuffleQuestions = input.shuffleQuestions;
     }
 
-    // pagination
     if (input.pagination && typeof input.pagination === 'object') {
       const en = !!input.pagination.enabled;
       let per = parseInt(input.pagination.perPage, 10);
@@ -49,7 +100,6 @@ function normalizeSettings(input = {}) {
       out.pagination = { enabled: en, perPage: per };
     }
 
-    // backtracking policy
     if (typeof input.backtrackingAllowed === 'boolean') {
       out.backtrackingAllowed = input.backtrackingAllowed;
     }
@@ -60,7 +110,6 @@ function normalizeSettings(input = {}) {
 
 // --- helpers for chunked deletes + attempts cascade ---
 
-// Delete an arbitrary list of DocumentReferences in safe chunks
 async function deleteDocsInChunks(docRefs, chunkSize = 400) {
   if (!Array.isArray(docRefs) || docRefs.length === 0) return;
   for (let i = 0; i < docRefs.length; i += chunkSize) {
@@ -71,12 +120,7 @@ async function deleteDocsInChunks(docRefs, chunkSize = 400) {
   }
 }
 
-// Delete all documents returned by a query, in chunks
 async function deleteQueryInChunks(query, chunkSize = 400) {
-  // Loop until query returns empty so we handle >chunkSize results too
-  // (collection queries aren't strongly consistent during deletes)
-  // This is fine for admin operations.
-  // If your dataset is huge, consider partitioning by time.
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const snap = await query.limit(chunkSize).get();
@@ -88,7 +132,6 @@ async function deleteQueryInChunks(query, chunkSize = 400) {
 // Delete all users' attempts for a quiz (fast path via collectionGroup, fallback per user)
 async function deleteAllAttemptsForQuiz(quizId) {
   try {
-    // FAST: requires a collection-group index on quizAttempts.quizId
     const rootsSnap = await firestore
       .collectionGroup('quizAttempts')
       .where('quizId', '==', quizId)
@@ -100,7 +143,6 @@ async function deleteAllAttemptsForQuiz(quizId) {
       await rootDoc.ref.delete();
     }
   } catch (err) {
-    // Missing CG index? Firestore throws 9 FAILED_PRECONDITION
     if (err && (err.code === 9 || String(err.message || '').includes('FAILED_PRECONDITION'))) {
       console.warn('[quiz delete] Missing CG index for quizAttempts.quizId — fallback to per-user scan.');
       const usersSnap = await firestore.collection('users').get();
@@ -118,62 +160,116 @@ async function deleteAllAttemptsForQuiz(quizId) {
   }
 }
 
-
 /* ===========================================================
    QUIZ: UPLOAD
-   POST /upload-quiz
+   - Accepts JSON (no rubric) OR multipart with:
+       - file field:  "rubrics"
+       - text field:  "payload" (JSON string)
 =========================================================== */
-router.post('/upload-quiz', asyncHandler(async (req, res) => {
+router.post('/upload-quiz', maybeUploadRubric, asyncHandler(async (req, res) => {
+  // If multipart, the real payload is in req.body.payload (stringified JSON)
+  let body = req.body || {};
+  if (req.file && typeof body.payload === 'string') {
+    try { body = JSON.parse(body.payload); }
+    catch (e) {
+      // cleanup uploaded file on parse error
+      try { fs.unlinkSync(req.file.path); } catch {_e} {}
+      return res.status(400).json({ success:false, message:'Invalid JSON in "payload".' });
+    }
+  }
+
   const {
     courseId,
     moduleId,
-    quiz,            // [{question, choices, correct}] (essay can be saved with no choices, or a placeholder)
-    settings,        // { timerEnabled?, durationMinutes?, graceSeconds?, shuffleQuestions?, pagination?, backtrackingAllowed? }
+    quiz,            // [{type?, question, choices, correct}]
+    settings,
     title,
     description,
     dueAt,
-    attemptsAllowed  // number | 0 for unlimited | null
-  } = req.body || {};
+    attemptsAllowed
+  } = body || {};
 
   if (!courseId || !moduleId || !Array.isArray(quiz) || quiz.length === 0) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {_e} {} }
     return res.status(400).json({ success:false, message:'Missing required fields or empty quiz array.' });
   }
   if (!title || String(title).trim() === '') {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {_e} {} }
     return res.status(400).json({ success:false, message:'Quiz title is required.' });
   }
 
   // attempts
   let attempts = null;
   try { attempts = normalizeAttemptsAllowed(attemptsAllowed); }
-  catch (e) { return res.status(400).json({ success:false, message: e.message }); }
+  catch (e) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {_e} {} }
+    return res.status(400).json({ success:false, message: e.message });
+  }
 
   // settings (timer, shuffle, pagination, backtracking)
   let normalizedSettings;
   try {
     normalizedSettings = normalizeSettings(settings || {});
   } catch (e) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {_e} {} }
     return res.status(400).json({ success:false, message: e.message });
   }
 
   const dueAtTs = parseDueAtToTimestamp(dueAt);
+
+  // determine if there is at least one essay question
+  const essayCount = (quiz || []).filter(q =>
+    (q && (q.type === 'essay')) ||
+    (
+      q && q.choices && typeof q.choices === 'object' &&
+      Object.keys(q.choices).length === 1 &&
+      'A' in q.choices &&
+      String(q.choices.A || '').toLowerCase().includes('essay response')
+    )
+  ).length;
+
+  // If a rubric file was sent, ensure at least one essay exists and size is within limit
+  if (req.file) {
+    if (essayCount === 0) {
+      try { fs.unlinkSync(req.file.path); } catch {_e} {}
+      return res.status(400).json({ success:false, message:'Rubric can only be uploaded when there is at least one Essay question.' });
+    }
+    if (req.file.size > TEACHER_FILE_LIMIT_BYTES) {
+      try { fs.unlinkSync(req.file.path); } catch {_e} {}
+      return res.status(413).json({ success:false, message:`Rubric exceeds limit of ${TEACHER_FILE_LIMIT_MB} MB.` });
+    }
+  }
 
   // sanitize questions
   const validQuestions = (quiz || [])
     .filter(q => q && q.question)
     .map(q => ({
       question: String(q.question),
-      // allow essays (no choices), or MCQ/TF with choices
       choices: q.choices && typeof q.choices === 'object' ? q.choices : {},
-      correctAnswer: q.correct ?? q.correctAnswer ?? null, // essays can be null
+      correctAnswer: q.correct ?? q.correctAnswer ?? null,
       imageUrl: q.imageUrl ?? null
     }));
 
   if (!validQuestions.length) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {_e} {} }
     return res.status(400).json({ success:false, message:'No valid quiz questions provided.' });
   }
 
   const quizRef = firestore.collection('quizzes').doc();
   const batch = firestore.batch();
+
+  // attach rubric file metadata if present
+  let rubricFile = null;
+  if (req.file) {
+    const rel = `/uploads/quizzes/rubrics/${path.basename(req.file.path)}`.replace(/\\/g, '/');
+    rubricFile = {
+      filePath: rel,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mime: req.file.mimetype,
+      uploadedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+  }
 
   batch.set(quizRef, {
     title: String(title).trim(),
@@ -184,6 +280,7 @@ router.post('/upload-quiz', asyncHandler(async (req, res) => {
     attemptsAllowed: attempts, // null => unlimited
     dueAt: dueAtTs,
     archived: false,
+    rubricFile: rubricFile || null,
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
@@ -196,7 +293,6 @@ router.post('/upload-quiz', asyncHandler(async (req, res) => {
 /* ===========================================================
    QUIZ: GET ALL
    GET /quizzes?includeArchived=1|true (optional)
-   - default: exclude archived from response
 =========================================================== */
 router.get('/quizzes', asyncHandler(async (req, res) => {
   const includeArchived = ['1','true','yes'].includes(String(req.query.includeArchived || '').toLowerCase());
@@ -208,7 +304,6 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
   const quizzes = [];
   const docs = includeArchived
     ? snapshot.docs
-    // exclude if either archived flag is true (support both keys just in case)
     : snapshot.docs.filter(d => {
         const x = d.data() || {};
         return x.archived !== true && x.isArchived !== true;
@@ -226,7 +321,7 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
       courseId: data.courseId,
       moduleId: data.moduleId,
       createdAt: data.createdAt,
-      archived: data.archived === true,  // canonical flag
+      archived: data.archived === true,
       totalQuestions: data.totalQuestions ?? qs.size,
       settings: data.settings || {
         timerEnabled:false,
@@ -234,13 +329,13 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
         pagination:{enabled:false, perPage:1},
         backtrackingAllowed:true
       },
+      rubricFile: data.rubricFile || null,
       questions: qs.docs.map(d=>d.data())
     });
   }
 
   res.json({ success:true, quizzes });
 }));
-
 
 /* ===========================================================
    QUIZ: GET ONE
@@ -265,11 +360,12 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
       courseId: d.courseId,
       moduleId: d.moduleId,
       createdAt: d.createdAt,
-      archived: d.archived === true,  // <-- add this
+      archived: d.archived === true,
       totalQuestions: d.totalQuestions ?? qs.size,
       settings: d.settings || { timerEnabled:false, shuffleQuestions:true, pagination:{enabled:false, perPage:1}, backtrackingAllowed:true },
+      rubricFile: d.rubricFile || null,
       questions: qs.docs.map(dd => ({ id: dd.id, ...dd.data() })),
-      isArchived: d.isArchived === true   
+      isArchived: d.isArchived === true
     }
   });
 }));
@@ -277,6 +373,7 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
 /* ===========================================================
    QUIZ: UPDATE (replace questions)
    PUT /quizzes/:quizId
+   (Rubric updates not handled here; add a PATCH if needed)
 =========================================================== */
 router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
   const { questions, settings, title, description, dueAt, attemptsAllowed } = req.body || {};
@@ -290,7 +387,6 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
 
   const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
 
-  // settings (timer, shuffle, pagination, backtracking)
   if (settings !== undefined) {
     try {
       updates.settings = normalizeSettings(settings || {});
@@ -307,7 +403,6 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
     catch (e) { return res.status(400).json({ success:false, message:e.message }); }
   }
 
-  // Replace questions atomically
   const existing = await quizRef.collection('questions').get();
   const delBatch = firestore.batch();
   existing.forEach(d => delBatch.delete(d.ref));
@@ -330,7 +425,7 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   QUIZ: DELETE (with cascade)
+   QUIZ: DELETE (with cascade) + rubric file cleanup
    DELETE /quizzes/:quizId
 =========================================================== */
 router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
@@ -341,6 +436,10 @@ router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
     return res.status(404).json({ success:false, message:'Quiz not found.' });
   }
 
+  // remember rubric file (if any)
+  const data = snap.data() || {};
+  const rubricPath = data.rubricFile?.filePath ? String(data.rubricFile.filePath) : null;
+
   // 1) Delete questions under quiz
   const questionsSnap = await quizRef.collection('questions').get();
   await deleteDocsInChunks(questionsSnap.docs.map(d => d.ref));
@@ -349,16 +448,24 @@ router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
   const essayQ = firestore.collection('quizEssaySubmissions').where('quizId', '==', quizId);
   await deleteQueryInChunks(essayQ);
 
-  // 3) Delete all users' attempts for this quiz (CG fast path + fallback)
+  // 3) Delete all users' attempts for this quiz
   await deleteAllAttemptsForQuiz(quizId);
 
   // 4) Delete the quiz doc itself
   await quizRef.delete();
 
+  // 5) Remove rubric file from disk if present
+  if (rubricPath) {
+    try {
+      const full = path.join(__dirname, '..', rubricPath.replace(/^\/+/, '').replace(/\//g, path.sep));
+      fs.unlink(full, () => {});
+    } catch (e) {
+      console.warn('Could not remove rubric file', rubricPath, e.message);
+    }
+  }
+
   res.json({ success:true, message:'Quiz and all related scores/attempts deleted.' });
 }));
-
-
 
 /* ===========================================================
    QUIZ: SUBMIT SCORE + ENFORCE ATTEMPTS
@@ -385,7 +492,7 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
   const userRef = await getUserRefByEmail(email);
   if (!userRef) return res.status(404).json({ success:false, message:'User not found.' });
 
-  // load quiz + questions (for optional questionText, and attemptsAllowed)
+  // load quiz + questions
   const qRef = firestore.collection('quizzes').doc(quizId);
   const qDoc = await qRef.get();
   if (!qDoc.exists) return res.status(404).json({ success:false, message:'Quiz not found.' });
@@ -393,14 +500,13 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
   const qsSnap = await qRef.collection('questions').get();
   const qList = qsSnap.docs.map(d => d.data());
 
-  // ALWAYS use live attemptsAllowed from quiz doc
   const rawAllowed = qData.attemptsAllowed ?? null;
-  const attemptsAllowed = rawAllowed === 0 ? null : rawAllowed;
+  const attemptsAllowedLive = rawAllowed === 0 ? null : rawAllowed;
 
   const resolvedCourseId = courseId || qData.courseId || null;
   const resolvedModuleId = moduleId || qData.moduleId || null;
 
-  // resolve the teacherId for this course (BEFORE essay creation)
+  // resolve teacherId
   let teacherId = null;
   try {
     if (resolvedCourseId) {
@@ -414,29 +520,27 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
     console.warn('Could not resolve teacherId for course', resolvedCourseId, e.message);
   }
 
-  // users/{uid}/quizAttempts/{quizId}/attempts/{autoId}
   const attemptRoot = userRef.collection('quizAttempts').doc(quizId);
   const attemptsCol = attemptRoot.collection('attempts');
 
-  // enforce attempts (live)
+  // enforce attempts
   const attemptsSnap = await attemptsCol.get();
   const used = attemptsSnap.size;
-  if (attemptsAllowed !== null && used >= attemptsAllowed) {
+  if (attemptsAllowedLive !== null && used >= attemptsAllowedLive) {
     return res.status(403).json({
       success:false,
-      message:`Attempt limit reached (${attemptsAllowed}).`,
-      attempts:{ used, allowed:attemptsAllowed, left:0 }
+      message:`Attempt limit reached (${attemptsAllowedLive}).`,
+      attempts:{ used, allowed:attemptsAllowedLive, left:0 }
     });
   }
 
   const autoPercent = total ? Math.round((score / total) * 100) : 0;
 
-  // create attempt (auto portion only for now)
   const attemptRef = await attemptsCol.add({
     autoScore: score,
     autoTotal: total,
     autoPercent,
-    percent: autoPercent,       // combined; will be updated after essays are graded
+    percent: autoPercent,
     gradedScore: 0,
     gradedTotal: 0,
     gradedPercent: 0,
@@ -445,7 +549,7 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
     timeTakenSeconds: timeTakenSeconds ?? null,
   });
 
-  // === create essay submissions linked to this attempt ===
+  // create essay submissions linked to this attempt
   try {
     const answersObj = answers && typeof answers === 'object' ? answers : null;
     if (answersObj) {
@@ -463,13 +567,13 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
           studentEmail: email,
 
           quizId,
-          quizAttemptId: attemptRoot.id,   // equals quizId
+          quizAttemptId: attemptRoot.id,
           attemptId: attemptRef.id,
           attemptRefPath: attemptRef.path,
 
           courseId: resolvedCourseId || null,
           moduleId: resolvedModuleId || null,
-          teacherId,                       // resolved above
+          teacherId,
 
           questionIndex: Number.isFinite(idx) ? idx : null,
           questionText,
@@ -477,7 +581,7 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
           answer: text,
           status: 'pending',
           score: null,
-          maxScore: 10,                    // default; teacher may change
+          maxScore: 10,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
       }
@@ -486,7 +590,7 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
     console.warn('Essay submission creation failed (non-fatal):', e.message);
   }
 
-  // summarize at quizAttempts root (do NOT persist attemptsAllowed here to avoid staleness)
+  // summarize at quizAttempts root
   const passingPercent = qData.passingPercent ?? 60;
 
   await firestore.runTransaction(async (tx) => {
@@ -509,7 +613,6 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
         courseId: resolvedCourseId,
         moduleId: resolvedModuleId,
         attemptsUsed: cnt,
-        // attemptsAllowed: <--- intentionally omitted to prevent stale locks
         lastScore: { score, total, percent: autoPercent },
         bestPercent,
         lastSubmittedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -533,28 +636,14 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
     }
   });
 
-  // recompute user.averageQuizScore from quizAttempts
-  const qaSnap = await userRef.collection('quizAttempts').get();
-  const bests = [];
-  qaSnap.forEach(doc => {
-    const d = doc.data() || {};
-    if (typeof d.bestGradedPercent === 'number') bests.push(d.bestGradedPercent);
-    else if (typeof d.bestPercent === 'number') bests.push(d.bestPercent);
-    else if (d.lastScore?.percent != null) bests.push(d.lastScore.percent);
-  });
-  const averageQuizScore = bests.length
-    ? Math.round(bests.reduce((a,b)=>a+b,0)/bests.length)
-    : 0;
-  await userRef.set({ averageQuizScore }, { merge: true });
-
   const finalCount = used + 1;
-  const left = attemptsAllowed === null ? null : Math.max(0, attemptsAllowed - finalCount);
+  const left = attemptsAllowedLive === null ? null : Math.max(0, attemptsAllowedLive - finalCount);
 
   res.json({
     success: true,
     message: 'Quiz attempt recorded.',
     attemptId: attemptRef.id,
-    attempts: { used: finalCount, allowed: attemptsAllowed, left }
+    attempts: { used: finalCount, allowed: attemptsAllowedLive, left }
   });
 }));
 
@@ -573,22 +662,18 @@ router.get('/api/students/:userId/quiz-attempts', asyncHandler(async (req, res) 
 
   for (const qid of quizIds) {
     try {
-      // 1) Always read the LIVE attemptsAllowed from the quiz
       const qSnap = await firestore.collection('quizzes').doc(qid).get();
       if (!qSnap.exists) {
-        // quiz deleted or not found – treat as unlocked with no attempts
         out[qid] = { used: 0, allowed: null, left: null, lock: false };
         continue;
       }
       const qData = qSnap.data() || {};
       const rawAllowed = qData.attemptsAllowed ?? null;
-      const liveAllowed = rawAllowed === 0 ? null : rawAllowed; // null => unlimited
+      const liveAllowed = rawAllowed === 0 ? null : rawAllowed;
 
-      // 2) Count USED attempts from the student's subcollection (authoritative)
       const atSnap = await userRef.collection('quizAttempts').doc(qid).collection('attempts').get();
       const used = atSnap.size;
 
-      // 3) Compute left/lock based on LIVE allowed
       const left = (liveAllowed == null) ? null : Math.max(0, liveAllowed - used);
       out[qid] = { used, allowed: liveAllowed, left, lock: (liveAllowed != null && left === 0) };
     } catch (e) {
@@ -603,18 +688,6 @@ router.get('/api/students/:userId/quiz-attempts', asyncHandler(async (req, res) 
 /* ===========================================================
    QUIZ: LIST RESULTS (all attempts for one quiz for one user)
    GET /api/students/:userId/quiz-results?quizId=QID
-   Returns:
-   {
-     success: true,
-     attempts: [
-       { attempt, submittedAt, score, total, percent,
-         autoScore, autoTotal, autoPercent,
-         gradedScore, gradedTotal, gradedPercent,
-         timeTakenSeconds, reason, attemptId }
-     ],
-     best:   {...} | null,
-     latest: {...} | null
-   }
 =========================================================== */
 router.get('/api/students/:userId/quiz-results', asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -625,7 +698,6 @@ router.get('/api/students/:userId/quiz-results', asyncHandler(async (req, res) =
   const rootRef = userRef.collection('quizAttempts').doc(quizId);
   const atCol   = rootRef.collection('attempts');
 
-  // order by submittedAt asc so "attempt" number is stable
   const snap = await atCol.orderBy('submittedAt', 'asc').get();
 
   const attempts = [];
@@ -635,47 +707,38 @@ router.get('/api/students/:userId/quiz-results', asyncHandler(async (req, res) =
     idx++;
     const d = doc.data() || {};
 
-    // AUTO (machine) portion
     const autoScore    = typeof d.autoScore === 'number' ? d.autoScore : null;
     const autoTotal    = typeof d.autoTotal === 'number' ? d.autoTotal : null;
     const autoPercent  = typeof d.autoPercent === 'number'
                            ? d.autoPercent
                            : (autoScore!=null && autoTotal ? Math.round(autoScore/autoTotal*100) : null);
 
-    // GRADED (manual essay) portion
     const gradedScore   = typeof d.gradedScore === 'number' ? d.gradedScore : null;
     const gradedTotal   = typeof d.gradedTotal === 'number' ? d.gradedTotal : null;
     const gradedPercent = typeof d.gradedPercent === 'number'
                             ? d.gradedPercent
                             : (gradedScore!=null && gradedTotal ? Math.round(gradedScore/gradedTotal*100) : null);
 
-    // Combined percent (prefer gradedPercent if present; else percent; else autoPercent)
     const combinedPercent =
       (typeof d.percent === 'number' ? d.percent : null) ??
       (gradedPercent != null ? gradedPercent : autoPercent);
 
-    // If you want a combined "score/total" too, prefer graded* when present; else auto*
     const score = (gradedScore != null ? gradedScore : autoScore);
     const total = (gradedTotal != null ? gradedTotal : autoTotal);
 
     const item = {
       attempt: idx,
       attemptId: doc.id,
-      submittedAt: d.submittedAt || null,        // may be null right after write (serverTimestamp)
+      submittedAt: d.submittedAt || null,
       timeTakenSeconds: d.timeTakenSeconds ?? null,
       reason: d.reason || 'manual',
-
-      // unified fields used by UI table:
       score, total, percent: combinedPercent,
-
-      // expose sub-scores for debugging/advanced UIs:
       autoScore, autoTotal, autoPercent,
       gradedScore, gradedTotal, gradedPercent
     };
     attempts.push(item);
   });
 
-  // Compute 'best' and 'latest'
   const latest = attempts.length ? attempts[attempts.length - 1] : null;
 
   let best = null;
@@ -710,7 +773,5 @@ router.patch('/quizzes/:quizId/archive', asyncHandler(async (req, res) => {
   const after = await ref.get();
   res.json({ success:true, quiz:{ id: ref.id, ...after.data() } });
 }));
-
-
 
 module.exports = router;

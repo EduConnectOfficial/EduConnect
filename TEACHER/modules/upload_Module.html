@@ -9,13 +9,10 @@
   <!-- Your page CSS -->
   <link rel="stylesheet" href="upload.css" />
   <style>
-    /* ===== Theme tokens (match your global theme) ===== */
     :root{
       --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
       --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--brand-accent-1:#FF6A00;--brand-accent-2:#B03C10;
       --card-radius:14px;
-
-      /* NEW: default UI-card max width (change here globally) */
       --ui-card-max: 1000px;
     }
 
@@ -24,76 +21,45 @@
     .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
     .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
 
-    /* Header */
     .upload-header{
       background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));
       position:sticky;top:0;z-index:10;box-shadow:0 4px 8px rgba(0,0,0,.08)
     }
     .logo-header{height:45px}
-    .btn-upload{
-      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
-      color:#fff;border:none
-    }
+    .btn-upload{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
     .btn-upload:hover{filter:brightness(1.05);color:#fff}
 
-    /* ===== UI-Card pattern (matches the rest of your app) ===== */
-    .ui-card{
-      background:var(--card);
-      border:1px solid rgba(0,0,0,.06);
-      border-radius:var(--card-radius);
-      box-shadow:0 10px 24px rgba(0,0,0,.10);
-      overflow:hidden;
-    }
+    .ui-card{background:var(--card);border:1px solid rgba(0,0,0,.06);border-radius:var(--card-radius);box-shadow:0 10px 24px rgba(0,0,0,.10);overflow:hidden}
     .ui-card-head{
       display:flex;justify-content:space-between;align-items:center;gap:.75rem;
-      padding:12px 16px;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;
-      border-bottom:1px solid rgba(255,255,255,.1)
+      padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
     }
     .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
     .ui-subtext{font-size:.9rem;color:#FFD8A9}
     .ui-card-body{padding:16px}
 
-    /* NEW: width helpers */
-    .ui-card.constrain{
-      width:100%;
-      max-width:var(--ui-card-max);
-      margin-inline:auto;
-    }
+    .ui-card.constrain{width:100%;max-width:var(--ui-card-max);margin-inline:auto}
     .ui-card.w-sm{ --ui-card-max:640px; }
     .ui-card.w-md{ --ui-card-max:800px; }
-    .ui-card.w-lg{ --ui-card-max:1000px; } /* default */
+    .ui-card.w-lg{ --ui-card-max:1000px; }
     .ui-card.w-xl{ --ui-card-max:1200px; }
     .ui-card.w-full{ --ui-card-max:100%; }
 
-    @media (max-width:480px){
-      .ui-card.constrain{ max-width:calc(100% - 1rem); }
-    }
+    @media (max-width:480px){ .ui-card.constrain{ max-width:calc(100% - 1rem); } }
 
-    /* Step dots (kept from your snippet) */
     .step-dots{display:flex;gap:6px;align-items:center}
     .step-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
     .step-dots .dot.active{background:#111827}
 
-    /* Pager + lesson cards */
-    .pager-chip{
-      display:inline-flex;align-items:center;gap:.35rem;
-      padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);font-size:.8rem;background:#fff;color:#374151
-    }
+    .pager-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);font-size:.8rem;background:#fff;color:#374151}
     .lesson-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
     .lesson-page.card{border:1px solid var(--border)}
-    .btn-remove{
-      background:#fff;border:1px solid #dc3545;color:#dc3545;border-radius:.375rem;padding:.25rem .6rem
-    }
+    .btn-remove{background:#fff;border:1px solid #dc3545;color:#dc3545;border-radius:.375rem;padding:.25rem .6rem}
     .btn-remove:hover{background:#fff5f5}
     .file-pill{display:flex;align-items:center;gap:.5rem}
-     .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
-    .page-title.brand{
-      background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-      -webkit-background-clip:text; background-clip:text; color:transparent;
-    }
-
+    .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
+    .page-title.brand{background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
   </style>
 </head>
 
@@ -135,16 +101,12 @@
         <a href="/TEACHER/modules/select_Course.html" class="btn btn-upload">← Back</a>
       </div>
 
-      <!-- Upload Form in a UI-Card with adjustable width -->
       <div class="content container-fluid py-4">
-          <h1 class="page-title brand">Module Upload</h1>
-        <!-- Use preset width OR set a custom width via style="--ui-card-max: 1120px" -->
+        <h1 class="page-title brand">Module Upload</h1>
+
         <div class="ui-card card-themed constrain w-lg">
           <div class="ui-card-head">
-            <h2 class="ui-card-title">
-              <i class="bi bi-folder-plus"></i>
-              Upload Module
-            </h2>
+            <h2 class="ui-card-title"><i class="bi bi-folder-plus"></i> Upload Module</h2>
             <div class="ui-subtext">Create a module with lessons, files or video URLs.</div>
           </div>
 
@@ -228,7 +190,6 @@
     function showInfo(title = 'Notice', html = '', opts = {}) {
       infoTitleEl.textContent = title;
       infoBodyEl.innerHTML = html;
-
       if (opts && typeof opts.onHidden === 'function') {
         infoModalEl.addEventListener('hidden.bs.modal', function handler() {
           infoModalEl.removeEventListener('hidden.bs.modal', handler);
@@ -236,11 +197,15 @@
         }, { once: true });
       }
       infoModal.show();
-
       if (opts && typeof opts.autoHideMs === 'number' && opts.autoHideMs > 0) {
         setTimeout(() => infoModal.hide(), opts.autoHideMs);
       }
     }
+
+    // ---------- File size limit (per file) ----------
+    const FILE_LIMIT_MB = 300;                         // change this if needed
+    const FILE_LIMIT_BYTES = FILE_LIMIT_MB * 1024 * 1024;
+    const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
 
     // ---------- Helpers ----------
     const qs = s => document.querySelector(s);
@@ -252,17 +217,13 @@
     const courseId = urlParams.get("courseId");
 
     // Pager state
-    const pager = {
-      cur: 0,
-      pages: [] // keep DOM nodes so file inputs retain their files
-    };
+    const pager = { cur: 0, pages: [] };
 
     // Build one lesson page
     function buildLessonPage(index) {
       const wrap = create('div', 'lesson-page card card-body mb-3');
       wrap.dataset.index = index;
 
-      // Title / Content
       const title = create('input', 'form-control mb-2');
       title.placeholder = 'Lesson Sub Title (optional)';
       title.classList.add('lesson-subtitle');
@@ -278,10 +239,16 @@
       attachmentsBox.innerHTML = `
         <div class="d-flex align-items-center justify-content-between">
           <strong>Attachments</strong>
-          <button type="button" class="btn btn-secondary btn-sm add-attachment">Add Attachment</button>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">Per-file limit: <span class="size-limit"></span></span>
+            <button type="button" class="btn btn-secondary btn-sm add-attachment">Add Attachment</button>
+          </div>
         </div>
         <div class="attach-list mt-2"></div>
       `;
+
+      // set size limit text
+      attachmentsBox.querySelector('.size-limit').textContent = FILE_LIMIT_MB + ' MB';
 
       const makeAttachmentRow = () => {
         const row = create('div', 'row g-2 align-items-end mt-1 file-attachment-group');
@@ -290,12 +257,39 @@
             <div class="file-pill">
               <input type="file" class="form-control attachment-file">
             </div>
+            <div class="small text-muted mt-1 attach-size" aria-live="polite"></div>
           </div>
           <div class="col-7 d-flex align-items-center gap-2">
             <input type="text" class="form-control attachment-desc" placeholder="Attachment Description (optional)">
             <button type="button" class="btn-sm remove-attachment">Remove</button>
           </div>
         `;
+
+        const fileInput = row.querySelector('.attachment-file');
+        const sizeLabel = row.querySelector('.attach-size');
+
+        const validateFile = () => {
+          const f = fileInput.files && fileInput.files[0];
+          sizeLabel.textContent = '';
+          sizeLabel.classList.remove('text-danger');
+          if (!f) return true;
+
+          if (f.size > FILE_LIMIT_BYTES) {
+            sizeLabel.textContent = `Selected: ${formatKB(f.size)} — exceeds ${FILE_LIMIT_MB} MB`;
+            sizeLabel.classList.add('text-danger');
+
+            // Block immediately & inform
+            showInfo('File too large',
+              `⚠️ <strong>${f.name}</strong> is ${formatKB(f.size)} which exceeds the per-file limit of <strong>${FILE_LIMIT_MB} MB</strong>. Please choose a smaller file.`);
+            fileInput.value = '';
+            return false;
+          } else {
+            sizeLabel.textContent = `Selected: ${formatKB(f.size)}`;
+            return true;
+          }
+        };
+
+        fileInput.addEventListener('change', validateFile);
         row.querySelector('.remove-attachment').addEventListener('click', () => row.remove());
         return row;
       };
@@ -320,7 +314,6 @@
       wrap.appendChild(cont);
       wrap.appendChild(attachmentsBox);
       wrap.appendChild(videoBox);
-
       return wrap;
     }
 
@@ -333,9 +326,8 @@
       const dots = qs('#stepDots');
       dots.innerHTML = '';
       for (let i = 0; i < pager.pages.length; i++) {
-        const dot = create('span', 'dot' + (i === pager.cur ? ' active' : '')); dots.appendChild(dot);
+        dots.appendChild(create('span', 'dot' + (i === pager.cur ? ' active' : '')));
       }
-
       syncLessonTypeUI();
     }
 
@@ -364,12 +356,8 @@
     // Controls
     qs('#addLessonBtn').addEventListener('click', () => addLesson(true));
     qs('#removeLessonBtn').addEventListener('click', removeCurrentLesson);
-    qs('#prevBtn').addEventListener('click', () => {
-      if (pager.cur > 0) { pager.cur--; renderPager(); }
-    });
-    qs('#nextBtn').addEventListener('click', () => {
-      if (pager.cur < pager.pages.length - 1) { pager.cur++; renderPager(); }
-    });
+    qs('#prevBtn').addEventListener('click', () => { if (pager.cur > 0) { pager.cur--; renderPager(); } });
+    qs('#nextBtn').addEventListener('click', () => { if (pager.cur < pager.pages.length - 1) { pager.cur++; renderPager(); } });
 
     // Show/hide per-lesson areas based on moduleType
     function syncLessonTypeUI() {
@@ -416,12 +404,17 @@
 
       if (type === 'file') {
         let hasAnyFile = false;
+        let oversize = null;
+
         pager.pages.forEach((page, idx) => {
           const groups = page.querySelectorAll('.file-attachment-group');
           groups.forEach(g => {
             const file = g.querySelector('.attachment-file')?.files?.[0];
             const desc = g.querySelector('.attachment-desc')?.value || '';
             if (file) {
+              if (file.size > FILE_LIMIT_BYTES) {
+                oversize = { name: file.name, size: file.size };
+              }
               hasAnyFile = true;
               fd.append('attachmentFiles', file);
               fd.append('attachmentDescs', desc);
@@ -429,6 +422,13 @@
             }
           });
         });
+
+        if (oversize) {
+          showInfo('File too large',
+            `❌ <strong>${oversize.name}</strong> is ${formatKB(oversize.size)}, exceeding the per-file limit of <strong>${FILE_LIMIT_MB} MB</strong>. Please choose a smaller file.`);
+          return;
+        }
+
         if (!hasAnyFile) {
           showInfo('Incomplete', '⚠️ Please add at least <strong>one file</strong>.');
           return;
@@ -458,7 +458,6 @@
           showInfo('Upload Failed', '❌ ' + msg);
           return;
         }
-        // Success: show modal then redirect after close
         showInfo('Success', '✅ Module uploaded successfully!', {
           onHidden: () => {
             window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
@@ -466,7 +465,7 @@
         });
       } catch (err) {
         console.error(err);
-        // Keeps your previous optimistic behavior on catch:
+        // Keep optimistic behavior if server doesn't respond
         showInfo('Success', '✅ Module uploaded successfully!', {
           onHidden: () => {
             window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
@@ -480,6 +479,7 @@
       sessionStorage.clear();
       window.location.href = "/TEACHER/login/login.html";
     }
+
     // first render
     renderPager();
   </script>
