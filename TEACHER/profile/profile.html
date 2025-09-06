@@ -252,6 +252,34 @@
     const SERVER_BASE = "http://localhost:5000";
     const API = `${SERVER_BASE}/api`;
 
+    /* ===== Initials helper (used for header) ===== */
+    function getInitials(u = {}) {
+      const fn = (u.firstName || "").trim();
+      const ln = (u.lastName || "").trim();
+      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+      const nameish = (u.username || u.displayName || u.name || "").trim();
+      if (nameish) {
+        const parts = nameish
+          .replace(/[^A-Za-z0-9 _.\-]+/g, " ")
+          .split(/[\s._-]+/)
+          .filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0][0].toUpperCase();
+      }
+      const em = (u.email || "").trim();
+      return em ? em[0].toUpperCase() : "U";
+    }
+    function setHeaderInitials(u = {}) {
+      const el = document.getElementById("Username");
+      if (!el) return;
+      el.textContent = getInitials(u); // 👈 initials only
+      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
+                     || u.username || u.email || "Profile";
+      el.setAttribute("title", fullLabel);
+      el.setAttribute("aria-label", fullLabel);
+    }
+
     /* ===== Modal helpers (robust) ===== */
     const infoModalEl = document.getElementById('infoModal');
     const infoTitleEl = document.getElementById('infoModalLabel');
@@ -276,11 +304,14 @@
     }
 
     // ===== Auth + Guards =====
-    const userData = JSON.parse(localStorage.getItem("user"));
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
     if (!userData || !userData.userId) {
       window.location.href = "../login/login.html";
     }
     const userId = encodeURIComponent(userData.userId);
+
+    // Set initials immediately from stored user object (fast paint)
+    setHeaderInitials(userData.user || userData);
 
     function authHeaders(extra = {}) {
       const token = localStorage.getItem("authToken");
@@ -354,7 +385,9 @@
         document.getElementById("lastName").value = liveUser.lastName || '';
         document.getElementById("username").value = liveUser.username || '';
         document.getElementById("email").value = liveUser.email || '';
-        document.getElementById("Username").textContent = liveUser.username || '';
+
+        // 👇 initials-only in header (override any previous text)
+        setHeaderInitials(liveUser);
 
         lockTeacherId(resolveTeacherId(liveUser));
 
@@ -362,6 +395,9 @@
           profilePreview.src = `${SERVER_BASE}${liveUser.photoURL}?t=${Date.now()}`;
           userData.photoURL = liveUser.photoURL;
           userData.username = liveUser.username;
+          userData.firstName = liveUser.firstName;
+          userData.middleName = liveUser.middleName;
+          userData.lastName = liveUser.lastName;
           localStorage.setItem("user", JSON.stringify(userData));
         }
       } catch (err) {
@@ -402,16 +438,18 @@
         if (res.ok && (out.success !== false)) {
           const updated = out.updatedUser || out.user || null;
 
-          if (updated?.username) {
-            userData.username = updated.username;
-            document.getElementById("Username").textContent = updated.username;
+          // Update stored user & header initials
+          if (updated) {
+            userData.username   = updated.username ?? userData.username;
+            userData.firstName  = updated.firstName ?? userData.firstName;
+            userData.middleName = updated.middleName ?? userData.middleName;
+            userData.lastName   = updated.lastName ?? userData.lastName;
+            setHeaderInitials(updated); // 👈 refresh initials in header
           }
 
           const newPhoto = updated?.photoURL || null;
           const prevPhoto = userData.photoURL || null;
           const photoActuallyChanged = !!newPhoto && newPhoto !== prevPhoto;
-
-          console.debug('profileSubmit ok', { hadNewPhoto, newPhoto, prevPhoto, photoActuallyChanged, out });
 
           if (photoActuallyChanged || hadNewPhoto) {
             resetPreviewURL();

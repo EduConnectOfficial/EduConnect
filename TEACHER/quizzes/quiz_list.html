@@ -21,60 +21,19 @@
     .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
     .small-muted{color:#6b7280;font-size:.9rem}
     .quiz-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;height:100%}
-    /* tiny helper in edit modal */
     .qtype-badge{font-size:.7rem}
     .form-text-muted{color:#6b7280}
     /* Course pill (warm amber) */
-.quiz-card .pill-course {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-}
-
-/* Module pill (mint green) */
-.quiz-card .pill-module {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
-}
-
-/* Archived pill (neutral gray) */
-.quiz-card .pill-archived {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  color: #374151;
-}
-/* Fix pill wrapping inside quiz cards */
-.quiz-card .d-flex.flex-wrap {
-  flex-wrap: wrap;
-  gap: .4rem;              /* consistent spacing */
-  max-width: 100%;         /* keep inside card */
-}
-
-.quiz-card .pill {
-  display: inline-flex;       /* keep icon + text aligned */
-  align-items: center;
-  gap: .3rem;
-  max-width: 100%;            /* respect card width */
-  overflow: hidden;           /* ensure child respects boundaries */
-}
-
-.quiz-card .pill-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;               /* critical inside flex */
-  display: inline-block;
-}
-
-
-.quiz-card .pill span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
+    .quiz-card .pill-course { background:#fff7ed;border:1px solid #fed7aa;color:#9a3412; }
+    /* Module pill (mint green) */
+    .quiz-card .pill-module { background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46; }
+    /* Archived pill (neutral gray) */
+    .quiz-card .pill-archived { background:#f3f4f6;border:1px solid #e5e7eb;color:#374151; }
+    /* Fix pill wrapping inside quiz cards */
+    .quiz-card .d-flex.flex-wrap { flex-wrap:wrap; gap:.4rem; max-width:100%; }
+    .quiz-card .pill { display:inline-flex; align-items:center; gap:.3rem; max-width:100%; overflow:hidden; }
+    .quiz-card .pill-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; display:inline-block; }
+    .quiz-card .pill span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   </style>
 </head>
 <body>
@@ -195,12 +154,39 @@
   <script>
     const API = "http://localhost:5000";
 
+    /* ------- initials-only helper ------- */
+    function getInitials(u = {}) {
+      const fn = (u.firstName || "").trim();
+      const ln = (u.lastName || "").trim();
+      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+      const nameish = (u.username || u.displayName || u.name || "").trim();
+      if (nameish) {
+        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, " ")
+                             .split(/[\s._-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0][0].toUpperCase();
+      }
+      const em = (u.email || "").trim();
+      return em ? em[0].toUpperCase() : "U";
+    }
+    function setHeaderInitials(u = {}) {
+      const el = document.getElementById("Username");
+      if (!el) return;
+      el.textContent = getInitials(u); // 👈 initials only
+      const full = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
+                || u.username || u.email || "Profile";
+      el.setAttribute("title", full);
+      el.setAttribute("aria-label", full);
+    }
+
     // Auth (teacher-only)
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const stored = JSON.parse(localStorage.getItem("user") || "{}");
+    const userData = stored.user || stored;
     if (!userData?.userId || !userData?.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
     }
-    document.getElementById("Username").textContent = userData.username || "";
+    setHeaderInitials(userData);           // 👈 set initials immediately
     const TEACHER_ID = userData.userId;
 
     // DOM
@@ -282,14 +268,14 @@
     let pendingDelete = null; // { id, btnEl }
 
     // State
-    let coursesList = [];          // [{id,title,courseNumber,label}]
-    const courseMap = new Map();   // id -> {title, courseNumber, label}
-    let masterQuizzes = [];        // ALL quizzes for teacher's courses
+    let coursesList = [];
+    const courseMap = new Map();
+    let masterQuizzes = [];
     let filtered = [];
     let currentCourseId = '';
     let currentModuleId = '';
-    let statusFilter = 'active';   // 'active' | 'archived' | 'all'
-    const moduleCache = new Map(); // moduleId -> { title, moduleNumber, courseId }
+    let statusFilter = 'active';
+    const moduleCache = new Map();
 
     // Utils
     function goCreateQuiz() { window.location.href = "/TEACHER/quizzes/quiz.html"; }
@@ -305,7 +291,7 @@
       return isNaN(d.getTime()) ? null : d.getTime();
     }
     function withSpinner(btnEl) {
-      if (!btnEl || !(btnEl instanceof HTMLElement)) return () => { };
+      if (!btnEl || !(btnEl instanceof HTMLElement)) return () => {};
       const original = btnEl.innerHTML;
       btnEl.disabled = true;
       btnEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Working…';
@@ -365,7 +351,7 @@
       }
     }
 
-    // PRELOAD all quizzes (include archived so segmented filter is instant)
+    // PRELOAD all quizzes
     async function preloadAllQuizzes() {
       elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading quizzes…</div></div>`;
       try {
@@ -504,103 +490,96 @@
     });
 
     function renderGrid() {
-  if (!filtered.length) {
-    elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No quizzes found.</div></div>`;
-    return;
-  }
+      if (!filtered.length) {
+        elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No quizzes found.</div></div>`;
+        return;
+      }
 
-  elGrid.innerHTML = filtered.map((qz, idx) => {
-    const s = qz.settings || {};
-    const hasTimer = !!s.timerEnabled;
-    const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
-    const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
-    const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
+      elGrid.innerHTML = filtered.map((qz, idx) => {
+        const s = qz.settings || {};
+        const hasTimer = !!s.timerEnabled;
+        const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
+        const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
+        const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
 
-    const randTxt = (s.shuffleQuestions === false) ? 'Fixed order' : 'Randomized';
-    const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
-    const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
+        const randTxt = (s.shuffleQuestions === false) ? 'Fixed order' : 'Randomized';
+        const pageTxt = (s.pagination?.enabled) ? `Paged (${s.pagination.perPage || 1})` : 'No paging';
+        const backTxt = (s.backtrackingAllowed === false) ? 'Back locked' : 'Back allowed';
 
-    // --- Course + Module Pills with ellipsis fix ---
-    const courseBadge = qz._course
-      ? `<span class="pill pill-course" title="${escapeHTML(qz._course.label)}">
-           <i class="bi bi-book"></i>
-           <span class="pill-text">${escapeHTML(qz._course.label)}</span>
-         </span>`
-      : '';
+        const courseBadge = qz._course
+          ? `<span class="pill pill-course" title="${escapeHTML(qz._course.label)}">
+               <i class="bi bi-book"></i>
+               <span class="pill-text">${escapeHTML(qz._course.label)}</span>
+             </span>` : '';
 
-    const moduleLabel = qz._module ? fmtModule(qz._module) : '';
-    const moduleBadge = moduleLabel
-      ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
-           <i class="bi bi-box"></i>
-           <span class="pill-text">${escapeHTML(moduleLabel)}</span>
-         </span>`
-      : '';
+        const moduleLabel = qz._module ? fmtModule(qz._module) : '';
+        const moduleBadge = moduleLabel
+          ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+               <i class="bi bi-box"></i>
+               <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+             </span>` : '';
 
-    const archivedPill = qz._archived
-      ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>`
-      : '';
+        const archivedPill = qz._archived
+          ? `<span class="pill pill-archived ms-2"><i class="bi bi-archive"></i>Archived</span>` : '';
 
-    const headerHtml = `
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <div class="d-flex align-items-center gap-2">
-          <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
-          ${archivedPill}
-        </div>
-        <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
-      </div>
-    `;
+        const headerHtml = `
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="m-0">${escapeHTML(qz.title || ('Quiz ' + (idx + 1)))}</h5>
+              ${archivedPill}
+            </div>
+            <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
+          </div>`;
 
-    return `
-      <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
-        <div class="quiz-card">
-          ${headerHtml}
+        return `
+          <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+            <div class="quiz-card">
+              ${headerHtml}
 
-          <div class="mb-2 d-flex flex-wrap gap-1">
-            ${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}
-          </div>
+              <div class="mb-2 d-flex flex-wrap gap-1">
+                ${courseBadge}${moduleBadge ? ` ${moduleBadge}` : ''}
+              </div>
 
-          <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
+              <div class="text-muted small mb-2">${escapeHTML(preview(qz.description || '', 160))}</div>
 
-          <div class="d-flex flex-wrap gap-1 mb-2">
-            <span class="badge-soft"><i class="bi bi-shuffle"></i>${randTxt}</span>
-            <span class="badge-soft"><i class="bi bi-grid-1x2"></i>${pageTxt}</span>
-            <span class="badge-soft"><i class="bi bi-arrow-left-right"></i>${backTxt}</span>
-          </div>
+              <div class="d-flex flex-wrap gap-1 mb-2">
+                <span class="badge-soft"><i class="bi bi-shuffle"></i>${randTxt}</span>
+                <span class="badge-soft"><i class="bi bi-grid-1x2"></i>${pageTxt}</span>
+                <span class="badge-soft"><i class="bi bi-arrow-left-right"></i>${backTxt}</span>
+              </div>
 
-          <div class="d-flex align-items-center justify-content-between small-muted">
-            <span><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueTxt}</span>
-            <span>Attempts: ${attemptsTxt}</span>
-          </div>
+              <div class="d-flex align-items-center justify-content-between small-muted">
+                <span><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueTxt}</span>
+                <span>Attempts: ${attemptsTxt}</span>
+              </div>
 
-          <div class="d-flex justify-content-end gap-2 mt-3">
-            ${qz._archived
-              ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
-                         onclick="setArchive('${qz.id}', false, this)">
-                     <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-                   </button>`
-              : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
-                         onclick="setArchive('${qz.id}', true, this)">
-                     <i class="bi bi-archive"></i> Archive
-                   </button>`}
-            <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
-                    onclick="deleteQuiz('${qz.id}', this)">
-              <i class="fas fa-trash"></i> Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
+              <div class="d-flex justify-content-end gap-2 mt-3">
+                ${qz._archived
+                  ? `<button class="btn btn-sm btn-outline-success" title="Make this quiz visible to students again"
+                             onclick="setArchive('${qz.id}', false, this)">
+                       <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                     </button>`
+                  : `<button class="btn btn-sm btn-outline-secondary" title="Hide from students but keep for you"
+                             onclick="setArchive('${qz.id}', true, this)">
+                       <i class="bi bi-archive"></i> Archive
+                     </button>`}
+                <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
+                  <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
+                        onclick="deleteQuiz('${qz.id}', this)">
+                  <i class="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
 
     // Build ID map for editing
     let quizzesById = {};
     function rebuildQuizMap() { quizzesById = {}; masterQuizzes.forEach(q => quizzesById[q.id] = q); }
 
-    // --- Helpers to detect type for editor ---
     function detectQuestionType(qq){
       if (qq?.type && ['mcq','tf','essay'].includes(String(qq.type).toLowerCase())) {
         return String(qq.type).toLowerCase();
@@ -672,7 +651,7 @@
       body.innerHTML = '';
 
       (quiz.questions || []).forEach((qq, i) => {
-        const qType = detectQuestionType(qq); // 'mcq' | 'tf' | 'essay'
+        const qType = detectQuestionType(qq);
         const badge = `<span class="badge text-bg-secondary qtype-badge text-uppercase">${qType}</span>`;
         const qRowStart = `
           <div class="mb-3 border p-3 rounded">
@@ -699,7 +678,7 @@
             </select>
           `;
         } else if (qType === 'tf') {
-          const isA = qq.correctAnswer === 'A'; // A=True, B=False
+          const isA = qq.correctAnswer === 'A';
           qRowMid = `
             <div class="mt-2">
               <label class="form-label">Correct Answer</label>
@@ -716,7 +695,7 @@
               <div class="form-text form-text-muted">Choices are implicitly “True” and “False”.</div>
             </div>
           `;
-        } else { // essay
+        } else {
           qRowMid = `
             <div class="alert alert-info mt-2 mb-0">
               <strong>Essay / Manual grading.</strong> Students will type a free-form answer. No choices needed.
@@ -877,7 +856,6 @@
       const quizId = form.dataset.quizId;
       if (!quizId) return;
 
-      // Serialize questions by their type
       const qs = [];
       let i = 0;
       while (form.querySelector(`[name="question${i}"]`)) {
@@ -890,28 +868,12 @@
           const C = form.querySelector(`[name="C${i}"]`)?.value || '';
           const D = form.querySelector(`[name="D${i}"]`)?.value || '';
           const correct = form.querySelector(`[name="correct${i}"]`)?.value || 'A';
-          qs.push({
-            type: 'mcq',
-            question: questionText,
-            choices: { A, B, C, D },
-            correctAnswer: correct
-          });
+          qs.push({ type:'mcq', question:questionText, choices:{A,B,C,D}, correctAnswer:correct });
         } else if (type === 'tf') {
           const tf = form.querySelector(`[name="tf_correct${i}"]:checked`)?.value || 'true';
-          qs.push({
-            type: 'tf',
-            question: questionText,
-            choices: { A: 'True', B: 'False' },
-            correctAnswer: tf === 'true' ? 'A' : 'B'
-          });
-        } else { // essay
-          qs.push({
-            type: 'essay',
-            question: questionText,
-            // Keep placeholder to stay compatible with viewers expecting A
-            choices: { A: "(Essay response)" },
-            correctAnswer: 'A'
-          });
+          qs.push({ type:'tf', question:questionText, choices:{A:'True', B:'False'}, correctAnswer: tf === 'true' ? 'A' : 'B' });
+        } else {
+          qs.push({ type:'essay', question:questionText, choices:{A:"(Essay response)"}, correctAnswer:'A' });
         }
         i++;
       }
@@ -957,6 +919,11 @@
         showStatus('Server error.', { variant: 'error' });
       }
     });
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
   </script>
 
   <!-- Bootstrap JS -->

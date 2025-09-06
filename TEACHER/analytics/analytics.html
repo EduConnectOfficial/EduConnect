@@ -52,7 +52,7 @@
     .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
     .btn-amber:hover{filter:brightness(1.06);color:#fff}
 
-    /* Segmented (kept here in case you add segmented toggles later) */
+    /* Segmented */
     .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
     .segmented .seg-btn{
       min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
@@ -257,8 +257,8 @@
   <script>
     const API_BASE = 'http://localhost:5000';
 
-    // Auth guard
-    (function () {
+    // ---- Auth guard + header initials (robust, initials-only) ----
+    (function initHeaderInitials() {
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       const u = stored.user || stored;
       if (!u?.userId || !u?.isTeacher) {
@@ -266,14 +266,31 @@
         return;
       }
       window.currentUser = u;
+
       const nameEl = document.getElementById('Username');
       if (nameEl) {
-        const fullName = [u.firstName, u.middleName, u.lastName]
-          .filter(Boolean)
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        nameEl.textContent = fullName || (u.username || 'Teacher').toString().trim();
+        const initials = getInitials(u);
+        nameEl.textContent = initials; // initials only
+        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+                        || u.username || u.email || 'Profile';
+        nameEl.setAttribute('title', fullLabel);
+        nameEl.setAttribute('aria-label', fullLabel);
+      }
+
+      function getInitials(user) {
+        const fn = (user.firstName || '').trim();
+        const ln = (user.lastName  || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+        const nameish = (user.username || user.displayName || user.name || '').trim();
+        if (nameish) {
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+                               .split(/[\s._-]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (user.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
       }
     })();
 
@@ -379,7 +396,6 @@
 
     function setSortOptionsForMode(mode) {
       if (!sortByEl) return;
-      // update option labels to match the mode, values stay the same
       const label = (val, text) => sortByEl.querySelector(`option[value="${val}"]`).textContent = text;
       if (mode === 'assignment') {
         label('avg_desc','Avg Assignment Score (High → Low)');
@@ -425,7 +441,6 @@
                       : 'modules';
         const asc = val.endsWith('_asc');
         let av = get(a, metric), bv = get(b, metric);
-        // push NaNs to the end
         if (!Number.isFinite(av)) av = asc ? Infinity : -Infinity;
         if (!Number.isFinite(bv)) bv = asc ? Infinity : -Infinity;
         return asc ? (av - bv) : (bv - av);
@@ -434,7 +449,7 @@
       return rows;
     }
 
-    // Tables with View buttons
+    // Tables
     function renderQuizTable(rows) {
       const data = Array.isArray(rows) ? rows.slice() : [];
       sortRows(data, 'quiz');
@@ -554,34 +569,26 @@
       else await loadQuizAnalytics();
     }
 
-    // Exports
-    // Helper to get analytics data for both modes
+    // Exports helpers (unchanged)
     async function getBothAnalytics(classId) {
       const quiz = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
       const assignment = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
       return { quiz, assignment };
     }
-
     function csvForAnalytics(mode, data, classLabel) {
       let csv = [];
-      // Header
       csv.push('Class,View,Date');
       csv.push(`"${classLabel}","${mode}","${new Date().toLocaleDateString()}"`);
-      // Summary
       if (mode === 'assignment') {
-        csv.push('');
-        csv.push('Summary');
+        csv.push(''); csv.push('Summary');
         csv.push('Total Assignments,Average Assignment Score,On-time Rate,Modules Completed');
         csv.push(`"${data.summary?.totalAssignments ?? ''}","${data.summary?.averageAssignmentScore ?? ''}","${data.summary?.onTimeRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
       } else {
-        csv.push('');
-        csv.push('Summary');
+        csv.push(''); csv.push('Summary');
         csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
         csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
       }
-      // Table
-      csv.push('');
-      csv.push('Students');
+      csv.push(''); csv.push('Students');
       if (mode === 'assignment') {
         csv.push('Student,ID,Avg Assignment Score,Assignments Submitted,On-time %,Modules Completed,Status');
         (data.progress || []).forEach(r => {
@@ -595,7 +602,6 @@
       }
       return csv.join('\r\n');
     }
-
     async function exportAllCsv() {
       try {
         const classId = classSelectEl.value || '';
@@ -605,7 +611,6 @@
         csv.push(csvForAnalytics('quiz', both.quiz, classLabel));
         csv.push('');
         csv.push(csvForAnalytics('assignment', both.assignment, classLabel));
-        // Download
         const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -619,114 +624,77 @@
         alert('CSV export failed.');
       }
     }
-
     async function downloadAllPdf() {
       try {
-        // Load jsPDF and autoTable if not present
         if (typeof window.jspdf === 'undefined') {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
             s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
           });
         }
-        if (typeof window.jspdf?.jsPDF === 'undefined') {
-          alert('Failed to load jsPDF.');
-          return;
-        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') { alert('Failed to load jsPDF.'); return; }
         if (typeof window.jspdf?.autoTable === 'undefined') {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
             s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
           });
         }
         const classId = classSelectEl.value || '';
         const classLabel = classSelectEl.options[classSelectEl.selectedIndex].text;
         const both = await getBothAnalytics(classId);
         const doc = new window.jspdf.jsPDF();
-
-        // Formal Header
-        doc.setFont('times', 'bold');
-        doc.setFontSize(18);
+        doc.setFont('times','bold'); doc.setFontSize(18);
         doc.text('Class Analytics Report (Quiz & Assignment)', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('times', 'normal');
+        doc.setFontSize(12); doc.setFont('times','normal');
         doc.text(`Class: ${classLabel}`, 20, 32);
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 40);
 
-        // Quiz Summary Table
-        doc.setFont('times', 'bold');
-        doc.text('Quiz Analytics', 20, 50);
-        doc.setFont('times', 'normal');
+        doc.setFont('times','bold'); doc.text('Quiz Analytics', 20, 50);
+        doc.setFont('times','normal');
         doc.autoTable({
           startY: 55,
-          head: [['Total Quizzes', 'Average Quiz Score', 'Pass Rate', 'Modules Completed']],
+          head: [['Total Quizzes','Average Quiz Score','Pass Rate','Modules Completed']],
           body: [[both.quiz.summary?.totalQuizzes ?? '', both.quiz.summary?.averageQuizScore ?? '', both.quiz.summary?.passRate ?? '', both.quiz.summary?.modulesCompleted ?? '']],
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 11, halign: 'center' },
-          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+          theme:'grid', styles:{ font:'times', fontSize:11, halign:'center' }, headStyles:{ fillColor:[255,178,0], textColor:0 }
         });
         let y = doc.lastAutoTable.finalY + 8;
-        doc.setFont('times', 'bold');
-        doc.text('Students (Quiz)', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
+        doc.setFont('times','bold'); doc.text('Students (Quiz)', 20, y); doc.setFont('times','normal'); y += 2;
         doc.autoTable({
-          startY: y,
-          head: [['Student', 'ID', 'Avg Quiz Score', 'Quizzes Taken', 'On-time %', 'Modules Completed', 'Status']],
-          body: (both.quiz.progress || []).map(r => [r.name, r.studentId, r.avgQuizScore, r.quizzesTaken, r.onTimePct, r.modulesCompleted, r.status]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          startY:y,
+          head:[['Student','ID','Avg Quiz Score','Quizzes Taken','On-time %','Modules Completed','Status']],
+          body:(both.quiz.progress||[]).map(r=>[r.name,r.studentId,r.avgQuizScore,r.quizzesTaken,r.onTimePct,r.modulesCompleted,r.status]),
+          theme:'grid', styles:{ font:'times', fontSize:10 }, headStyles:{ fillColor:[240,240,240], textColor:0 }
         });
         y = doc.lastAutoTable.finalY + 8;
 
-        // Assignment Summary Table
-        doc.setFont('times', 'bold');
-        doc.text('Assignment Analytics', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
+        doc.setFont('times','bold'); doc.text('Assignment Analytics', 20, y); doc.setFont('times','normal'); y += 2;
         doc.autoTable({
-          startY: y,
-          head: [['Total Assignments', 'Average Assignment Score', 'On-time Rate', 'Modules Completed']],
-          body: [[both.assignment.summary?.totalAssignments ?? '', both.assignment.summary?.averageAssignmentScore ?? '', both.assignment.summary?.onTimeRate ?? '', both.assignment.summary?.modulesCompleted ?? '']],
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 11, halign: 'center' },
-          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+          startY:y,
+          head:[['Total Assignments','Average Assignment Score','On-time Rate','Modules Completed']],
+          body:[[both.assignment.summary?.totalAssignments ?? '', both.assignment.summary?.averageAssignmentScore ?? '', both.assignment.summary?.onTimeRate ?? '', both.assignment.summary?.modulesCompleted ?? '']],
+          theme:'grid', styles:{ font:'times', fontSize:11, halign:'center' }, headStyles:{ fillColor:[255,178,0], textColor:0 }
         });
         y = doc.lastAutoTable.finalY + 8;
-        doc.setFont('times', 'bold');
-        doc.text('Students (Assignment)', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
+        doc.setFont('times','bold'); doc.text('Students (Assignment)', 20, y); doc.setFont('times','normal'); y += 2;
         doc.autoTable({
-          startY: y,
-          head: [['Student', 'ID', 'Avg Assignment Score', 'Assignments Submitted', 'On-time %', 'Modules Completed', 'Status']],
-          body: (both.assignment.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          startY:y,
+          head:[['Student','ID','Avg Assignment Score','Assignments Submitted','On-time %','Modules Completed','Status']],
+          body:(both.assignment.progress||[]).map(r=>[r.name,r.studentId,r.avgAssignmentScore,r.assignmentsSubmitted,r.onTimePct,r.modulesCompleted,r.status]),
+          theme:'grid', styles:{ font:'times', fontSize:10 }, headStyles:{ fillColor:[240,240,240], textColor:0 }
         });
-
-        // Download
         doc.save(`all_analytics_${classId||'all'}.pdf`);
       } catch (e) {
         console.error(e);
         alert('PDF download failed.');
       }
     }
-    // --- Formal PDF and CSV Export ---
     async function exportCsv() {
       try {
         const classId = classSelectEl.value || '';
         const mode = viewSelectEl.value;
         const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-        // Get analytics data
         let data;
         if (mode === 'assignment') {
           data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
@@ -734,26 +702,18 @@
           data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
         }
         let csv = [];
-        // Header
         csv.push('Class,View,Date');
         csv.push(`"${classSelectEl.options[classSelectEl.selectedIndex].text}","${mode}","${new Date().toLocaleDateString()}"`);
-
-        // Summary
         if (mode === 'assignment') {
-          csv.push('');
-          csv.push('Summary');
+          csv.push(''); csv.push('Summary');
           csv.push('Total Assignments,Average Assignment Score,On-time Rate,Modules Completed');
           csv.push(`"${data.summary?.totalAssignments ?? ''}","${data.summary?.averageAssignmentScore ?? ''}","${data.summary?.onTimeRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
         } else {
-          csv.push('');
-          csv.push('Summary');
+          csv.push(''); csv.push('Summary');
           csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
           csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
         }
-
-        // Table
-        csv.push('');
-        csv.push('Students');
+        csv.push(''); csv.push('Students');
         if (mode === 'assignment') {
           csv.push('Student,ID,Avg Assignment Score,Assignments Submitted,On-time %,Modules Completed,Status');
           (data.progress || []).forEach(r => {
@@ -765,8 +725,6 @@
             csv.push(`"${r.name}","${r.studentId}","${r.avgQuizScore}","${r.quizzesTaken}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
           });
         }
-
-        // Download
         const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -780,37 +738,26 @@
         alert('CSV export failed.');
       }
     }
-
     async function downloadPdf() {
       try {
-        // Load jsPDF and autoTable if not present
         if (typeof window.jspdf === 'undefined') {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
             s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
           });
         }
-        if (typeof window.jspdf?.jsPDF === 'undefined') {
-          alert('Failed to load jsPDF.');
-          return;
-        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') { alert('Failed to load jsPDF.'); return; }
         if (typeof window.jspdf?.autoTable === 'undefined') {
           await new Promise((resolve, reject) => {
             const s = document.createElement('script');
             s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
           });
         }
-
         const classId = classSelectEl.value || '';
         const mode = viewSelectEl.value;
         const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-        // Get analytics data
         let data;
         if (mode === 'assignment') {
           data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
@@ -818,66 +765,44 @@
           data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
         }
         const doc = new window.jspdf.jsPDF();
-
-        // Formal Header
-        doc.setFont('times', 'bold');
-        doc.setFontSize(18);
+        doc.setFont('times','bold'); doc.setFontSize(18);
         doc.text('Class Analytics Report', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('times', 'normal');
+        doc.setFontSize(12); doc.setFont('times','normal');
         doc.text(`Class: ${classSelectEl.options[classSelectEl.selectedIndex].text}`, 20, 32);
-        doc.text(`View: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`, 20, 40);
+        doc.text(`View: ${mode.charAt(0).toUpperCase()+mode.slice(1)}`, 20, 40);
         doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
-
-        // Summary Table
         if (mode === 'assignment') {
           doc.autoTable({
-            startY: 55,
-            head: [['Total Assignments', 'Average Assignment Score', 'On-time Rate', 'Modules Completed']],
-            body: [[data.summary?.totalAssignments ?? '', data.summary?.averageAssignmentScore ?? '', data.summary?.onTimeRate ?? '', data.summary?.modulesCompleted ?? '']],
-            theme: 'grid',
-            styles: { font: 'times', fontSize: 11, halign: 'center' },
-            headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+            startY:55,
+            head:[['Total Assignments','Average Assignment Score','On-time Rate','Modules Completed']],
+            body:[[data.summary?.totalAssignments ?? '', data.summary?.averageAssignmentScore ?? '', data.summary?.onTimeRate ?? '', data.summary?.modulesCompleted ?? '']],
+            theme:'grid', styles:{ font:'times', fontSize:11, halign:'center' }, headStyles:{ fillColor:[255,178,0], textColor:0 },
           });
         } else {
           doc.autoTable({
-            startY: 55,
-            head: [['Total Quizzes', 'Average Quiz Score', 'Pass Rate', 'Modules Completed']],
-            body: [[data.summary?.totalQuizzes ?? '', data.summary?.averageQuizScore ?? '', data.summary?.passRate ?? '', data.summary?.modulesCompleted ?? '']],
-            theme: 'grid',
-            styles: { font: 'times', fontSize: 11, halign: 'center' },
-            headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+            startY:55,
+            head:[['Total Quizzes','Average Quiz Score','Pass Rate','Modules Completed']],
+            body:[[data.summary?.totalQuizzes ?? '', data.summary?.averageQuizScore ?? '', data.summary?.passRate ?? '', data.summary?.modulesCompleted ?? '']],
+            theme:'grid', styles:{ font:'times', fontSize:11, halign:'center' }, headStyles:{ fillColor:[255,178,0], textColor:0 },
           });
         }
-
         let y = doc.lastAutoTable.finalY + 8;
-
-        // Students Table
-        doc.setFont('times', 'bold');
-        doc.text('Students', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
+        doc.setFont('times','bold'); doc.text('Students', 20, y); doc.setFont('times','normal'); y += 2;
         if (mode === 'assignment') {
           doc.autoTable({
-            startY: y,
-            head: [['Student', 'ID', 'Avg Assignment Score', 'Assignments Submitted', 'On-time %', 'Modules Completed', 'Status']],
-            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
-            theme: 'grid',
-            styles: { font: 'times', fontSize: 10 },
-            headStyles: { fillColor: [240,240,240], textColor: 0 },
+            startY:y,
+            head:[['Student','ID','Avg Assignment Score','Assignments Submitted','On-time %','Modules Completed','Status']],
+            body:(data.progress||[]).map(r=>[r.name,r.studentId,r.avgAssignmentScore,r.assignmentsSubmitted,r.onTimePct,r.modulesCompleted,r.status]),
+            theme:'grid', styles:{ font:'times', fontSize:10 }, headStyles:{ fillColor:[240,240,240], textColor:0 },
           });
         } else {
           doc.autoTable({
-            startY: y,
-            head: [['Student', 'ID', 'Avg Quiz Score', 'Quizzes Taken', 'On-time %', 'Modules Completed', 'Status']],
-            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgQuizScore, r.quizzesTaken, r.onTimePct, r.modulesCompleted, r.status]),
-            theme: 'grid',
-            styles: { font: 'times', fontSize: 10 },
-            headStyles: { fillColor: [240,240,240], textColor: 0 },
+            startY:y,
+            head:[['Student','ID','Avg Quiz Score','Quizzes Taken','On-time %','Modules Completed','Status']],
+            body:(data.progress||[]).map(r=>[r.name,r.studentId,r.avgQuizScore,r.quizzesTaken,r.onTimePct,r.modulesCompleted,r.status]),
+            theme:'grid', styles:{ font:'times', fontSize:10 }, headStyles:{ fillColor:[240,240,240], textColor:0 },
           });
         }
-
-        // Download
         doc.save(`${base}_${classId||'all'}.pdf`);
       } catch (e) {
         console.error(e);
@@ -886,10 +811,10 @@
     }
 
     // Events
-  document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
-  document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
-  document.getElementById('exportAllCsvBtn').addEventListener('click',()=>exportAllCsv().catch(alert));
-  document.getElementById('downloadAllPdfBtn').addEventListener('click',()=>downloadAllPdf().catch(alert));
+    document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
+    document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
+    document.getElementById('exportAllCsvBtn').addEventListener('click',()=>exportAllCsv().catch(alert));
+    document.getElementById('downloadAllPdfBtn').addEventListener('click',()=>downloadAllPdf().catch(alert));
     classSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
     viewSelectEl.addEventListener('change',()=>{ setSortOptionsForMode(viewSelectEl.value); loadAnalyticsView().catch(alert); });
     refreshBtn.addEventListener('click',()=>loadAnalyticsView().catch(console.error));
@@ -898,8 +823,6 @@
       if (viewSelectEl.value === 'assignment') renderAssignmentTable(lastAssignmentProgress);
       else renderQuizTable(lastQuizProgress);
     });
-
-    // Delegate clicks for "View Analytics"
     document.getElementById('atRiskTable').addEventListener('click', (e)=>{
       const btn = e.target.closest('.view-analytics');
       if (!btn) return;

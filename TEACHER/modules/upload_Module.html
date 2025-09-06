@@ -4,10 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Upload Module</title>
+
+  <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <!-- Your page CSS -->
+
+  <!-- Page CSS -->
   <link rel="stylesheet" href="upload.css" />
+
   <style>
     :root{
       --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
@@ -19,7 +23,10 @@
     html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
     .dashboard{display:flex;min-height:100vh}
     .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
+    /* legacy hover rule (works only if sidebar is a sibling) */
     .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
+    /* robust rule using the class your JS toggles */
+    .dashboard.sidebar-expanded .main{margin-left:220px;width:calc(100% - 220px)}
 
     .upload-header{
       background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));
@@ -45,82 +52,49 @@
     .ui-card.w-lg{ --ui-card-max:1000px; }
     .ui-card.w-xl{ --ui-card-max:1200px; }
     .ui-card.w-full{ --ui-card-max:100%; }
-/* ===== Attachment row tidy (desktop) ===== */
-.file-attachment-group{
-  /* your markup uses: .row g-2 align-items-end ... */
-  display:flex;                 /* keep row as flex */
-  align-items:center !important;/* center the two columns vertically */
-  gap:12px;
-}
 
-.file-attachment-group > .col-5{
-  /* file input + size text (keeps size on a new line) */
-  flex:0 0 40%;
-  max-width:40%;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
+    /* ===== Attachment row tidy (desktop) ===== */
+    .file-attachment-group{
+      display:flex;
+      align-items:center !important;
+      gap:12px;
+    }
+    .file-attachment-group > .col-5{
+      flex:0 0 40%;
+      max-width:40%;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .file-attachment-group > .col-7{
+      flex:1 1 60%;
+      max-width:60%;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    /* Unify control heights */
+    .file-attachment-group .attachment-file,
+    .file-attachment-group .attachment-desc{ height:44px; }
+    /* Make Remove match the input height and stay centered */
+    .file-attachment-group .remove-attachment{
+      display:inline-flex;align-items:center;justify-content:center;
+      height:44px;padding:0 14px;border-radius:8px;white-space:nowrap;
+    }
+    /* Keep the dashed “pill” around the file input subtle */
+    .file-attachment-group .file-pill{
+      border:1px dashed var(--border);border-radius:8px;padding:.35rem .5rem;background:#fafafa;
+    }
+    .file-attachment-group .attach-size{ line-height:1.1; }
 
-.file-attachment-group > .col-7{
-  /* description + remove button on one line */
-  flex:1 1 60%;
-  max-width:60%;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-/* Unify control heights */
-.file-attachment-group .attachment-file,
-.file-attachment-group .attachment-desc{
-  height:44px;
-}
-
-/* Make Remove match the input height and stay centered */
-.file-attachment-group .remove-attachment{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  height:44px;               /* same as inputs */
-  padding:0 14px;
-  border-radius:8px;
-  white-space:nowrap;
-}
-
-/* Keep the dashed “pill” around the file input subtle */
-.file-attachment-group .file-pill{
-  border:1px dashed var(--border);
-  border-radius:8px;
-  padding:.35rem .5rem;
-  background:#fafafa;
-}
-
-/* Size label under file chooser */
-.file-attachment-group .attach-size{
-  line-height:1.1;
-}
-
-/* ===== Mobile behavior (≤480px): stack cleanly ===== */
-@media (max-width:480px){
-  .file-attachment-group{
-    align-items:stretch !important;
-    gap:8px;
-  }
-  .file-attachment-group > .col-5,
-  .file-attachment-group > .col-7{
-    flex:0 0 100%;
-    max-width:100%;
-    display:block;           /* stack */
-  }
-  .file-attachment-group .remove-attachment{
-    width:100%;
-    min-height:44px;
-  }
-}
-
-
-    @media (max-width:480px){ .ui-card.constrain{ max-width:calc(100% - 1rem); } }
+    /* ===== Mobile behavior (≤480px): stack cleanly ===== */
+    @media (max-width:480px){
+      .file-attachment-group{ align-items:stretch !important; gap:8px; }
+      .file-attachment-group > .col-5,
+      .file-attachment-group > .col-7{ flex:0 0 100%; max-width:100%; display:block; }
+      .file-attachment-group .remove-attachment{ width:100%; min-height:44px; }
+      .ui-card.constrain{ max-width:calc(100% - 1rem); }
+    }
 
     .step-dots{display:flex;gap:6px;align-items:center}
     .step-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
@@ -134,8 +108,14 @@
     .file-pill{display:flex;align-items:center;gap:.5rem}
     .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
     .page-title.brand{background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  </style>
 
+    /* Avatar-style initials on header */
+    #dashboardUsername{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:36px;height:36px;border-radius:999px;font-weight:800;letter-spacing:.5px;
+      background:#fff;color:var(--brand-dark-1);
+    }
+  </style>
 </head>
 
 <body>
@@ -172,7 +152,7 @@
       <!-- Header -->
       <div class="upload-header d-flex justify-content-between align-items-center p-3 text-white">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
-        <span id="dashboardUsername" class="ms-auto me-3 fw-bold"></span>
+        <span id="dashboardUsername" class="ms-auto me-3" title="Profile" aria-label="Profile"></span>
         <a href="/TEACHER/modules/select_Course.html" class="btn btn-upload">← Back</a>
       </div>
 
@@ -250,13 +230,58 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // ---------- Auth name ----------
-    (function () {
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      if (userData?.username) document.getElementById("dashboardUsername").textContent = userData.username;
+    /* ------------------------------
+       Auth guard + initials-only header
+       ------------------------------ */
+    (function initHeaderInitials(){
+      try{
+        const raw = localStorage.getItem("user") || "{}";
+        const stored = JSON.parse(raw);
+        const u = stored.user || stored;
+
+        // Gate: must be a teacher with an id
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+
+        // Set header initials
+        const el = document.getElementById("dashboardUsername");
+        if (el) {
+          const initials = getInitials(u);
+          el.textContent = initials; // initials only
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+                          || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        }
+      }catch(e){
+        console.error('auth/initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
+
+      function getInitials(u){
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName  || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish){
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
     })();
 
-    // ---------- Modal helper ----------
+    /* ------------------------------
+       Modal helper
+       ------------------------------ */
     const infoModalEl = document.getElementById('infoModal');
     const infoModal   = new bootstrap.Modal(infoModalEl);
     const infoTitleEl = document.getElementById('infoModalLabel');
@@ -277,12 +302,16 @@
       }
     }
 
-    // ---------- File size limit (per file) ----------
-    const FILE_LIMIT_MB = 300;                         // change this if needed
+    /* ------------------------------
+       File size limit (per file)
+       ------------------------------ */
+    const FILE_LIMIT_MB = 300;
     const FILE_LIMIT_BYTES = FILE_LIMIT_MB * 1024 * 1024;
     const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
 
-    // ---------- Helpers ----------
+    /* ------------------------------
+       Helpers
+       ------------------------------ */
     const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));
     const create = (tag, cls) => { const el = document.createElement(tag); if (cls) el.className = cls; return el; };
@@ -321,8 +350,6 @@
         </div>
         <div class="attach-list mt-2"></div>
       `;
-
-      // set size limit text
       attachmentsBox.querySelector('.size-limit').textContent = FILE_LIMIT_MB + ' MB';
 
       const makeAttachmentRow = () => {
@@ -353,7 +380,6 @@
             sizeLabel.textContent = `Selected: ${formatKB(f.size)} — exceeds ${FILE_LIMIT_MB} MB`;
             sizeLabel.classList.add('text-danger');
 
-            // Block immediately & inform
             showInfo('File too large',
               `⚠️ <strong>${f.name}</strong> is ${formatKB(f.size)} which exceeds the per-file limit of <strong>${FILE_LIMIT_MB} MB</strong>. Please choose a smaller file.`);
             fileInput.value = '';

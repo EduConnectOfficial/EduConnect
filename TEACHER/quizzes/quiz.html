@@ -71,11 +71,10 @@
     .file-pill .size{color:var(--muted);font-size:.85rem}
     .file-pill .warn{color:#b91c1c;font-weight:600;font-size:.85rem}
 
-    /* subtle disabled state for rubric */
     .rubric-disabled{opacity:.7}
     .rubric-note{font-size:.9rem}
-    .rubric-note .on{color:#166534}     /* green-ish */
-    .rubric-note .off{color:#7a1f1f}    /* red-ish */
+    .rubric-note .on{color:#166534}
+    .rubric-note .off{color:#7a1f1f}
 
     @media (max-width: 480px){
       .logo-header{display:none}
@@ -157,7 +156,7 @@
                 </div>
               </div>
 
-              <!-- Rubric (always visible; enabled only when ≥1 Essay present) -->
+              <!-- Rubric -->
               <div class="row g-3 mt-2" id="rubricSection">
                 <div class="col-12 col-lg-8">
                   <label class="form-label fw-bold d-flex align-items-center gap-2">
@@ -396,7 +395,7 @@
 
   <script>
     const API = "http://localhost:5000";
-    const TEACHER_FILE_LIMIT_MB = 300; // adjust if needed
+    const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
 
     /* ---------- Sidebar Loader ---------- */
@@ -424,14 +423,58 @@
         .catch(err => console.error("Failed to load sidebar:", err));
     });
 
-    /* ---------- Auth Guard ---------- */
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!userData?.userId || !userData?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-    } else {
-      document.getElementById("Username").textContent = userData.username || "";
-    }
-    const TEACHER_ID = userData.userId;
+    /* ---------- Auth Guard + initials-only header ---------- */
+    (function initHeaderInitials(){
+      try{
+        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        const u = stored.user || stored; // supports {user:{}} or flat
+
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u; // expose for later
+        const el = document.getElementById("Username");
+
+        const initials = getInitials(u);
+        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+                        || u.username
+                        || u.email
+                        || 'Profile';
+
+        if (el){
+          el.textContent = initials;           // 👈 initials only
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        }
+      }catch(e){
+        console.error('Auth/init error:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
+
+      function getInitials(u){
+        const fn = (u.firstName || '').trim();
+        const mn = (u.middleName || '').trim();
+        const ln = (u.lastName  || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        if (fn && mn) return (fn[0] + mn[0]).toUpperCase();
+
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish){
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+
+    // Provide TEACHER_ID binding for later functions
+    const TEACHER_ID = (window.currentUser && window.currentUser.userId) || null;
 
     /* ---------- Utilities ---------- */
     const sizeLimitText = document.getElementById('sizeLimitText');
@@ -548,7 +591,6 @@
           rubricStateNote.textContent = 'Rubric upload enabled (applies to Essay questions).';
         }
       } else {
-        // disable & clear if no essays
         rubricsFileInput.value = "";
         rubricPreview.innerHTML = "";
         rubricsFileInput.setAttribute('disabled', 'true');
@@ -559,7 +601,7 @@
           rubricStateNote.classList.add('off');
           rubricStateNote.textContent = 'Add an Essay question to enable rubric upload.';
         }
-        submitBtn.disabled = false; // uploading quiz without rubric is fine
+        submitBtn.disabled = false;
       }
     }
 
@@ -871,7 +913,7 @@
           correct = normalizeCorrectForTF(correct);
           if (!correct) errors.push('Correct must be TRUE/FALSE (or A/B)');
         } else if (type === 'essay'){
-          correct = 'A'; // placeholder
+          correct = 'A';
         }
 
         const ok = errors.length === 0;
@@ -1092,21 +1134,13 @@
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
           if (!correct) return alert("Please select True or False.");
           quiz.push({ type, question: qText, choices: { A: "True", B: "False" }, correct });
-        } else { // essay
+        } else {
           quiz.push({ type, question: qText, choices: { A: "(Essay response)" }, correct: "A" });
         }
       }
       if (!quiz.length) return alert("Please add at least one valid question.");
 
       let settings = {};
-      const enableTimerEl = document.getElementById("enableTimer");
-      const timerMinutesEl = document.getElementById("timerMinutes");
-      const gracePeriodEl  = document.getElementById("gracePeriod");
-      const fixedOrderEl = document.getElementById("fixedOrderCheck");
-      const enablePaginationEl = document.getElementById("enablePagination");
-      const perPageEl = document.getElementById("perPageInput");
-      const allowBacktrackingEl = document.getElementById("allowBacktracking");
-
       if (enableTimerEl.checked) {
         const mins = parseInt(timerMinutesEl.value, 10);
         const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
@@ -1128,7 +1162,6 @@
 
       const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
 
-      // Essay-only rubric rules
       const essayCount = countEssayQuestions();
       const rubricFile = rubricsFileInput?.files?.[0] || null;
 
@@ -1137,7 +1170,6 @@
         return;
       }
 
-      // Build payload
       const payload = {
         courseId, moduleId, title, description, dueAt,
         attemptsAllowed: attemptsAllowedVal,
@@ -1147,13 +1179,11 @@
       try {
         let res, out;
         if (rubricFile && essayCount > 0) {
-          // Send multipart: rubric file + JSON payload
           const fd = new FormData();
-          fd.append("rubrics", rubricFile);              // backend: field name 'rubrics'
-          fd.append("payload", JSON.stringify(payload)); // backend: JSON.parse(req.body.payload)
+          fd.append("rubrics", rubricFile);
+          fd.append("payload", JSON.stringify(payload));
           res = await fetch(`${API}/upload-quiz`, { method: "POST", body: fd });
         } else {
-          // Either no rubric selected OR no essays (rubric ignored) -> send plain JSON
           res = await fetch(`${API}/upload-quiz`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1183,25 +1213,20 @@
           const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
           modal.show();
 
-          // Reset UI
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
           qIndex = 0; qPager.cur = 0; renderQPager();
-          // timer/pagination
           document.getElementById("enableTimer").checked = false;
           document.getElementById("timerMinutes").disabled = true;
           document.getElementById("gracePeriod").disabled = true;
           document.getElementById("enablePagination").checked = false;
           document.getElementById("perPageInput").disabled = true;
 
-          // rubric reset & state refresh
           rubricPreview.innerHTML = "";
           updateEssayRubricState();
 
-          // start with a fresh first question
           addQuestion(); renderQPager();
 
-          // Clear bulk area
           document.getElementById('bulkFile').value = '';
           document.getElementById('bulkResult').classList.add('d-none');
           document.getElementById('bulkTbody').innerHTML = '';
@@ -1217,15 +1242,18 @@
 
     /* ---------- Boot ---------- */
     (async function init(){
-      addQuestion();         // start with one question
-      // initialize state texts
+      addQuestion();
       const sizeLimitText = document.getElementById('sizeLimitText');
       if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
       updateEssayRubricState();
-      // timer/pagination defaults
       document.getElementById("perPageInput").disabled = true;
       await loadCourses();
     })();
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
+    }
   </script>
 </body>
 </html>

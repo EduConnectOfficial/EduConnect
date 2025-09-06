@@ -16,9 +16,9 @@
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
     rel="stylesheet"
-/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
- <link rel="stylesheet" href="list.css" />
+  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link rel="stylesheet" href="list.css" />
 
   <style>
     :root {
@@ -32,15 +32,14 @@
       --shadow-strong: 0 6px 32px rgba(30, 34, 90, 0.13);
     }
 
-    body {
-      background-color: var(--color-bg);
-      color: var(--color-text);
-    }
+    body { background-color: var(--color-bg); color: var(--color-text); }
 
-    main.container {
-      padding-top: 2rem;
-      padding-bottom: 2rem;
-    }
+    /* Base layout + responsive sidebar expansion */
+    .dashboard{ display:flex; min-height:100vh; }
+    .main{ margin-left:70px; width:calc(100% - 70px); transition:margin-left .3s,width .3s; }
+    .dashboard.sidebar-expanded .main{ margin-left:220px; width:calc(100% - 220px); }
+
+    main.container { padding-top: 2rem; padding-bottom: 2rem; }
 
     .module-content-card {
       background: #fff;
@@ -50,21 +49,20 @@
       max-width: 2000px;
       border: 1px solid var(--color-border);
       transition: box-shadow 0.2s;
-      
     }
+
     .profile-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-}
-.profile-btn .username {
-  font-size: 14px;
-}
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;
+    }
+    .profile-btn .username { font-size: 14px; }
+
+    /* Avatar-style initials */
+    #dashboardUsername{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:999px; font-weight:800; letter-spacing:.5px;
+      background:#ffffff; color:var(--color-primary);
+    }
 
     .module-title {
       color: var(--color-secondary);
@@ -83,61 +81,39 @@
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--color-border);
     }
-    .nav-pills .nav-item {
-      display: inline-block;
-      margin-right: 0.5rem;
-    }
+    .nav-pills .nav-item { display: inline-block; margin-right: 0.5rem; }
     .nav-pills .nav-link {
-      border-radius: 0.75rem;
-      padding: 0.5rem 1rem;
-      font-weight: 500;
+      border-radius: 0.75rem; padding: 0.5rem 1rem; font-weight: 500;
     }
-    .nav-pills .nav-link.active {
-      background-color: var(--color-primary) !important;
-      color: #fff;
-    }
+    .nav-pills .nav-link.active { background-color: var(--color-primary) !important; color: #fff; }
 
     .module-subtitle {
       color: var(--color-primary) !important;
-      font-weight: 600;
-      font-size: 1.3rem;
-      margin-bottom: 0.5rem;
+      font-weight: 600; font-size: 1.3rem; margin-bottom: 0.5rem;
     }
 
-    .module-desc,
-    .main-desc {
-      font-size: 1rem;
-      line-height: 1.5;
-      margin-bottom: 1rem;
+    .module-desc, .main-desc {
+      font-size: 1rem; line-height: 1.5; margin-bottom: 1rem;
     }
 
     .main-desc {
       border-top: 1px solid var(--color-border);
-      padding-top: 1.5rem;
-      margin-top: 2rem;
+      padding-top: 1.5rem; margin-top: 2rem;
     }
 
     .attachment-item {
       background: #e3eafc;
       border-radius: 0.75rem;
-      padding: 1rem;
-      margin-bottom: 1rem;
+      padding: 1rem; margin-bottom: 1rem;
     }
     .attachment-item a {
-      font-weight: 600;
-      color: var(--color-primary);
-      text-decoration: none;
+      font-weight: 600; color: var(--color-primary); text-decoration: none;
     }
-    .attachment-item .small {
-      font-size: 0.85rem;
-      color: #6b7280;
-      margin-top: 0.25rem;
-    }
+    .attachment-item .small { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; }
   </style>
 </head>
 
 <body>
-
   <div class="dashboard">
     <!-- Sidebar -->
     <div id="sidebar-container"></div>
@@ -150,18 +126,19 @@
           });
       });
     </script>
+
     <!-- Main Content -->
     <div class="main">
-    <!-- Header -->
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
           <input id="searchBox" type="text" placeholder="Search my module..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn btn">
-          <i class="fas fa-user-circle fa-2x"></i>
-          <span id="dashboardUsername" class="username ms-2 fw-semibold"></span>
+        <button class="profile-btn btn" type="button" title="Profile">
+          <i class="fas fa-user-circle fa-2x" aria-hidden="true"></i>
+          <span id="dashboardUsername" class="username ms-2 fw-semibold" aria-label="Profile"></span>
         </button>
       </header>
 
@@ -174,16 +151,65 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", async () => {
-      // 1. Load username
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      if (!userData.username) {
-        return window.location.replace("/login/login.html");
-      }
-      document.getElementById("dashboardUsername").textContent = userData.username;
 
-      // 2. Fetch module
+  <script>
+    /* ------------------------------
+       Auth guard + initials-only header
+       ------------------------------ */
+    function initHeaderInitialsAndGuard() {
+      try{
+        const raw = localStorage.getItem("user") || "{}";
+        const stored = JSON.parse(raw);
+        const u = stored.user || stored;
+
+        // Gate: must be a teacher with an id
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.replace("/TEACHER/login/login.html");
+          return null;
+        }
+
+        // Set header initials
+        const el = document.getElementById("dashboardUsername");
+        if (el) {
+          const initials = getInitials(u);
+          el.textContent = initials; // initials only
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+                          || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        }
+        return u;
+      }catch(e){
+        console.error('auth/initHeaderInitials failed:', e);
+        window.location.replace("/TEACHER/login/login.html");
+        return null;
+      }
+
+      function getInitials(u){
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName  || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish){
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      // 1) Guard + initials
+      const user = initHeaderInitialsAndGuard();
+      if (!user) return; // redirected
+
+      // 2) Fetch module content
       const params = new URLSearchParams(location.search);
       const moduleId = params.get("moduleId");
       const subIdx = parseInt(params.get("subIdx"), 10) || 0;
@@ -288,8 +314,6 @@
             </div>`;
         }
 
-        // (Global attachment list removed; now shown per lesson only)
-
         container.classList.remove("text-center", "text-muted");
         container.innerHTML = html;
 
@@ -337,39 +361,40 @@
       }
     });
   </script>
-  
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        fetch("/components/sidebar.html")
-          .then(res => res.text())
-          .then(html => {
-            document.getElementById("sidebar-container").innerHTML = html;
 
-            const sidebar = document.querySelector(".sidebar");
-            const dashboard = document.querySelector(".dashboard");
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
 
-            if (sidebar && dashboard) {
-              sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
-              sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
-            }
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
 
-            document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-              toggle.addEventListener('click', e => {
-                e.preventDefault();
-                const parent = toggle.closest('.has-submenu');
-                parent.classList.toggle('open');
-                const expanded = toggle.getAttribute('aria-expanded') === 'true';
-                toggle.setAttribute('aria-expanded', String(!expanded));
-              });
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
             });
-          })
-          .catch(err => console.error("Failed to load sidebar:", err));
-      });
-       function logoutUser(){
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
+
+    function logoutUser(){
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/TEACHER/login/login.html";
     }
-    </script>
+  </script>
 </body>
 </html>
