@@ -91,7 +91,8 @@
                 <option value="deactivated">Deactivated</option>
               </select>
               <select id="filterSort" class="form-select">
-                <option value="nameAsc" selected>Sort: A → Z</option>
+                <option value="none" selected>Sort: —</option>
+                <option value="nameAsc">Sort: A → Z</option>
                 <option value="nameDesc">Sort: Z → A</option>
                 <option value="statusActiveFirst">Sort: Status (Active → Deactivated)</option>
                 <option value="statusDeactivatedFirst">Sort: Status (Deactivated → Active)</option>
@@ -109,6 +110,7 @@
               <thead class="table-light">
                 <tr>
                   <th class="sortable" data-sort="index"># <span class="arrow">↕</span></th>
+                  <th class="sortable" data-sort="adminId">Admin ID <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="username">Username <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="firstName">First Name <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="middleName">Middle Name <span class="arrow">↕</span></th>
@@ -119,7 +121,7 @@
                 </tr>
               </thead>
               <tbody id="userTableBody">
-                <tr><td colspan="8">Loading…</td></tr>
+                <tr><td colspan="9">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -205,20 +207,69 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- 🔷 Initials in header (kept function name, added CURRENT_USER_ID) -->
   <script>
-    // Header username & current userId
+    // Header initials & current userId
     let CURRENT_USER_ID = null;
     (function populateUsername() {
       try {
-        const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
+        const rawLocal = localStorage.getItem("user");
+        const rawSession = sessionStorage.getItem("user");
         let data = null;
-        if (raw) { try { data = JSON.parse(raw); } catch {} }
-        let username = (data && (data.username || (`${data.firstName ?? ""} ${data.lastName ?? ""}`.trim()) || ((data.email || '').split('@')[0] || ''))) || "";
-        if (!username && typeof raw === "string") username = raw;
+        if (rawLocal)  { try { data = JSON.parse(rawLocal); }  catch {} }
+        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch {} }
+
+        const getInitials = (info = {}) => {
+          const f = (info.firstName || "").trim();
+          const l = (info.lastName  || "").trim();
+          const u = (info.username  || "").trim();
+          const e = (info.email     || "").trim();
+
+          // Prefer First + Last initials when available
+          if (f || l) {
+            let letters = "";
+            if (f) letters += f[0];
+            if (l) letters += l[0];
+            else if (f.length > 1) letters += f[1];
+            letters = letters.toUpperCase();
+            if (letters.length >= 2) return letters.slice(0,2);
+            return (letters + "U").slice(0,2);
+          }
+
+          // Fallback: username first 2 alphanumerics
+          if (u) {
+            const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (cleaned) return (cleaned + "U").slice(0,2);
+          }
+
+          // Fallback: email local-part first 2 alphanumerics
+          if (e && e.includes("@")) {
+            const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (local) return (local + "U").slice(0,2);
+          }
+
+          return "UU";
+        };
+
+        const initials = getInitials(data || {});
         const el = document.getElementById("Username");
-        if (el) { el.textContent = username || "User"; el.title = username || "User"; }
+        if (el) {
+          el.textContent = initials;
+          // Title/tooltip shows best available full identifier
+          const full =
+            (data && [data.firstName, data.middleName, data.lastName].filter(Boolean).join(" ").trim()) ||
+            (data && data.username) ||
+            (data && data.email) ||
+            "User";
+          el.title = full;
+        }
+
         CURRENT_USER_ID = data?.userId || data?.uid || null;
-      } catch (e) { console.error("Failed to populate username:", e); }
+      } catch (e) {
+        console.error("Failed to populate initials:", e);
+        const el = document.getElementById("Username");
+        if (el) { el.textContent = "UU"; el.title = "User"; }
+      }
     })();
   </script>
 
@@ -245,12 +296,13 @@
     const elStatus   = document.getElementById('filterStatus');
     const elSort     = document.getElementById('filterSort');
 
-    let supers = []; // STRICT: isSuperAdmin === true
+    let supers = []; // STRICT: isAdmin === true
     let selectedUser = null;
     let selectedRow  = null;
     let nextActive   = true;
 
-    let sortKey = 'index';
+    // Default to sorting by Admin ID ascending
+    let sortKey = 'adminId';
     let sortDir = 'asc';
 
     function maskEmail(email) {
@@ -264,8 +316,21 @@
       return maskedLocal + '@' + (maskedDn ? maskedDn + '.' : '') + tld;
     }
 
-    function norm(v){ return (v ?? '').toString().toLowerCase().trim(); }
-    function isActive(u){ return u.active !== false; }
+    const norm = v => (v ?? '').toString().toLowerCase().trim();
+    const isActive = u => u.active !== false;
+
+    // Robust Admin ID sort key (supports A-YYYY-#####; falls back to userId/digits)
+    function adminIdSortKey(u) {
+      const id = (u.adminId || u.userId || '').toString();
+      const m = id.match(/^A-(\d{4})-(\d{1,})$/i);
+      if (m) {
+        const year = m[1];
+        const seq  = m[2].padStart(5, '0');
+        return `${year}-${seq}`;
+      }
+      const digits = id.replace(/\D/g, '');
+      return digits.padStart(9, '0');
+    }
 
     function applyFilters(list){
       const q = norm(elSearch.value);
@@ -286,10 +351,14 @@
       return norm(u.username || ((u.firstName ?? '') + ' ' + (u.lastName ?? '')));
     }
 
+    // Dropdown sort used only as a TIEBREAKER
     function sortByDropdown(a,b){
       const mode = elSort.value;
       const aa = isActive(a), bb = isActive(b);
-
+      if (mode === 'none') {
+        // Default to Admin ID ascending
+        return 0;
+      }
       if (mode === 'nameAsc')  return nameKey(a).localeCompare(nameKey(b));
       if (mode === 'nameDesc') return nameKey(b).localeCompare(nameKey(a));
       if (mode === 'statusActiveFirst')      return (aa===bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? -1 : 1);
@@ -300,14 +369,15 @@
     function sortByHeader(a,b){
       let av, bv;
       switch (sortKey){
-        case 'index':     av=a.__index;          bv=b.__index; break;
-        case 'username':  av=norm(a.username);   bv=norm(b.username); break;
-        case 'firstName': av=norm(a.firstName);  bv=norm(b.firstName); break;
-        case 'middleName':av=norm(a.middleName); bv=norm(b.middleName); break;
-        case 'lastName':  av=norm(a.lastName);   bv=norm(b.lastName); break;
-        case 'email':     av=norm(a.email);      bv=norm(b.email); break;
-        case 'status':    av=isActive(a)?0:1;    bv=isActive(b)?0:1;   break;
-        default:          av=a.__index;          bv=b.__index;
+        case 'index':     av=a.__index;            bv=b.__index; break;
+        case 'adminId':   av=adminIdSortKey(a);    bv=adminIdSortKey(b); break;
+        case 'username':  av=norm(a.username);     bv=norm(b.username); break;
+        case 'firstName': av=norm(a.firstName);    bv=norm(b.firstName); break;
+        case 'middleName':av=norm(a.middleName);   bv=norm(b.middleName); break;
+        case 'lastName':  av=norm(a.lastName);     bv=norm(b.lastName); break;
+        case 'email':     av=norm(a.email);        bv=norm(b.email); break;
+        case 'status':    av=isActive(a)?0:1;      bv=isActive(b)?0:1;   break;
+        default:          av=a.__index;            bv=b.__index;
       }
       if (av===bv) return 0;
       const d = av>bv ? 1 : -1;
@@ -322,30 +392,36 @@
     function renderTable(list){
       tableBody.innerHTML = '';
       const filtered = applyFilters(list);
-      const sorted = filtered.sort((a,b)=>{
-        const d = sortByDropdown(a,b);
-        return d !== 0 ? d : sortByHeader(a,b);
-      });
-
-      if (!sorted.length){
-        tableBody.innerHTML = '<tr><td colspan="8">No matching Super Admins.</td></tr>';
+      if (!filtered.length){
+        tableBody.innerHTML = '<tr><td colspan="9">No matching Super Admins.</td></tr>';
         return;
       }
 
-      const totalSupers = supers.length; // since we strictly show super admins only
+      let sorted;
+      if (elSort.value === 'none') {
+        // Default sort: Admin ID ascending
+        sorted = filtered.sort((a,b)=>sortByHeader(a,b));
+      } else {
+        // Sort by dropdown, then header as tiebreaker
+        sorted = filtered.sort((a,b)=>{
+          const d = sortByDropdown(a,b);
+          if (d !== 0) return d;
+          return sortByHeader(a,b);
+        });
+      }
+
+      const totalSupers = supers.length;
 
       sorted.forEach((user, i)=>{
         const active = isActive(user);
         const isSelf = CURRENT_USER_ID && (user.userId === CURRENT_USER_ID);
-        const isLastRemaining = totalSupers <= 1; // last remaining super admin overall
+        const isLastRemaining = totalSupers <= 1;
 
         const row = document.createElement('tr');
         row.innerHTML =
           '<td>' + (i+1) + '</td>' +
-          '<td>' +
-            (user.username || '') +
-          
-          '</td>' +
+          '<td>' + (user.adminId || user.userId || '') + '</td>' +
+          '<td>' + (user.username || '') + '</td>' +
           '<td>' + (user.firstName || '') + '</td>' +
           '<td>' + (user.middleName || '') + '</td>' +
           '<td>' + (user.lastName || '') + '</td>' +
@@ -365,7 +441,6 @@
         const editBtn   = row.querySelector('.edit-btn');
         const deleteBtn = row.querySelector('.delete-btn');
 
-        // Guard delete: cannot delete yourself or last remaining super admin
         if (isSelf || isLastRemaining) {
           deleteBtn.disabled = true;
           deleteBtn.setAttribute('data-bs-toggle', 'tooltip');
@@ -444,11 +519,10 @@
 
         // Delete
         deleteBtn.addEventListener('click', ()=>{
-          // Defensive double-checks
           const total = supers.length;
           const lastRemaining = total <= 1;
           if (deleteBtn.disabled || (CURRENT_USER_ID && user.userId === CURRENT_USER_ID) || lastRemaining) {
-            return; // blocked
+            return;
           }
 
           selectedUser = user;
@@ -495,7 +569,6 @@
         tableBody.appendChild(row);
       });
 
-      // enable Bootstrap tooltips for disabled delete buttons
       enableTooltips(tableBody);
     }
 
@@ -507,21 +580,30 @@
 
         const users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
         supers = users
-          .filter(u => u && u.isAdmin  === true)  // STRICT
+          .filter(u => u && u.isAdmin === true)
           .map((u,i)=>({ ...u, __index:i }));
 
         if (!supers.length){
-          tableBody.innerHTML = '<tr><td colspan="8">No Super Admins found.</td></tr>';
+          tableBody.innerHTML = '<tr><td colspan="9">No Super Admins found.</td></tr>';
           return;
         }
         renderTable(supers);
       } catch (err) {
         console.error('Failed to load Super Admins:', err);
-        tableBody.innerHTML = '<tr><td colspan="8">Error loading Super Admins.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="9">Error loading Super Admins.</td></tr>';
       }
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
+      // Make Admin ID header active by default with ▲
+      document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('active'));
+      const idTh = document.querySelector('th.sortable[data-sort="adminId"]');
+      if (idTh){
+        idTh.classList.add('active');
+        const arrow = idTh.querySelector('.arrow');
+        if (arrow) arrow.textContent = '▲';
+      }
+
       document.querySelectorAll('th.sortable').forEach(th=>{
         th.addEventListener('click', ()=>{
           const key = th.getAttribute('data-sort');
@@ -530,14 +612,10 @@
 
           document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('active'));
           th.classList.add('active');
+
+          document.querySelectorAll('th.sortable .arrow').forEach(a=>a.textContent='↕');
           const arrow = th.querySelector('.arrow');
           if (arrow) arrow.textContent = (sortDir === 'asc') ? '▲' : '▼';
-          document.querySelectorAll('th.sortable').forEach(h=>{
-            if (h !== th) {
-              const s = h.querySelector('.arrow');
-              if (s) s.textContent = '↕';
-            }
-          });
 
           renderTable(supers);
         });
@@ -547,7 +625,6 @@
       elStatus.addEventListener('change', ()=>renderTable(supers));
       elSort.addEventListener('change', ()=>renderTable(supers));
 
-      // Edit modal save logic
       document.getElementById('editUserForm').addEventListener('submit', async function(e){
         e.preventDefault();
         if (!selectedUser) return;
@@ -578,6 +655,7 @@
           alert('Server error while updating profile.');
         }
       });
+
       loadSuperAdmins();
     });
 

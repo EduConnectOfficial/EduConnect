@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,34 +10,142 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="profile.css" />
   <style>
-    :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
-      --accent-1:#FF6A00; --accent-2:#B03C10;
-      --radius:14px;
+    :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --accent-1: #FF6A00;
+      --accent-2: #B03C10;
+      --radius: 14px;
     }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column}
-    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
-    
-    .logo-header{height:44px}
-    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
-    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
-    .search-box i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#d7dadf}
-    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
-    .profile-btn .username{font-size:14px}
-    .content{padding:24px}
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 10px 22px rgba(0,0,0,.08)}
-    .ui-card.section{padding:18px}
-    .btn-amber{background:linear-gradient(to bottom,var(--accent-1),var(--accent-2));color:#fff;border:none}
-    .btn-amber:hover{filter:brightness(1.06); color:#fff}
-    .btn-amber-outline{background:#fff;color:var(--accent-2);border:1px solid var(--accent-2)}
-    .btn-amber-outline:hover{background:linear-gradient(to bottom,var(--accent-1),var(--accent-2));color:#fff;border-color:transparent}
-    .form-control:focus,.form-select:focus{border-color:var(--accent-2)!important;box-shadow:0 0 0 .2rem rgba(255,106,0,.18)!important}
-    .modal-header{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;border-bottom:none}
-    .modal-content{border-radius:12px;border:1px solid var(--border)}
-    .modal-footer{border-top:1px solid var(--border)}
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    .dashboard {
+      display: flex;
+      min-height: 100vh
+    }
+
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sidebar:hover~.main {
+      margin-left: 220px;
+      width: calc(100% - 220px)
+    }
+
+    .logo-header {
+      height: 44px
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 520px;
+      margin: 0 20px
+    }
+
+    .search-box input {
+      border: none;
+      border-radius: 999px;
+      padding: .6rem .9rem .6rem 1rem
+    }
+
+    .search-box i {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #d7dadf
+    }
+
+    .profile-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer
+    }
+
+    .profile-btn .username {
+      font-size: 14px
+    }
+
+    .content {
+      padding: 24px
+    }
+
+    .ui-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, .08)
+    }
+
+    .ui-card.section {
+      padding: 18px
+    }
+
+    .btn-amber {
+      background: linear-gradient(to bottom, var(--accent-1), var(--accent-2));
+      color: #fff;
+      border: none
+    }
+
+    .btn-amber:hover {
+      filter: brightness(1.06);
+      color: #fff
+    }
+
+    .btn-amber-outline {
+      background: #fff;
+      color: var(--accent-2);
+      border: 1px solid var(--accent-2)
+    }
+
+    .btn-amber-outline:hover {
+      background: linear-gradient(to bottom, var(--accent-1), var(--accent-2));
+      color: #fff;
+      border-color: transparent
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--accent-2) !important;
+      box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important
+    }
+
+    .modal-header {
+      background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+      color: #FFD8A9;
+      border-bottom: none
+    }
+
+    .modal-content {
+      border-radius: 12px;
+      border: 1px solid var(--border)
+    }
+
+    .modal-footer {
+      border-top: 1px solid var(--border)
+    }
   </style>
 </head>
 
@@ -63,9 +172,11 @@
           <h2 class="fw-bold mb-3">Profile Management</h2>
           <form id="profileForm" class="row g-4" enctype="multipart/form-data">
             <div class="col-12 text-center">
-              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover;" alt="Profile Picture" onerror="this.src='/assets/default-avatar.png'"/>
+              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120"
+                height="120" style="object-fit:cover;" alt="Profile Picture"
+                onerror="this.src='/assets/default-avatar.png'" />
               <div class="d-flex justify-content-center">
-                <input type="file" id="profilePic" name="profilePic" accept="image/*" class="form-control w-auto"/>
+                <input type="file" id="profilePic" name="profilePic" accept="image/*" class="form-control w-auto" />
               </div>
             </div>
             <div class="col-md-4">
@@ -90,13 +201,15 @@
             </div>
             <div class="col-12 text-end">
               <button type="submit" class="btn btn-amber">Update Profile</button>
-              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
+              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal"
+                data-bs-target="#changePasswordModal">Change Password</button>
             </div>
           </form>
         </div>
 
         <!-- Change Password Modal -->
-        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel"
+          aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
               <div class="modal-header">
@@ -136,6 +249,23 @@
           </div>
         </div>
 
+        <!-- App Alert Modal -->
+        <div class="modal fade" id="appAlertModal" tabindex="-1" aria-labelledby="appAlertTitle" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div id="appAlertHeader" class="modal-header">
+                <h5 class="modal-title" id="appAlertTitle">Notice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div id="appAlertBody" class="modal-body"></div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
       </section>
     </div>
   </div>
@@ -166,6 +296,34 @@
     });
   </script>
 
+  <script>
+  function showAppAlert(message, { title = "Notice", variant = "primary" } = {}) {
+    const header = document.getElementById("appAlertHeader");
+    const titleEl = document.getElementById("appAlertTitle");
+    const bodyEl  = document.getElementById("appAlertBody");
+
+    // reset header style then apply variant
+    header.className = "modal-header";
+    const bg = {
+      primary:  "bg-primary text-white",
+      success:  "bg-success text-white",
+      danger:   "bg-danger text-white",
+      warning:  "bg-warning",
+      info:     "bg-info",
+      secondary:"bg-secondary text-white",
+      dark:     "bg-dark text-white",
+      light:    "bg-light"
+    }[variant] || "bg-primary text-white";
+    header.classList.add(...bg.split(" "));
+
+    titleEl.textContent = title;
+    bodyEl.textContent  = message;
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("appAlertModal")).show();
+  }
+</script>
+
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -181,13 +339,49 @@
     }
     const userId = encodeURIComponent(storedUser.userId);
 
-    // Header username
+    // Helper: compute initials with smart fallbacks
+    function getInitials(info = {}) {
+      const f = (info.firstName || "").trim();
+      const l = (info.lastName || "").trim();
+      const u = (info.username || "").trim();
+      const e = (info.email || "").trim();
+
+      if (f || l) {
+        let letters = "";
+        if (f) letters += f[0];
+        if (l) letters += l[0];
+        else if (f.length > 1) letters += f[1]; // fallback: second char of first name
+        letters = letters.toUpperCase();
+        if (letters.length >= 2) return letters.slice(0, 2);
+        return (letters + "U").slice(0, 2);
+      }
+      if (u) {
+        const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+        if (cleaned) return (cleaned + "U").slice(0, 2);
+      }
+      if (e && e.includes("@")) {
+        const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+        if (local) return (local + "U").slice(0, 2);
+      }
+      return "UU";
+    }
+    function bestFull(info = {}) {
+      return [info.firstName, info.middleName, info.lastName].filter(Boolean).join(" ").trim()
+        || info.username
+        || info.email
+        || "User";
+    }
+
+    // Header initials
     const UsernameEl = document.getElementById("Username");
-    if (storedUser?.username) UsernameEl.textContent = storedUser.username;
+    if (UsernameEl) {
+      UsernameEl.textContent = getInitials(storedUser);
+      UsernameEl.title = bestFull(storedUser);
+    }
 
     // Elements
     const profilePicInput = document.getElementById("profilePic");
-    const profilePreview  = document.getElementById("profilePreview");
+    const profilePreview = document.getElementById("profilePreview");
 
     // Preview selected image
     profilePicInput.addEventListener("change", () => {
@@ -203,16 +397,25 @@
         const { success, user } = await res.json();
         if (!success || !user) throw new Error("User not found");
 
-        document.getElementById("firstName").value  = user.firstName || "";
+        document.getElementById("firstName").value = user.firstName || "";
         document.getElementById("middleName").value = user.middleName || "";
-        document.getElementById("lastName").value   = user.lastName || "";
-        document.getElementById("username").value   = user.username || "";
-        document.getElementById("email").value      = user.email || "";
+        document.getElementById("lastName").value = user.lastName || "";
+        document.getElementById("username").value = user.username || "";
+        document.getElementById("email").value = user.email || "";
 
-        if (user.username) {
-          UsernameEl.textContent = user.username;
-          storedUser.username = user.username;
+        // Update header initials + title from fresh user data
+        if (UsernameEl) {
+          UsernameEl.textContent = getInitials(user);
+          UsernameEl.title = bestFull(user);
         }
+
+        // Keep local cache aligned
+        if (user.username) storedUser.username = user.username;
+        if (user.firstName) storedUser.firstName = user.firstName;
+        if (user.middleName !== undefined) storedUser.middleName = user.middleName || "";
+        if (user.lastName) storedUser.lastName = user.lastName;
+        if (user.email) storedUser.email = user.email;
+
         if (user.photoURL) {
           profilePreview.src = `${SERVER_BASE}${user.photoURL}?t=${Date.now()}`;
           storedUser.photoURL = user.photoURL;
@@ -227,10 +430,10 @@
     document.getElementById("profileForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const fd = new FormData();
-      fd.append("firstName",  document.getElementById("firstName").value);
+      fd.append("firstName", document.getElementById("firstName").value);
       fd.append("middleName", document.getElementById("middleName").value);
-      fd.append("lastName",   document.getElementById("lastName").value);
-      fd.append("username",   document.getElementById("username").value);
+      fd.append("lastName", document.getElementById("lastName").value);
+      fd.append("username", document.getElementById("username").value);
       if (profilePicInput.files.length) fd.append("profilePic", profilePicInput.files[0]);
 
       try {
@@ -240,36 +443,51 @@
         const out = await res.json();
 
         if (res.ok && out.success) {
-          alert("✅ Profile updated successfully!");
-          if (out.updatedUser?.username) {
-            storedUser.username = out.updatedUser.username;
-            UsernameEl.textContent = out.updatedUser.username;
+          showAppAlert("✅ Profile updated successfully!");
+          const u = out.updatedUser || {};
+
+          // Update header initials + title from updated data
+          const merged = {
+            ...storedUser,
+            ...u
+          };
+          if (UsernameEl) {
+            UsernameEl.textContent = getInitials(merged);
+            UsernameEl.title = bestFull(merged);
           }
-          if (out.updatedUser?.photoURL) {
-            profilePreview.src = `${SERVER_BASE}${out.updatedUser.photoURL}?t=${Date.now()}`;
-            storedUser.photoURL = out.updatedUser.photoURL;
+
+          // Persist updates locally
+          if (u.username !== undefined) storedUser.username = u.username;
+          if (u.firstName !== undefined) storedUser.firstName = u.firstName;
+          if (u.middleName !== undefined) storedUser.middleName = u.middleName;
+          if (u.lastName !== undefined) storedUser.lastName = u.lastName;
+          if (u.email !== undefined) storedUser.email = u.email;
+
+          if (u.photoURL) {
+            profilePreview.src = `${SERVER_BASE}${u.photoURL}?t=${Date.now()}`;
+            storedUser.photoURL = u.photoURL;
           }
           localStorage.setItem("user", JSON.stringify(storedUser));
         } else {
-          alert(out?.message || "❌ Failed to update profile.");
+          showAppAlert(out?.message || "❌ Failed to update profile.");
         }
       } catch (err) {
         console.error("❌ Profile update failed:", err);
-        alert("❌ Profile update failed.");
+        showAppAlert("❌ Profile update failed.");
       }
     });
 
     // ===== Auth helpers (robust auto-login) =====
-    function persistAuth(obj){
+    function persistAuth(obj) {
       const user = obj?.user || obj?.data?.user || obj?.data || obj;
       const token = obj?.token || obj?.accessToken || obj?.jwt || obj?.data?.token || null;
       if (user) localStorage.setItem("user", JSON.stringify({ ...user, token }));
       if (token) localStorage.setItem("authToken", token);
     }
 
-    async function smartLogin({ email, username, password }){
+    async function smartLogin({ email, username, password }) {
       const bodies = [];
-      if (email)    { bodies.push({ email, password }, { identifier: email, password }); }
+      if (email) { bodies.push({ email, password }, { identifier: email, password }); }
       if (username) { bodies.push({ username, password }, { identifier: username, password }); }
 
       const routes = [
@@ -294,14 +512,14 @@
               });
               const text = await r.text();
               let json = {};
-              try { json = JSON.parse(text); } catch {}
+              try { json = JSON.parse(text); } catch { }
 
               const okUser = json?.user || json?.data?.user || (json?.success && (json?.user || json?.data));
               if (r.ok && okUser) {
                 persistAuth(json);
                 return json;
               }
-              errors.push(`${credentials}@${url} -> ${r.status} ${json?.error || text.slice(0,120)}`);
+              errors.push(`${credentials}@${url} -> ${r.status} ${json?.error || text.slice(0, 120)}`);
             } catch (e) {
               errors.push(`${url} (${credentials}) -> ${e.message}`);
             }
@@ -312,40 +530,40 @@
     }
 
     // ===== Change Password (with !important coloring) =====
-    const newPw     = document.getElementById("newPassword");
+    const newPw = document.getElementById("newPassword");
     const confirmPw = document.getElementById("confirmPassword");
-    const msgDiv    = document.getElementById("changePasswordMsg");
+    const msgDiv = document.getElementById("changePasswordMsg");
 
-    function setMsg(text, color){
+    function setMsg(text, color) {
       msgDiv.textContent = text;
       msgDiv.style.display = "block";
-      msgDiv.style.setProperty("color", color, "important"); // << !important
+      msgDiv.style.setProperty("color", color, "important");
     }
-    function clearMsg(){
+    function clearMsg() {
       msgDiv.textContent = "";
       msgDiv.style.display = "none";
       msgDiv.style.removeProperty("color");
     }
 
-    function tick(el, ok){
+    function tick(el, ok) {
       const i = el.querySelector("i");
       i.classList.toggle("bi-check-circle", ok);
       i.classList.toggle("text-success", ok);
       i.classList.toggle("bi-x-circle", !ok);
       i.classList.toggle("text-danger", !ok);
     }
-    function livePw(){
+    function livePw() {
       const p = newPw.value;
-      tick(document.getElementById("pwLength"),  p.length >= 8);
-      tick(document.getElementById("pwUpper"),   /[A-Z]/.test(p));
-      tick(document.getElementById("pwNumber"),  /\d/.test(p));
+      tick(document.getElementById("pwLength"), p.length >= 8);
+      tick(document.getElementById("pwUpper"), /[A-Z]/.test(p));
+      tick(document.getElementById("pwNumber"), /\d/.test(p));
       tick(document.getElementById("pwSpecial"), /[^A-Za-z0-9]/.test(p));
-      tick(document.getElementById("pwMatch"),   p === confirmPw.value && p !== "");
+      tick(document.getElementById("pwMatch"), p === confirmPw.value && p !== "");
     }
     newPw.addEventListener("input", livePw);
     confirmPw.addEventListener("input", livePw);
 
-    document.getElementById("toggleChangePw").addEventListener("change", function(){
+    document.getElementById("toggleChangePw").addEventListener("change", function () {
       const t = this.checked ? "text" : "password";
       document.getElementById("currentPassword").type = t;
       newPw.type = t; confirmPw.type = t;
@@ -356,38 +574,31 @@
       clearMsg();
 
       const currentPassword = document.getElementById("currentPassword").value;
-      const newPassword     = newPw.value;
+      const newPassword = newPw.value;
       const confirmPassword = confirmPw.value;
 
-      // Validate
-      if (newPassword.length < 8)            return setMsg("New password must be at least 8 characters.", "red");
-      if (!/[A-Z]/.test(newPassword))         return setMsg("New password must contain at least 1 uppercase letter.", "red");
-      if (!/\d/.test(newPassword))            return setMsg("New password must contain at least 1 number.", "red");
-      if (!/[^A-Za-z0-9]/.test(newPassword))  return setMsg("New password must contain at least 1 special character.", "red");
-      if (newPassword !== confirmPassword)    return setMsg("New passwords do not match.", "red");
+      if (newPassword.length < 8) return setMsg("New password must be at least 8 characters.", "red");
+      if (!/[A-Z]/.test(newPassword)) return setMsg("New password must contain at least 1 uppercase letter.", "red");
+      if (!/\d/.test(newPassword)) return setMsg("New password must contain at least 1 number.", "red");
+      if (!/[^A-Za-z0-9]/.test(newPassword)) return setMsg("New password must contain at least 1 special character.", "red");
+      if (newPassword !== confirmPassword) return setMsg("New passwords do not match.", "red");
 
       try {
-        // Change password
         const res = await fetch(`${API}/users/${userId}/change-password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ currentPassword, newPassword }),
         });
         const ct = res.headers.get("content-type") || "";
-        const result = ct.includes("application/json") ? await res.json() : { success:false, error:"Non-JSON response" };
+        const result = ct.includes("application/json") ? await res.json() : { success: false, error: "Non-JSON response" };
         if (!res.ok || !result.success) return setMsg(result?.error || `HTTP ${res.status}`, "red");
 
-        // Re-login (email first, then username)
         const latestEmail = document.getElementById("email").value || storedUser.email || null;
         const latestUsername = document.getElementById("username").value || storedUser.username || null;
 
         try {
           await smartLogin({ email: latestEmail, username: latestUsername, password: newPassword });
           setMsg("Password changed!", "green");
-
-          // Optional: redirect to SuperAdmin login (uncomment if desired)
-          // window.location.href = "/digipic_IT/login/login.html";
-
           setTimeout(() => {
             bootstrap.Modal.getOrCreateInstance(document.getElementById("changePasswordModal")).hide();
             document.getElementById("changePasswordForm").reset();
@@ -396,8 +607,6 @@
         } catch (loginErr) {
           console.error("Follow-up login failed:", loginErr);
           setMsg("Password changed, but auto-login failed. Please log in again.", "red");
-          // Optionally redirect:
-          // window.location.href = "/digipic_IT/login/login.html";
         }
       } catch (err) {
         console.error("Change password error:", err);
@@ -406,11 +615,12 @@
     });
 
     // Logout helper
-    function logoutUser(){
+    function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/ADMIN/login/login.html";
     }
   </script>
 </body>
+
 </html>

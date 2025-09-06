@@ -22,7 +22,7 @@ const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString(
 
 // lockout policy
 const TEMP_LOCK_THRESHOLD_MIN = 3;     // 3–4 -> temp lock
-const TEMP_LOCK_THRESHOLD_MAX = 4;
+const TEMP_LOCK_THRESHOLD_MAX = 5;
 const TEMP_LOCK_MINUTES = 3;           // <-- 3 minutes as requested
 const DEACTIVATE_THRESHOLD_MIN = 5;    // 5–10 -> set active=false
 const DEACTIVATE_THRESHOLD_MAX = 10;

@@ -229,12 +229,14 @@
   </div>
 
   <script>
-    // Header user name
+    // Header initials
     const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData || !userData.username) {
+    if (!userData || !userData.firstName || !userData.lastName) {
       window.location.href = "../login/login.html";
     } else {
-      document.getElementById("Username").textContent = userData.username;
+      const firstInitial = userData.firstName.charAt(0).toUpperCase();
+      const lastInitial = userData.lastName.charAt(0).toUpperCase();
+      document.getElementById("Username").textContent = `${firstInitial}${lastInitial}`;
     }
 
     const API_ORIGIN = "http://localhost:5000";
@@ -253,7 +255,6 @@
 
     async function loadDashboard() {
       try {
-        // Pull decrypted names + precomputed stats from your new route
         const res = await fetch(`${API_ORIGIN}/api/dashboard-stats`);
         const data = await res.json();
         if (!data?.success) throw new Error("stats not ok");
@@ -280,21 +281,20 @@
         document.getElementById("topCourseCard").textContent = s.topCourse || "—";
         document.getElementById("mostCompletedModuleCard").textContent = s.mostCompletedModule || "—";
 
-        // Role counts (STRICT)
+        // Role counts
         let teachers = 0, students = 0, superAdmins = 0;
         const sample = [];
 
         list.forEach(u => {
           const isTeacher = u?.isTeacher === true || Boolean(u?.teacherId);
           const isStudent = u?.isStudent === true || Boolean(u?.studentId);
-          const isAdmin   = u?.isAdmin === true;           // STRICT Super Admin
+          const isAdmin   = u?.isAdmin === true;  
 
           if (isTeacher) teachers++;
           if (isStudent) students++;
           if (isAdmin)   superAdmins++;
 
           if ((isTeacher || isStudent) && sample.length < 12) {
-            // Names are already decrypted by backend: firstName, middleName, lastName
             const fn  = (u.firstName  || '').trim();
             const mn  = (u.middleName || '').trim();
             const ln  = (u.lastName   || '').trim();
@@ -314,7 +314,6 @@
           }
         });
 
-        // Role cards
         document.getElementById("teachersCount").textContent = teachers;
         document.getElementById("studentsCount").textContent = students;
         document.getElementById("itCount").textContent       = superAdmins;
@@ -334,7 +333,7 @@
           }
         });
 
-        // Chart: Role distribution (Admins = Super Admins)
+        // Chart: Role distribution
         const ctx2 = document.getElementById("roleDistributionChart");
         if (roleDistributionChart) roleDistributionChart.destroy();
         roleDistributionChart = new Chart(ctx2, {
@@ -355,7 +354,7 @@
           }
         });
 
-        // Sample table (FIRST / MIDDLE / LAST)
+        // Sample table
         const tbody = document.getElementById("sampleUsersBody");
         if (!sample.length) {
           tbody.innerHTML = `<tr><td colspan="8">No Teacher/Student users found.</td></tr>`;

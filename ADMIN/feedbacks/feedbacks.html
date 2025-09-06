@@ -36,8 +36,37 @@
     <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
-    <!-- Sidebar logic (unchanged) -->
+    <!-- Sidebar logic + header initials -->
     <script>
+      // Helpers to compute initials and a nice tooltip label
+      function getInitials(info = {}) {
+        const f = (info.firstName || "").trim();
+        const l = (info.lastName  || "").trim();
+        const u = (info.username  || "").trim();
+        const e = (info.email     || "").trim();
+
+        if (f || l) {
+          let letters = "";
+          if (f) letters += f[0];
+          if (l) letters += l[0];
+          else if (f.length > 1) letters += f[1];
+          return letters.toUpperCase().slice(0,2) || "UU";
+        }
+        if (u) {
+          const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+          return (cleaned || "UU").slice(0,2);
+        }
+        if (e && e.includes("@")) {
+          const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+          return (local || "UU").slice(0,2);
+        }
+        return "UU";
+      }
+      function bestFull(info = {}) {
+        const full = [info.firstName, info.middleName, info.lastName].filter(Boolean).join(" ").trim();
+        return full || info.username || info.email || "User";
+      }
+
       document.addEventListener("DOMContentLoaded", () => {
         fetch("/ADMIN/components/test.html")
           .then(res => res.text())
@@ -62,12 +91,17 @@
           })
           .catch(err => console.error("Failed to load sidebar:", err));
 
-        // header user
-        const userData = JSON.parse(localStorage.getItem("user"));
-        if (!userData || !userData.username) {
+        // Header user (show INITIALS with tooltip full name/username/email)
+        let userData = null;
+        try { userData = JSON.parse(localStorage.getItem("user")) || JSON.parse(sessionStorage.getItem("user")); } catch {}
+        if (!userData) {
           window.location.href = "../login/login.html";
-        } else {
-          document.getElementById("Username").textContent = userData.username;
+          return;
+        }
+        const el = document.getElementById("Username");
+        if (el) {
+          el.textContent = getInitials(userData);
+          el.title = bestFull(userData);
         }
       });
     </script>
@@ -175,8 +209,48 @@
     </div>
   </div>
 
+  <!-- App Alert Modal -->
+<div class="modal fade" id="appAlertModal" tabindex="-1" aria-labelledby="appAlertTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div id="appAlertHeader" class="modal-header">
+        <h5 class="modal-title" id="appAlertTitle">Notice</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="appAlertBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
   <!-- Bootstrap bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  function showAppAlert(message, { title = "Notice", variant = "primary" } = {}) {
+    const header = document.getElementById("appAlertHeader");
+    const titleEl = document.getElementById("appAlertTitle");
+    const bodyEl  = document.getElementById("appAlertBody");
+
+    header.className = "modal-header";
+    const bg = {
+      primary:  "bg-primary text-white",
+      success:  "bg-success text-white",
+      danger:   "bg-danger text-white",
+      warning:  "bg-warning",
+    }[variant] || "bg-primary text-white";
+    header.classList.add(...bg.split(" "));
+
+    titleEl.textContent = title;
+    bodyEl.textContent  = message;
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("appAlertModal")).show();
+  }
+</script>
+
 
   <!-- Page JS (same filter/sort behavior as other pages; API unchanged) -->
   <script>
@@ -198,6 +272,18 @@
     }
     function toDisplayDate(v) { const ms = toMillis(v); return ms ? new Date(ms).toLocaleString() : ""; }
     function titleCase(s) { return String(s || "").toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+
+    // drop-in helper (put near your other helpers)
+function hideModalThen(modalEl, next) {
+  const inst = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const onHidden = () => {
+    modalEl.removeEventListener('hidden.bs.modal', onHidden);
+    next();
+  };
+  modalEl.addEventListener('hidden.bs.modal', onHidden);
+  inst.hide();
+}
+
 
     /* ===== Filter + Sort state (same pattern) ===== */
     const tableBody = document.getElementById("feedbackTable");
@@ -347,25 +433,55 @@
       new bootstrap.Modal(document.getElementById("viewBugModal")).show();
     }
 
-    function updateBugStatus(status) {
-      if (!currentBugId) return;
-      const reply = document.getElementById("itReply").value.trim();
-      fetch(`${API_BASE}/bug-reports/${currentBugId}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, reply })
-      })
-        .then(res => res.json())
-        .then(result => {
-          if (result.success) location.reload();
-          else alert("Failed to update status.");
-        })
-        .catch(err => {
-          console.error("Status update failed:", err);
-          alert("Server error.");
+  // REPLACE your updateBugStatus with this version
+function updateBugStatus(status) {
+  if (!currentBugId) return;
+  const reply = document.getElementById("itReply").value.trim();
+
+  fetch(`${API_BASE}/bug-reports/${currentBugId}/status`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, reply })
+  })
+    .then(res => res.json())
+    .then(result => {
+      const viewEl = document.getElementById("viewBugModal");
+
+      if (result.success) {
+        // close the bug-details modal first, THEN show alert
+        hideModalThen(viewEl, () => {
+          showAppAlert(
+            `Bug report has been marked as ${status}.`,
+            { title: "Success", variant: "success" }
+          );
+
+          // reload AFTER the alert is dismissed
+          const alertEl = document.getElementById("appAlertModal");
+          const onAlertHidden = () => {
+            alertEl.removeEventListener('hidden.bs.modal', onAlertHidden);
+            location.reload();
+          };
+          alertEl.addEventListener('hidden.bs.modal', onAlertHidden);
         });
-    }
+      } else {
+        // also avoid overlap on errors
+        hideModalThen(viewEl, () => {
+          showAppAlert("Failed to update status.", { title: "Error", variant: "danger" });
+        });
+      }
+    })
+    .catch(err => {
+      console.error("Status update failed:", err);
+      // close first to avoid stacking
+      const viewEl = document.getElementById("viewBugModal");
+      hideModalThen(viewEl, () => {
+        showAppAlert("Server error while updating status.", { title: "Error", variant: "danger" });
+      });
+    });
+}
+
+
 
     document.getElementById("markResolvedBtn").addEventListener("click", () => updateBugStatus("Resolved"));
     document.getElementById("reopenBtn").addEventListener("click", () => updateBugStatus("Pending"));

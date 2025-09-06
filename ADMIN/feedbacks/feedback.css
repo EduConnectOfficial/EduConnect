@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -30,13 +31,17 @@ html, body {
   z-index: 10;
   transition: width 0.3s ease;
   overflow-y: auto;
-  overflow: visible; /* <-- change from auto to visible */
+  overflow: visible;
+  /* <-- change from auto to visible */
   z-index: 999;
 }
+
 .profile-btn {
   display: flex;
-  align-items: center;      /* ✅ Vertically center icon and text */
-  gap: 8px;                 /* ✅ Optional: space between icon and username */
+  align-items: center;
+  /* ✅ Vertically center icon and text */
+  gap: 8px;
+  /* ✅ Optional: space between icon and username */
   border: none;
   background: none;
   cursor: pointer;
@@ -44,11 +49,13 @@ html, body {
 
 .profile-btn .username {
   display: flex;
-  align-items: center;      /* ✅ Ensures the span content is vertically centered */
+  align-items: center;
+  /* ✅ Ensures the span content is vertically centered */
 }
+
 .sidebar:hover {
   width: 220px;
-   pointer-events: auto;
+  pointer-events: auto;
 }
 
 .sidebar .logo {
@@ -77,7 +84,8 @@ html, body {
   margin: 20px 0;
 }
 
-.nav-links a, .dropdown-toggle {
+.nav-links a,
+.dropdown-toggle {
   color: #fff6dd;
   text-decoration: none;
   font-size: 1rem;
@@ -93,12 +101,14 @@ html, body {
   cursor: pointer;
 }
 
-.nav-links a i, .dropdown-toggle i {
+.nav-links a i,
+.dropdown-toggle i {
   min-width: 24px;
   text-align: center;
 }
 
-.nav-links a span, .dropdown-toggle span {
+.nav-links a span,
+.dropdown-toggle span {
   opacity: 0;
   transition: opacity 0.3s ease;
   max-width: 140px;
@@ -112,7 +122,8 @@ html, body {
   opacity: 1;
 }
 
-.nav-links a:hover, .dropdown-toggle:hover {
+.nav-links a:hover,
+.dropdown-toggle:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: #FFD580;
 }
@@ -154,6 +165,7 @@ html, body {
 .nav-links .dropdown-menu li a:hover {
   color: #FFD580;
 }
+
 .dropdown-toggle {
   width: 100%;
   display: flex;
@@ -207,7 +219,7 @@ html, body {
   flex-direction: column;
 }
 
-.sidebar:hover ~ .main {
+.sidebar:hover~.main {
   margin-left: 220px;
   width: calc(100% - 220px);
 }
@@ -298,76 +310,80 @@ html, body {
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
 }
 
-.dark-card h3, .dark-card p {
+.dark-card h3,
+.dark-card p {
   color: #FFD8A9;
 }
+
 .digipic-header th {
   background-color: #7A2810;
   color: #FFD8A9;
   text-align: center;
 }
- .account-table-container {
-     background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      width: 100%;
-      max-width: 100%;
-    }
 
-    .account-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
+.account-table-container {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 100%;
+}
 
-    .account-header h3 {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: #FFD8A9
-    }
+.account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
 
-    .table th {
-      background-color: #f9fafb;
-      font-weight: 600;
-    }
-    .table th {
-      color:#4A1A0C
-    }
+.account-header h3 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #FFD8A9
+}
 
-    .status-badge {
-      padding: 4px 12px;
-      border-radius: 50px;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
+.table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
 
-    .status-active {
-      background-color: #dcfce7;
-      color: #166534;
-    }
+.table th {
+  color: #4A1A0C
+}
 
-    .status-inactive {
-      background-color: #f3f4f6;
-      color: #6b7280;
-    }
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
 
-    .status-pending {
-      background-color: #fef3c7;
-      color: #92400e;
-    }
+.status-active {
+  background-color: #dcfce7;
+  color: #166534;
+}
 
-    .action-icons button {
-      border: none;
-      background: none;
-      margin: 0 5px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
+.status-inactive {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.action-icons button {
+  border: none;
+  background: none;
+  margin: 0 5px;
+  font-size: 1rem;
+  cursor: pointer;
+}
 
 
-    /* Pagination Gradient Styling */
+/* Pagination Gradient Styling */
 /* Match Logout Button Styling for Pagination */
 .pagination {
   display: flex;
@@ -416,18 +432,116 @@ html, body {
 }
 
 
-    .search-bar-top {
-      margin-bottom: 1rem;
-      max-width: 300px;
-    }
+.search-bar-top {
+  margin-bottom: 1rem;
+  max-width: 300px;
+}
+
 .badge-status {
-      font-size: 0.85rem;
-      padding: 0.4em 0.6em;
-      border-radius: 0.5rem;
-    }
-    .badge-pending { background-color: #ffc107; color: #000; }
-    .badge-resolved { background-color: #28a745; }
-    .badge-open { background-color: #17a2b8; }
-    .search-controls {
-      margin: 1rem 0;
-    }
+  font-size: 0.85rem;
+  padding: 0.4em 0.6em;
+  border-radius: 0.5rem;
+}
+
+.badge-pending {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.badge-resolved {
+  background-color: #28a745;
+}
+
+.badge-open {
+  background-color: #17a2b8;
+}
+
+.search-controls {
+  margin: 1rem 0;
+}
+
+/* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  /* makes the close icon white */
+  opacity: 0.9;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* ===== Center-center modals (Bootstrap 5) ===== */
+
+/* Use flexbox on the modal container to place the dialog dead-center */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  /* vertical center */
+  justify-content: center;
+  /* horizontal center */
+  /* Remove Bootstrap’s default top margin gap */
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+  /* avoid side/top padding shifting the visual center */
+}
+
+/* Remove default margins and ensure the dialog itself doesn't offset */
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  /* tweak to your taste */
+  width: calc(100% - 2rem);
+  /* keep nice gutters on small screens */
+}
+
+/* If the content is tall, scroll *inside* the modal, not the page */
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border-radius: 12px;
+  /* matches your UI vibe */
+}
+
+
+.btn-close-footer {
+  background-color: #6a737d !important;
+  /* light gray */
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d;
+  /* darker hover */
+  color: #fff;
+  transform: scale(1.04);
+}
+
+.btn-primary {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}

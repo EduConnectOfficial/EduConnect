@@ -96,7 +96,8 @@
               </select>
 
               <select id="filterSort" class="form-select">
-                <option value="nameAsc" selected>Sort: A → Z</option>
+                <option value="none" selected>Sort: —</option>
+                <option value="nameAsc">Sort: A → Z</option>
                 <option value="nameDesc">Sort: Z → A</option>
                 <option value="statusActiveFirst">Sort: Status (Active → Deactivated)</option>
                 <option value="statusDeactivatedFirst">Sort: Status (Deactivated → Active)</option>
@@ -114,6 +115,7 @@
               <thead class="table-light">
                 <tr>
                   <th class="sortable" data-sort="index"># <span class="arrow">↕</span></th>
+                  <th class="sortable" data-sort="teacherId">Teacher ID <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="username">Username <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="firstName">First Name <span class="arrow">↕</span></th>
                   <th class="sortable" data-sort="middleName">Middle Name <span class="arrow">↕</span></th>
@@ -124,7 +126,7 @@
                 </tr>
               </thead>
               <tbody id="userTableBody">
-                <tr><td colspan="8">Loading…</td></tr>
+                <tr><td colspan="9">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -143,7 +145,7 @@
         </div>
         <div class="modal-body" id="statusModalBody"></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Cancel</button>
           <button id="confirmStatusBtn" type="button" class="btn btn-primary">Confirm</button>
         </div>
       </div>
@@ -160,7 +162,7 @@
         </div>
         <div class="modal-body" id="deleteModalBody"></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Cancel</button>
           <button id="confirmDeleteBtn" type="button" class="btn btn-danger">Delete</button>
         </div>
       </div>
@@ -201,7 +203,7 @@
           <small class="text-muted d-block mt-2">Note: This updates profile data only.</small>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Cancel</button>
           <button id="saveEditBtn" type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
@@ -240,8 +242,8 @@
     let selectedRow  = null;
     let nextActive   = true;
 
-    // header-click sorting (optional)
-    let sortKey = 'index';
+    // Default: sort by Teacher ID ascending
+    let sortKey = 'teacherId';
     let sortDir = 'asc';
 
     function maskEmail(email) {
@@ -255,9 +257,21 @@
       return maskedLocal + '@' + (maskedDn ? maskedDn + '.' : '') + tld;
     }
 
-    function norm(v){ return (v ?? '').toString().toLowerCase().trim(); }
+    const norm = v => (v ?? '').toString().toLowerCase().trim();
+    const isActive = u => u.active !== false;
 
-    function isActive(u){ return u.active !== false; }
+    // Robust Teacher ID sort key (supports T-YYYY-#####; fallback to digits)
+    function teacherIdSortKey(u) {
+      const id = (u.teacherId || u.userId || '').toString();
+      const m = id.match(/^T-(\d{4})-(\d{1,})$/i);
+      if (m) {
+        const year = m[1];
+        const seq  = m[2].padStart(5, '0');
+        return `${year}-${seq}`;
+      }
+      const digits = id.replace(/\D/g, '');
+      return digits.padStart(9, '0');
+    }
 
     function applyFilters(list){
       const q = norm(elSearch.value);
@@ -281,7 +295,10 @@
     function sortByDropdown(a,b){
       const mode = elSort.value;
       const aa = isActive(a), bb = isActive(b);
-
+      if (mode === 'none') {
+        // Default to Teacher ID ascending
+        return 0;
+      }
       if (mode === 'nameAsc')  return nameKey(a).localeCompare(nameKey(b));
       if (mode === 'nameDesc') return nameKey(b).localeCompare(nameKey(a));
       if (mode === 'statusActiveFirst')      return (aa===bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? -1 : 1);
@@ -289,17 +306,19 @@
       return 0;
     }
 
+    // Header sort is PRIMARY
     function sortByHeader(a,b){
       let av, bv;
       switch (sortKey){
-        case 'index':     av=a.__index;          bv=b.__index; break;
-        case 'username':  av=norm(a.username);   bv=norm(b.username); break;
-        case 'firstName': av=norm(a.firstName);  bv=norm(b.firstName); break;
-        case 'middleName':av=norm(a.middleName); bv=norm(b.middleName); break;
-        case 'lastName':  av=norm(a.lastName);   bv=norm(b.lastName); break;
-        case 'email':     av=norm(a.email);      bv=norm(b.email); break;
-        case 'status':    av=isActive(a)?0:1;    bv=isActive(b)?0:1;   break;
-        default:          av=a.__index;          bv=b.__index;
+        case 'index':     av=a.__index;                bv=b.__index; break;
+        case 'teacherId': av=teacherIdSortKey(a);      bv=teacherIdSortKey(b); break;
+        case 'username':  av=norm(a.username);         bv=norm(b.username); break;
+        case 'firstName': av=norm(a.firstName);        bv=norm(b.firstName); break;
+        case 'middleName':av=norm(a.middleName);       bv=norm(b.middleName); break;
+        case 'lastName':  av=norm(a.lastName);         bv=norm(b.lastName); break;
+        case 'email':     av=norm(a.email);            bv=norm(b.email); break;
+        case 'status':    av=isActive(a)?0:1;          bv=isActive(b)?0:1;   break;
+        default:          av=a.__index;                bv=b.__index;
       }
       if (av===bv) return 0;
       const d = av>bv ? 1 : -1;
@@ -309,14 +328,22 @@
     function renderTable(list){
       tableBody.innerHTML = '';
       const filtered = applyFilters(list);
-      const sorted = filtered.sort((a,b)=>{
-        const d = sortByDropdown(a,b);
-        return d !== 0 ? d : sortByHeader(a,b);
-      });
-
-      if (!sorted.length){
-        tableBody.innerHTML = '<tr><td colspan="8">No matching teachers.</td></tr>';
+      if (!filtered.length){
+        tableBody.innerHTML = '<tr><td colspan="9">No matching teachers.</td></tr>';
         return;
+      }
+
+      let sorted;
+      if (elSort.value === 'none') {
+        // Default sort: Teacher ID ascending
+        sorted = filtered.sort((a,b)=>sortByHeader(a,b));
+      } else {
+        // Sort by dropdown, then header as tiebreaker
+        sorted = filtered.sort((a,b)=>{
+          const d = sortByDropdown(a,b);
+          if (d !== 0) return d;
+          return sortByHeader(a,b);
+        });
       }
 
       sorted.forEach((user, i)=>{
@@ -325,6 +352,7 @@
         const row = document.createElement('tr');
         row.innerHTML =
           '<td>' + (i+1) + '</td>' +
+          '<td>' + (user.teacherId || user.userId || '') + '</td>' +
           '<td>' + (user.username || '') + '</td>' +
           '<td>' + (user.firstName || '') + '</td>' +
           '<td>' + (user.middleName || '') + '</td>' +
@@ -427,7 +455,6 @@
               }
               const data = await res.json();
               if (data && data.success){
-                // remove from list
                 teachers = teachers.filter(u => u.userId !== user.userId);
                 renderTable(teachers);
 
@@ -466,18 +493,27 @@
         teachers = users.filter(u => u && u.isTeacher === true).map((u,i)=>({ ...u, __index:i }));
 
         if (!teachers.length){
-          tableBody.innerHTML = '<tr><td colspan="8">No teachers found.</td></tr>';
+          tableBody.innerHTML = '<tr><td colspan="9">No teachers found.</td></tr>';
           return;
         }
         renderTable(teachers);
       } catch (err) {
         console.error('Failed to load users:', err);
-        tableBody.innerHTML = '<tr><td colspan="8">Error loading teachers.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="9">Error loading teachers.</td></tr>';
       }
     }
 
     // Header sorting and filter bar
     document.addEventListener('DOMContentLoaded', ()=>{
+      // Make Teacher ID header active by default with ▲
+      document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('active'));
+      const idTh = document.querySelector('th.sortable[data-sort="teacherId"]');
+      if (idTh){
+        idTh.classList.add('active');
+        const arrow = idTh.querySelector('.arrow');
+        if (arrow) arrow.textContent = '▲';
+      }
+
       document.querySelectorAll('th.sortable').forEach(th=>{
         th.addEventListener('click', ()=>{
           const key = th.getAttribute('data-sort');
@@ -486,14 +522,10 @@
 
           document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('active'));
           th.classList.add('active');
+
+          document.querySelectorAll('th.sortable .arrow').forEach(a=>a.textContent='↕');
           const arrow = th.querySelector('.arrow');
           if (arrow) arrow.textContent = (sortDir === 'asc') ? '▲' : '▼';
-          document.querySelectorAll('th.sortable').forEach(h=>{
-            if (h !== th) {
-              const s = h.querySelector('.arrow');
-              if (s) s.textContent = '↕';
-            }
-          });
 
           renderTable(teachers);
         });
@@ -552,17 +584,66 @@
     }
   </script>
 
+  <!-- 🔷 Header initials population (kept function name, new logic) -->
   <script>
     (function populateUsername() {
       try {
-        const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
+        const rawLocal = localStorage.getItem("user");
+        const rawSession = sessionStorage.getItem("user");
         let data = null;
-        if (raw) { try { data = JSON.parse(raw); } catch {} }
-        let username = (data && (data.username || (`${data.firstName ?? ""} ${data.lastName ?? ""}`.trim()) || ((data.email || '').split('@')[0] || ''))) || "";
-        if (!username && typeof raw === "string") username = raw;
+        if (rawLocal)  { try { data = JSON.parse(rawLocal); }  catch {} }
+        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch {} }
+
+        const getInitials = (info = {}) => {
+          const f = (info.firstName || "").trim();
+          const l = (info.lastName  || "").trim();
+          const u = (info.username  || "").trim();
+          const e = (info.email     || "").trim();
+
+          // Prefer First + Last initials when available
+          if (f || l) {
+            let letters = "";
+            if (f) letters += f[0];
+            if (l) letters += l[0];
+            else if (f.length > 1) letters += f[1]; // fallback: second letter of first name
+            letters = letters.toUpperCase();
+            if (letters.length >= 2) return letters.slice(0,2);
+            return (letters + "U").slice(0,2); // pad
+          }
+
+          // Fallback: from username
+          if (u) {
+            const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (cleaned) return (cleaned + "U").slice(0,2);
+          }
+
+          // Fallback: from email local-part
+          if (e && e.includes("@")) {
+            const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            if (local) return (local + "U").slice(0,2);
+          }
+
+          // Default
+          return "UU";
+        };
+
+        const initials = getInitials(data || {});
         const el = document.getElementById("Username");
-        if (el) { el.textContent = username || "User"; el.title = username || "User"; }
-      } catch (e) { console.error("Failed to populate username:", e); }
+        if (el) {
+          el.textContent = initials;
+          // For tooltip/title, show the best full identifier available
+          const full =
+            (data && [data.firstName, data.middleName, data.lastName].filter(Boolean).join(" ").trim()) ||
+            (data && data.username) ||
+            (data && data.email) ||
+            "User";
+          el.title = full;
+        }
+      } catch (e) {
+        console.error("Failed to populate initials:", e);
+        const el = document.getElementById("Username");
+        if (el) { el.textContent = "UU"; el.title = "User"; }
+      }
     })();
   </script>
 </body>

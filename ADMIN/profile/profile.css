@@ -5,41 +5,111 @@
       box-sizing: border-box;
     }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  font-family: 'Raleway', sans-serif;
-  background: #e6ebeb;
-  color: #222;
-  overflow-x: hidden;
-}
+ :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --accent-1: #FF6A00;
+      --accent-2: #B03C10;
+      --radius: 14px;
+    }
 
-.main {
-  margin-left: 70px;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  width: calc(100% - 70px);
-  min-height: 100vh;
-  background: #e6ebeb;
-}
+    html, body { height: 100%; background: var(--bg); color: var(--text) }
 
-.sidebar:hover ~ .main {
-  margin-left: 280px; /* match your sidebar:hover width */
-  width: calc(100% - 280px);
-}
+    .dashboard { display: flex; min-height: 100vh }
+
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px) }
+
+    .logo-header { height: 44px }
+
+    .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 20px }
+    .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100% }
+    .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf }
+
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer
+    }
+    .profile-btn .username { font-size: 14px }
+
+    .content { padding: 24px }
+
+    .ui-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, .08)
+    }
+    .ui-card.section { padding: 18px }
+
+    .btn-amber { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border: none }
+    .btn-amber:hover { filter: brightness(1.06); color: #fff }
+
+    .btn-amber-outline { background: #fff; color: var(--accent-2); border: 1px solid var(--accent-2) }
+    .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border-color: transparent }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent-2) !important;
+      box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
+    }
+
+    /* Modal theming + center-center */
+    .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none }
+    .modal-content { border-radius: 12px; border: 1px solid var(--border) }
+    .modal-footer { border-top: 1px solid var(--border) }
+
+    .modal.show{
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      --bs-modal-margin:0;
+      padding:0 !important;
+    }
+    .modal.show .modal-dialog{
+      margin:0 !important;
+      max-width:560px;
+      width:calc(100% - 2rem);
+    }
+    .modal.show .modal-content{
+      overflow:hidden;
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+      max-height:min(90vh, 800px);
+    }
+    .modal-content .btn-close{ filter: invert(1) grayscale(100%) brightness(200%); opacity:.9 }
+    .modal-content .btn-close:hover{ opacity:1; transform:scale(1.05) }
+
+    /* Success variant for modal header */
+    .modal-header.is-success{
+      background: linear-gradient(90deg,#1f995c,#2db974);
+      color:#eafff1;
+    }
+
+    /* Read-only look for Teacher ID */
+    #teacherId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
 
 
 /* Header */
+
 .header-top {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .logo-header {
@@ -281,6 +351,7 @@ html, body {
       color: #4A1A0C;
     }
 
+
 .login-btn {
   background: linear-gradient(to bottom, #FF6A00, #B03C10);
   color: white;
@@ -305,7 +376,6 @@ html, body {
       border: none;
       border-radius: 999px;
     }
-
     /* Dropdown Behavior */
     .dropdown {
       display: flex;
@@ -347,16 +417,344 @@ html, body {
       transform: rotate(180deg);
     }
 
-    .profile-btn {
+
+
+.profile-btn {
   display: flex;
-  align-items: center;      /* ✅ Vertically center icon and text */
-  gap: 8px;                 /* ✅ Optional: space between icon and username */
-  border: none;
+  align-items: center;
+  gap: 8px;
   background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
   cursor: pointer;
 }
-
 .profile-btn .username {
-  display: flex;
-  align-items: center;      /* ✅ Ensures the span content is vertically centered */
+  font-size: 14px;
+}
+/* ===== Mobile header: search + icon + username (no overlap) ===== */
+@media (max-width: 480px) {
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  /* Header = one row */
+  .header-top{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  /* Hide logo on mobile */
+  .logo-header{ display: none !important; }
+
+  /* Search shrinks as needed; no overflow */
+  .search-box{
+    flex: 1 1 0 !important;
+    min-width: 0 !important;          /* allow flex item to shrink */
+    margin: 0 !important;
+  }
+  .search-box input{
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+  .search-box i{ right: 10px !important; }
+
+  /* Profile button shows icon + username, clamps width, no overlap */
+  .profile-btn{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    max-width: 45vw !important;       /* never eat the whole row */
+  }
+  .profile-btn i{
+    font-size: 22px !important;
+    flex: 0 0 auto !important;
+    line-height: 1 !important;
+  }
+  .profile-btn .username{
+    display: inline-flex !important;  /* make it visible on mobile */
+    align-items: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover ~ .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+
+  .search-box {
+    max-width: 100%;
+    margin: 0;
+  }
+
+  .search-box input {
+    padding: 8px 32px 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  }
+  /* ===== Phones (≤480px) — one-row header, topbar sidebar, stacked buttons ===== */
+@media (max-width: 480px) {
+  /* Layout */
+  .dashboard { flex-direction: column; }
+  .main { margin-left: 0; width: 100%; }
+  .sidebar {
+    width: 100%;
+    position: relative;
+    padding: .5rem .75rem;
+    box-shadow: none;
+    min-height: 0;
+  }
+  .sidebar:hover { width: 100%; }              /* disable hover expand on mobile */
+  .sidebar:hover ~ .main { margin-left: 0; width: 100%; }
+
+  /* Header stays on ONE row: search + profile */
+  .header-top {
+    gap: 12px;
+    padding: .6rem .8rem;
+    justify-content: space-between;
+  }
+  .logo-header { display: none; }
+
+  .search-box {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    max-width: none;
+  }
+  .search-box input {
+    height: 36px;
+    padding: 6px 34px 6px 12px;
+    font-size: .95rem;
+    border-radius: 28px;
+  }
+  .search-box i { right: 10px; }
+
+  /* Profile button: icon + truncated username (no overlap) */
+  .profile-btn{
+    flex: 0 0 auto;
+    height: 40px;
+    padding: 0 .6rem;
+    border-radius: 999px;
+    gap: 6px;
+    font-size: 1.5rem;
+  }
+  .profile-btn i{ font-size: 22px; line-height: 1; }
+  .profile-btn .username{
+    display: inline-flex;
+    align-items: center;
+    max-width: 42vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .9rem;
+  }
+
+  /* Content & cards */
+  .content { padding: 1rem; }
+  .ui-card.section { padding: 14px; }
+
+  /* Profile avatar + file input */
+  #profilePreview { width: 96px; height: 96px; }
+  #profileForm #profilePic { width: 100% !important; }   /* override w-auto */
+
+  /* Buttons: full-width, stacked, comfy tap targets */
+  #profileForm .text-end{
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    text-align: initial;      /* no right-align on mobile */
+  }
+  #profileForm .text-end .btn{
+    width: 100%;
+    min-height: 44px;
+    border-radius: 14px;
+    font-size: 1rem;
+  }
+}
+
+/* ===== Tablets (481–1280px) — compact sidebar, tidy header, better buttons ===== */
+@media (min-width: 481px) and (max-width: 1280px) {
+  /* Keep the compact 70px sidebar and disable hover expand for stability */
+  .sidebar { width: 70px; }
+  .sidebar:hover { width: 70px; }
+  .sidebar:hover .logo,
+  .sidebar:hover .nav-links a span { opacity: 0; }
+
+  .main { margin-left: 70px; width: calc(100% - 70px); }
+
+  .header-top { padding: .9rem 1.25rem; }
+  .search-box { max-width: 360px; margin: 0 12px; }
+
+  /* Buttons inline but with breathing room */
+  #profileForm .text-end{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    justify-content: flex-end;
+  }
+  #profileForm .text-end .btn{ min-width: 160px; }
+}
+
+/* ===== Desktop hover width sync (in case it differs elsewhere) ===== */
+.sidebar:hover ~ .main{
+  margin-left: 220px;
+  width: calc(100% - 220px);
+}
+  /* Profile buttons — align perfectly */
+#profileForm .text-end{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.6rem;
+  justify-content:flex-end;
+}
+
+#profileForm .text-end .btn{
+  border-radius:14px;
+}
+
+/* Phones: stack full-width and kill the extra left margin from .ms-2 */
+@media (max-width: 480px){
+  #profileForm .text-end{ flex-direction:column; align-items:stretch; }
+  #profileForm .text-end .btn{ width:100%; }
+  #profileForm .text-end .btn.ms-2{ margin-left:0 !important; }
+}
+/* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
+}
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Modal footer button with gradient */
+.modal-footer .btn,
+#successOkBtn, 
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
+}
+.modal-body {
+  color:black
+}
+.modal.show .modal-content {
+  border: none;                 /* remove default bootstrap border */
+  border-radius: 14px;          /* match your --radius vibe */
+  overflow: hidden;             /* ensures header corners look perfect */
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+}
+
+
+
+/* ===== Center-center modals (Bootstrap 5) ===== */
+
+/* Use flexbox on the modal container to place the dialog dead-center */
+.modal.show {
+  display: flex !important;
+  align-items: center;       /* vertical center */
+  justify-content: center;   /* horizontal center */
+  /* Remove Bootstrap’s default top margin gap */
+  --bs-modal-margin: 0;
+  padding: 0 !important;     /* avoid side/top padding shifting the visual center */
+}
+
+/* Remove default margins and ensure the dialog itself doesn't offset */
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;          /* tweak to your taste */
+  width: calc(100% - 2rem);  /* keep nice gutters on small screens */
+}
+
+/* If the content is tall, scroll *inside* the modal, not the page */
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border-radius: 12px;       /* matches your UI vibe */
+}
+
+/* Small screens: tighten the width a bit more */
+@media (max-width: 576px) {
+  .modal.show .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: 100%;
+  }
 }
