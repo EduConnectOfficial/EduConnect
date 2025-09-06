@@ -25,6 +25,71 @@
     .ticket-badge { padding:.15rem .5rem; border:1px solid rgba(0,0,0,.1); border-radius: .5rem; }
     .brand { color:#1f2937; }
     .alert-fixed { position: sticky; top: .75rem; z-index: 20; }
+
+    /* ====== MODAL: brand-aligned, centered ====== */
+    /* Modal header with gradient background */
+    .modal-header {
+      background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+      color: #fff;
+      border-bottom: none;
+    }
+    /* Title text inside modal header */
+    .modal-header .modal-title { font-weight: 600; color: #fff; }
+    /* Close button inside modal header */
+    .modal-header .btn-close {
+      filter: brightness(0) invert(1); /* makes the close icon white */
+      opacity: 0.9;
+    }
+    .modal-header .btn-close:hover { opacity: 1; }
+
+    /* Modal footer button with gradient */
+    .modal-footer .btn, #successOkBtn, #feedbackModal .btn {
+      background: linear-gradient(to bottom, #FF6A00, #B03C10);
+      border: none; color: #fff; border-radius: 999px;
+      padding: 0.5rem 1.2rem; font-weight: 500;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+    .modal-footer .btn:hover, #successOkBtn:hover, #feedbackModal .btn:hover {
+      background: linear-gradient(to bottom, #ff8533, #cc3300);
+      transform: scale(1.05);
+    }
+    .modal-body { color:black }
+
+    .modal.show .modal-content {
+      border: none; /* remove default bootstrap border */
+      border-radius: 14px; /* match your --radius vibe */
+      overflow: hidden; /* ensures header corners look perfect */
+      box-shadow: 0 18px 40px rgba(0,0,0,.25);
+    }
+    /* ===== Center-center modals (Bootstrap 5) ===== */
+    /* Use flexbox on the modal container to place the dialog dead-center */
+    .modal.show {
+      display: flex !important;
+      align-items: center; /* vertical center */
+      justify-content: center; /* horizontal center */
+      /* Remove Bootstrap’s default top margin gap */
+      --bs-modal-margin: 0;
+      padding: 0 !important; /* avoid side/top padding shifting the visual center */
+    }
+    /* Remove default margins and ensure the dialog itself doesn't offset */
+    .modal.show .modal-dialog {
+      margin: 0 !important;
+      max-width: 640px; /* tweak to your taste */
+      width: calc(100% - 2rem); /* keep nice gutters on small screens */
+    }
+    /* If the content is tall, scroll *inside* the modal, not the page */
+    .modal.show .modal-content {
+      max-height: min(90vh, 800px);
+      overflow: auto;
+      border-radius: 12px; /* matches your UI vibe */
+    }
+    /* Small screens: tighten the width a bit more */
+    @media (max-width: 576px) {
+      .modal.show .modal-dialog {
+        width: calc(100% - 1.5rem);
+        max-width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -51,7 +116,7 @@
       <div class="content container-fluid">
         <h1 class="page-title brand">Help & Support</h1>
 
-        <!-- Success/Fail alert -->
+        <!-- Keep this alert for NON-success cases (errors/warnings). Success uses the modal. -->
         <div id="ticketAlert" class="alert alert-success d-none alert-fixed" role="alert"></div>
 
         <div class="row g-3 justify-content-center">
@@ -247,55 +312,52 @@
     });
   </script>
 
-  <!-- Auth Check -->
+  <!-- Auth Check (fixed: no duplicate const userData) -->
   <script>
-    const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData || !userData.email) {
+    const _userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!_userData || !_userData.email) {
       window.location.href = "../login/login.html";
     } else {
-  // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
 
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
+        // If email, take first + last token from local part
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length >= 2
+            ? parts[0][0] + parts[parts.length - 1][0]
+            : local.slice(0, 2)
+          ).toUpperCase();
+        }
 
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
+        // Names or usernames: first + last token initials
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length >= 2
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : parts[0].slice(0, 2)
+        ).toUpperCase();
+      }
 
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
-
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
+      const userId = _userData.userId || _userData.uid || _userData.id || _userData.email;
+      if (!userId) {
+        window.location.href = "../login/login.html";
+      } else {
+        const displayName = _userData.fullName || _userData.username || _userData.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        const el = document.getElementById("Username");
+        if (el){
+          el.textContent = initials;
+          el.title = displayName;                 // tooltip with full name
+          el.setAttribute("aria-label", displayName);
+        }
+        if (!_userData.uid) {
+          _userData.uid = userId;
+          localStorage.setItem("user", JSON.stringify(_userData));
+        }
+      }
     }
   </script>
 
@@ -343,7 +405,7 @@ if (!userId) {
     // Suggested articles
     const issueDetails = document.getElementById('issueDetails');
     const suggestedWrap = document.getElementById('suggestedWrap');
-    const suggestedList = document.getElementById('suggestedList');
+       const suggestedList = document.getElementById('suggestedList');
 
     issueDetails.addEventListener('input', ()=>{
       const q = issueDetails.value.toLowerCase().trim();
@@ -418,6 +480,24 @@ if (!userId) {
       }
     }
 
+    /* ---------- Success Modal helper ---------- */
+    function showSuccessModal(msg){
+      const elMsg = document.getElementById('ticketSuccessMsg');
+      if (elMsg) elMsg.textContent = msg || 'Your ticket has been submitted! ✅';
+      const el = document.getElementById('ticketSuccessModal');
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+      modal.show();
+    }
+
+    /* ---------- Inline alert (kept for errors/warnings) ---------- */
+    function showAlert(kind, msg){
+      const el = document.getElementById('ticketAlert');
+      el.className = `alert alert-${kind} alert-fixed`;
+      el.textContent = msg;
+      el.classList.remove('d-none');
+      setTimeout(()=> el.classList.add('d-none'), 3500);
+    }
+
     /* ---------- Submit Ticket -> backend ---------- */
     document.getElementById("supportForm").addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -458,21 +538,14 @@ if (!userId) {
         // refresh from backend for this user so it persists
         await refreshMyTickets();
 
-        showAlert('success', 'Your ticket has been submitted! ✅');
+        // SUCCESS now uses modal (brand-aligned)
+        showSuccessModal('Your ticket has been submitted! ✅');
         this.reset();
         suggestedWrap.classList.add('d-none'); suggestedList.innerHTML='';
       } catch (err) {
         showAlert('danger', 'Network/server error while submitting ticket.');
       }
     });
-
-    function showAlert(kind, msg){
-      const el = document.getElementById('ticketAlert');
-      el.className = `alert alert-${kind} alert-fixed`;
-      el.textContent = msg;
-      el.classList.remove('d-none');
-      setTimeout(()=> el.classList.add('d-none'), 3500);
-    }
 
     // Boot
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -488,6 +561,27 @@ if (!userId) {
     }
   </script>
 
+  <!-- Success Modal -->
+  <div class="modal fade" id="ticketSuccessModal" tabindex="-1" aria-labelledby="ticketSuccessLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="ticketSuccessLabel" class="modal-title">
+            <i class="bi bi-check2-circle me-2"></i> Ticket Submitted
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <p id="ticketSuccessMsg" class="mb-0">Your ticket has been submitted! ✅</p>
+        </div>
+
+        <div class="modal-footer">
+          <button id="successOkBtn" type="button" class="btn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Bootstrap JS (bundle includes Popper) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -2,12 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EduConnect Student - View Thread</title>
+  <title>EduConnect Student - View Thread (with Modals)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="../forum/forum.css" />
 
+  <style>
+    /* ===== Brand-aligned Modal Styles (from your CSS) ===== */
+    /* Modal header with gradient background */
+    .modal-header {
+      background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+      color: #fff;
+      border-bottom: none;
+    }
+
+    /* Title text inside modal header */
+    .modal-header .modal-title {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Close button inside modal header */
+    .modal-header .btn-close {
+      filter: brightness(0) invert(1); /* makes the close icon white */
+      opacity: 0.9;
+    }
+    .modal-header .btn-close:hover {
+      opacity: 1;
+    }
+
+    /* Modal footer button with gradient */
+    .modal-footer .btn,
+    #successOkBtn, 
+    #feedbackModal .btn {
+      background: linear-gradient(to bottom, #FF6A00, #B03C10);
+      border: none;
+      color: #fff;
+      border-radius: 999px;
+      padding: 0.5rem 1.2rem;
+      font-weight: 500;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .modal-footer .btn:hover,
+    #successOkBtn:hover,
+    #feedbackModal .btn:hover {
+      background: linear-gradient(to bottom, #ff8533, #cc3300);
+      transform: scale(1.05);
+    }
+
+    .modal-body { color: black; }
+
+    .modal.show .modal-content {
+      border: none;                 /* remove default bootstrap border */
+      border-radius: 14px;          /* match your --radius vibe */
+      overflow: hidden;             /* ensures header corners look perfect */
+      box-shadow: 0 18px 40px rgba(0,0,0,.25);
+    }
+
+    /* ===== Center-center modals (Bootstrap 5) ===== */
+
+    /* Use flexbox on the modal container to place the dialog dead-center */
+    .modal.show {
+      display: flex !important;
+      align-items: center;       /* vertical center */
+      justify-content: center;   /* horizontal center */
+      /* Remove Bootstrap’s default top margin gap */
+      --bs-modal-margin: 0;
+      padding: 0 !important;     /* avoid side/top padding shifting the visual center */
+    }
+
+    /* Remove default margins and ensure the dialog itself doesn't offset */
+    .modal.show .modal-dialog {
+      margin: 0 !important;
+      max-width: 640px;          /* tweak to your taste */
+      width: calc(100% - 2rem);  /* keep nice gutters on small screens */
+    }
+
+    /* If the content is tall, scroll *inside* the modal, not the page */
+    .modal.show .modal-content {
+      max-height: min(90vh, 800px);
+      overflow: auto;
+      border-radius: 12px;       /* matches your UI vibe */
+    }
+
+    /* Small screens: tighten the width a bit more */
+    @media (max-width: 576px) {
+      .modal.show .modal-dialog {
+        width: calc(100% - 1.5rem);
+        max-width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -73,12 +160,125 @@
     </div>
   </div>
 
-  <!-- Sidebar loader -->
+  <!-- ========================= -->
+  <!-- Modals (Thread + Reply)   -->
+  <!-- ========================= -->
+
+  <!-- Thread: Delete Confirm -->
+  <div class="modal fade" id="threadDeleteModal" tabindex="-1" aria-labelledby="threadDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="threadDeleteLabel"><i class="bi bi-trash3 me-2 text-danger"></i>Delete Thread</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">This will also remove all comments and cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="confirmThreadDeleteBtn" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thread: Edit -->
+  <div class="modal fade" id="threadEditModal" tabindex="-1" aria-labelledby="threadEditLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="threadEditLabel"><i class="bi bi-pencil-square me-2"></i>Edit Thread</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="threadEditForm">
+            <div class="mb-3">
+              <label class="form-label">Title</label>
+              <input type="text" class="form-control" id="editThreadTitle" required />
+            </div>
+            <div class="mb-0">
+              <label class="form-label">Text</label>
+              <textarea class="form-control" id="editThreadText" rows="4" required></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="saveThreadEditBtn" class="btn btn-amber">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reply: Delete Confirm -->
+  <div class="modal fade" id="replyDeleteModal" tabindex="-1" aria-labelledby="replyDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="replyDeleteLabel"><i class="bi bi-trash3 me-2 text-danger"></i>Delete Comment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">Are you sure you want to delete this comment?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="confirmReplyDeleteBtn" class="btn btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reply: Edit -->
+  <div class="modal fade" id="replyEditModal" tabindex="-1" aria-labelledby="replyEditLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="replyEditLabel"><i class="bi bi-pencil-square me-2"></i>Edit Comment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="replyEditForm">
+            <div class="mb-0">
+              <label class="form-label">Comment</label>
+              <textarea class="form-control" id="editReplyText" rows="3" required></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="saveReplyEditBtn" class="btn btn-amber">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/STUDENT/components/sidebar.html")
         .then(res => res.text())
-        .then(html => { document.getElementById("sidebar-container").innerHTML = html; })
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
@@ -87,7 +287,7 @@
     const API_BASE = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
     const qs = sel => document.querySelector(sel);
 
-    function escapeHtml(str=''){return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+    function escapeHtml(str=''){return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));}
     function toLocal(dt){if(!dt)return'';if(dt._seconds)return new Date(dt._seconds*1000).toLocaleString();return new Date(dt).toLocaleString();}
     async function fetchJSON(url,opts){const res=await fetch(url,opts);let json;try{json=await res.json();}catch{json={};}if(!res.ok)throw new Error(json.message||`HTTP ${res.status}`);return json;}
 
@@ -111,6 +311,25 @@
 
     const threadId = new URLSearchParams(window.location.search).get("id");
     let thread=null;
+
+    // Global modal state
+    let currentReply = null; // stores the full reply object when editing
+    let currentReplyId = null; // stores the reply id when deleting
+
+    // Bootstrap modal refs
+    let threadDeleteModal, threadEditModal, replyDeleteModal, replyEditModal;
+    document.addEventListener('DOMContentLoaded', () => {
+      threadDeleteModal = new bootstrap.Modal(document.getElementById('threadDeleteModal'));
+      threadEditModal   = new bootstrap.Modal(document.getElementById('threadEditModal'));
+      replyDeleteModal  = new bootstrap.Modal(document.getElementById('replyDeleteModal'));
+      replyEditModal    = new bootstrap.Modal(document.getElementById('replyEditModal'));
+
+      // Wire modal action buttons
+      document.getElementById('confirmThreadDeleteBtn')?.addEventListener('click', confirmThreadDelete);
+      document.getElementById('saveThreadEditBtn')?.addEventListener('click', saveThreadEdit);
+      document.getElementById('confirmReplyDeleteBtn')?.addEventListener('click', confirmReplyDelete);
+      document.getElementById('saveReplyEditBtn')?.addEventListener('click', saveReplyEdit);
+    });
 
     async function loadThread(){
       try{
@@ -147,21 +366,8 @@
           </div>`;
 
         if (isOwner) {
-          qs(".action-delete-thread")?.addEventListener("click", async ()=>{
-            if(!confirm("Delete this thread? This will also remove all comments and cannot be undone."))return;
-            try{ await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'}); window.location.href='forum.html'; }
-            catch(err){ console.error(err); alert('Failed to delete thread.'); }
-          });
-          qs(".action-edit-thread")?.addEventListener("click", async ()=>{
-            const newTitle=prompt("Edit thread title:",thread.title||""); if(newTitle==null)return;
-            const newText=prompt("Edit thread text:",thread.text||""); if(newText==null)return;
-            try{
-              await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
-                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle,text:newText})
-              });
-              await loadThread();
-            }catch(err){ console.error(err); alert("Editing thread requires a PATCH /api/forum/threads/:id route on the backend."); }
-          });
+          qs(".action-delete-thread")?.addEventListener("click", openThreadDeleteModal);
+          qs(".action-edit-thread")?.addEventListener("click", openThreadEditModal);
         }
 
         loadReplies();
@@ -218,20 +424,8 @@
         container.appendChild(wrap);
 
         if(isOwn){
-          wrap.querySelector(".action-delete-reply")?.addEventListener("click", async ()=>{
-            if(!confirm("Delete your comment?"))return;
-            try{ await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{method:'DELETE'}); await loadReplies(); }
-            catch(err){ console.error(err); alert("Failed to delete comment."); }
-          });
-          wrap.querySelector(".action-edit-reply")?.addEventListener("click", async ()=>{
-            const updated=prompt("Edit your comment:", r.text||""); if(updated==null)return;
-            try{
-              await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{
-                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:updated})
-              });
-              await loadReplies();
-            }catch(err){ console.error(err); alert("Editing comments requires a PATCH /api/forum/threads/:threadId/replies/:replyId route on the backend."); }
-          });
+          wrap.querySelector(".action-delete-reply")?.addEventListener("click", ()=> openReplyDeleteModal(r.id));
+          wrap.querySelector(".action-edit-reply")?.addEventListener("click", ()=> openReplyEditModal(r));
         }
 
         wrap.querySelector(".reply-btn").addEventListener("click", ()=> showReplyForm(r.id, wrap));
@@ -300,6 +494,74 @@
       });
     }
 
+    // =============================
+    // Thread modal handlers
+    // =============================
+    function openThreadDeleteModal(){
+      threadDeleteModal?.show();
+    }
+    async function confirmThreadDelete(){
+      try{
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'});
+        threadDeleteModal?.hide();
+        window.location.href='forum.html';
+      }catch(err){ console.error(err); alert('Failed to delete thread.'); }
+    }
+
+    function openThreadEditModal(){
+      // Prefill
+      qs('#editThreadTitle').value = thread?.title || '';
+      qs('#editThreadText').value  = thread?.text  || '';
+      threadEditModal?.show();
+    }
+    async function saveThreadEdit(){
+      const newTitle = qs('#editThreadTitle').value.trim();
+      const newText  = qs('#editThreadText').value.trim();
+      if(!newTitle || !newText) return;
+      try{
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
+          method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle,text:newText})
+        });
+        threadEditModal?.hide();
+        await loadThread();
+      }catch(err){ console.error(err); alert('Editing thread requires a PATCH /api/forum/threads/:id route on the backend.'); }
+    }
+
+    // =============================
+    // Reply modal handlers
+    // =============================
+    function openReplyDeleteModal(replyId){
+      currentReplyId = replyId;
+      replyDeleteModal?.show();
+    }
+    async function confirmReplyDelete(){
+      if(!currentReplyId) return;
+      try{
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReplyId)}`,{method:'DELETE'});
+        replyDeleteModal?.hide();
+        currentReplyId=null;
+        await loadReplies();
+      }catch(err){ console.error(err); alert('Failed to delete comment.'); }
+    }
+
+    function openReplyEditModal(reply){
+      currentReply = reply; // store full object
+      qs('#editReplyText').value = reply?.text || '';
+      replyEditModal?.show();
+    }
+    async function saveReplyEdit(){
+      const updated = qs('#editReplyText').value.trim();
+      if(!updated || !currentReply) return;
+      try{
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReply.id)}`,{
+          method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:updated})
+        });
+        replyEditModal?.hide();
+        currentReply=null;
+        await loadReplies();
+      }catch(err){ console.error(err); alert('Editing comments requires a PATCH /api/forum/threads/:threadId/replies/:replyId route on the backend.'); }
+    }
+
     document.addEventListener("DOMContentLoaded", ()=>{
       if(!threadId){ alert('Missing thread ID.'); return; }
       loadThread();
@@ -313,6 +575,7 @@
 
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/STUDENT/login/login.html"; }
   </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
