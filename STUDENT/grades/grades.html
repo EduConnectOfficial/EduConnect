@@ -401,10 +401,50 @@
       throw new Error(`${kind.toUpperCase()} endpoint not found or failed`);
     }
 
+    // --- Formal PDF and CSV Export ---
     async function exportCsv() {
-      const student = getStudentKey();
       try {
-        const blob = await getBlobWithFallback(student, 'csv');
+        const student = getStudentKey();
+        const data = await getAnalyticsJson(student);
+        let csv = [];
+        // Header
+        csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
+        csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
+
+        // Quizzes
+        csv.push('');
+        csv.push('Quizzes');
+        csv.push('Quiz,Best %,Attempts,Last Attempt');
+        (data.quizzes?.perQuiz || []).forEach(r => {
+          csv.push(`"${r.title}","${pct(r.bestPercent)}","${r.attemptsUsed}","${dt(r.lastSubmittedAt)}"`);
+        });
+
+        // Assignments
+        csv.push('');
+        csv.push('Assignments');
+        csv.push('Assignment,Grade,Graded At');
+        (data.assignments?.grades || []).forEach(a => {
+          csv.push(`"${a.assignmentTitle}","${pct(a.grade)}","${dt(a.gradedAt)}"`);
+        });
+
+        // Essays
+        csv.push('');
+        csv.push('Essay Submissions');
+        csv.push('Quiz,Question #,Status,Score,Submitted');
+        (data.essays?.submissions || []).forEach(e => {
+          csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
+        });
+
+        // Modules
+        csv.push('');
+        csv.push('Completed Modules');
+        csv.push('Course,Module,Percent,Completed At');
+        (data.modules?.completed || []).forEach(m => {
+          csv.push(`"${m.courseTitle}","${m.moduleTitle}","${pct(m.percent)}","${dt(m.completedAt)}"`);
+        });
+
+        // Download
+        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `student_analytics_${student}.csv`;
@@ -414,24 +454,126 @@
         a.remove();
       } catch (e) {
         console.error(e);
-        alert('CSV export failed. Ensure the backend has /student-analytics/csv.');
+        alert('CSV export failed.');
       }
     }
 
     async function downloadPdf() {
-      const student = getStudentKey();
       try {
-        const blob = await getBlobWithFallback(student, 'pdf');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `student_analytics_${student}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(a.href);
-        a.remove();
+        // Load jsPDF and autoTable if not present
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') {
+          alert('Failed to load jsPDF.');
+          return;
+        }
+        if (typeof window.jspdf?.autoTable === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const student = getStudentKey();
+        const data = await getAnalyticsJson(student);
+        const doc = new window.jspdf.jsPDF();
+
+        // Formal Header
+        doc.setFont('times', 'bold');
+        doc.setFontSize(18);
+        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setFont('times', 'normal');
+        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
+        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
+
+        // Summary Table
+        doc.autoTable({
+          startY: 55,
+          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
+          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 11, halign: 'center' },
+          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+        });
+
+        let y = doc.lastAutoTable.finalY + 8;
+
+        // Quizzes Table
+        doc.setFont('times', 'bold');
+        doc.text('Quizzes', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
+          body: (data.quizzes?.perQuiz || []).map(r => [r.title, pct(r.bestPercent), r.attemptsUsed, dt(r.lastSubmittedAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        // Assignments Table
+        doc.setFont('times', 'bold');
+        doc.text('Assignments', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Assignment', 'Grade', 'Graded At']],
+          body: (data.assignments?.grades || []).map(a => [a.assignmentTitle, pct(a.grade), dt(a.gradedAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        // Essays Table
+        doc.setFont('times', 'bold');
+        doc.text('Essay Submissions', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
+          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex+1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        // Modules Table
+        doc.setFont('times', 'bold');
+        doc.text('Completed Modules', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Course', 'Module', 'Percent', 'Completed At']],
+          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, pct(m.percent), dt(m.completedAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        // Download
+        doc.save(`student_analytics_${student}.pdf`);
       } catch (e) {
         console.error(e);
-        alert('PDF download failed. Ensure the backend has /student-analytics/pdf.');
+        alert('PDF download failed.');
       }
     }
 

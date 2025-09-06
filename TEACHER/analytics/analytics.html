@@ -205,13 +205,21 @@
         <!-- Export & Share -->
         <div class="subsection mt-5 mb-5">
           <h2>Export & Share</h2>
-          <button id="exportCsvBtn" class="btn btn-outline-primary me-2">
-            <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
-          </button>
-          <button id="downloadPdfBtn" class="btn btn-outline-secondary">
-            <i class="bi bi-file-earmark-pdf"></i> Download PDF
-          </button>
-          <small class="d-block mt-2 text-muted">Exports reflect the current filter & view.</small>
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <button id="exportCsvBtn" class="btn btn-outline-primary">
+              <i class="bi bi-file-earmark-spreadsheet"></i> Export Current View CSV
+            </button>
+            <button id="downloadPdfBtn" class="btn btn-outline-secondary">
+              <i class="bi bi-file-earmark-pdf"></i> Download Current View PDF
+            </button>
+            <button id="exportAllCsvBtn" class="btn btn-outline-primary">
+              <i class="bi bi-file-earmark-spreadsheet"></i> Export All (Quiz & Assignment) CSV
+            </button>
+            <button id="downloadAllPdfBtn" class="btn btn-outline-secondary">
+              <i class="bi bi-file-earmark-pdf"></i> Download All (Quiz & Assignment) PDF
+            </button>
+          </div>
+          <small class="d-block mt-2 text-muted">Exports reflect the current filter & view, or all analytics for the selected class.</small>
         </div>
       </section>
     </div>
@@ -547,26 +555,341 @@
     }
 
     // Exports
-    async function exportCsv() {
-      const classId = classSelectEl.value || '';
-      const base = viewSelectEl.value === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-      const blob = await getBlob(`${API_BASE}/api/teacher/${base}/csv?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
-      const link = document.createElement('a'); link.href=URL.createObjectURL(blob);
-      link.download = `${base}_${classId||'all'}.csv`; document.body.appendChild(link); link.click();
-      URL.revokeObjectURL(link.href); link.remove();
+    // Helper to get analytics data for both modes
+    async function getBothAnalytics(classId) {
+      const quiz = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      const assignment = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+      return { quiz, assignment };
     }
+
+    function csvForAnalytics(mode, data, classLabel) {
+      let csv = [];
+      // Header
+      csv.push('Class,View,Date');
+      csv.push(`"${classLabel}","${mode}","${new Date().toLocaleDateString()}"`);
+      // Summary
+      if (mode === 'assignment') {
+        csv.push('');
+        csv.push('Summary');
+        csv.push('Total Assignments,Average Assignment Score,On-time Rate,Modules Completed');
+        csv.push(`"${data.summary?.totalAssignments ?? ''}","${data.summary?.averageAssignmentScore ?? ''}","${data.summary?.onTimeRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
+      } else {
+        csv.push('');
+        csv.push('Summary');
+        csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
+        csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
+      }
+      // Table
+      csv.push('');
+      csv.push('Students');
+      if (mode === 'assignment') {
+        csv.push('Student,ID,Avg Assignment Score,Assignments Submitted,On-time %,Modules Completed,Status');
+        (data.progress || []).forEach(r => {
+          csv.push(`"${r.name}","${r.studentId}","${r.avgAssignmentScore}","${r.assignmentsSubmitted}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
+        });
+      } else {
+        csv.push('Student,ID,Avg Quiz Score,Quizzes Taken,On-time %,Modules Completed,Status');
+        (data.progress || []).forEach(r => {
+          csv.push(`"${r.name}","${r.studentId}","${r.avgQuizScore}","${r.quizzesTaken}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
+        });
+      }
+      return csv.join('\r\n');
+    }
+
+    async function exportAllCsv() {
+      try {
+        const classId = classSelectEl.value || '';
+        const classLabel = classSelectEl.options[classSelectEl.selectedIndex].text;
+        const both = await getBothAnalytics(classId);
+        let csv = [];
+        csv.push(csvForAnalytics('quiz', both.quiz, classLabel));
+        csv.push('');
+        csv.push(csvForAnalytics('assignment', both.assignment, classLabel));
+        // Download
+        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `all_analytics_${classId||'all'}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      } catch (e) {
+        console.error(e);
+        alert('CSV export failed.');
+      }
+    }
+
+    async function downloadAllPdf() {
+      try {
+        // Load jsPDF and autoTable if not present
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') {
+          alert('Failed to load jsPDF.');
+          return;
+        }
+        if (typeof window.jspdf?.autoTable === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        const classId = classSelectEl.value || '';
+        const classLabel = classSelectEl.options[classSelectEl.selectedIndex].text;
+        const both = await getBothAnalytics(classId);
+        const doc = new window.jspdf.jsPDF();
+
+        // Formal Header
+        doc.setFont('times', 'bold');
+        doc.setFontSize(18);
+        doc.text('Class Analytics Report (Quiz & Assignment)', 105, 20, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setFont('times', 'normal');
+        doc.text(`Class: ${classLabel}`, 20, 32);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 40);
+
+        // Quiz Summary Table
+        doc.setFont('times', 'bold');
+        doc.text('Quiz Analytics', 20, 50);
+        doc.setFont('times', 'normal');
+        doc.autoTable({
+          startY: 55,
+          head: [['Total Quizzes', 'Average Quiz Score', 'Pass Rate', 'Modules Completed']],
+          body: [[both.quiz.summary?.totalQuizzes ?? '', both.quiz.summary?.averageQuizScore ?? '', both.quiz.summary?.passRate ?? '', both.quiz.summary?.modulesCompleted ?? '']],
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 11, halign: 'center' },
+          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+        });
+        let y = doc.lastAutoTable.finalY + 8;
+        doc.setFont('times', 'bold');
+        doc.text('Students (Quiz)', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Student', 'ID', 'Avg Quiz Score', 'Quizzes Taken', 'On-time %', 'Modules Completed', 'Status']],
+          body: (both.quiz.progress || []).map(r => [r.name, r.studentId, r.avgQuizScore, r.quizzesTaken, r.onTimePct, r.modulesCompleted, r.status]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        // Assignment Summary Table
+        doc.setFont('times', 'bold');
+        doc.text('Assignment Analytics', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Total Assignments', 'Average Assignment Score', 'On-time Rate', 'Modules Completed']],
+          body: [[both.assignment.summary?.totalAssignments ?? '', both.assignment.summary?.averageAssignmentScore ?? '', both.assignment.summary?.onTimeRate ?? '', both.assignment.summary?.modulesCompleted ?? '']],
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 11, halign: 'center' },
+          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+        doc.setFont('times', 'bold');
+        doc.text('Students (Assignment)', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Student', 'ID', 'Avg Assignment Score', 'Assignments Submitted', 'On-time %', 'Modules Completed', 'Status']],
+          body: (both.assignment.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        // Download
+        doc.save(`all_analytics_${classId||'all'}.pdf`);
+      } catch (e) {
+        console.error(e);
+        alert('PDF download failed.');
+      }
+    }
+    // --- Formal PDF and CSV Export ---
+    async function exportCsv() {
+      try {
+        const classId = classSelectEl.value || '';
+        const mode = viewSelectEl.value;
+        const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
+        // Get analytics data
+        let data;
+        if (mode === 'assignment') {
+          data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+        } else {
+          data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+        }
+        let csv = [];
+        // Header
+        csv.push('Class,View,Date');
+        csv.push(`"${classSelectEl.options[classSelectEl.selectedIndex].text}","${mode}","${new Date().toLocaleDateString()}"`);
+
+        // Summary
+        if (mode === 'assignment') {
+          csv.push('');
+          csv.push('Summary');
+          csv.push('Total Assignments,Average Assignment Score,On-time Rate,Modules Completed');
+          csv.push(`"${data.summary?.totalAssignments ?? ''}","${data.summary?.averageAssignmentScore ?? ''}","${data.summary?.onTimeRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
+        } else {
+          csv.push('');
+          csv.push('Summary');
+          csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
+          csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
+        }
+
+        // Table
+        csv.push('');
+        csv.push('Students');
+        if (mode === 'assignment') {
+          csv.push('Student,ID,Avg Assignment Score,Assignments Submitted,On-time %,Modules Completed,Status');
+          (data.progress || []).forEach(r => {
+            csv.push(`"${r.name}","${r.studentId}","${r.avgAssignmentScore}","${r.assignmentsSubmitted}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
+          });
+        } else {
+          csv.push('Student,ID,Avg Quiz Score,Quizzes Taken,On-time %,Modules Completed,Status');
+          (data.progress || []).forEach(r => {
+            csv.push(`"${r.name}","${r.studentId}","${r.avgQuizScore}","${r.quizzesTaken}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
+          });
+        }
+
+        // Download
+        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${base}_${classId||'all'}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      } catch (e) {
+        console.error(e);
+        alert('CSV export failed.');
+      }
+    }
+
     async function downloadPdf() {
-      const classId = classSelectEl.value || '';
-      const base = viewSelectEl.value === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-      const blob = await getBlob(`${API_BASE}/api/teacher/${base}/pdf?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
-      const link = document.createElement('a'); link.href=URL.createObjectURL(blob);
-      link.download = `${base}_${classId||'all'}.pdf`; document.body.appendChild(link); link.click();
-      URL.revokeObjectURL(link.href); link.remove();
+      try {
+        // Load jsPDF and autoTable if not present
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') {
+          alert('Failed to load jsPDF.');
+          return;
+        }
+        if (typeof window.jspdf?.autoTable === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+
+        const classId = classSelectEl.value || '';
+        const mode = viewSelectEl.value;
+        const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
+        // Get analytics data
+        let data;
+        if (mode === 'assignment') {
+          data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+        } else {
+          data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId?`&classId=${classId}`:''}`);
+        }
+        const doc = new window.jspdf.jsPDF();
+
+        // Formal Header
+        doc.setFont('times', 'bold');
+        doc.setFontSize(18);
+        doc.text('Class Analytics Report', 105, 20, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setFont('times', 'normal');
+        doc.text(`Class: ${classSelectEl.options[classSelectEl.selectedIndex].text}`, 20, 32);
+        doc.text(`View: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`, 20, 40);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
+
+        // Summary Table
+        if (mode === 'assignment') {
+          doc.autoTable({
+            startY: 55,
+            head: [['Total Assignments', 'Average Assignment Score', 'On-time Rate', 'Modules Completed']],
+            body: [[data.summary?.totalAssignments ?? '', data.summary?.averageAssignmentScore ?? '', data.summary?.onTimeRate ?? '', data.summary?.modulesCompleted ?? '']],
+            theme: 'grid',
+            styles: { font: 'times', fontSize: 11, halign: 'center' },
+            headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+          });
+        } else {
+          doc.autoTable({
+            startY: 55,
+            head: [['Total Quizzes', 'Average Quiz Score', 'Pass Rate', 'Modules Completed']],
+            body: [[data.summary?.totalQuizzes ?? '', data.summary?.averageQuizScore ?? '', data.summary?.passRate ?? '', data.summary?.modulesCompleted ?? '']],
+            theme: 'grid',
+            styles: { font: 'times', fontSize: 11, halign: 'center' },
+            headStyles: { fillColor: [255, 178, 0], textColor: 0 },
+          });
+        }
+
+        let y = doc.lastAutoTable.finalY + 8;
+
+        // Students Table
+        doc.setFont('times', 'bold');
+        doc.text('Students', 20, y);
+        doc.setFont('times', 'normal');
+        y += 2;
+        if (mode === 'assignment') {
+          doc.autoTable({
+            startY: y,
+            head: [['Student', 'ID', 'Avg Assignment Score', 'Assignments Submitted', 'On-time %', 'Modules Completed', 'Status']],
+            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
+            theme: 'grid',
+            styles: { font: 'times', fontSize: 10 },
+            headStyles: { fillColor: [240,240,240], textColor: 0 },
+          });
+        } else {
+          doc.autoTable({
+            startY: y,
+            head: [['Student', 'ID', 'Avg Quiz Score', 'Quizzes Taken', 'On-time %', 'Modules Completed', 'Status']],
+            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgQuizScore, r.quizzesTaken, r.onTimePct, r.modulesCompleted, r.status]),
+            theme: 'grid',
+            styles: { font: 'times', fontSize: 10 },
+            headStyles: { fillColor: [240,240,240], textColor: 0 },
+          });
+        }
+
+        // Download
+        doc.save(`${base}_${classId||'all'}.pdf`);
+      } catch (e) {
+        console.error(e);
+        alert('PDF download failed.');
+      }
     }
 
     // Events
-    document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
-    document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
+  document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv().catch(alert));
+  document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf().catch(alert));
+  document.getElementById('exportAllCsvBtn').addEventListener('click',()=>exportAllCsv().catch(alert));
+  document.getElementById('downloadAllPdfBtn').addEventListener('click',()=>downloadAllPdf().catch(alert));
     classSelectEl.addEventListener('change',()=>loadAnalyticsView().catch(alert));
     viewSelectEl.addEventListener('change',()=>{ setSortOptionsForMode(viewSelectEl.value); loadAnalyticsView().catch(alert); });
     refreshBtn.addEventListener('click',()=>loadAnalyticsView().catch(console.error));

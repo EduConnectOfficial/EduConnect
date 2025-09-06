@@ -253,14 +253,20 @@ router.get(
       essays.sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
     }
 
-    /* ------------------------- completed modules -------------------------- */
+    /* ------------------------- completed modules --------------------------
+       IMPORTANT: A doc in users/{id}/completedModules signifies completion.
+       Historically we stored the *quiz percent* that triggered completion.
+       For analytics UX we want a clean "completed" signal -> show 100.
+       We still expose `rawPercent` for debugging/forensics.
+    ---------------------------------------------------------------------- */
     const cmSnap = await userRef.collection('completedModules').get();
     const completedRaw = cmSnap.docs.map((d) => {
       const m = d.data() || {};
       return {
         moduleId: m.moduleId || d.id,
         courseId: m.courseId || null,
-        percent: typeof m.percent === 'number' ? m.percent : null,
+        rawPercent: typeof m.percent === 'number' ? m.percent : null, // keep original
+        // percent will be normalized to 100 below
         completedAt: m.completedAt || null,
       };
     });
@@ -276,9 +282,15 @@ router.get(
       ...m,
       courseTitle: courseTitleMap[m.courseId] || m.courseId || '',
       moduleTitle: moduleTitleMap[m.moduleId] || m.moduleId || '',
+      percent: 100,              // <-- normalized for display
+      completedCount: 1,         // <-- helps front-end show "1/1"
+      totalModules: 1
     }));
 
     const modulesCompleted = completedModules.length;
+
+    // If you can compute a real total across all modules for the student, set it here.
+    // For now we leave null so the front-end falls back gracefully (e.g., shows just modulesCompleted).
     const totalModules = null;
 
     /* ----------------------------- summary ------------------------------- */
@@ -304,6 +316,7 @@ router.get(
         submissions: essays,
       },
       modules: {
+        // newest completed first
         completed: completedModules.sort((a, b) => (toMillis(b.completedAt) || 0) - (toMillis(a.completedAt) || 0)),
       },
     };
