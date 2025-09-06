@@ -114,7 +114,7 @@
           </div>
         </div>
 
-        <!-- Role Stats (Admins removed; IT Support -> Super Admins) -->
+        <!-- Role Stats -->
         <div class="row g-3 mt-1">
           <div class="col-6 col-md-4">
             <div class="card shadow-sm">
@@ -151,7 +151,7 @@
           </div>
         </div>
 
-        <!-- Charts (kept small) -->
+        <!-- Charts -->
         <div class="row g-3 mt-1">
           <div class="col-12 col-lg-6">
             <div class="card shadow-sm h-100 chart-sm">
@@ -204,6 +204,7 @@
                         <th>#</th>
                         <th>Username</th>
                         <th>First</th>
+                        <th>Middle</th>
                         <th>Last</th>
                         <th>Email</th>
                         <th>Status</th>
@@ -211,12 +212,13 @@
                       </tr>
                     </thead>
                     <tbody id="sampleUsersBody">
-                      <tr><td colspan="7">Loading…</td></tr>
+                      <tr><td colspan="8">Loading…</td></tr>
                     </tbody>
                   </table>
                 </div>
                 <div class="text-end">
-                  <a href="../access/user_access.html" class="btn btn-sm btn-outline-secondary">View All Users</a>
+                  <a href="../access/student_access.html" class="btn btn-sm btn-outline-secondary">View Student Users</a>
+                </div>
               </div>
             </div>
           </div>
@@ -235,7 +237,7 @@
       document.getElementById("Username").textContent = userData.username;
     }
 
-    const API_BASE = "http://localhost:5000";
+    const API_ORIGIN = "http://localhost:5000";
     let activeInactiveChart, roleDistributionChart;
 
     function maskEmail(email) {
@@ -249,17 +251,20 @@
       return maskedLocal + "@" + (maskedDomainName ? (maskedDomainName + ".") : "") + tld;
     }
 
-    // ---- Dashboard stats from backend
-    async function loadDashboardStats() {
+    async function loadDashboard() {
       try {
-        const res = await fetch(`${API_BASE}/api/dashboard-stats`);
+        // Pull decrypted names + precomputed stats from your new route
+        const res = await fetch(`${API_ORIGIN}/api/dashboard-stats`);
         const data = await res.json();
         if (!data?.success) throw new Error("stats not ok");
 
         const s = data.stats || {};
-        const total = Number(s.totalUsers || 0);
-        const active = Number(s.activeUsers || 0);
-        const inactive = Number(s.inactiveUsers || 0);
+        const list = Array.isArray(s.users) ? s.users : [];
+
+        // Top stats
+        const total = Number(s.totalUsers || list.length || 0);
+        const active = Number(s.activeUsers || list.filter(u => u.active === true).length || 0);
+        const inactive = Number(s.inactiveUsers || (total - active));
 
         document.getElementById("totalUsersCount").textContent = total;
         document.getElementById("activeUsersCount").textContent = active;
@@ -275,10 +280,49 @@
         document.getElementById("topCourseCard").textContent = s.topCourse || "—";
         document.getElementById("mostCompletedModuleCard").textContent = s.mostCompletedModule || "—";
 
-        // Chart: Active vs Inactive (small)
-        const ctx = document.getElementById("activeInactiveChart");
+        // Role counts (STRICT)
+        let teachers = 0, students = 0, superAdmins = 0;
+        const sample = [];
+
+        list.forEach(u => {
+          const isTeacher = u?.isTeacher === true || Boolean(u?.teacherId);
+          const isStudent = u?.isStudent === true || Boolean(u?.studentId);
+          const isAdmin   = u?.isAdmin === true;           // STRICT Super Admin
+
+          if (isTeacher) teachers++;
+          if (isStudent) students++;
+          if (isAdmin)   superAdmins++;
+
+          if ((isTeacher || isStudent) && sample.length < 12) {
+            // Names are already decrypted by backend: firstName, middleName, lastName
+            const fn  = (u.firstName  || '').trim();
+            const mn  = (u.middleName || '').trim();
+            const ln  = (u.lastName   || '').trim();
+            const role = isTeacher && isStudent ? 'Teacher & Student'
+                       : isTeacher ? 'Teacher'
+                       : 'Student';
+
+            sample.push({
+              username: u.username || '',
+              firstName: fn,
+              middleName: mn,
+              lastName: ln,
+              email: u.email || '',
+              active: u.active !== false,
+              role
+            });
+          }
+        });
+
+        // Role cards
+        document.getElementById("teachersCount").textContent = teachers;
+        document.getElementById("studentsCount").textContent = students;
+        document.getElementById("itCount").textContent       = superAdmins;
+
+        // Chart: Active vs Inactive
+        const ctx1 = document.getElementById("activeInactiveChart");
         if (activeInactiveChart) activeInactiveChart.destroy();
-        activeInactiveChart = new Chart(ctx, {
+        activeInactiveChart = new Chart(ctx1, {
           type: 'doughnut',
           data: { labels: ['Active', 'Inactive'], datasets: [{ data: [active, inactive] }] },
           options: {
@@ -289,58 +333,8 @@
             layout: { padding: 6 }
           }
         });
-      } catch (err) {
-        console.error("🔥 dashboard-stats error:", err);
-      }
-    }
 
-    // ---- Role analytics: compute from /users
-    async function loadUsersAndBuild() {
-      try {
-        const res = await fetch(`${API_BASE}/users`);
-        const users = await res.json();
-
-        // Counters
-        let teachers = 0, students = 0, superAdmins = 0, active = 0, total = 0;
-        const teacherStudentSample = [];
-
-        users.forEach((u) => {
-          total++;
-          if (u.active !== false) active++;
-
-          // roles
-          const isTeacher = (u?.isTeacher === true) || Boolean(u?.teacherId);
-          const isStudent = (u?.isStudent === true) || Boolean(u?.studentId);
-          const isSuperAdmin = (u?.isITsupport === true) || (u?.isSuperAdmin === true);
-
-          if (isTeacher) teachers++;
-          if (isStudent) students++;
-          if (isSuperAdmin) superAdmins++;
-
-          // sample list (up to 12)
-          if ((isTeacher || isStudent) && teacherStudentSample.length < 12) {
-            let role = '—';
-            if (isTeacher && isStudent) role = 'Teacher & Student';
-            else if (isTeacher) role = 'Teacher';
-            else if (isStudent) role = 'Student';
-
-            teacherStudentSample.push({
-              username: u.username || '',
-              firstName: u.firstName || '',
-              lastName: u.lastName || '',
-              email: u.email || '',
-              active: (u.active !== false),
-              role
-            });
-          }
-        });
-
-        // Role cards
-        document.getElementById("teachersCount").textContent = teachers;
-        document.getElementById("studentsCount").textContent = students;
-        document.getElementById("itCount").textContent = superAdmins;
-
-        // Bar: Roles (Admins removed)
+        // Chart: Role distribution (Admins = Super Admins)
         const ctx2 = document.getElementById("roleDistributionChart");
         if (roleDistributionChart) roleDistributionChart.destroy();
         roleDistributionChart = new Chart(ctx2, {
@@ -354,23 +348,26 @@
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             layout: { padding: 6 },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
-                      x: { ticks: { font: { size: 11 } } } }
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } } },
+              x: { ticks: { font: { size: 11 } } }
+            }
           }
         });
 
-        // Fill sample table
+        // Sample table (FIRST / MIDDLE / LAST)
         const tbody = document.getElementById("sampleUsersBody");
-        if (!teacherStudentSample.length) {
-          tbody.innerHTML = `<tr><td colspan="7">No Teacher/Student users found.</td></tr>`;
+        if (!sample.length) {
+          tbody.innerHTML = `<tr><td colspan="8">No Teacher/Student users found.</td></tr>`;
         } else {
           tbody.innerHTML = '';
-          teacherStudentSample.forEach((u, i) => {
+          sample.forEach((u, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td>${i+1}</td>
               <td>${u.username}</td>
               <td>${u.firstName}</td>
+              <td>${u.middleName}</td>
               <td>${u.lastName}</td>
               <td>${maskEmail(u.email)}</td>
               <td><span class="badge ${u.active ? 'bg-success' : 'bg-secondary'}">${u.active ? 'Active' : 'Inactive'}</span></td>
@@ -379,43 +376,14 @@
             tbody.appendChild(tr);
           });
         }
-
-        // If /api/dashboard-stats didn’t load, backfill active/inactive
-        const inactive = total - active;
-        if (document.getElementById("totalUsersCount").textContent === '—') {
-          document.getElementById("totalUsersCount").textContent = total;
-          document.getElementById("activeUsersCount").textContent = active;
-          document.getElementById("inactiveUsersCount").textContent = inactive;
-          const actPct = total ? Math.round((active/total)*100) : 0;
-          const inactPct = total ? Math.round((inactive/total)*100) : 0;
-          document.getElementById("activePct").textContent = `${actPct}% of total`;
-          document.getElementById("inactivePct").textContent = `${inactPct}% of total`;
-
-          const ctx = document.getElementById("activeInactiveChart");
-          if (activeInactiveChart) activeInactiveChart.destroy();
-          activeInactiveChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: { labels: ['Active','Inactive'], datasets: [{ data: [active, inactive] }] },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10 } } },
-              cutout: '60%',
-              layout: { padding: 6 }
-            }
-          });
-        }
       } catch (err) {
-        console.error("❌ users fetch/build error:", err);
+        console.error("🔥 dashboard load error:", err);
       }
     }
 
     // boot
-    loadDashboardStats();
-    loadUsersAndBuild();
-  </script>
+    loadDashboard();
 
-  <script>
     function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
