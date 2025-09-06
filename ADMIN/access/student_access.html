@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EduConnect Admin - Super Admin Management</title>
+  <title>EduConnect Admin - Student Management</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/ADMIN/access/access.css" />
   <style>
+    /* ===== Filter bar ===== */
     .filter-wrap { border-radius: 16px; overflow: hidden; box-shadow: 0 6px 22px rgba(0,0,0,.08); background: #fff; }
     .filter-head { background: #5a1f0f; color: #ffd9b3; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-weight: 700; border-top-left-radius: 16px; border-top-right-radius: 16px; }
     .filter-head .bi { color: #ffbb66; font-size: 1.05rem; }
@@ -20,16 +21,16 @@
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable .arrow { opacity: .5; margin-left: .25rem; }
     th.sortable.active .arrow { opacity: 1; }
-    .role-badge { font-size: .72rem; vertical-align: middle; }
     @media (max-width: 992px) { .filter-body { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 576px) { .filter-body { grid-template-columns: 1fr; } }
   </style>
 </head>
-
 <body>
   <div class="dashboard">
+    <!-- Sidebar Container -->
     <div id="sidebar-container"></div>
 
+    <!-- Sidebar + Dropdown Logic -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         fetch("/ADMIN/components/test.html")
@@ -57,6 +58,7 @@
       });
     </script>
 
+    <!-- Main -->
     <div class="main">
       <header class="header-top">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -70,26 +72,29 @@
         </button>
       </header>
 
+      <!-- Dashboard Section -->
       <section class="content px-4">
-        <h2 class="mt-4 mb-3 fw-bold text-center">Super Admin Management List</h2>
+        <h2 class="mt-4 mb-3 fw-bold text-center">Student Management List</h2>
 
         <!-- Filter Bar -->
         <div class="container-fluid px-0 mb-3">
           <div class="filter-wrap">
             <div class="filter-head">
-              <i class="bi bi-folder2"></i>
-              <span>Super Admins</span>
+              <i class="bi bi-people"></i>
+              <span>Students</span>
             </div>
             <div class="filter-body">
               <div class="search-field">
                 <i class="bi bi-search"></i>
                 <input id="filterSearch" type="text" class="form-control" placeholder="Search by username, name, email..." />
               </div>
+
               <select id="filterStatus" class="form-select">
                 <option value="all" selected>All Status</option>
                 <option value="active">Active</option>
                 <option value="deactivated">Deactivated</option>
               </select>
+
               <select id="filterSort" class="form-select">
                 <option value="nameAsc" selected>Sort: A → Z</option>
                 <option value="nameDesc">Sort: Z → A</option>
@@ -101,7 +106,7 @@
         </div>
 
         <!-- Alerts -->
-        <div id="adminAlert" class="alert alert-success d-none" role="alert"></div>
+        <div id="studentAlert" class="alert alert-success d-none" role="alert"></div>
 
         <div class="container-fluid px-0">
           <div class="table-responsive shadow bg-white rounded p-4" style="max-width: 100%; width: 100%;">
@@ -128,7 +133,7 @@
     </div>
   </div>
 
-  <!-- Status Confirm Modal -->
+  <!-- Confirm Status Modal -->
   <div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-labelledby="statusConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -136,7 +141,7 @@
           <h5 class="modal-title" id="statusConfirmModalLabel">Confirm Status Change</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="statusModalBody">Are you sure?</div>
+        <div class="modal-body" id="statusModalBody"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button id="confirmStatusBtn" type="button" class="btn btn-primary">Confirm</button>
@@ -145,7 +150,7 @@
     </div>
   </div>
 
-  <!-- Delete Confirm Modal -->
+  <!-- Confirm Delete Modal -->
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -153,7 +158,7 @@
           <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="deleteModalBody">This will permanently delete the user. Continue?</div>
+        <div class="modal-body" id="deleteModalBody"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button id="confirmDeleteBtn" type="button" class="btn btn-danger">Delete</button>
@@ -167,7 +172,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <form id="editUserForm" class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="editUserLabel">Edit Super Admin</h5>
+          <h5 class="modal-title" id="editUserLabel">Edit User</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -203,11 +208,11 @@
     </div>
   </div>
 
+  <!-- Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Header username & current userId
-    let CURRENT_USER_ID = null;
+    // auth header username
     (function populateUsername() {
       try {
         const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
@@ -217,7 +222,6 @@
         if (!username && typeof raw === "string") username = raw;
         const el = document.getElementById("Username");
         if (el) { el.textContent = username || "User"; el.title = username || "User"; }
-        CURRENT_USER_ID = data?.userId || data?.uid || null;
       } catch (e) { console.error("Failed to populate username:", e); }
     })();
   </script>
@@ -239,17 +243,19 @@
       return res.json();
     }
 
-    const tableBody  = document.getElementById('userTableBody');
-    const adminAlert = document.getElementById('adminAlert');
-    const elSearch   = document.getElementById('filterSearch');
-    const elStatus   = document.getElementById('filterStatus');
-    const elSort     = document.getElementById('filterSort');
+    const tableBody    = document.getElementById('userTableBody');
+    const studentAlert = document.getElementById('studentAlert');
 
-    let supers = []; // STRICT: isSuperAdmin === true
+    const elSearch = document.getElementById('filterSearch');
+    const elStatus = document.getElementById('filterStatus');
+    const elSort   = document.getElementById('filterSort');
+
+    let students = []; // ONLY isStudent === true (fallback to studentId)
     let selectedUser = null;
     let selectedRow  = null;
     let nextActive   = true;
 
+    // header-click sorting
     let sortKey = 'index';
     let sortDir = 'asc';
 
@@ -269,7 +275,7 @@
 
     function applyFilters(list){
       const q = norm(elSearch.value);
-      const status = elStatus.value;
+      const status = elStatus.value; // all | active | deactivated
 
       return list.filter(u=>{
         const active = isActive(u);
@@ -314,11 +320,6 @@
       return (sortDir==='asc') ? d : -d;
     }
 
-    function enableTooltips(scope=document){
-      const triggers = [].slice.call(scope.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      triggers.forEach(el => new bootstrap.Tooltip(el));
-    }
-
     function renderTable(list){
       tableBody.innerHTML = '';
       const filtered = applyFilters(list);
@@ -328,24 +329,17 @@
       });
 
       if (!sorted.length){
-        tableBody.innerHTML = '<tr><td colspan="8">No matching Super Admins.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8">No matching students.</td></tr>';
         return;
       }
 
-      const totalSupers = supers.length; // since we strictly show super admins only
-
       sorted.forEach((user, i)=>{
         const active = isActive(user);
-        const isSelf = CURRENT_USER_ID && (user.userId === CURRENT_USER_ID);
-        const isLastRemaining = totalSupers <= 1; // last remaining super admin overall
 
         const row = document.createElement('tr');
         row.innerHTML =
           '<td>' + (i+1) + '</td>' +
-          '<td>' +
-            (user.username || '') +
-          
-          '</td>' +
+          '<td>' + (user.username || '') + '</td>' +
           '<td>' + (user.firstName || '') + '</td>' +
           '<td>' + (user.middleName || '') + '</td>' +
           '<td>' + (user.lastName || '') + '</td>' +
@@ -361,32 +355,16 @@
             '<button class="btn btn-sm btn-outline-danger delete-btn">Delete</button>' +
           '</td>';
 
-        const statusBtn = row.querySelector('.status-btn');
-        const editBtn   = row.querySelector('.edit-btn');
-        const deleteBtn = row.querySelector('.delete-btn');
-
-        // Guard delete: cannot delete yourself or last remaining super admin
-        if (isSelf || isLastRemaining) {
-          deleteBtn.disabled = true;
-          deleteBtn.setAttribute('data-bs-toggle', 'tooltip');
-          deleteBtn.setAttribute('data-bs-placement', 'top');
-          deleteBtn.setAttribute(
-            'title',
-            isSelf
-              ? 'You cannot delete your own super admin account.'
-              : 'Cannot delete the last remaining super admin.'
-          );
-        }
-
-        // Toggle status
-        statusBtn.addEventListener('click', ()=>{
+        // Activate/Deactivate
+        row.querySelector('.status-btn').addEventListener('click', ()=>{
           selectedUser = user;
           selectedRow  = row;
           nextActive   = !isActive(user);
 
           document.getElementById('statusModalBody').textContent =
-            'Are you sure you want to ' + (nextActive ? 'activate' : 'deactivate') + ' Super Admin "' + (user.username || 'user') + '"?';
+            'Are you sure you want to ' + (nextActive ? 'activate' : 'deactivate') + ' student "' + (user.username || 'user') + '"?';
 
+          // Reset confirm handlers
           const old = document.getElementById('confirmStatusBtn');
           const fresh = old.cloneNode(true);
           old.parentNode.replaceChild(fresh, old);
@@ -406,16 +384,17 @@
                 badge.textContent = nextActive ? 'Active' : 'Deactivated';
                 badge.className   = 'badge ' + (nextActive ? 'bg-success' : 'bg-secondary') + ' status-badge';
 
-                statusBtn.textContent = nextActive ? 'Deactivate' : 'Activate';
-                statusBtn.className   = 'btn btn-sm ' + (nextActive ? 'btn-danger' : 'btn-success') + ' status-btn';
+                const btn = row.querySelector('.status-btn');
+                btn.textContent = nextActive ? 'Deactivate' : 'Activate';
+                btn.className   = 'btn btn-sm ' + (nextActive ? 'btn-danger' : 'btn-success') + ' status-btn';
 
                 bootstrap.Modal.getInstance(document.getElementById('statusConfirmModal')).hide();
 
-                adminAlert.textContent = 'Successfully ' + (nextActive ? 'activated' : 'deactivated') + ' "' + (user.username || 'user') + '".';
-                adminAlert.classList.remove('d-none');
-                setTimeout(()=>adminAlert.classList.add('d-none'), 3000);
+                studentAlert.textContent = 'Successfully ' + (nextActive ? 'activated' : 'deactivated') + ' "' + (user.username || 'user') + '".';
+                studentAlert.classList.remove('d-none');
+                setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
 
-                renderTable(supers);
+                renderTable(students);
               } else {
                 alert((result && result.message) || 'Failed to update status.');
               }
@@ -431,9 +410,8 @@
         });
 
         // Edit
-        editBtn.addEventListener('click', ()=>{
+        row.querySelector('.edit-btn').addEventListener('click', ()=>{
           selectedUser = user;
-          selectedRow = row;
           document.getElementById('editUsername').value   = user.username || '';
           document.getElementById('editFirstName').value  = user.firstName || '';
           document.getElementById('editMiddleName').value = user.middleName || '';
@@ -443,14 +421,7 @@
         });
 
         // Delete
-        deleteBtn.addEventListener('click', ()=>{
-          // Defensive double-checks
-          const total = supers.length;
-          const lastRemaining = total <= 1;
-          if (deleteBtn.disabled || (CURRENT_USER_ID && user.userId === CURRENT_USER_ID) || lastRemaining) {
-            return; // blocked
-          }
-
+        row.querySelector('.delete-btn').addEventListener('click', ()=>{
           selectedUser = user;
           selectedRow  = row;
           document.getElementById('deleteModalBody').textContent =
@@ -470,14 +441,15 @@
               }
               const data = await res.json();
               if (data && data.success){
-                supers = supers.filter(u => u.userId !== user.userId);
-                renderTable(supers);
+                // remove from list
+                students = students.filter(u => u.userId !== user.userId);
+                renderTable(students);
 
                 bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
 
-                adminAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
-                adminAlert.classList.remove('d-none');
-                setTimeout(()=>adminAlert.classList.add('d-none'), 3000);
+                studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
+                studentAlert.classList.remove('d-none');
+                setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
               } else {
                 alert((data && data.message) || 'Delete failed.');
               }
@@ -494,33 +466,33 @@
 
         tableBody.appendChild(row);
       });
-
-      // enable Bootstrap tooltips for disabled delete buttons
-      enableTooltips(tableBody);
     }
 
-    async function loadSuperAdmins(){
+    async function loadStudents(){
       try {
+        // Try server-side filter if supported; fall back gracefully.
         let payload;
-        try { payload = await getJSON(API_BASE + '?role=superadmin'); }
+        try { payload = await getJSON(API_BASE + '?role=student'); }
         catch { payload = await getJSON(API_BASE); }
 
-        const users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
-        supers = users
-          .filter(u => u && u.isAdmin  === true)  // STRICT
+        let users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
+        // Enforce client-side: ONLY students
+        students = users
+          .filter(u => u && (u.isStudent === true || !!u.studentId))
           .map((u,i)=>({ ...u, __index:i }));
 
-        if (!supers.length){
-          tableBody.innerHTML = '<tr><td colspan="8">No Super Admins found.</td></tr>';
+        if (!students.length){
+          tableBody.innerHTML = '<tr><td colspan="8">No students found.</td></tr>';
           return;
         }
-        renderTable(supers);
+        renderTable(students);
       } catch (err) {
-        console.error('Failed to load Super Admins:', err);
-        tableBody.innerHTML = '<tr><td colspan="8">Error loading Super Admins.</td></tr>';
+        console.error('Failed to load users:', err);
+        tableBody.innerHTML = '<tr><td colspan="8">Error loading students.</td></tr>';
       }
     }
 
+    // Header sorting and filter bar
     document.addEventListener('DOMContentLoaded', ()=>{
       document.querySelectorAll('th.sortable').forEach(th=>{
         th.addEventListener('click', ()=>{
@@ -539,46 +511,52 @@
             }
           });
 
-          renderTable(supers);
+          renderTable(students);
         });
       });
 
-      elSearch.addEventListener('input', ()=>renderTable(supers));
-      elStatus.addEventListener('change', ()=>renderTable(supers));
-      elSort.addEventListener('change', ()=>renderTable(supers));
+      elSearch.addEventListener('input', ()=>renderTable(students));
+      elStatus.addEventListener('change', ()=>renderTable(students));
+      elSort.addEventListener('change', ()=>renderTable(students));
 
-      // Edit modal save logic
-      document.getElementById('editUserForm').addEventListener('submit', async function(e){
+      // Edit form submit
+      document.getElementById('editUserForm').addEventListener('submit', async (e)=>{
         e.preventDefault();
-        if (!selectedUser) return;
-        const updated = {
-          username: document.getElementById('editUsername').value.trim(),
-          firstName: document.getElementById('editFirstName').value.trim(),
-          middleName: document.getElementById('editMiddleName').value.trim(),
-          lastName: document.getElementById('editLastName').value.trim(),
-          email: document.getElementById('editEmail').value.trim()
-        };
-        try {
+        try{
+          const payload = {
+            username  : document.getElementById('editUsername').value.trim(),
+            firstName : document.getElementById('editFirstName').value.trim(),
+            middleName: document.getElementById('editMiddleName').value.trim(),
+            lastName  : document.getElementById('editLastName').value.trim(),
+            email     : document.getElementById('editEmail').value.trim()
+          };
+
           const result = await getJSON(
-            API_BASE + '/' + encodeURIComponent(selectedUser.userId),
-            { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(updated) }
+            API_BASE + '/' + encodeURIComponent(selectedUser.userId) + '/edit',
+            { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }
           );
-          if (result && result.success) {
-            Object.assign(selectedUser, updated);
-            renderTable(supers);
+
+          if (result?.success && result.user){
+            // Update local copy
+            const idx = students.findIndex(u => u.userId === selectedUser.userId);
+            if (idx > -1) students[idx] = { ...students[idx], ...result.user };
+            renderTable(students);
+
             bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
-            adminAlert.textContent = 'Admin Data Updated Successfully';
-            adminAlert.classList.remove('d-none');
-            setTimeout(()=>adminAlert.classList.add('d-none'), 3000);
+
+            studentAlert.textContent = 'User details updated for "' + (result.user.username || 'user') + '".';
+            studentAlert.classList.remove('d-none');
+            setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
           } else {
-            alert((result && result.message) || 'Failed to update profile.');
+            alert(result?.message || 'Failed to update user.');
           }
-        } catch(err) {
-          console.error('Edit failed:', err);
-          alert('Server error while updating profile.');
+        } catch(err){
+          console.error('Edit user failed:', err);
+          alert('Server error while updating user.');
         }
       });
-      loadSuperAdmins();
+
+      loadStudents();
     });
 
     function logoutUser() {
