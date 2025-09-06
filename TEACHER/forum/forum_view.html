@@ -4,24 +4,94 @@
   <meta charset="UTF-8" />
   <title>EduConnect Teacher - View Thread</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- Shared styles -->
   <link rel="stylesheet" href="../forum/forum.css" />
+
+  <!-- THEME (match Threads page modal look & feel) -->
+  <style>
+    :root{
+      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
+      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{height:100%;background:var(--bg);color:var(--text)}
+    .dashboard{display:flex;min-height:100vh}
+    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
+    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
+
+    .header-top{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
+    .logo-header{height:44px}
+    .search-box{max-width:520px;width:100%;position:relative}
+    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem;padding-right:36px}
+    .search-box i.bi.bi-search{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6;font-size:.95rem}
+    .profile-btn{color:#fff}
+
+    .content{padding:24px}
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
+    .btn-amber:hover{filter:brightness(1.06);color:#fff}
+
+    /* Neutral Cancel + Close buttons (consistent across modals) */
+    .btn-cancel{
+      background-color:#adb5bd !important; color:#fff !important; border:none !important;
+      border-radius:999px !important; padding:.5rem 1.2rem !important; font-weight:500;
+      transition:background .2s ease, transform .2s ease;
+    }
+    .btn-cancel:hover,.btn-cancel:focus{ background-color:#6a737d !important; transform:scale(1.04); }
+
+    .btn-close-footer{
+      background-color:#6a737d !important; color:#343a40 !important; border:none !important;
+      border-radius:999px !important; padding:.5rem 1.2rem !important; font-weight:500;
+      transition:background .2s ease, transform .2s ease;
+    }
+    .btn-close-footer:hover,.btn-close-footer:focus{ background-color:#dee2e6 !important; color:#212529 !important; transform:scale(1.04); }
+
+    /* Center modals nicely (same rules as Threads page) */
+    .modal.show{display:flex !important;align-items:center;justify-content:center;--bs-modal-margin:0;padding:0 !important;}
+    .modal.show .modal-dialog{margin:0 !important;max-width:640px;width:calc(100% - 2rem);}
+    .modal.show .modal-content{max-height:min(90vh,800px);overflow:auto;border-radius:12px}
+
+    /* Forum-specific bits */
+    .fb-composer{display:flex;gap:.75rem}
+    .fb-avatar{width:38px;height:38px;border-radius:50%;background:#f1f3f5;color:#495057;display:flex;align-items:center;justify-content:center;font-weight:800}
+    .composer-box{background:#f6f8fa;border:1px solid #e5e7eb;border-radius:12px;padding:.6rem .8rem}
+    .composer-actions{display:flex;gap:.5rem}
+    .fb-comment{display:flex;gap:.75rem;margin-bottom:12px}
+    .fb-bubble{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:.6rem .75rem;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+    .bubble-kebab .kebab{border:none;background:transparent;color:#6c757d}
+    .fb-actions{font-size:.9rem;color:#6c757d;display:flex;gap:1rem;margin-top:.25rem}
+    .fb-children{margin-left:46px;margin-top:.25rem}
+    .name-line{font-weight:700;margin-bottom:.15rem}
+  </style>
 </head>
 <body>
   <div class="dashboard">
     <div id="sidebar-container"></div>
 
     <div class="main">
-      <header class="header-top">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
           <input type="text" placeholder="Search..." />
           <i class="bi bi-search"></i>
         </div>
-        <button class="profile-btn">
-          <i class="bi bi-person-circle"></i>
-          <span id="Username" class="username" style="font-size: 14px;"></span>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="bi bi-person-circle" style="font-size:1.8rem"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
 
@@ -72,6 +142,83 @@
     </div>
   </div>
 
+  <!-- ===== Modals (same structure/classes as Threads page) ===== -->
+
+  <!-- CONFIRM MODAL -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810);color:#FFD8A9">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-amber" id="confirmOkBtn">Yes, continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO MODAL -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810);color:#FFD8A9">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT COMMENT MODAL (styled consistently) -->
+  <div class="modal fade" id="editCommentModal" tabindex="-1" aria-labelledby="editCommentLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="editCommentForm">
+        <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810);color:#FFD8A9">
+          <h5 class="modal-title" id="editCommentLabel">Edit Comment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label for="editCommentTextarea" class="form-label">Comment</label>
+          <textarea id="editCommentTextarea" class="form-control" rows="4" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-amber">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- EDIT THREAD MODAL (styled consistently) -->
+  <div class="modal fade" id="editThreadModal" tabindex="-1" aria-labelledby="editThreadLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="editThreadForm">
+        <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810);color:#FFD8A9">
+          <h5 class="modal-title" id="editThreadLabel">Edit Thread</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label for="editThreadTitle" class="form-label">Title</label>
+          <input id="editThreadTitle" type="text" class="form-control mb-3" required />
+          <label for="editThreadText" class="form-label">Text</label>
+          <textarea id="editThreadText" class="form-control" rows="5" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-amber">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Sidebar loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -82,6 +229,7 @@
     });
   </script>
 
+  <!-- Main page logic -->
   <script>
     const API_BASE = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
     const qs = sel => document.querySelector(sel);
@@ -97,7 +245,7 @@
     } else {
       const dname = userData.fullName || userData.username || userData.email || "Teacher";
       const initials = (n=>{if(!n)return"?";const p=String(n).trim().split(/\s+/).filter(Boolean);const a=p[0]?.[0]||"";const b=(p.length>1?p[p.length-1][0]:(p[0]?.[1]||""));return(a+b).toUpperCase();})(dname);
-      document.getElementById("Username").textContent = initials;
+      document.getElementById("Username").textContent = dname;
       document.getElementById("Username").title = dname;
       if (!userData.uid) { userData.uid = userData.email; localStorage.setItem("user", JSON.stringify(userData)); }
       const meAvatarEl = document.getElementById("meAvatar"); if (meAvatarEl) meAvatarEl.textContent = initials;
@@ -111,6 +259,67 @@
     const threadId = new URLSearchParams(window.location.search).get("id");
     let thread=null;
 
+    /* ========= Reusable edit modals ========= */
+    function showEditComment(initialText=""){
+      return new Promise(resolve=>{
+        const el = document.getElementById('editCommentModal');
+        const form = document.getElementById('editCommentForm');
+        const ta = document.getElementById('editCommentTextarea');
+        ta.value = initialText || "";
+        const bs = bootstrap.Modal.getOrCreateInstance(el);
+
+        const onSubmit = (e)=>{
+          e.preventDefault();
+          const v = ta.value.trim();
+          if(!v){ ta.focus(); return; }
+          cleanup(); bs.hide(); resolve(v);
+        };
+        const onHidden = ()=>{ cleanup(); resolve(null); };
+
+        function cleanup(){
+          form.removeEventListener('submit', onSubmit);
+          el.removeEventListener('hidden.bs.modal', onHidden);
+        }
+
+        form.addEventListener('submit', onSubmit);
+        el.addEventListener('hidden.bs.modal', onHidden, { once:true });
+        bs.show();
+      });
+    }
+
+    function showEditThread(initialTitle="", initialText=""){
+      return new Promise(resolve=>{
+        const el = document.getElementById('editThreadModal');
+        const form = document.getElementById('editThreadForm');
+        const inputTitle = document.getElementById('editThreadTitle');
+        const ta = document.getElementById('editThreadText');
+        inputTitle.value = initialTitle || "";
+        ta.value = initialText || "";
+
+        const bs = bootstrap.Modal.getOrCreateInstance(el);
+
+        const onSubmit = (e)=>{
+          e.preventDefault();
+          const t = inputTitle.value.trim();
+          const body = ta.value.trim();
+          if(!t){ inputTitle.focus(); return; }
+          if(!body){ ta.focus(); return; }
+          cleanup(); bs.hide(); resolve({ title:t, text:body });
+        };
+        const onHidden = ()=>{ cleanup(); resolve(null); };
+
+        function cleanup(){
+          form.removeEventListener('submit', onSubmit);
+          el.removeEventListener('hidden.bs.modal', onHidden);
+        }
+
+        form.addEventListener('submit', onSubmit);
+        el.addEventListener('hidden.bs.modal', onHidden, { once:true });
+        bs.show();
+      });
+    }
+
+    /* ========= Thread & replies ========= */
     async function loadThread(){
       try{
         const j=await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`);
@@ -119,9 +328,6 @@
         const initials=initialsFromName(threadAuthorName);
         const isThreadOwner = userData?.uid && (String(thread.author?.uid) === String(userData.uid));
 
-        // Thread actions:
-        // - Edit only if teacher owns the thread
-        // - Delete always allowed for teachers (per your rule for comments; mirroring here for threads)
         const actionHtml=`
           <div class="dropdown ms-2">
             <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Thread actions">
@@ -129,15 +335,15 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               ${isThreadOwner ? `<li><button class="dropdown-item action-edit-thread"><i class="bi bi-pencil-square"></i> Edit</button></li>` : ``}
-              <li><button class="dropdown-item text-danger action-delete-thread"><i class="bi bi-trash3"></i> Delete</button></li>
+              <li><button class="dropdown-item text-danger action-delete-thread"><i class="bi bi-trash"></i> Delete</button></li>
             </ul>
           </div>`;
 
         qs("#threadDetails").innerHTML=`
-          <div class="thread-head w-100">
+          <div class="thread-head w-100 d-flex gap-2">
             <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
             <div class="title-wrap flex-grow-1">
-              <h3>${escapeHtml(thread.title || '')}</h3>
+              <h3 class="mb-1">${escapeHtml(thread.title || '')}</h3>
               <div class="meta">
                 <strong>${escapeHtml(threadAuthorName)}</strong>
                 • ${escapeHtml(thread.courseTitle || '')}
@@ -148,23 +354,33 @@
             ${actionHtml}
           </div>`;
 
-        // thread actions
+        // DELETE thread (confirm modal)
         qs(".action-delete-thread")?.addEventListener("click", async ()=>{
-          if(!confirm("Delete this thread? This cannot be undone."))return;
-          try{ await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'}); location.href='forum_list.html'; }
-          catch(err){ console.error(err); alert('Failed to delete thread.'); }
+          const ok = await showConfirm('Delete Thread','Delete this thread? This cannot be undone.');
+          if(!ok) return;
+          try{
+            await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'});
+            window.location.href='forum_list.html';
+          }catch(err){
+            console.error(err);
+            showInfo('Failed','Failed to delete thread.');
+          }
         });
 
+        // EDIT thread (owner only) via modal
         if (isThreadOwner) {
           qs(".action-edit-thread")?.addEventListener("click", async ()=>{
-            const newTitle=prompt("Edit thread title:",thread.title||""); if(newTitle==null)return;
-            const newText=prompt("Edit thread text:",thread.text||""); if(newText==null)return;
+            const result = await showEditThread(thread.title || "", thread.text || "");
+            if(!result) return;
             try{
               await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
-                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle,text:newText})
+                method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(result)
               });
               await loadThread();
-            }catch(err){ console.error(err); alert("Editing thread requires a PATCH /api/forum/threads/:id route on the backend."); }
+            }catch(err){
+              console.error(err);
+              showInfo('Not Implemented','Editing thread requires a PATCH <code>/api/forum/threads/:id</code> route on the backend.');
+            }
           });
         }
 
@@ -192,11 +408,8 @@
         const initials=initialsFromName(name);
         const hasChildren=(r.children&&r.children.length)?r.children.length:0;
         const collapseId=`replies-${r.id}`;
-        const isOwn = userData?.uid && (String(r.author?.uid) === String(userData.uid)); // <-- OWNERSHIP
+        const isOwn = userData?.uid && (String(r.author?.uid) === String(userData.uid));
 
-        // Build the dropdown items:
-        // - Edit only if own
-        // - Delete always available
         const dropdownHtml = `
           <div class="bubble-kebab dropdown">
             <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Comment actions">
@@ -204,13 +417,13 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               ${isOwn ? `<li><button class="dropdown-item action-edit-reply"><i class="bi bi-pencil-square"></i> Edit</button></li>` : ``}
-              <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash3"></i> Delete</button></li>
+              <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash"></i> Delete</button></li>
             </ul>
           </div>`;
 
         wrap.innerHTML=`
           <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
-          <div class="fb-body">
+          <div class="fb-body flex-grow-1">
             <div class="fb-bubble">
               ${dropdownHtml}
               <div class="name-line">${escapeHtml(name)} ${timeHtml(r.createdAt)}</div>
@@ -226,33 +439,38 @@
 
         container.appendChild(wrap);
 
-        // delete (always)
+        // DELETE comment (confirm modal)
         wrap.querySelector(".action-delete-reply")?.addEventListener("click", async ()=>{
-          if(!confirm("Delete this comment?"))return;
+          const ok = await showConfirm('Delete Comment','Delete this comment?');
+          if(!ok) return;
           try{
             await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{method:'DELETE'});
             await loadReplies();
+            showInfo('Deleted','The comment has been deleted.');
           } catch(err){
-            console.error(err); alert("Failed to delete comment.");
+            console.error(err);
+            showInfo('Failed','Failed to delete comment.');
           }
         });
 
-        // edit (only if own)
+        // EDIT comment (owner only) via modal
         if (isOwn) {
           wrap.querySelector(".action-edit-reply")?.addEventListener("click", async ()=>{
-            const updated=prompt("Edit comment:", r.text||""); if(updated==null) return;
+            const updated = await showEditComment(r.text || "");
+            if(updated === null) return;
             try{
               await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(r.id)}`,{
                 method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:updated})
               });
               await loadReplies();
             }catch(err){
-              console.error(err); alert("Editing comments requires a PATCH /api/forum/threads/:threadId/replies/:replyId route on the backend.");
+              console.error(err);
+              showInfo('Not Implemented','Editing comments requires a PATCH <code>/api/forum/threads/:threadId/replies/:replyId</code> route on the backend.');
             }
           });
         }
 
-        // reply
+        // reply inline
         wrap.querySelector(".reply-btn").addEventListener("click", ()=> showReplyForm(r.id, wrap));
 
         // children
@@ -309,7 +527,7 @@
           await postReply(text, parentId); await loadReplies();
           const collapse=replyDiv.querySelector(".collapse");
           if(collapse && !collapse.classList.contains("show")){ new bootstrap.Collapse(collapse,{show:true}); }
-        }catch(err){ console.error(err); alert("Could not post reply."); }
+        }catch(err){ console.error(err); showInfo('Failed','Could not post reply.'); }
       });
     }
 
@@ -321,18 +539,54 @@
     }
 
     document.addEventListener("DOMContentLoaded", ()=>{
-      if(!threadId){ alert('Missing thread ID.'); return; }
+      if(!threadId){ showInfo('Missing ID','Missing thread ID.'); return; }
       loadThread();
       qs("#replyForm").addEventListener("submit", async (e)=>{
         e.preventDefault();
         const text=qs("#replyText").value.trim(); if(!text) return;
         try{ await postReply(text); e.target.reset(); await loadReplies(); }
-        catch(err){ console.error(err); alert("Could not post comment."); }
+        catch(err){ console.error(err); showInfo('Failed','Could not post comment.'); }
       });
     });
 
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
   </script>
+
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Modal helpers (exactly the same helpers/signature as Threads page) -->
+  <script>
+    // Creates and shows an info modal
+    function showInfo(title='Notice', html=''){
+      const el = document.getElementById('infoModal');
+      document.getElementById('infoModalLabel').textContent = title;
+      document.getElementById('infoModalBody').innerHTML = html;
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+      modal.show();
+    }
+
+    // Shows a confirm modal and resolves to true/false
+    function showConfirm(title='Confirm Action', html='Are you sure?'){
+      const el = document.getElementById('confirmModal');
+      document.getElementById('confirmModalLabel').textContent = title;
+      document.getElementById('confirmModalBody').innerHTML = html;
+
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+      const okBtn = document.getElementById('confirmOkBtn');
+
+      return new Promise(resolve=>{
+        const onOk = ()=>{ cleanup(); modal.hide(); resolve(true); };
+        const onCancel = ()=>{ cleanup(); resolve(false); };
+        function cleanup(){
+          okBtn.removeEventListener('click', onOk);
+          el.removeEventListener('hidden.bs.modal', onCancel);
+        }
+        okBtn.addEventListener('click', onOk, { once:true });
+        el.addEventListener('hidden.bs.modal', onCancel, { once:true });
+        modal.show();
+      });
+    }
+  </script>
 </body>
 </html>
