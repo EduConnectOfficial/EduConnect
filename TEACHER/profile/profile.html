@@ -28,44 +28,24 @@
     }
 
     html, body { height: 100%; background: var(--bg); color: var(--text) }
-
     .dashboard { display: flex; min-height: 100vh }
-
-    .main {
-      margin-left: 70px;
-      width: calc(100% - 70px);
-      transition: margin-left .3s, width .3s;
-      display: flex;
-      flex-direction: column
-    }
-
+    .main { margin-left: 70px; width: calc(100% - 70px); transition: margin-left .3s, width .3s; display: flex; flex-direction: column }
     .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px) }
 
     .logo-header { height: 44px }
-
     .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 20px }
     .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100% }
     .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf }
 
-    .profile-btn {
-      display: flex; align-items: center; gap: 8px;
-      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer
-    }
+    .profile-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer }
     .profile-btn .username { font-size: 14px }
 
     .content { padding: 24px }
-
-    .ui-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: 0 10px 22px rgba(0, 0, 0, .08)
-    }
+    .ui-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 10px 22px rgba(0, 0, 0, .08) }
     .ui-card.section { padding: 18px }
 
     .btn-amber { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border: none }
     .btn-amber:hover { filter: brightness(1.06); color: #fff }
-
     .btn-amber-outline { background: #fff; color: var(--accent-2); border: 1px solid var(--accent-2) }
     .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border-color: transparent }
 
@@ -78,32 +58,14 @@
     .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none }
     .modal-content { border-radius: 12px; border: 1px solid var(--border) }
     .modal-footer { border-top: 1px solid var(--border) }
-
-    .modal.show{
-      display:flex !important;
-      align-items:center;
-      justify-content:center;
-      --bs-modal-margin:0;
-      padding:0 !important;
-    }
-    .modal.show .modal-dialog{
-      margin:0 !important;
-      max-width:560px;
-      width:calc(100% - 2rem);
-    }
-    .modal.show .modal-content{
-      overflow:hidden;
-      box-shadow:0 18px 40px rgba(0,0,0,.25);
-      max-height:min(90vh, 800px);
-    }
+    .modal.show{ display:flex !important; align-items:center; justify-content:center; --bs-modal-margin:0; padding:0 !important; }
+    .modal.show .modal-dialog{ margin:0 !important; max-width:560px; width:calc(100% - 2rem); }
+    .modal.show .modal-content{ overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,.25); max-height:min(90vh, 800px); }
     .modal-content .btn-close{ filter: invert(1) grayscale(100%) brightness(200%); opacity:.9 }
     .modal-content .btn-close:hover{ opacity:1; transform:scale(1.05) }
 
     /* Success variant for modal header */
-    .modal-header.is-success{
-      background: linear-gradient(90deg,#1f995c,#2db974);
-      color:#eafff1;
-    }
+    .modal-header.is-success{ background: linear-gradient(90deg,#1f995c,#2db974); color:#eafff1; }
 
     /* Read-only look for Teacher ID */
     #teacherId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
@@ -138,12 +100,9 @@
 
           <form id="profileForm" class="row g-4" enctype="multipart/form-data">
             <div class="col-12 text-center">
-              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120"
-                   height="120" style="object-fit:cover;" alt="Profile Picture"
-                   onerror="this.src='/assets/default-avatar.png'" />
+              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover;" alt="Profile Picture" onerror="this.src='/assets/default-avatar.png'" />
               <div class="d-flex justify-content-center">
-                <input type="file" id="profilePic" name="profilePic"
-                       accept="image/png, image/jpeg, image/webp" class="form-control w-auto" />
+                <input type="file" id="profilePic" name="profilePic" accept="image/png, image/jpeg, image/webp" class="form-control w-auto" />
               </div>
             </div>
 
@@ -177,15 +136,13 @@
 
             <div class="col-12 text-end">
               <button type="submit" class="btn btn-amber">Update Profile</button>
-              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal"
-                      data-bs-target="#changePasswordModal">Change Password</button>
+              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
             </div>
           </form>
         </div>
 
         <!-- Change Password Modal -->
-        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel"
-             aria-hidden="true">
+        <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
               <div class="modal-header">
@@ -229,39 +186,35 @@
     </div>
   </div>
 
-  <!-- ===== Generic INFO Modal (replaces alert()) ===== -->
+  <!-- ===== Generic INFO Modal ===== -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body" id="infoModalBody">—</div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
-        </div>
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-    </div>
+      <div class="modal-body" id="infoModalBody">—</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
+      </div>
+    </div></div>
   </div>
 
-  <!-- ===== Success Modal (shown after successful photo change) ===== -->
+  <!-- ===== Success Modal (photo change) ===== -->
   <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header is-success">
-          <h5 class="modal-title" id="successModalLabel">Success</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <div class="display-6 mb-2"><i class="bi bi-check-circle-fill"></i></div>
-          <div id="successModalBody">Your profile photo has been updated.</div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-amber" data-bs-dismiss="modal">Great</button>
-        </div>
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header is-success">
+        <h5 class="modal-title" id="successModalLabel">Success</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-    </div>
+      <div class="modal-body text-center">
+        <div class="display-6 mb-2"><i class="bi bi-check-circle-fill"></i></div>
+        <div id="successModalBody">Your profile photo has been updated.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-amber" data-bs-dismiss="modal">Great</button>
+      </div>
+    </div></div>
   </div>
 
   <!-- Sidebar Loader -->
@@ -299,28 +252,27 @@
     const SERVER_BASE = "http://localhost:5000";
     const API = `${SERVER_BASE}/api`;
 
-    /* ===== Info modal helper ===== */
+    /* ===== Modal helpers (robust) ===== */
     const infoModalEl = document.getElementById('infoModal');
-    const infoModal   = new bootstrap.Modal(infoModalEl);
     const infoTitleEl = document.getElementById('infoModalLabel');
     const infoBodyEl  = document.getElementById('infoModalBody');
     function showInfo(title = 'Notice', html = '', opts = {}) {
       infoTitleEl.textContent = title;
       infoBodyEl.innerHTML = html;
+      const m = bootstrap.Modal.getOrCreateInstance(infoModalEl);
       if (opts.onClose) {
         const handler = () => { infoModalEl.removeEventListener('hidden.bs.modal', handler); opts.onClose(); };
         infoModalEl.addEventListener('hidden.bs.modal', handler, { once: true });
       }
-      infoModal.show();
+      m.show();
     }
 
-    /* ===== Success modal helper ===== */
     const successModalEl = document.getElementById('successModal');
-    const successModal   = new bootstrap.Modal(successModalEl);
     const successBodyEl  = document.getElementById('successModalBody');
     function showSuccess(html = 'Done!') {
       successBodyEl.innerHTML = html;
-      successModal.show();
+      const m = bootstrap.Modal.getOrCreateInstance(successModalEl);
+      m.show();
     }
 
     // ===== Auth + Guards =====
@@ -404,7 +356,6 @@
         document.getElementById("email").value = liveUser.email || '';
         document.getElementById("Username").textContent = liveUser.username || '';
 
-        // Teacher ID
         lockTeacherId(resolveTeacherId(liveUser));
 
         if (liveUser.photoURL) {
@@ -432,14 +383,14 @@
       fd.append("middleName", document.getElementById("middleName").value);
       fd.append("lastName", document.getElementById("lastName").value);
       fd.append("username", document.getElementById("username").value);
-      // DO NOT append teacherId or email (server is source of truth)
+
       const hadNewPhoto = profilePicInput.files.length > 0;
       if (hadNewPhoto) fd.append("profilePic", profilePicInput.files[0]);
 
       try {
         const res = await fetch(`${API}/users/${userId}/profile`, {
           method: "POST",
-          headers: authHeaders(),  // don't set Content-Type with FormData
+          headers: authHeaders(),
           body: fd
         });
         if (res.status === 401) { logoutUser(); return; }
@@ -448,28 +399,34 @@
         const text = await res.text();
         const out = ct.includes("application/json") ? JSON.parse(text) : { success: false, message: text };
 
-        if (res.ok && out.success) {
-          showInfo('Success', '✅ Profile updated successfully!');
+        if (res.ok && (out.success !== false)) {
+          const updated = out.updatedUser || out.user || null;
 
-          if (out.updatedUser?.username) {
-            userData.username = out.updatedUser.username;
-            document.getElementById("Username").textContent = out.updatedUser.username;
+          if (updated?.username) {
+            userData.username = updated.username;
+            document.getElementById("Username").textContent = updated.username;
           }
-          if (out.updatedUser?.photoURL) {
+
+          const newPhoto = updated?.photoURL || null;
+          const prevPhoto = userData.photoURL || null;
+          const photoActuallyChanged = !!newPhoto && newPhoto !== prevPhoto;
+
+          console.debug('profileSubmit ok', { hadNewPhoto, newPhoto, prevPhoto, photoActuallyChanged, out });
+
+          if (photoActuallyChanged || hadNewPhoto) {
             resetPreviewURL();
-            profilePreview.src = `${SERVER_BASE}${out.updatedUser.photoURL}?t=${Date.now()}`;
-
-            // Show dedicated success modal if picture changed
-            if (hadNewPhoto || out.updatedUser.photoURL !== userData.photoURL) {
-              showSuccess('✅ Profile photo updated successfully.');
+            if (newPhoto) {
+              profilePreview.src = `${SERVER_BASE}${newPhoto}?t=${Date.now()}`;
+              userData.photoURL = newPhoto;
             }
-
-            userData.photoURL = out.updatedUser.photoURL;
-            profilePicInput.value = ''; // clear file input after success
+            profilePicInput.value = '';
+            showSuccess('✅ Profile photo updated successfully.');
+          } else {
+            showInfo('Success', '✅ Profile updated successfully!');
           }
-          // Re-lock teacher ID if server echoed it
-          if (out.updatedUser) {
-            lockTeacherId(resolveTeacherId(out.updatedUser) || document.getElementById("teacherId").value);
+
+          if (updated) {
+            lockTeacherId(resolveTeacherId(updated) || document.getElementById("teacherId").value);
           }
           localStorage.setItem("user", JSON.stringify(userData));
         } else {
@@ -496,20 +453,21 @@
       i.classList.toggle('text-danger', !ok);
     }
     function livePw() {
-      const p = newPw.value;
+      const p = newPw?.value || '';
       tick(document.getElementById('pwLength'), p.length >= 8);
       tick(document.getElementById('pwUpper'), /[A-Z]/.test(p));
       tick(document.getElementById('pwNumber'), /\d/.test(p));
       tick(document.getElementById('pwSpecial'), /[^A-Za-z0-9]/.test(p));
-      tick(document.getElementById('pwMatch'), p === confirmPw.value && p !== '');
+      tick(document.getElementById('pwMatch'), p === (confirmPw?.value || '') && p !== '');
     }
-    newPw.addEventListener('input', livePw);
-    confirmPw.addEventListener('input', livePw);
+    newPw?.addEventListener('input', livePw);
+    confirmPw?.addEventListener('input', livePw);
 
-    document.getElementById('toggleChangePw').addEventListener('change', function () {
+    document.getElementById('toggleChangePw')?.addEventListener('change', function () {
       const t = this.checked ? 'text' : 'password';
       document.getElementById('currentPassword').type = t;
-      newPw.type = t; confirmPw.type = t;
+      if (newPw) newPw.type = t;
+      if (confirmPw) confirmPw.type = t;
     });
 
     function persistAuth(obj) {
@@ -518,108 +476,6 @@
       if (user) localStorage.setItem("user", JSON.stringify({ ...user, token }));
       if (token) localStorage.setItem("authToken", token);
     }
-
-    async function smartLogin({ email, username, password }) {
-      const clean = v => (typeof v === "string" ? v.trim() : v);
-      email = clean(email);
-      username = clean(username);
-
-      const bodies = [];
-      if (email) { bodies.push({ email, password }, { identifier: email, password }); }
-      if (username) { bodies.push({ username, password }, { identifier: username, password }); }
-
-      const routes = [
-        `${API}/login`, `${API}/auth/login`,
-        `${SERVER_BASE}/api/login`, `${SERVER_BASE}/api/auth/login`,
-        `${SERVER_BASE}/login`, `${SERVER_BASE}/auth/login`,
-      ];
-      const creds = ["include", "omit"];
-
-      for (const url of routes) {
-        for (const body of bodies) {
-          for (const credentials of creds) {
-            try {
-              const r = await fetch(url, {
-                method: "POST", credentials,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-              });
-              const text = await r.text();
-              let json = {};
-              try { json = JSON.parse(text); } catch {}
-              const okUser = json?.user || json?.data?.user || (json?.success && (json?.user || json?.data));
-              if (r.ok && okUser) { persistAuth(json); return json; }
-            } catch {}
-          }
-        }
-      }
-      throw new Error("All re-login attempts failed.");
-    }
-
-    const pwForm = document.getElementById("changePasswordForm");
-    pwForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const btn = pwForm.querySelector('button[type="submit"]');
-      const currentPassword = document.getElementById("currentPassword").value;
-      const newPassword = newPw.value;
-      const confirmPassword = confirmPw.value;
-
-      msg.style.display = "none"; msg.textContent = ""; msg.style.color = "var(--bs-danger)";
-      const old = btn.textContent; btn.disabled = true; btn.textContent = "Changing…";
-
-      // client checks
-      if (newPassword.length < 8) return doneErr("New password must be at least 8 characters.");
-      if (!/[A-Z]/.test(newPassword)) return doneErr("New password must contain at least 1 uppercase letter.");
-      if (!/\d/.test(newPassword)) return doneErr("New password must contain at least 1 number.");
-      if (!/[^A-Za-z0-9]/.test(newPassword)) return doneErr("New password must contain at least 1 special character.");
-      if (newPassword !== confirmPassword) return doneErr("New passwords do not match.");
-
-      try {
-        const response = await fetch(`${API}/users/${userId}/change-password`, {
-          method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ currentPassword, newPassword })
-        });
-        if (response.status === 401) { logoutUser(); return; }
-
-        const ct = response.headers.get("content-type") || "";
-        const text = await response.text();
-        const result = ct.includes("application/json") ? JSON.parse(text) : { success: false, error: "Non-JSON response" };
-
-        if (!response.ok || !result.success) {
-          return doneErr(result.error || `HTTP ${response.status}`);
-        }
-
-        // re-login using latest identity
-        const latestEmail = (liveUser?.email) || document.getElementById('email').value || userData.email || null;
-        const latestUsername = (liveUser?.username) || document.getElementById('username').value || userData.username || null;
-
-        try {
-          await smartLogin({ email: latestEmail, username: latestUsername, password: newPassword });
-          msg.style.color = "green";
-          msg.textContent = "Password changed!";
-          msg.style.display = "block";
-
-          setTimeout(() => {
-            bootstrap.Modal.getOrCreateInstance(document.getElementById("changePasswordModal")).hide();
-            pwForm.reset();
-            msg.textContent = ""; msg.style.display = "none";
-          }, 900);
-        } catch {
-          doneErr("Password changed, but automatic login failed. Please sign in again.", false);
-        }
-      } catch (err) {
-        console.error("Change password error:", err);
-        doneErr(err.message || "Unexpected error.");
-      } finally {
-        btn.disabled = false; btn.textContent = old;
-      }
-
-      function doneErr(t, show = true) {
-        msg.textContent = t; if (show) msg.style.display = "block";
-        btn.disabled = false; btn.textContent = old;
-      }
-    });
   </script>
 </body>
 </html>

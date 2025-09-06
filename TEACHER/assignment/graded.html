@@ -4,11 +4,13 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Teacher - Graded Submissions</title>
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <!-- Global & Page CSS -->
+
+  <!-- Global teacher styles -->
   <link rel="stylesheet" href="../dashboard/dashboard.css"/>
 
   <style>
@@ -26,20 +28,38 @@
     .logo-header{height:45px}
     .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
     .search-box input{border-radius:30px}
-    .page-title{font-weight:700;margin:4px 0 18px}
-    .help-btn{color:#7a87a2}
 
+    /* Table + status */
     .table thead th{background:#fafbfc;border-bottom:1px solid var(--border)}
-    .score-badge{font-size:.85rem;font-weight:600}
+    .status-pill{padding:3px 10px;border-radius:999px;font-size:.75rem;display:inline-block;border:1px solid transparent}
+    .status-ontime{background:#e6f4ea;color:#1e7e34;border-color:#c6e6cf}
+    .status-late{background:#fff2f0;color:#b42318;border-color:#ffd1cc}
+    .status-graded{background:#eff6ff;color:#1d4ed8;border-color:#c7dbff}
     .whitespace-prewrap{white-space:pre-wrap}
 
-    .modal-header.brand {
+    /* UI Card */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.08);overflow:hidden}
+    .ui-card-head{
+      display:flex;justify-content:space-between;align-items:center;
       background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;
-      border-bottom:1px solid rgba(255,255,255,.15);
+      color:#FFD8A9;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)
     }
-    .file-list a { text-decoration:none; }
-    .muted { color: var(--muted); }
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .ui-card-body{padding:12px 16px}
+    .ui-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+    .btn-outline-light{
+      --bs-btn-color:#fff;--bs-btn-border-color:rgba(255,255,255,.65);
+      --bs-btn-hover-bg:rgba(255,255,255,.12);--bs-btn-hover-color:#fff;--bs-btn-hover-border-color:#fff
+    }
+    .brand-grad{font-size:.95rem;color:#5b2a18}
+    .meta-pill{
+      background:#fff;border:1px solid var(--border);
+      border-radius:999px;padding:.2rem .6rem;font-size:.75rem;color:#374151
+    }
+
+    /* Controls polish */
+    .form-label{margin-bottom:.25rem;font-weight:600}
+    .ui-controls .form-select,.ui-controls .form-control{height:40px}
   </style>
 </head>
 <body>
@@ -63,53 +83,71 @@
       </header>
 
       <section class="content container-fluid p-4 mt-4">
-        <h1 class="fw-bold mb-0">Assignment Graded Submissions</h1></section>
+        <h1 class="fw-bold mb-3">Assignment Graded Submissions</h1>
 
-      <!-- Page Content -->
-      <section class="content container-fluid py-3">
-        <!-- Title & Actions -->
-        <div class="row align-items-center mb-3">
-          <div class="col-md-6">
-            <div class="text-muted small" id="summaryText">—</div>
+        <!-- THEMED TOOLBAR (UI-CARD) -->
+        <div class="ui-card mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-journal-check"></i> Your Graded Queue</h2>
+            <div class="ui-actions">
+              <button class="btn btn-outline-light" id="viewUngradedBtn">
+                <i class="bi bi-inbox-fill"></i> View Ungraded
+              </button>
+            </div>
           </div>
-          <div class="col-md-6 text-md-end mt-2 mt-md-0">
-            <button class="btn btn-outline-secondary me-2" id="viewUngradedBtn">
-              <i class="bi bi-inbox-fill"></i> View Ungraded
-            </button>
-            <button class="btn btn-link help-btn" onclick="window.open('/help/submissions.html','_blank')">
-              <i class="bi bi-question-circle"></i> Help
-            </button>
+
+          <div class="ui-card-body">
+            <!-- Sort -->
+            <div class="row g-2 ui-controls align-items-end mb-2">
+              <div class="col-12 col-md-4 col-lg-3">
+                <label for="sortBy" class="form-label">Sort</label>
+                <select id="sortBy" class="form-select" aria-label="Sort graded">
+                  <option value="graded_desc" selected>Newest graded</option>
+                  <option value="graded_asc">Oldest graded</option>
+                  <option value="submitted_desc">Newest submitted</option>
+                  <option value="submitted_asc">Oldest submitted</option>
+                  <option value="student_az">Student A → Z</option>
+                  <option value="class_az">Class A → Z</option>
+                  <option value="module_az">Module A → Z</option>
+                  <option value="title_az">Title A → Z</option>
+                  <option value="score_desc">Score high → low</option>
+                  <option value="score_asc">Score low → high</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Filters (instant) -->
+            <div class="row g-3 ui-controls align-items-end">
+              <div class="col-12 col-lg-3">
+                <label for="filterClass" class="form-label">Class</label>
+                <select id="filterClass" class="form-select">
+                  <option value="">All Classes</option>
+                </select>
+              </div>
+              <div class="col-12 col-lg-3">
+                <label for="filterModule" class="form-label">Module</label>
+                <select id="filterModule" class="form-select">
+                  <option value="">All Modules</option>
+                </select>
+              </div>
+              <div class="col-6 col-lg-3">
+                <label for="filterGradedDate" class="form-label">Graded Date</label>
+                <input type="date" id="filterGradedDate" class="form-control"/>
+              </div>
+              <div class="col-6 col-lg-3">
+                <label for="filterScore" class="form-label">Min Score</label>
+                <input type="number" id="filterScore" class="form-control" placeholder="e.g. 75"/>
+              </div>
+            </div>
+
+            <!-- Meta line -->
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+              <div class="brand-grad fw-semibold" id="assignmentMetaText">—</div>
+              <span class="meta-pill" id="summaryText">—</span>
+            </div>
           </div>
         </div>
-
-        <!-- Filters -->
-        <form id="filterForm" class="filter-bar mb-4">
-          <div class="row g-3">
-            <div class="col-sm-3">
-              <label for="filterClass" class="form-label">Class</label>
-              <select id="filterClass" class="form-select">
-                <option value="">All Classes</option>
-              </select>
-            </div>
-            <div class="col-sm-3">
-              <label for="filterModule" class="form-label">Module</label>
-              <select id="filterModule" class="form-select">
-                <option value="">All Modules</option>
-              </select>
-            </div>
-            <div class="col-sm-2">
-              <label for="filterGradedDate" class="form-label">Graded Date</label>
-              <input type="date" id="filterGradedDate" class="form-control"/>
-            </div>
-            <div class="col-sm-2">
-              <label for="filterScore" class="form-label">Min Score</label>
-              <input type="number" id="filterScore" class="form-control" placeholder="e.g. 75"/>
-            </div>
-            <div class="col-sm-2 d-flex align-items-end">
-              <button type="submit" class="btn btn-primary w-100">Filter</button>
-            </div>
-          </div>
-        </form>
+        <!-- /THEMED TOOLBAR -->
 
         <!-- Graded Table -->
         <div class="table-responsive">
@@ -154,7 +192,7 @@
     </div>
   </div>
 
-  <!-- View Submission Modal (Rich) -->
+  <!-- View Submission Modal -->
   <div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
@@ -261,7 +299,7 @@
     </div>
   </div>
 
-  <!-- Sidebar Logic -->
+  <!-- Sidebar logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
@@ -293,7 +331,7 @@
   <script>
     const API = "http://localhost:5000";
 
-    // --- Auth ---
+    /* -------- Auth -------- */
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (!user || !user.userId || !user.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
@@ -303,23 +341,24 @@
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
     window.logoutUser = logoutUser;
 
-    // URL params
+    /* -------- URL params -------- */
     const url = new URL(location.href);
     const paramCourseId = url.searchParams.get('courseId') || '';
     const paramAssignmentId = url.searchParams.get('assignmentId') || '';
 
-    // --- DOM refs ---
-    const elSearch = document.getElementById('searchInput');
-    const elForm   = document.getElementById('filterForm');
-    const elClass  = document.getElementById('filterClass');
-    const elModule = document.getElementById('filterModule');
-    const elDate   = document.getElementById('filterGradedDate');
-    theElScore  = document.getElementById('filterScore');
-    const elBody   = document.getElementById('tableBody');
-    const elSummary= document.getElementById('summaryText');
+    /* -------- DOM refs -------- */
+    const elSearch  = document.getElementById('searchInput');
+    const elClass   = document.getElementById('filterClass');
+    const elModule  = document.getElementById('filterModule');
+    const elDate    = document.getElementById('filterGradedDate');
+    const elScore   = document.getElementById('filterScore');
+    const elBody    = document.getElementById('tableBody');
+    const elSummary = document.getElementById('summaryText');
     const btnUngraded = document.getElementById('viewUngradedBtn');
+    const elSortBy  = document.getElementById('sortBy');
+    const elAssignmentMeta = document.getElementById('assignmentMetaText');
 
-    // View modal refs
+    /* -------- View modal refs -------- */
     const vm = {
       modal: new bootstrap.Modal(document.getElementById('viewModal')),
       title: document.getElementById('vmTitle'),
@@ -334,9 +373,9 @@
       note: document.getElementById('vmNote'),
       deleteBtn: document.getElementById('vmDeleteBtn'),
     };
-    let vmCurrent = null; // {assignmentId, studentId}
+    let vmCurrent = null;
 
-    // Confirm & Status modal helpers
+    /* -------- Confirm & Status -------- */
     const confirmModalEl = document.getElementById('confirmDeleteModal');
     const confirmDeleteModal = new bootstrap.Modal(confirmModalEl);
     const confirmDeleteBody = document.getElementById('confirmDeleteBody');
@@ -350,19 +389,14 @@
     function showStatus(message, {success=true, title} = {}){
       statusTitle.textContent = title || (success ? 'Success' : 'Error');
       statusBody.textContent = message;
-      // header color hint
       const header = statusModalEl.querySelector('.modal-header');
       header.classList.remove('bg-danger','bg-success','text-white');
-      if (success) {
-        header.classList.add('bg-success','text-white');
-      } else {
-        header.classList.add('bg-danger','text-white');
-      }
+      if (success) header.classList.add('bg-success','text-white');
+      else header.classList.add('bg-danger','text-white');
       statusModal.show();
     }
 
-    let pendingDelete = null; // { assignmentId, studentId, studentName }
-
+    let pendingDelete = null;
     function openConfirmDelete(item){
       if (!item) return;
       pendingDelete = {
@@ -375,7 +409,7 @@
       confirmDeleteModal.show();
     }
 
-    // --- Caches ---
+    /* -------- Caches -------- */
     const classNameById = new Map();
     const assignmentMetaById = new Map(); // {title, points, moduleTitle, dueAt}
 
@@ -399,11 +433,11 @@
       }
     }
 
-    // --- State ---
+    /* -------- State -------- */
     let allGraded = [];
     let shown = [];
 
-    // --- Utils ---
+    /* -------- Utils -------- */
     function escapeHTML(str=''){
       return String(str)
         .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
@@ -431,7 +465,7 @@
     }
     function toApiUrl(pathOrUrl){ return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
 
-    // --- Backend loaders ---
+    /* -------- Loaders -------- */
     async function loadCoursesForTeacher(teacherId){
       try{
         const js = await fetch(`${API}/api/teacher/dashboard-stats?teacherId=${encodeURIComponent(teacherId)}`).then(r=>r.json());
@@ -458,13 +492,12 @@
       try{
         const js = await fetch(`${API}/api/courses/${courseId}/assignments`).then(r=>r.json());
         const list = (js && js.success) ? (js.assignments || []) : [];
-        // Fill cache
         list.forEach(a=>{
           assignmentMetaById.set(a.id, {
             title: a.title || 'Untitled',
             points: (typeof a.points === 'number') ? a.points : null,
             dueAt: a.dueAt || null,
-            moduleTitle: (typeof a.moduleNumber === 'number') ? `Module ${a.moduleNumber}` : '—'
+            moduleTitle: (typeof a.moduleNumber === 'number') ? `Module ${a.moduleNumber}` : (a.moduleTitle || '—')
           });
         });
         return list;
@@ -503,7 +536,7 @@
         submittedAt,
         gradedAt,
         dueAt: toDate(meta?.dueAt || s?.dueAt),
-        grade: (typeof s?.grade === 'number') ? s.grade : null, // points
+        grade: (typeof s?.grade === 'number') ? s.grade : null,
         maxPoints: (typeof meta?.points === 'number') ? meta.points : null,
         feedback: s?.feedback || '',
         assignmentId: assignmentId,
@@ -513,7 +546,7 @@
       };
     }
 
-    // --- Filters & rendering ---
+    /* -------- Filters & rendering -------- */
     function populateFilters(list){
       const classSet = new Set();
       const moduleSet = new Set();
@@ -534,8 +567,9 @@
       const fClass = elClass.value;
       const fModule = elModule.value;
       const fDate = elDate.value; // yyyy-mm-dd
-      const minScore = Number(theElScore.value);
-      const hasMin = !Number.isNaN(minScore) && theElScore.value !== '';
+      const minScore = Number(elScore.value);
+      const hasMin = !Number.isNaN(minScore) && elScore.value !== '';
+      const sort = elSortBy.value || 'graded_desc';
 
       shown = allGraded.filter(s => {
         if (q){
@@ -555,8 +589,24 @@
         return true;
       });
 
-      shown.sort((a,b)=> (b.gradedAt?.getTime()||0) - (a.gradedAt?.getTime()||0)
-                         || (b.submittedAt?.getTime()||0) - (a.submittedAt?.getTime()||0));
+      // Sorting
+      shown.sort((a,b)=>{
+        const gA = a.gradedAt?.getTime()||0, gB = b.gradedAt?.getTime()||0;
+        const sA = a.submittedAt?.getTime()||0, sB = b.submittedAt?.getTime()||0;
+        const scA = (typeof a.grade==='number') ? a.grade : -Infinity;
+        const scB = (typeof b.grade==='number') ? b.grade : -Infinity;
+        if (sort === 'graded_asc')     return gA - gB;
+        if (sort === 'submitted_desc') return sB - sA;
+        if (sort === 'submitted_asc')  return sA - sB;
+        if (sort === 'student_az')     return (a.studentName||'').localeCompare(b.studentName||'');
+        if (sort === 'class_az')       return (a.className||'').localeCompare(b.className||'');
+        if (sort === 'module_az')      return (a.moduleTitle||'').localeCompare(b.moduleTitle||'');
+        if (sort === 'title_az')       return (a.assignmentTitle||'').localeCompare(b.assignmentTitle||'');
+        if (sort === 'score_desc')     return scB - scA;
+        if (sort === 'score_asc')      return scA - scB;
+        /* default: newest graded */
+        return gB - gA || sB - sA;
+      });
 
       renderTable();
       elSummary.textContent = `${shown.length} shown • ${allGraded.length} total graded`;
@@ -585,21 +635,11 @@
           <td>${fmtDate(s.submittedAt)}</td>
           <td>${fmtDate(s.gradedAt)}</td>
           <td>${renderScoreCell(s)}</td>
-          <td>
-            ${
-              s.feedback
-                ? `<button class="btn btn-sm btn-outline-primary feedback-btn">View</button>`
-                : `<span class="text-muted">—</span>`
-            }
-          </td>
+          <td>${ s.feedback ? `<button class="btn btn-sm btn-outline-primary feedback-btn">View</button>` : `<span class="text-muted">—</span>` }</td>
           <td class="text-center">
             <div class="btn-group">
-              <button class="btn btn-sm btn-outline-secondary view-btn">
-                <i class="bi bi-eye me-1"></i> View
-              </button>
-              <button class="btn btn-sm btn-danger delete-btn">
-                <i class="bi bi-trash me-1"></i> Delete
-              </button>
+              <button class="btn btn-sm btn-outline-secondary view-btn"><i class="bi bi-eye me-1"></i> View</button>
+              <button class="btn btn-sm btn-danger delete-btn"><i class="bi bi-trash me-1"></i> Delete</button>
             </div>
           </td>
         </tr>
@@ -631,7 +671,7 @@
           const aId = tr.getAttribute('data-assignment-id');
           const sId = tr.getAttribute('data-student-id');
           const item = shown.find(x => x.assignmentId === aId && x.studentId === sId);
-          openConfirmDelete(item); // 🔁 replaced direct delete with modal
+          openConfirmDelete(item);
         });
       });
     }
@@ -643,7 +683,6 @@
       new bootstrap.Modal(document.getElementById('feedbackModal')).show();
     }
 
-    // ---- Rich View Modal ----
     function openViewModal(item){
       if (!item) return;
       vmCurrent = { assignmentId: item.assignmentId, studentId: item.studentId };
@@ -654,17 +693,14 @@
       vm.module.textContent = item.moduleTitle || '—';
       vm.submitted.textContent = fmtDate(item.submittedAt);
       vm.graded.textContent = fmtDate(item.gradedAt);
-
       vm.score.innerHTML =
         (typeof item.grade === 'number')
           ? (typeof item.maxPoints === 'number'
               ? `<span class="badge bg-success score-badge">${item.grade} / ${item.maxPoints}</span>`
               : `<span class="badge bg-success score-badge">${item.grade}</span>`)
           : '<span class="text-muted">—</span>';
-
       vm.feedback.textContent = item.feedback || '—';
 
-      // Files
       vm.files.innerHTML = (item.files && item.files.length)
         ? item.files.map(f => {
             const name = escapeHTML(f.originalName || (f.filePath||'').split('/').pop() || 'file');
@@ -675,40 +711,32 @@
         : `<li class="text-muted">—</li>`;
 
       vm.note.textContent = item.text?.trim() || '—';
-
       vm.modal.show();
     }
 
-    // Delete from inside the view modal -> open confirmation modal
+    // View modal -> confirm delete
     document.getElementById('vmDeleteBtn').addEventListener('click', () => {
       if (!vmCurrent) return;
       const item = shown.find(x => x.assignmentId === vmCurrent.assignmentId && x.studentId === vmCurrent.studentId);
       openConfirmDelete(item);
     });
 
-    // Perform deletion after confirming
+    // Do the deletion
     confirmDeleteBtn.addEventListener('click', async () => {
       if (!pendingDelete) return;
       const { assignmentId, studentId } = pendingDelete;
       confirmDeleteBtn.disabled = true;
 
       try{
-        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(studentId)}`, {
-          method:'DELETE'
-        });
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(studentId)}`, { method:'DELETE' });
         const js = await res.json().catch(()=>({success:false}));
         if (!res.ok || js.success === false){
           throw new Error(js?.message || `HTTP ${res.status}`);
         }
-
-        // Remove locally
         allGraded = allGraded.filter(x => !(x.assignmentId===assignmentId && x.studentId===studentId));
         applyFilters();
-
-        // Close confirm + view modals if open
         try { confirmDeleteModal.hide(); } catch {}
         try { bootstrap.Modal.getInstance(document.getElementById('viewModal'))?.hide(); } catch {}
-
         showStatus('Submission deleted. The student can now submit again.', {success:true});
       }catch(err){
         console.error(err);
@@ -720,22 +748,42 @@
       }
     });
 
-    // --- Boot: load everything ---
+    /* -------- Boot -------- */
     async function boot(){
       elBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr>`;
       elSummary.textContent = 'Loading…';
+      elAssignmentMeta.textContent = 'Loading…';
 
       try{
         let graded = [];
+
         if (paramAssignmentId){
           if (paramCourseId){
             await loadAssignments(paramCourseId); // fills assignmentMetaById
+            const meta = assignmentMetaById.get(paramAssignmentId);
+            if (meta){
+              const dueStr = meta?.dueAt ? new Date(tsToMs(meta.dueAt)).toLocaleString() : 'N/A';
+              const parts = [
+                meta.title || 'Untitled',
+                meta.moduleTitle && meta.moduleTitle !== '—' ? meta.moduleTitle : null,
+                typeof meta.points === 'number' ? `${meta.points} pts` : null,
+                meta.dueAt ? `Due: ${dueStr}` : null
+              ].filter(Boolean);
+              elAssignmentMeta.textContent = parts.join(' • ');
+            } else {
+              elAssignmentMeta.textContent = 'Selected assignment';
+            }
+          } else {
+            elAssignmentMeta.textContent = 'Selected assignment';
           }
+
           graded = await loadGradedForAssignment(paramAssignmentId);
         } else {
+          // All courses / all assignments view
+          elAssignmentMeta.textContent = 'All courses • All assignments';
           const courses = await loadCoursesForTeacher(user.userId);
           for (const c of courses){
-            const assigns = await loadAssignments(c.id); // fills cache
+            const assigns = await loadAssignments(c.id);
             for (const a of assigns){
               const list = await loadGradedForAssignment(a.id);
               graded.push(...list);
@@ -743,7 +791,7 @@
           }
         }
 
-        // Enrich missing class names if classId present (optional)
+        // Enrich missing class names
         for (const g of graded){
           if ((!g.className || g.className === '—') && g.classId){
             g.className = await getClassName(g.classId);
@@ -757,20 +805,27 @@
         console.error(err);
         elBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Failed to load graded submissions.</td></tr>`;
         elSummary.textContent = 'Failed to load.';
+        if (elAssignmentMeta.textContent === 'Loading…') {
+          elAssignmentMeta.textContent = '—';
+        }
       }
     }
 
-    // --- Events ---
-    elForm.addEventListener('submit', (e)=>{ e.preventDefault(); applyFilters(); });
+    /* -------- Events (instant apply) -------- */
     elSearch.addEventListener('input', applyFilters);
-    btnUngraded.addEventListener('click', ()=>{
+    elClass.addEventListener('change', applyFilters);
+    elModule.addEventListener('change', applyFilters);
+    elDate.addEventListener('change', applyFilters);
+    elScore.addEventListener('input', applyFilters);
+    elSortBy.addEventListener('change', applyFilters);
+
+    btnUngraded.addEventListener('click', () => {
       const params = new URLSearchParams();
       if (paramCourseId) params.set('courseId', paramCourseId);
       if (paramAssignmentId) params.set('assignmentId', paramAssignmentId);
       window.location.href = `/TEACHER/assignment/grade_submission.html${params.toString() ? `?${params.toString()}` : ''}`;
     });
 
-    // Go!
     boot();
   </script>
 </body>

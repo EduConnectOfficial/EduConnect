@@ -69,7 +69,7 @@
 
       <!-- Content -->
       <section class="content px-4 py-3">
-        <h1 class="fw-bold mb-3">Essay Grading</h1>
+        <h1 class="fw-bold page-title mb-3">Essay Grading</h1>
 
         <!-- THEMED TOOLBAR -->
         <div class="ui-card card-themed mb-3">
@@ -209,7 +209,7 @@
                       <input type="number" step="1" min="0" class="form-control" id="scoreInput" required>
                     </div>
                     <div class="col-6">
-                      <label class="form-label fw-semibold">Max</label>
+                      <label class="form-label fw-semibold">Total Score</label>
                       <input type="number" step="1" min="1" class="form-control" id="maxInput" value="10" required>
                     </div>
                   </div>
@@ -611,7 +611,7 @@
             <td>${badge}</td>
             <td>${submitted}</td>
             <td>
-              <button class="btn btn-sm btn-primary" data-key="${escapeHTML(g.key)}" data-action="open-group">
+              <button class="btn btn-sm btn-amber" data-key="${escapeHTML(g.key)}" data-action="open-group">
                 <i class="bi bi-pencil-square"></i> Grade ${count}
               </button>
             </td>
@@ -689,7 +689,7 @@
         status: statusInput.value || 'graded'
       };
       if (!Number.isFinite(body.score) || body.score < 0) { alert('Score must be a non-negative number.'); return; }
-      if (!Number.isFinite(body.maxScore) || body.maxScore <= 0) { alert('Max must be a positive number.'); return; }
+      if (!Number.isFinite(body.maxScore) || body.maxScore <= 0) { alert('Total Score must be a positive number.'); return; }
       await postJson(`/api/teacher/quiz-essays/${encodeURIComponent(eObj.id)}/grade`, body);
       Object.assign(eObj, body); eObj.status = body.status;
     }

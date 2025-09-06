@@ -211,7 +211,8 @@
     filter: brightness(1.05);
     color: #fff
   }
-   .btn-amber {
+
+  .btn-amber {
    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
    color: #fff;
    border: none;
@@ -221,7 +222,6 @@
    filter: brightness(1.05);
    color: #fff;
  }
-
 
   .btn-amber-outline {
     background: #fff;
@@ -404,6 +404,36 @@
       -webkit-background-clip:text;background-clip:text;
     }
     
+      .muted{color:#6c757d}
+    .q-item{cursor:pointer;border-radius:10px;padding:.5rem .6rem;border:1px solid var(--border);background:#fff}
+    .q-item.active{border-color:var(--accent-2);box-shadow:0 0 0 .12rem rgba(176,60,16,.12)}
+    .q-item .small{color:#6c757d}
+    .sticky-title{position:sticky;top:0;background:#fff;z-index:2;padding:.25rem 0}
+    .quiz-q,.student-ans{white-space:pre-wrap}
+
+    /* ui-card themed toolbar */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center;color:#ffe9ca}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
+
+    /* UI-CARD themed toolbar (matches your other pages) */
+    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .ui-card.card-themed .ui-card-head{
+      margin:-16px -16px 12px -16px;padding:12px 16px;
+      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
+    }
+    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center;color:#ffe9ca}
+    .ui-subtext{font-size:1rem;color:#ffe9ca}
    /* ===== Mobile header: search + icon + username (no overlap) ===== */
 @media (max-width: 480px) {
   :root {

@@ -5,29 +5,99 @@
       box-sizing: border-box;
     }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  font-family: 'Raleway', sans-serif;
-  background: #e6ebeb;
-  color: #222;
-  overflow-x: hidden;
-}
+ :root {
+      --bg: #f6f8fa;
+      --text: #1f2328;
+      --muted: #6a737d;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --brand-dark-1: #4A1A0C;
+      --brand-dark-2: #7A2810;
+      --accent-1: #FF6A00;
+      --accent-2: #B03C10;
+      --radius: 14px;
+    }
 
-.main {
-  margin-left: 70px;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  width: calc(100% - 70px);
-  min-height: 100vh;
-  background: #e6ebeb;
-}
+    html, body { height: 100%; background: var(--bg); color: var(--text) }
 
-.sidebar:hover ~ .main {
-  margin-left: 280px; /* match your sidebar:hover width */
-  width: calc(100% - 280px);
-}
+    .dashboard { display: flex; min-height: 100vh }
+
+    .main {
+      margin-left: 70px;
+      width: calc(100% - 70px);
+      transition: margin-left .3s, width .3s;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px) }
+
+    .logo-header { height: 44px }
+
+    .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 20px }
+    .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100% }
+    .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf }
+
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer
+    }
+    .profile-btn .username { font-size: 14px }
+
+    .content { padding: 24px }
+
+    .ui-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, .08)
+    }
+    .ui-card.section { padding: 18px }
+
+    .btn-amber { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border: none }
+    .btn-amber:hover { filter: brightness(1.06); color: #fff }
+
+    .btn-amber-outline { background: #fff; color: var(--accent-2); border: 1px solid var(--accent-2) }
+    .btn-amber-outline:hover { background: linear-gradient(to bottom, var(--accent-1), var(--accent-2)); color: #fff; border-color: transparent }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--accent-2) !important;
+      box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
+    }
+
+    /* Modal theming + center-center */
+    .modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none }
+    .modal-content { border-radius: 12px; border: 1px solid var(--border) }
+    .modal-footer { border-top: 1px solid var(--border) }
+
+    .modal.show{
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      --bs-modal-margin:0;
+      padding:0 !important;
+    }
+    .modal.show .modal-dialog{
+      margin:0 !important;
+      max-width:560px;
+      width:calc(100% - 2rem);
+    }
+    .modal.show .modal-content{
+      overflow:hidden;
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+      max-height:min(90vh, 800px);
+    }
+    .modal-content .btn-close{ filter: invert(1) grayscale(100%) brightness(200%); opacity:.9 }
+    .modal-content .btn-close:hover{ opacity:1; transform:scale(1.05) }
+
+    /* Success variant for modal header */
+    .modal-header.is-success{
+      background: linear-gradient(90deg,#1f995c,#2db974);
+      color:#eafff1;
+    }
+
+    /* Read-only look for Teacher ID */
+    #teacherId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
 
 
 /* Header */

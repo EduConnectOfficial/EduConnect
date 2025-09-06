@@ -116,9 +116,11 @@ router.post('/:userId/profile',
     }
 
     await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });
-    // Return the merged user
+
+    // Return the merged user (include both keys for FE compatibility)
     const doc = await firestore.collection(USERS_COL).doc(userId).get();
-    return res.json({ success: true, user: shapeUserDecrypted(doc.data(), doc.id) });
+    const shaped = shapeUserDecrypted(doc.data(), doc.id);
+    return res.json({ success: true, user: shaped, updatedUser: shaped });
   })
 );
 
@@ -143,7 +145,8 @@ router.patch('/:userId', asyncHandler(async (req, res) => {
 
   await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });
   const doc = await firestore.collection(USERS_COL).doc(userId).get();
-  res.json({ success: true, user: shapeUserDecrypted(doc.data(), doc.id) });
+  const shaped = shapeUserDecrypted(doc.data(), doc.id);
+  res.json({ success: true, user: shaped, updatedUser: shaped });
 }));
 
 /**

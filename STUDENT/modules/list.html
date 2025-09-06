@@ -43,7 +43,7 @@
         </div>
 
         <!-- Course meta -->
-        <div class="ui-card card-themed mb-3" id="courseMeta" style="display:none;">
+        <div class="ui-card card-themed mb-3 mt-3" id="courseMeta" style="display:none;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> <span id="metaTitle">—</span></h2>
             <div class="text-name" id="metaTeacher">Teacher: —</div>
@@ -115,56 +115,39 @@
   <!-- Page Logic -->
   <script>
     const API_BASE = 'http://localhost:5000';
+
+    // --- Auth + initials-only header ---
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
+    }
+
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (!user || !user.userId || !user.isStudent) {
       window.location.href = "/STUDENT/login/login.html";
+    } else {
+      const displayName = user.fullName || user.username || user.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      el.textContent = initials;
+      el.title = displayName;
+      el.setAttribute("aria-label", displayName);
+      if (!user.uid) {
+        user.uid = user.userId || user.email;
+        localStorage.setItem("user", JSON.stringify(user));
+      }
     }
-   // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
-
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
-
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
-
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
-
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
 
     const urlParams = new URLSearchParams(window.location.search);
-    const courseId = urlParams.get('id'); // from .../modules/list.html?id=<courseId>
+    const courseId = urlParams.get('id');
     if (!courseId) {
       alert("No course id provided.");
       window.location.href = "/STUDENT/courses/my_courses.html";
@@ -181,11 +164,14 @@ if (!userId) {
         .replaceAll("'",'&#039;');
     }
 
+    // Fetch course details + decrypted teacher name (from student courses endpoint)
     async function fetchCourse() {
+      // (A) Base course info
       const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
       if (!res.ok) throw new Error('Failed to load course');
       const c = await res.json();
-      // Fill meta
+
+      // Fill base meta first
       document.getElementById('courseTitle').textContent = c.title || 'Course Modules';
       document.getElementById('metaTitle').textContent = c.title || '—';
       document.getElementById('metaCategory').textContent = c.category || '—';
@@ -193,17 +179,22 @@ if (!userId) {
       document.getElementById('metaCreated').textContent =
         c.createdAt && c.createdAt._seconds ? new Date(c.createdAt._seconds*1000).toLocaleDateString() : '—';
 
-      // Try to resolve teacher name if present in your courses doc
-      if (c.uploadedBy) {
-        try {
-          const tRes = await fetch(`${API_BASE}/users?role=teacher&mobileOnly=false`);
-          const arr = await tRes.json();
-          const t = Array.isArray(arr) ? arr.find(u => u.userId === c.uploadedBy) : null;
-          document.getElementById('metaTeacher').textContent = `Teacher: ${t ? (t.firstName + ' ' + t.lastName) : '—'}`;
-        } catch {
-          document.getElementById('metaTeacher').textContent = `Teacher: —`;
+      // (B) Decrypted teacher name: call student courses API which hydrates teacherName
+      try {
+        const tcRes = await fetch(
+          `${API_BASE}/api/students/${encodeURIComponent(user.userId)}/courses?includeTeacher=true&courseArchived=include`
+        );
+        const tcJson = await tcRes.json().catch(() => ({ success:false, courses:[] }));
+        let teacherName = '—';
+        if (tcJson && tcJson.success && Array.isArray(tcJson.courses)) {
+          const match = tcJson.courses.find(x => (x.id || x.courseId) === courseId);
+          if (match && match.teacherName) teacherName = match.teacherName;
         }
+        document.getElementById('metaTeacher').textContent = `Teacher: ${teacherName}`;
+      } catch {
+        document.getElementById('metaTeacher').textContent = `Teacher: —`;
       }
+
       document.getElementById('courseMeta').style.display = '';
     }
 
@@ -212,7 +203,7 @@ if (!userId) {
       if (!res.ok) throw new Error('Failed to load modules');
       const list = await res.json();
 
-      // Check completion per module (using your endpoint)
+      // Check completion per module
       const email = user.email;
       const checks = list.map(async m => {
         try {

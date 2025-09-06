@@ -5,26 +5,36 @@ const router = express.Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore } = require('../config/firebase');
 const { getEnrollmentsClassIds, getCoursesForClassIds } = require('../utils/studentUtils');
+const { decryptField } = require('../utils/fieldCrypto'); // ✅ decrypt names
 
-// small local helper (keeps this file self-contained)
+// small local helpers
 const chunk = (arr, size = 10) => {
   const out = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 };
 
+// decrypt first/middle/last from a users doc
+function decryptNames(u = {}) {
+  const first  = decryptField(u.firstNameEnc  || '');
+  const middle = decryptField(u.middleNameEnc || '');
+  const last   = decryptField(u.lastNameEnc   || '');
+  const full = [first, middle, last].map(s => String(s || '').trim()).filter(Boolean).join(' ').trim();
+  return { firstName: first, middleName: middle, lastName: last, fullName: full || (u.username || 'Teacher') };
+}
+
 // === STUDENTS COURSES FOR A STUDENT'S ENROLLED CLASSES ===
 // GET /api/students/:userId/courses?includeTeacher=true
-//     &archived=exclude|include|only            // applies to CLASS archived state (kept from your original code)
-//     &courseArchived=exclude|include|only      // NEW: applies to COURSE archived state (default exclude)
+//     &archived=exclude|include|only            // applies to CLASS archived state
+//     &courseArchived=exclude|include|only      // applies to COURSE archived state (default exclude)
 router.get('/students/:userId/courses', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const includeTeacher = String(req.query.includeTeacher || '').toLowerCase() === 'true';
 
-  // Class-level archive filter (backward-compatible with your existing param)
+  // Class-level archive filter (backward-compatible)
   const classArchParam = String(req.query.archived || 'exclude'); // exclude | include | only
 
-  // NEW: Course-level archive filter (defaults to exclude to hide archived courses from students)
+  // Course-level archive filter (defaults to exclude)
   const courseArchParam = String(req.query.courseArchived || 'exclude'); // exclude | include | only
 
   // 1) enrolled class IDs
@@ -43,11 +53,8 @@ router.get('/students/:userId/courses', asyncHandler(async (req, res) => {
       classMeta[d.id] = { archived: !!data.archived };
     });
   }
-
-  // If some classIds didn't return (deleted?), treat them as active (lenient default)
-  classIds.forEach(id => {
-    if (!classMeta[id]) classMeta[id] = { archived: false };
-  });
+  // lenient default for any missing docs
+  classIds.forEach(id => { if (!classMeta[id]) classMeta[id] = { archived: false }; });
 
   // 3) filter classIds by archived setting
   const filteredClassIds =
@@ -63,10 +70,8 @@ router.get('/students/:userId/courses', asyncHandler(async (req, res) => {
 
   // 4) courses assigned to those (filtered) classes
   let courses = await getCoursesForClassIds(filteredClassIds);
-  // Expect each course to have at least: id (courseId), uploadedBy, maybe classId
-  // We need to ensure there is an 'archived' boolean on the course object.
 
-  // Enrich with 'archived' if missing
+  // Ensure each course has an 'archived' boolean
   const needArchived = courses.some(c => typeof c.archived === 'undefined');
   if (needArchived && courses.length) {
     const courseIds = Array.from(new Set(courses.map(c => c.id || c.courseId).filter(Boolean)));
@@ -99,7 +104,7 @@ router.get('/students/:userId/courses', asyncHandler(async (req, res) => {
     }));
   }
 
-  // 5) optionally attach teacherName from uploadedBy
+  // 5) optionally attach teacherName from uploadedBy (DECRYPTED)
   if (includeTeacher && courses.length) {
     const teacherIds = Array.from(new Set(courses.map(c => c.uploadedBy).filter(Boolean)));
     const teacherMap = {};
@@ -110,20 +115,14 @@ router.get('/students/:userId/courses', asyncHandler(async (req, res) => {
         const d = await firestore.collection('users').doc(tid).get();
         if (d.exists) {
           const u = d.data() || {};
-          const name = (u.fullName && u.fullName.trim())
-            ? u.fullName.trim()
-            : `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || 'Teacher';
-          teacherMap[tid] = name;
+          teacherMap[tid] = decryptNames(u).fullName;
           return;
         }
         // Fallback: where query on userId field (if some docs keyed differently)
         const q = await firestore.collection('users').where('userId', '==', tid).limit(1).get();
         if (!q.empty) {
           const u = q.docs[0].data() || {};
-          const name = (u.fullName && u.fullName.trim())
-            ? u.fullName.trim()
-            : `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || 'Teacher';
-          teacherMap[tid] = name;
+          teacherMap[tid] = decryptNames(u).fullName;
         }
       } catch {
         // ignore individual failures, keep going
