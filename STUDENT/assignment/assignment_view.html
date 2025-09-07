@@ -65,6 +65,11 @@
     .rubric-box{border:1px solid var(--border); border-radius:12px; padding:12px; background:#fff}
     .rubric-title{font-weight:600; display:flex; align-items:center; gap:8px}
     .rubric-item{display:flex; align-items:center; gap:8px; padding:6px 0}
+
+    /* Long-text safety */
+    .wrap-anywhere{overflow-wrap:anywhere; word-break:break-word; line-break:anywhere;}
+    #assignContent{white-space:pre-wrap;} /* keep line breaks but still wrap long tokens */
+    .attachment-list, .attachment-list a, #submissionNote .p-2, #submissionFiles, #submissionGrade, #submissionStatusBadge, #submissionTime{overflow-wrap:anywhere; word-break:break-word;}
   </style>
 </head>
 <body>
@@ -90,17 +95,17 @@
       <div class="content container-fluid">
         <!-- Breadcrumb -->
         <nav aria-label="breadcrumb" class="mb-2">
-          <ol class="breadcrumb">
+          <ol class="breadcrumb wrap-anywhere">
             <li class="breadcrumb-item"><a href="/STUDENT/assignment/assignment.html">Assignments</a></li>
             <li class="breadcrumb-item active" id="bcTitle" aria-current="page">Loading…</li>
           </ol>
         </nav>
 
         <!-- Overview & Instructions (TOP) -->
-        <h1 class="page-title"><span class="brand-grad" id="pageTitle">Assignment</span></h1>
+        <h1 class="page-title"><span class="brand-grad wrap-anywhere" id="pageTitle">Assignment</span></h1>
         <div class="ui-card mb-3">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-            <div>
+            <div class="wrap-anywhere">
               <div class="badge-soft mb-2" id="courseBadge"><i class="bi bi-journal-text"></i> Course</div>
               <h4 id="assignTitle" class="mb-1">Loading…</h4>
               <div class="small-label">
@@ -121,10 +126,10 @@
           </div>
           <hr class="my-3"/>
           <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Instructions</h6>
-          <div id="assignContent" style="white-space:pre-wrap">Loading content…</div>
+          <div id="assignContent" class="wrap-anywhere">Loading content…</div>
 
           <!-- Rubric + attachments go here -->
-          <div id="attachmentsWrap" class="mt-3"></div>
+          <div id="attachmentsWrap" class="mt-3 wrap-anywhere"></div>
         </div>
 
         <!-- Submission (MIDDLE) -->
@@ -143,12 +148,12 @@
               <label class="form-label">File(s)</label>
               <input class="form-control" type="file" id="fileInput" name="files" multiple/>
               <div id="fileHint" class="form-text">Supported: documents, images, PDFs, etc.</div>
-              <div id="filePreview" class="file-list mt-2"></div>
+              <div id="filePreview" class="file-list mt-2 wrap-anywhere"></div>
             </div>
 
             <div>
               <label class="form-label">Note (optional)</label>
-              <textarea class="form-control" id="noteInput" name="text" rows="3" placeholder="e.g., 'Please see attached. https://…'"></textarea>
+              <textarea class="form-control wrap-anywhere" id="noteInput" name="text" rows="3" placeholder="e.g., 'Please see attached. https://…'"></textarea>
             </div>
 
             <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -158,11 +163,11 @@
               <a href="/STUDENT/assignment/assignment.html" class="btn btn-amber-outline">
                 <i class="bi bi-arrow-left me-1"></i> Back to Assignments
               </a>
-              <div id="submitStatus" class="small-label ms-auto"></div>
+              <div id="submitStatus" class="small-label ms-auto wrap-anywhere"></div>
             </div>
           </form>
 
-          <div id="alreadySubmitted" class="alert alert-info py-2 px-3 d-none mt-3" role="alert" style="border:1px solid #b6d4fe;">
+          <div id="alreadySubmitted" class="alert alert-info py-2 px-3 d-none mt-3 wrap-anywhere" role="alert" style="border:1px solid #b6d4fe;">
             <i class="bi bi-info-circle me-1"></i> You have already submitted this assignment. Resubmission is disabled.
           </div>
         </div>
@@ -171,12 +176,12 @@
         <div id="submissionSummary" class="ui-card d-none">
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-file-check me-2"></i>Your Submission</h5>
-            <span id="submissionTime" class="small-label"></span>
+            <span id="submissionTime" class="small-label wrap-anywhere"></span>
           </div>
-          <div id="submissionStatusBadge" class="mt-2"></div>
-          <div id="submissionFiles" class="mt-2"></div>
-          <div id="submissionNote" class="mt-2"></div>
-          <div id="submissionGrade" class="mt-2"></div>
+          <div id="submissionStatusBadge" class="mt-2 wrap-anywhere"></div>
+          <div id="submissionFiles" class="mt-2 wrap-anywhere"></div>
+          <div id="submissionNote" class="mt-2 wrap-anywhere"></div>
+          <div id="submissionGrade" class="mt-2 wrap-anywhere"></div>
         </div>
       </div> <!-- /content -->
     </div> <!-- /main -->
@@ -260,6 +265,11 @@
       return String(s)
         .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
         .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+    // insert a zero-width space every N non-space chars to allow wrapping of very long tokens
+    function softWrap(s, limit = 40){
+      if (!s) return s;
+      return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
     }
     const fmtDateTime = (ms) => {
       if (!ms) return '—';
@@ -371,16 +381,21 @@
 
     // ====== Renderers ======
     function renderAssignment(a){
-      bcTitle.textContent = a.title;
-      pageTitle.textContent = a.title;
-      assignTitle.textContent = a.title;
-      courseBadge.innerHTML = `<i class="bi bi-journal-text"></i> ${escapeHTML(a.courseTitle || "Course")}`;
-      const moduleTxt = a.moduleNumber ? `Module #${a.moduleNumber}` : "";
-      moduleLine.textContent = moduleTxt;
-      pointsLine.textContent = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
-      dueAtEl.textContent = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
+      // Use softWrap + text setters so massive tokens don't overflow
+      bcTitle.innerText = softWrap(a.title);
+      pageTitle.innerText = softWrap(a.title);
+      assignTitle.innerText = softWrap(a.title);
 
-      assignContent.innerHTML = escapeHTML(a.content);
+      const courseText = a.courseTitle || "Course";
+      courseBadge.innerHTML = `<i class="bi bi-journal-text"></i> ${escapeHTML(courseText)}`;
+
+      const moduleTxt = a.moduleNumber ? `Module #${a.moduleNumber}` : "";
+      moduleLine.innerText = softWrap(moduleTxt);
+      pointsLine.innerText = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
+      dueAtEl.innerText = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
+
+      // Content: preserve line breaks and wrap long tokens
+      assignContent.innerText = softWrap(a.content);
 
       const atts = Array.isArray(a.attachments) ? a.attachments : [];
       const isRubric = (x) => (x?.type === 'rubrics') || /rubric/i.test(x?.originalName || '');
@@ -394,7 +409,7 @@
       if (rubricFiles.length) {
         const items = rubricFiles.map(f => {
           const href = escapeHTML(toApiUrl(f.filePath));
-          const name = escapeHTML(f.originalName || f.filePath.split('/').pop());
+          const name = softWrap(f.originalName || f.filePath.split('/').pop());
           const size = f.size ? ` • ${bytesKB(f.size)} KB` : '';
           return `<div class="rubric-item"><i class="bi bi-clipboard-check text-success"></i>
                     <a href="${href}" target="_blank" rel="noopener">${name}</a><span class="small-label">${size}</span>
@@ -410,14 +425,15 @@
       // Other attachments
       const fileItems = otherFiles.map(x => {
         const href = escapeHTML(toApiUrl(x.filePath));
-        const name = escapeHTML(x.originalName || x.filePath.split('/').pop());
+        const name = softWrap(x.originalName || x.filePath.split('/').pop());
         const sizeTxt = x.size ? ` (${bytesKB(x.size)} KB)` : '';
         return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
       }).join('');
 
       const linkItems = links.map(x => {
-        const safe = escapeHTML(x.url);
-        return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${safe}" target="_blank" rel="noopener">${safe}</a></li>`;
+        const safeHref = escapeHTML(x.url);
+        const display = softWrap(x.url);
+        return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${safeHref}" target="_blank" rel="noopener">${display}</a></li>`;
       }).join('');
 
       if (fileItems || linkItems) {
@@ -435,7 +451,7 @@
       submissionSummary.classList.remove('d-none');
 
       const when = tsToMs(sub.submittedAt);
-      submissionTime.textContent = when ? `Submitted: ${fmtDateTime(when)}` : '';
+      submissionTime.innerText = when ? `Submitted: ${fmtDateTime(when)}` : '';
 
       const graded = !!sub.graded;
       submissionStatusBadge.innerHTML = graded
@@ -447,9 +463,9 @@
       if (files.length){
         const list = files.map(f => {
           const href = f.filePath ? toApiUrl(f.filePath) : '#';
-          const name = escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file');
+          const name = softWrap(escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file'));
           const size = f.size ? ` • ${bytesKB(f.size)} KB` : '';
-          const attrs = f.filePath ? `href="${href}" target="_blank" rel="noopener"` : `href="#" aria-disabled="true"`;
+          const attrs = f.filePath ? `href="${escapeHTML(href)}" target="_blank" rel="noopener"` : `href="#" aria-disabled="true"`;
           return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a ${attrs}>${name}</a>${size}</li>`;
         }).join('');
         submissionFiles.innerHTML = `
@@ -464,15 +480,14 @@
       // Note/Text
       const text = (sub.text || '').trim();
       submissionNote.innerHTML = text
-        ? `<div><div class="fw-semibold mb-1"><i class="bi bi-sticky"></i> Note</div><div class="p-2 border rounded" style="white-space:pre-wrap">${escapeHTML(text)}</div></div>`
+        ? `<div><div class="fw-semibold mb-1"><i class="bi bi-sticky"></i> Note</div><div class="p-2 border rounded wrap-anywhere" style="white-space:pre-wrap">${escapeHTML(softWrap(text))}</div></div>`
         : `<div class="small-label">No note provided.</div>`;
 
       // Grade / Feedback
       if (graded || sub.grade != null || (sub.feedback && String(sub.feedback).trim())){
         const g = (sub.grade != null) ? `<div><span class="fw-semibold">Grade:</span> ${escapeHTML(String(sub.grade))}</div>` : '';
-        const fb = (sub.feedback && String(sub.feedback).trim())
-          ? `<div class="mt-1"><span class="fw-semibold">Feedback:</span> ${escapeHTML(String(sub.feedback))}</div>`
-          : '';
+        const fbText = sub.feedback ? escapeHTML(softWrap(String(sub.feedback))) : '';
+        const fb = fbText ? `<div class="mt-1"><span class="fw-semibold">Feedback:</span> ${fbText}</div>` : '';
         submissionGrade.innerHTML = `<hr class="my-2"/>${g}${fb}`;
       } else {
         submissionGrade.innerHTML = '';
@@ -492,7 +507,7 @@
         submitBtn.classList.add('disabled');
       }
       alreadySubmitted.classList.remove('d-none');
-      alreadySubmitted.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${reason}`;
+      alreadySubmitted.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${escapeHTML(softWrap(reason))}`;
     }
 
     // ====== Load ======
@@ -542,10 +557,10 @@
         const row = document.createElement('div');
         row.className = 'file-pill' + (tooBig ? ' bad' : '');
         row.innerHTML = `
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center gap-2 wrap-anywhere">
             <i class="bi bi-file-earmark${tooBig ? '-x text-danger' : ''}"></i>
             <div>
-              <div class="fw-semibold">${escapeHTML(f.name)}</div>
+              <div class="fw-semibold wrap-anywhere">${escapeHTML(softWrap(f.name))}</div>
               <div class="size">${human(f.size)}${tooBig ? ` <span class="warn">(exceeds ${STUDENT_MAX_MB} MB)</span>` : ''}</div>
             </div>
           </div>`;
@@ -610,7 +625,6 @@
         let js = {};
         try { js = JSON.parse(raw); } catch {}
         if (!res.ok || js.success === false) {
-          // Handle Multer 413 or other errors with friendly text
           submitStatus.textContent = js.message
             ? js.message
             : `Upload failed (HTTP ${res.status})`;

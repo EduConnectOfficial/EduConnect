@@ -13,6 +13,90 @@
 
   <!-- Sidebar / shared -->
   <link rel="stylesheet" href="../quiz/quiz.css" />
+
+  <style>
+    /* ===== Pills (course / module / statuses) ===== */
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: 10px 0 18px
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 700;
+      border: 1px solid var(--border, #e5e7eb);
+      background: #fff;
+      color: #374151;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .pill .bi {
+      font-size: .9rem
+    }
+
+    .pill-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      display: inline-block
+    }
+
+    .pill-course {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #9a3412;
+    }
+
+    .pill-module {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+
+    .pill-open {
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #075985;
+    }
+
+    .pill-upcoming {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+      color: #075985;
+    }
+
+    .pill-closed {
+      background: #fee2e2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+
+    /* ===== Clamp quiz description ===== */
+    .quiz-card .desc {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      line-clamp: 4;
+      -webkit-line-clamp: 4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+      line-height: 1.4;
+      max-height: calc(1.4em * 4);
+      font-size: .95rem;
+      color: #6b7280;
+      margin-top: .25rem;
+    }
+  </style>
 </head>
 
 <body>
@@ -82,6 +166,16 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Always-visible status pills -->
+        <div class="pill-row">
+          <span class="pill pill-open"><i class="bi bi-check2-circle"></i><span class="pill-text"><strong
+                id="countOpen">0</strong> Open</span></span>
+          <span class="pill pill-upcoming"><i class="bi bi-calendar-event"></i><span class="pill-text"><strong
+                id="countUpcoming">0</strong> Upcoming</span></span>
+          <span class="pill pill-closed"><i class="bi bi-lock"></i><span class="pill-text"><strong
+                id="countClosed">0</strong> Closed</span></span>
         </div>
 
         <!-- Quiz Cards Grid -->
@@ -236,10 +330,15 @@
     const moduleSelect = document.getElementById("moduleSelect");
     const quizCards = document.getElementById("quizCards");
     const emptyState = document.getElementById("emptyState");
-    const errorState = document.getElementById("errorState");
+    theErrorState = document.getElementById("errorState");
     const quizSearch = document.getElementById("quizSearch");
     const statusFilter = document.getElementById("statusFilter");
     const sortBy = document.getElementById("sortBy");
+
+    // Status count pills
+    const elCountOpen = document.getElementById("countOpen");
+    const elCountUpcoming = document.getElementById("countUpcoming");
+    const elCountClosed = document.getElementById("countClosed");
 
     let allQuizzes = [];
     let currentCourseId = "";
@@ -286,6 +385,9 @@
       for (const k of keys) { const v = obj[k]; if (typeof v === 'string' && v.trim()) return v.trim(); }
       return '';
     }
+    const escapeHTML = (s = '') => String(s)
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
     // ---------- Data loaders ----------
     async function loadCourses() {
@@ -424,6 +526,9 @@
       else if (Array.isArray(js)) raw = js;
 
       const attempts = raw.map((r, i) => {
+        const toNum = v => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
+        const isNum = v => (typeof v === 'number' && !Number.isNaN(v));
+
         const autoScore = toNum(r.autoScore) ?? toNum(r.scoreAuto) ?? null;
         const autoTotal = toNum(r.autoTotal) ?? toNum(r.totalAuto) ?? null;
         const autoPercent = toNum(r.autoPercent) ?? null;
@@ -450,9 +555,11 @@
           autoPercent ??
           (isNum(score) && isNum(total) && total > 0 ? Math.round((score / total) * 100) : null);
 
+        const tsObj = r.submittedAt ?? r.createdAt ?? r.timestamp ?? null;
+
         return {
           n: r.attempt ?? r.n ?? (i + 1),
-          submittedAt: r.submittedAt ?? r.createdAt ?? r.timestamp ?? null,
+          submittedAt: tsObj,
           timeTakenSeconds: r.timeTakenSeconds ?? r.durationSeconds ?? r.time ?? null,
           reason: r.reason || 'manual',
           score: isNum(score) ? score : null,
@@ -467,27 +574,27 @@
       let latest = attempts.length ? attempts[attempts.length - 1] : null;
       let best = null;
       attempts.forEach(a => {
-        if (!isNum(a.percent)) return;
-        if (!best || a.percent > best.percent) best = a;
+        if (typeof a.percent === 'number') {
+          if (!best || a.percent > best.percent) best = a;
+        }
       });
 
-      if (!best && isNum(js?.bestPercent)) {
+      if (!best && typeof js?.bestPercent === 'number') {
         best = {
           n: '-',
           submittedAt: null,
-          score: toNum(js?.lastScore?.score) ?? null,
-          total: toNum(js?.lastScore?.total) ?? null,
-          percent: toNum(js.bestPercent)
+          score: (js?.lastScore?.score ?? null),
+          total: (js?.lastScore?.total ?? null),
+          percent: js.bestPercent
         };
       }
       if (!latest && js?.lastScore) {
-        const lp = toNum(js.lastScore.percent);
         latest = {
           n: '-',
           submittedAt: null,
-          score: toNum(js.lastScore.score) ?? null,
-          total: toNum(js.lastScore.total) ?? null,
-          percent: isNum(lp) ? lp : null
+          score: (js.lastScore.score ?? null),
+          total: (js.lastScore.total ?? null),
+          percent: (typeof js.lastScore.percent === 'number' ? js.lastScore.percent : null)
         };
       }
 
@@ -495,6 +602,14 @@
     }
 
     // ---------- Render ----------
+    function refreshStatusPills(list) {
+      const counts = { Open: 0, Upcoming: 0, Closed: 0 };
+      (list || []).forEach(q => counts[statusOf(q)]++);
+      if (elCountOpen) elCountOpen.textContent = counts.Open || 0;
+      if (elCountUpcoming) elCountUpcoming.textContent = counts.Upcoming || 0;
+      if (elCountClosed) elCountClosed.textContent = counts.Closed || 0;
+    }
+
     async function renderQuizzes() {
       quizCards.innerHTML = "";
       errorState.classList.add("d-none");
@@ -503,12 +618,8 @@
       let list = allQuizzes.filter(qz => enrolledCourseIds.has(qz.courseId));
 
       // optional filters
-      if (currentCourseId) {
-        list = list.filter(qz => qz.courseId === currentCourseId);
-      }
-      if (currentModuleId) {
-        list = list.filter(qz => qz.moduleId === currentModuleId);
-      }
+      if (currentCourseId) list = list.filter(qz => qz.courseId === currentCourseId);
+      if (currentModuleId) list = list.filter(qz => qz.moduleId === currentModuleId);
 
       const q = (quizSearch.value || "").toLowerCase();
       if (q) {
@@ -519,14 +630,13 @@
       }
 
       const st = statusFilter.value;
-      if (st !== "All") {
-        list = list.filter(qz => statusOf(qz) === st);
-      }
+      if (st !== "All") list = list.filter(qz => statusOf(qz) === st);
 
       // sort
       if (sortBy.value === "az") {
         list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
       } else if (sortBy.value === "duration") {
+        const num = (v, d = 0) => (typeof v === 'number' && !isNaN(v)) ? v : d;
         list.sort((a, b) => num(a.durationMinutes) - num(b.durationMinutes));
       } else {
         list.sort((a, b) => {
@@ -535,6 +645,9 @@
           return ad - bd;
         });
       }
+
+      // Update status pills for the current (filtered) view
+      refreshStatusPills(list);
 
       if (!list.length) {
         emptyState.classList.remove("d-none");
@@ -558,7 +671,7 @@
         const status = statusOf(quiz);
         const qs = Array.isArray(quiz.questions) ? quiz.questions.length
           : (quiz.totalQuestions || quiz.questionCount || 0);
-        const dur = num(quiz.durationMinutes);
+        const dur = (typeof quiz.durationMinutes === 'number' && !isNaN(quiz.durationMinutes)) ? quiz.durationMinutes : null;
         const diff = quiz.difficulty || "—";
 
         const course = coursesById.get(quiz.courseId);
@@ -570,7 +683,7 @@
         const mod = modMap ? modMap.get(quiz.moduleId) : null;
         const moduleTitle = mod?.title || quiz.moduleTitle || quiz.moduleName || "Untitled Module";
         const moduleLabel = (typeof mod?.moduleNumber === 'number')
-          ? `Module ${mod.moduleNumber}: ${moduleTitle}`
+          ? `Module ${mod.moduleNumber} • ${moduleTitle}`
           : moduleTitle;
 
         const allowed = quiz.attemptsAllowed ?? null;
@@ -587,7 +700,7 @@
         const hasAutoQuestions = Array.isArray(quiz.questions) && quiz.questions.some(q => !isEssayQuestion(q));
         const essayOnly = Array.isArray(quiz.questions) && quiz.questions.length > 0 && !hasAutoQuestions;
 
-        // Build optional rubric button: show whenever a rubric exists (quiz or settings)
+        // optional rubric
         let rubricBtn = '';
         const rubricUrl = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
         if (rubricUrl) {
@@ -599,59 +712,78 @@
                        </button>`;
         }
 
-        // NOTE: Start always links to overview (view page), regardless of attempts or status.
-        // The view page will block actual start if not eligible.
+        const coursePill = `
+          <span class="pill pill-course" title="${escapeHTML(courseLabel)}">
+            <i class="bi bi-collection"></i>
+            <span class="pill-text">${escapeHTML(courseLabel)}</span>
+          </span>`;
+
+        const modulePill = `
+          <span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+            <i class="bi bi-box"></i>
+            <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+          </span>`;
+
         const col = document.createElement("div");
         col.className = "col-12 col-md-6 col-xl-4";
         col.innerHTML = `
-          <div class="quiz-card h-100">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <h3 class="quiz-title">${quiz.title || "Untitled Quiz"}</h3>
-                <div class="quiz-meta">
-                  Created: ${created ? fmtDate(created) : "—"} • Status:
-                  <span class="badge ${status === 'Open' ? 'text-bg-success' : status === 'Upcoming' ? 'text-bg-info' : 'text-bg-secondary'}">${status}</span>
-                  ${locked ? `<span class="badge text-bg-danger ms-1">Max attempts</span>` : ""}
-                  ${essayOnly ? `<span class="badge text-bg-warning ms-1">Essay-only</span>` : ``}
-                </div>
-              </div>
-              <span class="badge-soft"><i class="bi bi-bar-chart"></i>${diff}</span>
-            </div>
+  <div class="quiz-card h-100 d-flex flex-column">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h3 class="quiz-title mb-1">${escapeHTML(quiz.title || "Untitled Quiz")}</h3>
+        <div class="quiz-meta">
+          Created: ${created ? fmtDate(created) : "—"} • Status:
+          <span class="badge ${status === 'Open' ? 'text-bg-success' : status === 'Upcoming' ? 'text-bg-info' : 'text-bg-secondary'}">${status}</span>
+          ${locked ? `<span class="badge text-bg-danger ms-1">Max attempts</span>` : ""}
+          ${essayOnly ? `<span class="badge text-bg-warning ms-1">Essay-only</span>` : ``}
+        </div>
+      </div>
+      <span class="badge-soft"><i class="bi bi-bar-chart"></i>${escapeHTML(diff)}</span>
+    </div>
 
-            <p class="mt-2">${quiz.description ? quiz.description : ""}</p>
+    <!-- Course & Module pills -->
+    <div class="mt-2 mb-1 d-flex flex-wrap gap-1">
+      ${coursePill}
+      ${modulePill}
+    </div>
 
-            <div class="d-flex flex-wrap gap-2 mb-2">
-              <span class="badge-soft"><i class="bi bi-book"></i> ${courseLabel}</span>
-              <span class="badge-soft"><i class="bi bi-journal-text"></i> ${moduleLabel}</span>
-              <span class="badge-soft"><i class="bi bi-list-ol"></i> ${qs} questions</span>
-              <span class="badge-soft"><i class="bi bi-stopwatch"></i> ${dur || "—"} min</span>
-              <span class="badge-soft"><i class="bi bi-repeat"></i> ${attemptsLabel}</span>
-              <span class="badge-soft"><i class="bi bi-calendar-event"></i> Due: ${due ? fmtDate(due) : "—"}</span>
-            </div>
+    <!-- Facts row (badges) -->
+    <div class="d-flex flex-wrap gap-2 mt-1 mb-2">
+      <span class="badge-soft"><i class="bi bi-list-ol"></i> ${qs} questions</span>
+      <span class="badge-soft"><i class="bi bi-stopwatch"></i> ${dur ?? "—"} min</span>
+      <span class="badge-soft"><i class="bi bi-repeat"></i> ${attemptsLabel}</span>
+      <span class="badge-soft"><i class="bi bi-calendar-event"></i> Due: ${due ? fmtDate(due) : "—"}</span>
+    </div>
 
-            <div class="d-flex justify-content-end gap-2">
-              <button class="btn btn-sm btn-outline-primary"
-                      data-action="view-score"
-                      data-quiz-id="${quiz.id}"
-                      data-quiz-title="${(quiz.title || '').replace(/"/g, '&quot;')}">
-                <i class="bi bi-graph-up"></i> View Score
-              </button>
+    <!-- Short, clamped description (now AFTER all pills) -->
+    <div class="desc mb-3" title="${escapeHTML(quiz.description || '')}">
+      ${escapeHTML(quiz.description || '')}
+    </div>
 
-              <a class="btn btn-sm btn-amber"
-                 href="/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}"
-                 title="See details, rubric, and start">
-                 Start
-              </a>
+    <div class="mt-auto d-flex justify-content-end gap-2">
+      <button class="btn btn-sm btn-outline-primary"
+              data-action="view-score"
+              data-quiz-id="${quiz.id}"
+              data-quiz-title="${(quiz.title || '').replace(/"/g, '&quot;')}">
+        <i class="bi bi-graph-up"></i> View Score
+      </button>
 
-              ${rubricBtn}
-            </div>
+      <a class="btn btn-sm btn-amber"
+         href="/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}"
+         title="See details, rubric, and start">
+         Start
+      </a>
 
-            <div class="mt-2 small text-muted">
-              Timed quizzes auto-submit when time is up.
-              ${essayOnly ? '<br>Scores for this quiz will appear after your essay is graded.' : ''}
-            </div>
-          </div>
-        `;
+      ${rubricBtn}
+    </div>
+
+    <div class="mt-2 small text-muted">
+      Timed quizzes auto-submit when time is up.
+      ${essayOnly ? '<br>Scores for this quiz will appear after your essay is graded.' : ''}
+    </div>
+  </div>
+`;
+
         quizCards.appendChild(col);
       });
     }
@@ -705,16 +837,23 @@
           return;
         }
 
+        const isNum = v => (typeof v === 'number' && !Number.isNaN(v));
         if (isNum(res.best?.percent)) document.getElementById('bestScore').textContent = `${res.best.percent}%`;
         if (isNum(res.latest?.percent)) document.getElementById('latestScore').textContent = `${res.latest.percent}%`;
         document.getElementById('attemptCount').textContent = String(res.attempts.length);
 
-        // sort newest → oldest (latest on top)
         const attemptsSorted = [...res.attempts].sort((a, b) => {
           const tA = ts(a.submittedAt)?.getTime() ?? 0;
           const tB = ts(b.submittedAt)?.getTime() ?? 0;
           return tB - tA;
         });
+
+        const fmtTime = (sec) => {
+          if (sec == null) return "—";
+          const s = Math.max(0, parseInt(sec, 10));
+          const m = Math.floor(s / 60), ss = s % 60;
+          return `${m}m ${ss}s`;
+        };
 
         const rowsHtml = attemptsSorted.map(a => {
           const hasAuto = (a.autoTotal != null && a.autoTotal > 0);
@@ -739,16 +878,14 @@
           const scoreCell = (score != null && total != null) ? `${score}/${total}` : '—';
 
           return `
-    <tr>
-      <td>${a.n ?? ''}</td>
-      <td>${fmt(a.submittedAt)}</td>
-      <td>${scoreCell}</td>
-      <td>${typeof a.percent === 'number' ? `${a.percent}%` : '—'}</td>
-      <td>${fmtTime(a.timeTakenSeconds)}</td>
-    </tr>
-  `;
+            <tr>
+              <td>${a.n ?? ''}</td>
+              <td>${fmt(a.submittedAt)}</td>
+              <td>${scoreCell}</td>
+              <td>${typeof a.percent === 'number' ? `${a.percent}%` : '—'}</td>
+              <td>${fmtTime(a.timeTakenSeconds)}</td>
+            </tr>`;
         }).join('');
-
 
         document.getElementById('attemptsTbody').innerHTML = rowsHtml;
         document.getElementById('scoreContent').classList.remove('d-none');

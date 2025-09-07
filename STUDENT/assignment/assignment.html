@@ -57,7 +57,7 @@
     .btn-amber-outline:hover { background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border-color:transparent; }
     .form-control:focus, .form-select:focus { border-color:var(--brand-accent-2); box-shadow:0 0 0 .2rem rgba(255,106,0,.18); }
 
-    .assignment-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px; height:100%; box-shadow:0 8px 18px rgba(0,0,0,.08); }
+    .assignment-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px; height:100%; box-shadow:0 8px 18px rgba(0,0,0,.08); display:flex; flex-direction:column; }
     .badge-soft { display:inline-flex; align-items:center; gap:6px; border:1px solid rgba(176,60,16,.25); border-radius:999px; padding:2px 8px; font-size:.75rem; color:var(--brand-accent-2); background:linear-gradient(90deg, rgba(255,106,0,.12), rgba(176,60,16,.12)); }
     .muted { color:var(--muted); }
 
@@ -69,6 +69,39 @@
 
     .hint { color:var(--muted); font-size:.9rem; }
     .attachment-list a { text-decoration:none; }
+
+    /* ===== Pills (course / module) + counts row ===== */
+    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
+    .pill{
+      display:inline-flex;align-items:center;gap:.4rem;
+      padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
+      border:1px solid var(--border, #e5e7eb);background:#fff;color:#374151;white-space:nowrap;max-width:100%;overflow:hidden;
+    }
+    .pill .bi{font-size:.9rem}
+    .pill-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;display:inline-block}
+    .pill-course{ background:#fff7ed;border-color:#fed7aa;color:#9a3412; }
+    .pill-module{ background:#ecfdf5;border-color:#a7f3d0;color:#065f46; }
+    .pill-open{ background:#ecfeff;border-color:#a5f3fc;color:#075985; }
+    .pill-submitted{ background:#eef2ff;border-color:#c7d2fe;color:#3730a3; }
+    .pill-graded{ background:#f3e8ff;border-color:#e9d5ff;color:#6b21a8; }
+    .pill-closed{ background:#fee2e2;border-color:#fecaca;color:#991b1b; }
+
+    /* ===== Description clamp (multi-line ellipsis) ===== */
+    .assignment-card .desc{
+      display:-webkit-box; -webkit-box-orient:vertical;
+      line-clamp:4; -webkit-line-clamp:4;
+      overflow:hidden; text-overflow:ellipsis; word-break:break-word;
+      line-height:1.4; max-height:calc(1.4em * 4);
+      font-size:.9rem; color:#6b7280;
+    }
+
+    /* ======= Modal long-text safety (wrap anywhere) ======= */
+    .wrap-anywhere{
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      line-break:anywhere;
+    }
+    #modalContent{ white-space:pre-wrap; } /* preserve author line breaks while wrapping long tokens */
   </style>
 </head>
 <body>
@@ -85,7 +118,7 @@
           <input type="text" id="searchBox" placeholder="Search assignments…"/>
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username"></span>
         </button>
@@ -132,24 +165,31 @@
           </div>
         </div>
 
-        <!-- Submission Success Modal -->
-<div class="modal fade" id="submissionSuccessModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810); color:#FFD8A9;">
-        <h5 class="modal-title"><i class="bi bi-check2-circle me-2"></i>Assignment submitted</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Your assignment was submitted successfully. You can verify the status in the list.
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-amber" data-bs-dismiss="modal">OK</button>
-      </div>
-    </div>
-  </div>
-</div>
+        <!-- Always-visible status count pills -->
+        <div class="pill-row">
+          <span class="pill pill-open"><i class="bi bi-check2-circle"></i><span class="pill-text"><strong id="countOpen">0</strong> Open</span></span>
+          <span class="pill pill-submitted"><i class="bi bi-upload"></i><span class="pill-text"><strong id="countSubmitted">0</strong> Submitted</span></span>
+          <span class="pill pill-graded"><i class="bi bi-patch-check"></i><span class="pill-text"><strong id="countGraded">0</strong> Graded</span></span>
+          <span class="pill pill-closed"><i class="bi bi-lock"></i><span class="pill-text"><strong id="countClosed">0</strong> Closed</span></span>
+        </div>
 
+        <!-- Submission Success Modal -->
+        <div class="modal fade" id="submissionSuccessModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header" style="background:linear-gradient(90deg,#4A1A0C,#7A2810); color:#FFD8A9;">
+                <h5 class="modal-title"><i class="bi bi-check2-circle me-2"></i>Assignment submitted</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                Your assignment was submitted successfully. You can verify the status in the list.
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Grid -->
         <div id="assignmentsGrid" class="row g-3"></div>
@@ -162,16 +202,14 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="modalTitle">Assignment</h5>
+          <h5 class="modal-title wrap-anywhere" id="modalTitle">Assignment</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
 
         <div class="modal-body">
-          <div id="modalMeta" class="mb-2 muted"></div>
-          <div id="modalContent" class="mb-3"></div>
-
-          <!-- Attachments (if any) -->
-          <div id="modalAttachments" class="mt-3"></div>
+          <div id="modalMeta" class="mb-2 muted wrap-anywhere"></div>
+          <div id="modalContent" class="mb-3 wrap-anywhere"></div>
+          <div id="modalAttachments" class="mt-3 wrap-anywhere"></div>
         </div>
 
         <div class="modal-footer">
@@ -221,41 +259,29 @@
   if (!userData?.userId || !userData?.isStudent) {
     window.location.href = "/STUDENT/login/login.html";
   }
+
   // === Initials-only header name ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
-
-  // If it's an email, use the local part (e.g., jane.doe -> JD)
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
+  function initialsFrom(str) {
+    if (!str) return "";
+    const s = String(str).trim();
+    if (!s) return "";
+    if (s.includes("@")) {
+      const local = s.split("@")[0];
+      const parts = local.split(/[.\-_]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+    }
+    const parts = s.split(/[\s\-]+/).filter(Boolean);
+    return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
   }
-
-  // Names/usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
-
-// Apply initials to the header
-(() => {
-  const el = document.getElementById("Username");
-  if (!el) return;
-  const displayName = userData.fullName || userData.username || userData.email || "";
-  const initials = initialsFrom(displayName) || "?";
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-})();
-
+  (() => {
+    const el = document.getElementById("Username");
+    if (!el) return;
+    const displayName = userData.fullName || userData.username || userData.email || "";
+    const initials = initialsFrom(displayName) || "?";
+    el.textContent = initials;
+    el.title = displayName;
+    el.setAttribute("aria-label", displayName);
+  })();
 
   // ========= DOM refs =========
   const grid = document.getElementById("assignmentsGrid");
@@ -263,6 +289,12 @@ function initialsFrom(str) {
   const filterStatus = document.getElementById("filterStatus");
   const sortBy = document.getElementById("sortBy");
   const searchBox = document.getElementById("searchBox");
+
+  // Count pill DOM
+  const elCountOpen = document.getElementById("countOpen");
+  const elCountSubmitted = document.getElementById("countSubmitted");
+  const elCountGraded = document.getElementById("countGraded");
+  const elCountClosed = document.getElementById("countClosed");
 
   const modalEl = document.getElementById('assignmentModal');
   let assignmentModal = null;
@@ -274,9 +306,12 @@ function initialsFrom(str) {
   let courses = [];     // { id, title }
   let assignments = []; // normalized items from API
 
+  // Caches
+  const moduleCache = new Map(); // moduleId -> { title, moduleNumber }
+  const courseCache = new Map(); // courseId -> { title }
+
   // ========= Utils =========
   function toApiUrl(pathOrUrl) {
-    // If it's already absolute (http/https), keep as-is; else join with API_BASE
     return /^https?:\/\//i.test(String(pathOrUrl))
       ? String(pathOrUrl)
       : API_BASE + String(pathOrUrl || "");
@@ -291,6 +326,12 @@ function initialsFrom(str) {
     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
     .replaceAll('"','&quot;').replaceAll("'",'&#039;');
 
+  // Soft wrap helper (insert zero-width spaces in very long tokens)
+  function softWrap(s, limit = 40){
+    if (!s) return s;
+    return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
+  }
+
   function computeStatus(a) {
     const now = Date.now();
     const pub = a.publishAt || 0;
@@ -304,18 +345,75 @@ function initialsFrom(str) {
     return 'open';
   }
 
+  // --- Fetch module meta & cache ---
+  async function fetchModuleMeta(moduleId) {
+    if (!moduleId) return null;
+    if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
+    try {
+      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
+      const js = await res.json();
+      const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
+      moduleCache.set(moduleId, meta);
+      return meta;
+    } catch {
+      moduleCache.set(moduleId, null);
+      return null;
+    }
+  }
+
+  // --- Fetch course meta & cache (for course pill fallback) ---
+  async function fetchCourseMeta(courseId) {
+    if (!courseId) return null;
+    if (courseCache.has(courseId)) return courseCache.get(courseId);
+    try {
+      const res = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
+      const js = await res.json();
+      const data = js && (js.course || js);
+      const meta = data && data.id ? { title: data.title || data.name || 'Untitled' } : null;
+      courseCache.set(courseId, meta);
+      return meta;
+    } catch {
+      courseCache.set(courseId, null);
+      return null;
+    }
+  }
+
+  // --- Enrich assignments with moduleTitle/moduleNumber + courseTitle if missing ---
+  async function hydrateMetaForAssignments(list) {
+    const moduleIds = [...new Set((list || []).map(a => a.moduleId).filter(Boolean))];
+    const courseIds = [...new Set((list || []).map(a => a.courseId).filter(Boolean))];
+
+    await Promise.all([
+      ...moduleIds.map(id => fetchModuleMeta(id)),
+      ...courseIds.map(id => fetchCourseMeta(id)),
+    ]);
+
+    (list || []).forEach(a => {
+      const m = a.moduleId ? moduleCache.get(a.moduleId) : null;
+      if (m) {
+        if (!a.moduleTitle) a.moduleTitle = m.title || '';
+        if (a.moduleNumber == null) a.moduleNumber = m.moduleNumber ?? null;
+      }
+      if (!a.courseTitle && a.courseId) {
+        const c = courseCache.get(a.courseId);
+        if (c) a.courseTitle = c.title || 'Untitled';
+      }
+    });
+  }
+
   // ========= Data loaders =========
   async function loadCourses() {
     const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`);
     const js = await res.json();
     const list = Array.isArray(js.courses) ? js.courses : [];
     courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
+    // seed courseCache (helps avoid extra fetch)
+    courses.forEach(c => courseCache.set(c.id, { title: c.title }));
     filterCourse.innerHTML = `<option value="All">All Courses</option>` +
       courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
   }
 
   async function tryLoadAssignmentsDirect() {
-    // Preferred: backend returns consolidated list for this student
     const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/assignments`);
     if (!res.ok) return null;
     const js = await res.json().catch(()=>null);
@@ -324,7 +422,6 @@ function initialsFrom(str) {
   }
 
   async function loadAssignmentsViaCourses() {
-    // Fallback: query per-course assignments
     const all = [];
     for (const c of courses) {
       try {
@@ -338,9 +435,10 @@ function initialsFrom(str) {
             title: a.title || 'Untitled',
             content: a.content || '',
             courseId: c.id,
-            courseTitle: c.title,
+            courseTitle: c.title,                 // may be overridden by hydrate
             moduleId: a.moduleId || null,
             moduleNumber: a.moduleNumber || null,
+            moduleTitle: a.moduleTitle || '',      // may be overridden by hydrate
             publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt) : null,
             dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt) : null,
             points: a.points ?? null,
@@ -355,7 +453,6 @@ function initialsFrom(str) {
 
   async function loadAll() {
     await loadCourses();
-
     let list = await tryLoadAssignmentsDirect();
     if (!list) list = await loadAssignmentsViaCourses();
 
@@ -366,10 +463,26 @@ function initialsFrom(str) {
       attachments: Array.isArray(a.attachments) ? a.attachments : []
     }));
 
+    // Ensure we have moduleTitle/moduleNumber and courseTitle when possible
+    await hydrateMetaForAssignments(assignments);
+
     renderGrid();
+    refreshStatusPills(assignments); // initial totals
   }
 
   // ========= Render =========
+  function refreshStatusPills(src) {
+    const counts = { open:0, submitted:0, graded:0, closed:0 };
+    (src || []).forEach(a => {
+      const st = computeStatus(a);
+      counts[st] = (counts[st] || 0) + 1;
+    });
+    if (elCountOpen) elCountOpen.textContent = counts.open || 0;
+    if (elCountSubmitted) elCountSubmitted.textContent = counts.submitted || 0;
+    if (elCountGraded) elCountGraded.textContent = counts.graded || 0;
+    if (elCountClosed) elCountClosed.textContent = counts.closed || 0;
+  }
+
   function renderGrid() {
     const q = (searchBox.value || '').toLowerCase();
     const courseFilter = filterCourse.value;
@@ -378,7 +491,7 @@ function initialsFrom(str) {
     let list = assignments.slice()
       .filter(a => courseFilter === 'All' ? true : a.courseId === courseFilter)
       .filter(a => {
-        const hay = `${a.title} ${a.content} ${a.courseTitle || ''}`.toLowerCase();
+        const hay = `${a.title} ${a.content} ${a.courseTitle || ''} ${a.moduleTitle || ''}`.toLowerCase();
         return hay.includes(q);
       })
       .map(a => ({...a, status: computeStatus(a)}));
@@ -395,6 +508,9 @@ function initialsFrom(str) {
       list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
     }
 
+    // Update status pills to reflect the filtered view
+    refreshStatusPills(list);
+
     grid.innerHTML = '';
     if (!list.length) {
       grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No assignments found.</div></div>`;
@@ -404,6 +520,7 @@ function initialsFrom(str) {
     list.forEach(a => {
       const col = document.createElement('div');
       col.className = 'col-12 col-md-6 col-xl-4';
+
       const dueTxt = a.dueAt ? fmtDateTime(a.dueAt) : 'No due date';
       const statusBadge = (() => {
         const map = { open:'st-open', closed:'st-closed', submitted:'st-submitted', graded:'st-graded' };
@@ -412,20 +529,46 @@ function initialsFrom(str) {
         return `<span class="status-dot ${cls}"></span>${label}`;
       })();
 
+      // Course & Module pills (with titles)
+      const courseLabel = (a.courseTitle || '').trim();
+      const coursePill = courseLabel
+        ? `<span class="pill pill-course" title="${escapeHTML(courseLabel)}">
+             <i class="bi bi-collection"></i>
+             <span class="pill-text">${escapeHTML(courseLabel)}</span>
+           </span>` : '';
+
+      let moduleLabel = '';
+      if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+        moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+      } else if (a.moduleNumber != null) {
+        moduleLabel = `Module ${a.moduleNumber}`;
+      } else if ((a.moduleTitle || '').trim()) {
+        moduleLabel = a.moduleTitle;
+      }
+      const modulePill = moduleLabel
+        ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+             <i class="bi bi-box"></i>
+             <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+           </span>` : '';
+
       col.innerHTML = `
-        <div class="assignment-card h-100 d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <div class="badge-soft mb-2"><i class="bi bi-journal-text"></i> ${escapeHTML(a.courseTitle || 'Course')}</div>
-              <h5 class="mb-1">${escapeHTML(a.title)}</h5>
-              <div class="muted small">
-                ${a.moduleNumber ? `Module #${a.moduleNumber} • ` : ''}Due: <strong>${dueTxt}</strong>
-              </div>
-            </div>
+        <div class="assignment-card">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h5 class="mb-0">${escapeHTML(a.title)}</h5>
             <div class="muted small text-end">${statusBadge}</div>
           </div>
 
-          <p class="mt-2 mb-3" style="min-height:48px;">${escapeHTML(a.content).slice(0,160)}${a.content && a.content.length>160 ? '…' : ''}</p>
+          <!-- Pills row -->
+          <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
+
+          <div class="muted small mb-2">
+            Due: <strong>${dueTxt}</strong>
+          </div>
+
+          <!-- Shortened description (clamped) -->
+          <div class="desc mb-3" title="${escapeHTML(a.content || '')}">
+            ${escapeHTML(a.content || '')}
+          </div>
 
           <div class="mt-auto d-flex gap-2">
             <button class="btn btn-sm btn-amber" data-action="view" data-id="${a.id}">
@@ -459,11 +602,27 @@ function initialsFrom(str) {
 
   // ========= Modal (details only) =========
   function openAssignmentModal(a) {
-    document.getElementById('modalTitle').textContent = a.title || 'Assignment';
-    const meta = `${a.courseTitle || 'Course'} • ${a.moduleNumber ? 'Module #'+a.moduleNumber+' • ' : ''}Due: ${fmtDateTime(a.dueAt)}`;
-    document.getElementById('modalMeta').textContent = meta;
-    document.getElementById('modalContent').innerHTML = `<div style="white-space:pre-wrap">${escapeHTML(a.content || '')}</div>`;
-    document.getElementById('modalDueBadge').textContent = a.dueAt ? `Due ${fmtDateTime(a.dueAt)}` : 'No due date';
+    // Title
+    const titleSafe = a.title || 'Assignment';
+    document.getElementById('modalTitle').innerText = softWrap(titleSafe);
+
+    // Module label
+    let moduleLabel = '';
+    if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+      moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+    } else if (a.moduleNumber != null) {
+      moduleLabel = `Module ${a.moduleNumber}`;
+    } else if ((a.moduleTitle || '').trim()) {
+      moduleLabel = a.moduleTitle;
+    }
+
+    // Meta
+    const metaText = `${a.courseTitle || 'Course'}${moduleLabel ? ' • ' + moduleLabel : ''} • Due: ${fmtDateTime(a.dueAt)}`;
+    document.getElementById('modalMeta').innerText = softWrap(metaText);
+
+    // Content (use innerText + pre-wrap)
+    const contentText = a.content || '';
+    document.getElementById('modalContent').innerText = softWrap(contentText);
 
     // Attachments (links & uploaded files)
     const attWrap = document.getElementById('modalAttachments');
@@ -473,17 +632,18 @@ function initialsFrom(str) {
     } else {
       const items = atts.map(x => {
         if (x.url) {
-          const safe = escapeHTML(x.url);
-          return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${safe}" target="_blank" rel="noopener">${safe}</a></li>`;
+          const display = softWrap(x.url);
+          const href = x.url.replace(/"/g, '&quot;'); // attribute safety
+          return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${href}" target="_blank" rel="noopener">${display}</a></li>`;
         } else if (x.filePath) {
-          const rel = String(x.filePath);                         // e.g. /uploads/assignments/1755...png
-          const href = escapeHTML(toApiUrl(rel));                 // prefix with API host
-          const name = escapeHTML(x.originalName || rel.split('/').pop());
+          const rel = String(x.filePath);
+          const href = toApiUrl(rel).replace(/"/g, '&quot;'); // attribute safety
+          const name = softWrap(x.originalName || rel.split('/').pop());
           const sizeTxt = x.size ? ` (${Math.round(x.size/1024)} KB)` : '';
           return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
         }
         return '';
-      }).join('');
+      }).filter(Boolean).join('');
 
       attWrap.innerHTML = `
         <div class="mt-2">
@@ -516,23 +676,21 @@ function initialsFrom(str) {
       grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load assignments.</div></div>`;
     }
   })();
-</script>
+  </script>
 
-<script>
-  // Show success modal if redirected with ?submitted=1
-  (function(){
-    const p = new URLSearchParams(location.search);
-    if (p.get("submitted") === "1"){
-      const m = new bootstrap.Modal(document.getElementById("submissionSuccessModal"));
-      m.show();
-      // Clean the URL after showing the modal
-      const url = new URL(location.href);
-      url.searchParams.delete("submitted");
-      window.history.replaceState({}, "", url.toString());
-    }
-  })();
-</script>
-
+  <script>
+    // Show success modal if redirected with ?submitted=1
+    (function(){
+      const p = new URLSearchParams(location.search);
+      if (p.get("submitted") === "1"){
+        const m = new bootstrap.Modal(document.getElementById("submissionSuccessModal"));
+        m.show();
+        const url = new URL(location.href);
+        url.searchParams.delete("submitted");
+        window.history.replaceState({}, "", url.toString());
+      }
+    })();
+  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

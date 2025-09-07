@@ -23,6 +23,16 @@
     .disabled-note { color:#9ca3af; }
     .rubric-preview { border:1px solid #e5e7eb; border-radius:.5rem; overflow:hidden; background:#fff; }
     .rubric-meta { font-size:.875rem; color:#6b7280; }
+
+    /* ---- Fix for long continuous text ---- */
+    .wrap-anywhere {
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      line-break:anywhere;
+    }
+    #quizDesc {
+      white-space:pre-wrap; /* keep author line breaks but wrap long words */
+    }
   </style>
 </head>
 <body>
@@ -60,8 +70,8 @@
         <div id="quizBox" class="ui-card card-themed d-none">
           <div class="ui-card-head d-flex justify-content-between align-items-start">
             <div>
-              <h2 id="quizTitle" class="ui-card-title mb-1">—</h2>
-              <div id="quizDesc" class="ui-subtext"></div>
+              <h2 id="quizTitle" class="ui-card-title mb-1 wrap-anywhere">—</h2>
+              <div id="quizDesc" class="ui-subtext wrap-anywhere"></div>
             </div>
             <div class="d-flex flex-wrap gap-2">
               <span id="statusBadge" class="badge text-bg-secondary">—</span>
@@ -75,7 +85,7 @@
             <div class="col-12 col-lg-8">
               <div class="p-3 border rounded-3 bg-white">
                 <h5 class="mb-2">Details</h5>
-                <div id="courseModule" class="ui-card-title mb-2">—</div>
+                <div id="courseModule" class="ui-card-title mb-2 wrap-anywhere">—</div>
                 <div class="meta-row mb-3">
                   <span class="meta-badge"><i class="bi bi-list-ol"></i> <span id="qCount">—</span> questions</span>
                   <span class="meta-badge"><i class="bi bi-stopwatch"></i> <span id="duration">—</span></span>
@@ -107,7 +117,7 @@
                 <div id="rubricSection" class="mt-3 d-none">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Rubric</div>
-                    <div class="rubric-meta" id="rubricMeta"></div>
+                    <div class="rubric-meta wrap-anywhere" id="rubricMeta"></div>
                   </div>
                   <div id="rubricPreviewWrap" class="rubric-preview d-none">
                     <!-- PDF preview injected here -->
@@ -204,6 +214,12 @@
       }
       const parts=s.split(/[\s\-]+/).filter(Boolean);
       return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
+    }
+
+    // Insert zero-width space every 40 chars to allow breaking
+    function softWrap(s, limit=40){
+      if (!s) return s;
+      return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
     }
 
     // Header user initials
@@ -312,7 +328,6 @@
     }
 
     function resolveRubricFromQuiz(quiz){
-      // New path (your route): quiz.rubricFile.filePath (e.g. /uploads/quizzes/rubrics/xxx.pdf)
       if (quiz?.rubricFile?.filePath) {
         const path = String(quiz.rubricFile.filePath);
         const href = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
@@ -323,8 +338,6 @@
           size: quiz.rubricFile.size || null
         };
       }
-
-      // Legacy string fields fallback
       const legacyKeys = ['rubricUrl','rubricURL','rubric','rubric_link','rubric_url','rubricLink'];
       for (const k of legacyKeys) {
         const v = quiz?.[k] || quiz?.settings?.[k];
@@ -350,7 +363,6 @@
       if (r.size != null) metaBits.push(bytesToNice(Number(r.size)));
       rubricMeta.textContent = metaBits.join(' • ');
 
-      // If it's a PDF, try to preview inline
       const isPdf = (r.mime || '').toLowerCase().includes('pdf') || r.url.toLowerCase().endsWith('.pdf');
       if (isPdf) {
         rubricPreviewWrap.classList.remove('d-none');
@@ -368,7 +380,7 @@
       if(!list.length){
         instructionsWrap.classList.add('d-none');
         instructionsList.innerHTML = '';
-        return;
+        return
       }
       instructionsWrap.classList.remove('d-none');
       instructionsList.innerHTML = list.map(t => `<li>${String(t)}</li>`).join('');
@@ -395,8 +407,8 @@
         const settings = quiz.settings || {};
 
         // Header
-        titleEl.textContent = quiz.title || 'Untitled Quiz';
-        descEl.textContent = quiz.description || '';
+        titleEl.innerText = softWrap(quiz.title || 'Untitled Quiz');
+        descEl.innerText = softWrap(quiz.description || '');
         setStatusBadge(statusOf(quiz));
 
         // Meta
@@ -408,15 +420,17 @@
 
         const courseLabel = quiz.courseTitle || quiz.courseName || 'Course';
         const moduleLabel = quiz.moduleTitle || quiz.moduleName || 'Module';
-        courseModuleEl.textContent = `${courseLabel} • ${moduleLabel}`;
+        courseModuleEl.innerText = softWrap(`${courseLabel} • ${moduleLabel}`);
 
         backtrackEl.textContent = settings.backtrackingAllowed === false ? 'Not allowed' : 'Allowed';
         shuffleEl.textContent = (settings.shuffleQuestions === false) ? 'No' : 'Yes';
-        const pag = settings.pagination && settings.pagination.enabled ? `Yes (${Number(settings.pagination.perPage)||1}/page)` : 'No';
+        const pag = settings.pagination && settings.pagination.enabled ? 
+          `Yes (${Number(settings.pagination.perPage)||1}/page)` : 'No';
         paginationEl.textContent = pag;
-        timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) ? 'Enabled' : 'Disabled';
+        timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) 
+          ? 'Enabled' : 'Disabled';
 
-        // Rubric (from your route)
+        // Rubric
         const rubric = resolveRubricFromQuiz(quiz);
         showRubric(rubric);
         fillInstructions(settings);
@@ -450,7 +464,6 @@
         });
 
         startBtn.addEventListener('click', () => {
-          // proceed to quiz taking page
           window.location.href = `/STUDENT/quiz/take_quiz.html?id=${encodeURIComponent(quiz.id)}`;
         });
 
@@ -469,7 +482,11 @@
   <!-- Bootstrap bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href='/STUDENT/login/login.html'; }
+    function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href='/STUDENT/login/login.html';
+    }
   </script>
 </body>
 </html>
