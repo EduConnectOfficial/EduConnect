@@ -272,46 +272,51 @@
     });
   </script>
 
-  <!-- Auth + Header initials -->
-  <script>
-    const USER = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
-      window.location.href = "../login/login.html";
-    }
+<script>
+  const USER = JSON.parse(localStorage.getItem("user") || "{}");
+  if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
+    window.location.href = "../login/login.html";
+  }
 
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0,2)).toUpperCase();
-      }
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      return (parts.length >= 2 ? parts[0][0] + parts[parts.length-1][0] : parts[0].slice(0,2)).toUpperCase();
+  function initialsFrom(str) {
+    if (!str) return "";
+    const s = String(str).trim();
+    if (!s) return "";
+    if (s.includes("@")) {
+      const local = s.split("@")[0];
+      const parts = local.split(/[.\-_]+/).filter(Boolean);
+      return (parts.length >= 2
+        ? parts[0][0] + parts[parts.length - 1][0]
+        : local.slice(0, 2)
+      ).toUpperCase();
     }
+    const parts = s.split(/[\s\-]+/).filter(Boolean);
+    return (parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : parts[0].slice(0, 2)
+    ).toUpperCase();
+  }
 
-    (function setHeaderName(){
-      const displayName = USER.fullName || USER.username || USER.email || "Student";
-      const initials = initialsFrom(displayName) || "?";
-      const el = document.getElementById("Username");
-      if (el) {
-        el.textContent = initials;
-        el.title = displayName;
-        el.setAttribute("aria-label", displayName);
-      }
-      if (!USER.uid) {
-        USER.uid = USER.userId || USER.id || USER.email;
-        localStorage.setItem("user", JSON.stringify(USER));
-      }
-    })();
-
-    function logoutUser() {
-      localStorage.clear(); sessionStorage.clear();
-      window.location.href = "/STUDENT/login/login.html";
+  (function setHeaderName(){
+    const displayName = USER.fullName || USER.username || USER.email || "Student";
+    const initials = initialsFrom(displayName) || "?";
+    const el = document.getElementById("Username");
+    if (el) {
+      el.textContent = initials;   // <-- Initials restored here
+      el.title = displayName;      // tooltip shows the full name
+      el.setAttribute("aria-label", displayName);
     }
-  </script>
+    if (!USER.uid) {
+      USER.uid = USER.userId || USER.id || USER.email;
+      localStorage.setItem("user", JSON.stringify(USER));
+    }
+  })();
+
+  function logoutUser() {
+    localStorage.clear(); sessionStorage.clear();
+    window.location.href = "/STUDENT/login/login.html";
+  }
+</script>
 
   <!-- Bootstrap JS bundle (required for modal) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -392,7 +397,7 @@
       const student = getStudentKey();
       const data = await getAnalyticsJson(student);
 
-      // ---------- Header (force full decrypted name) ----------
+      // ---------- Header (prefer decrypted full name from API) ----------
       const first  = (data.profile?.firstName  || '').trim();
       const middle = (data.profile?.middleName || '').trim();
       const last   = (data.profile?.lastName   || '').trim();
@@ -464,14 +469,14 @@
         `).join('')
         : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
 
-      /* ----- Modules ----- */
+      /* ----- Modules (FORCE 100%) ----- */
       const mrows = data.modules?.completed || [];
       el('modTbody').innerHTML = mrows.length
         ? mrows.map(m => `
           <tr>
             <td>${m.courseTitle || m.courseId || ''}</td>
             <td>${m.moduleTitle || m.moduleId || ''}</td>
-            <td>${pct(m.percent)}</td>
+            <td>100%</td> <!-- completed means 100%, independent of quiz/assignment -->
             <td>${dt(m.completedAt)}</td>
           </tr>
         `).join('')
@@ -525,12 +530,12 @@
           csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
         });
 
-        // Modules
+        // Modules (FORCE 100%)
         csv.push('');
         csv.push('Completed Modules');
         csv.push('Course,Module,Percent,Completed At');
         (data.modules?.completed || []).forEach(m => {
-          csv.push(`"${m.courseTitle}","${m.moduleTitle}","${pct(m.percent)}","${dt(m.completedAt)}"`);
+          csv.push(`"${m.courseTitle}","${m.moduleTitle}","100%","${dt(m.completedAt)}"`);
         });
 
         // Download
@@ -645,7 +650,7 @@
         });
         y = doc.lastAutoTable.finalY + 8;
 
-        // Modules Table
+        // Modules Table (FORCE 100%)
         doc.setFont('times', 'bold');
         doc.text('Completed Modules', 20, y);
         doc.setFont('times', 'normal');
@@ -653,7 +658,7 @@
         doc.autoTable({
           startY: y,
           head: [['Course', 'Module', 'Percent', 'Completed At']],
-          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, pct(m.percent), dt(m.completedAt)]),
+          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, '100%', dt(m.completedAt)]),
           theme: 'grid',
           styles: { font: 'times', fontSize: 10 },
           headStyles: { fillColor: [240,240,240], textColor: 0 },
