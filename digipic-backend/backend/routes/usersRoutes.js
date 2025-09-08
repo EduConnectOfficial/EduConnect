@@ -4,7 +4,13 @@ const bcrypt = require('bcrypt');
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { uploadProfilePic } = require('../config/multerConfig');
+
+// ⬇️ switch from disk -> memory uploader
+const { uploadMemory } = require('../config/multerConfig');
+
+// ⬇️ Cloud Storage helpers
+const { saveBufferToStorage, buildStoragePath } = require('../services/storageService');
+
 const { generateRoleId } = require('../utils/idUtils');
 const { encryptField, decryptField } = require('../utils/fieldCrypto');
 
@@ -66,6 +72,28 @@ async function assertUsernameAvailable(username, excludeUserId = null) {
   }
 }
 
+/**
+ * Small helper: only run Multer if multipart.
+ * Keeps JSON-only requests happy on the profile route.
+ */
+function maybeRunUploadSingle(field) {
+  const mw = uploadMemory.single(field);
+  return (req, res, next) => {
+    const ct = String(req.headers['content-type'] || '').toLowerCase();
+    if (!ct.startsWith('multipart/form-data')) return next();
+    mw(req, res, (err) => {
+      if (!err) return next();
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ success: false, message: 'File too large.' });
+      }
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ success: false, message: `Unexpected file field: "${err.field}".` });
+      }
+      return next(err);
+    });
+  };
+}
+
 // ---------- ROUTES ----------
 
 /**
@@ -118,12 +146,15 @@ router.get('/', asyncHandler(async (req, res) => {
  * POST /api/users/:userId/profile
  * multipart/form-data with optional profilePic
  * fields: firstName?, middleName?, lastName?, username?
+ *
+ * ⬇️ Refactored to store profilePic in Firebase Cloud Storage
  */
-router.post('/:userId/profile',
-  uploadProfilePic.single('profilePic'),
+router.post(
+  '/:userId/profile',
+  maybeRunUploadSingle('profilePic'), // only parses if multipart
   asyncHandler(async (req, res) => {
     const { userId } = req.params;
-    const file = req.file;
+    const file = req.file; // from uploadMemory.single('profilePic'), if present
 
     const raw = {
       firstName: req.body.firstName,
@@ -141,8 +172,39 @@ router.post('/:userId/profile',
       updates.username = username;
     }
 
-    if (file) {
-      updates.photoURL = `/uploads/profile_pics/${file.filename}`;
+    // If a new profile picture was uploaded, push it to Cloud Storage
+    if (file && file.buffer && file.originalname) {
+      // Path like: profiles/{userId}/{timestamp_safeName.ext}
+      const destPath = buildStoragePath('profiles', userId, file.originalname);
+      try {
+        const saved = await saveBufferToStorage(file.buffer, {
+          destPath,
+          contentType: file.mimetype,
+          metadata: {
+            uploadedBy: userId,
+            source: 'usersRoutes.profile',
+          },
+        });
+
+        // Store the public URL (you can also store gsUri if you need server-side).
+        updates.photoURL = saved.publicUrl;
+        // (Optional) keep storage pointer fields for admin/debugging
+        updates.photo = {
+          originalName: file.originalname,
+          size: file.size,
+          mime: file.mimetype,
+          gsUri: saved.gsUri,
+          publicUrl: saved.publicUrl,
+          uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+      } catch (e) {
+        // If storage fails, don't block name updates; return a friendly error
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload profile picture.',
+          error: e.message || 'upload_error',
+        });
+      }
     }
 
     await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });

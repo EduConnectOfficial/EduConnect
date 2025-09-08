@@ -24,15 +24,21 @@
     .rubric-preview { border:1px solid #e5e7eb; border-radius:.5rem; overflow:hidden; background:#fff; }
     .rubric-meta { font-size:.875rem; color:#6b7280; }
 
-    /* ---- Fix for long continuous text ---- */
-    .wrap-anywhere {
-      overflow-wrap:anywhere;
-      word-break:break-word;
-      line-break:anywhere;
+    /* Long text safety */
+    .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+    #quizDesc { white-space:pre-wrap; }
+
+    /* ===== Full-screen-ish File Preview Modal ===== */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
+    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
+    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
     }
-    #quizDesc {
-      white-space:pre-wrap; /* keep author line breaks but wrap long words */
-    }
+    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
+    #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
   </style>
 </head>
 <body>
@@ -113,15 +119,13 @@
                   </div>
                 </div>
 
-                <!-- Rubric section -->
+                <!-- Rubric section (meta + preview slot; we will open modal instead of inline) -->
                 <div id="rubricSection" class="mt-3 d-none">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Rubric</div>
                     <div class="rubric-meta wrap-anywhere" id="rubricMeta"></div>
                   </div>
-                  <div id="rubricPreviewWrap" class="rubric-preview d-none">
-                    <!-- PDF preview injected here -->
-                  </div>
+                  <div id="rubricPreviewWrap" class="rubric-preview d-none"></div>
                 </div>
 
                 <div id="instructionsWrap" class="mt-3 d-none">
@@ -164,6 +168,37 @@
           </div>
 
         </div> <!-- /quizBox -->
+      </div>
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -270,6 +305,45 @@
     const startBtn = document.getElementById('startBtn');
     const blockedMsg = document.getElementById('blockedMsg');
 
+    /* ===== PREVIEW HELPERS (modal) ===== */
+    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start='';if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];}else{if(u.pathname.startsWith('/embed/'))id=u.pathname.split('/')[2]||'';if(!id)id=u.searchParams.get('v')||'';}if(!id)return null;const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;const qs=new URLSearchParams();qs.set('rel','0');if(start)qs.set('start',String(start));return `${base}?${qs.toString()}`;}catch{return null;} }
+    function getExtFromUrl(url=''){ const clean=String(url).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function kindFromUrl(url){ if(isYouTubeUrl(url))return'youtube'; const ext=getExtFromUrl(url); if(['mp4','webm','ogg','ogv','mov'].includes(ext))return'video'; if(['mp3','wav','m4a','ogg','aac','flac'].includes(ext))return'audio'; if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext))return'image'; if(ext==='pdf')return'pdf'; if(['txt','csv','log'].includes(ext))return'text'; if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext))return'office'; return'other'; }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={youtube:'YouTube',video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      const colorMap={youtube:'bg-danger-subtle text-danger',video:'bg-danger-subtle text-danger',audio:'bg-secondary-subtle text-secondary',image:'bg-success-subtle text-success',pdf:'bg-primary-subtle text-primary',text:'bg-info-subtle text-info',office:'bg-warning-subtle text-warning',other:'bg-dark-subtle text-dark'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill '+(colorMap[kind]||colorMap.other); badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+    function renderFilePreviewInto(container,url){
+      container.innerHTML=''; showSpinner(true); const done=()=>showSpinner(false); const kind=kindFromUrl(url);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+
+      if(kind==='youtube'){ const embed=toYouTubeEmbed(url); if(embed){container.innerHTML=`<div class="ratio ratio-16x9"><iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="border:0"></iframe></div>`; done(); return;} fallback('Couldn’t embed this YouTube link.'); return; }
+      const ext=getExtFromUrl(url);
+
+      if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(ext==='pdf'){ const iframe=document.createElement('iframe'); iframe.title='PDF preview'; iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed (viewer blocked or CORS).'); iframe.src=url; container.appendChild(iframe); return; }
+      if(['mp4','webm','ogg','ogv','mov'].includes(ext)){ const video=document.createElement('video'); video.controls=true; video.onloadeddata=done; video.onerror=()=>fallback('Video preview failed.'); video.src=url; container.appendChild(video); return; }
+      if(['mp3','wav','m4a','ogg','aac','flac'].includes(ext)){ const audio=document.createElement('audio'); audio.controls=true; audio.onloadeddata=done; audio.onerror=()=>fallback('Audio preview failed.'); audio.src=url; container.appendChild(audio); return; }
+      if(['txt','csv','log'].includes(ext)){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.title='Document preview'; iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked or CORS).'); iframe.src=gview; container.appendChild(iframe); return; }
+
+      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+    function openPreviewModal(viewUrl, title='File'){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
     function statusOf(quiz){
       const now = Date.now();
       const openAt = ts(quiz.openAt)?.getTime() ?? null;
@@ -278,14 +352,11 @@
       if (dueAt && now > dueAt)   return "Closed";
       return "Open";
     }
-
     function setStatusBadge(st){
       statusBadge.textContent = st;
       statusBadge.className = 'badge ' + (st==='Open' ? 'text-bg-success' : st==='Upcoming' ? 'text-bg-info' : 'text-bg-secondary');
     }
-
     function yesNo(v){ return v ? 'Enabled' : 'Disabled'; }
-
     function setStartEnabled(flag, msg){
       startBtn.disabled = !flag || !ackCheck.checked;
       blockedMsg.classList.toggle('d-none', !!flag);
@@ -311,7 +382,6 @@
         return { used: 0, allowed: null, left: null, lock: false };
       }
     }
-
     function humanDuration(mins){
       if(!Number.isFinite(mins) || mins <= 0) return 'No limit';
       return `${mins} min`;
@@ -326,53 +396,46 @@
       if (kb >= 1) return `${kb.toFixed(0)} KB`;
       return `${bytes} B`;
     }
-
+    // Prefer downloadUrl; gracefully fall back to publicUrl or filePath.
     function resolveRubricFromQuiz(quiz){
-      if (quiz?.rubricFile?.filePath) {
-        const path = String(quiz.rubricFile.filePath);
-        const href = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
-        return {
-          url: href,
-          mime: quiz.rubricFile.mime || '',
-          originalName: quiz.rubricFile.originalName || '',
-          size: quiz.rubricFile.size || null
-        };
+      const rf = quiz?.rubricFile || null;
+      if (!rf) return null;
+      if (typeof rf.downloadUrl === 'string' && rf.downloadUrl.trim()) {
+        return { url: rf.downloadUrl.trim(), mime: rf.mime || '', originalName: rf.originalName || '', size: rf.size ?? null };
       }
-      const legacyKeys = ['rubricUrl','rubricURL','rubric','rubric_link','rubric_url','rubricLink'];
-      for (const k of legacyKeys) {
-        const v = quiz?.[k] || quiz?.settings?.[k];
-        if (typeof v === 'string' && v.trim()) {
-          return { url: v.trim(), mime: '', originalName: '', size: null };
-        }
+      if (typeof rf.publicUrl === 'string' && rf.publicUrl.trim()) {
+        return { url: rf.publicUrl.trim(), mime: rf.mime || '', originalName: rf.originalName || '', size: rf.size ?? null };
+      }
+      if (typeof rf.filePath === 'string' && rf.filePath.trim()) {
+        const path = rf.filePath.trim();
+        const href = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+        return { url: href, mime: rf.mime || '', originalName: rf.originalName || '', size: rf.size ?? null };
       }
       return null;
     }
 
+    // OPEN RUBRIC IN MODAL
     function showRubric(r){
+      rubricSection.classList.remove('d-none');
+
       if (!r) {
         rubricBtn.classList.add('d-none');
-        rubricSection.classList.add('d-none');
+        rubricMeta.textContent = 'Rubric unavailable.';
+        rubricPreviewWrap.classList.add('d-none');
+        rubricPreviewWrap.innerHTML = '';
         return;
       }
-      rubricBtn.classList.remove('d-none');
-      rubricBtn.onclick = () => window.open(r.url, '_blank', 'noopener');
 
-      rubricSection.classList.remove('d-none');
       const metaBits = [];
       if (r.originalName) metaBits.push(r.originalName);
       if (r.size != null) metaBits.push(bytesToNice(Number(r.size)));
       rubricMeta.textContent = metaBits.join(' • ');
 
-      const isPdf = (r.mime || '').toLowerCase().includes('pdf') || r.url.toLowerCase().endsWith('.pdf');
-      if (isPdf) {
-        rubricPreviewWrap.classList.remove('d-none');
-        rubricPreviewWrap.innerHTML = `
-          <iframe title="Rubric preview" src="${r.url}" width="100%" height="420" style="border:0;"></iframe>
-        `;
-      } else {
-        rubricPreviewWrap.classList.add('d-none');
-        rubricPreviewWrap.innerHTML = '';
-      }
+      rubricPreviewWrap.classList.add('d-none');
+      rubricPreviewWrap.innerHTML = '';
+
+      rubricBtn.classList.remove('d-none');
+      rubricBtn.onclick = () => openPreviewModal(r.url, r.originalName || 'Rubric');
     }
 
     function fillInstructions(settings){
@@ -380,7 +443,7 @@
       if(!list.length){
         instructionsWrap.classList.add('d-none');
         instructionsList.innerHTML = '';
-        return
+        return;
       }
       instructionsWrap.classList.remove('d-none');
       instructionsList.innerHTML = list.map(t => `<li>${String(t)}</li>`).join('');
@@ -424,19 +487,21 @@
 
         backtrackEl.textContent = settings.backtrackingAllowed === false ? 'Not allowed' : 'Allowed';
         shuffleEl.textContent = (settings.shuffleQuestions === false) ? 'No' : 'Yes';
-        const pag = settings.pagination && settings.pagination.enabled ? 
-          `Yes (${Number(settings.pagination.perPage)||1}/page)` : 'No';
+        const pag = settings.pagination && settings.pagination.enabled ? `Yes (${Number(settings.pagination.perPage)||1}/page)` : 'No';
         paginationEl.textContent = pag;
-        timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) 
-          ? 'Enabled' : 'Disabled';
+        timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) ? 'Enabled' : 'Disabled';
 
-        // Rubric
+        // Rubric (downloadUrl preferred, fallback supported)
         const rubric = resolveRubricFromQuiz(quiz);
         showRubric(rubric);
         fillInstructions(settings);
 
         // Attempts
-        const userId = userData?.userId || userData?.uid || userData?.id || userData?.email || '';
+        const userId = (JSON.parse(localStorage.getItem("user") || "{}")?.userId)
+                    || (JSON.parse(localStorage.getItem("user") || "{}")?.uid)
+                    || (JSON.parse(localStorage.getItem("user") || "{}")?.id)
+                    || (JSON.parse(localStorage.getItem("user") || "{}")?.email)
+                    || '';
         let attempts = { used: 0, allowed: null, left: null, lock: false };
         if(userId){
           attempts = await fetchAttempts(userId, quiz.id);
@@ -477,16 +542,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', boot);
-  </script>
 
-  <!-- Bootstrap bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
     function logoutUser(){
       localStorage.clear();
       sessionStorage.clear();
       window.location.href='/STUDENT/login/login.html';
     }
   </script>
+
+  <!-- Bootstrap bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

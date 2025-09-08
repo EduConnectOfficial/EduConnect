@@ -1,13 +1,37 @@
 // ==== routes/classesRoutes.js ==== //
 const router = require('express').Router();
 const XLSX = require('xlsx');
+const multer = require('multer');
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { uploadBulk } = require('../config/multerConfig');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
 const { decryptField } = require('../utils/fieldCrypto'); // <-- NEW
+
+// ====== In-memory uploader (no disk), accepts xlsx/xls/csv for bulk ======
+const memoryStorage = multer.memoryStorage();
+const SPREADSHEET_MIMES = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel',   // .xls (and sometimes csv on some browsers)
+  'text/csv',                   // .csv (explicit)
+]);
+const SPREADSHEET_EXT = /\.(xlsx|xls|csv)$/i;
+
+function bulkFileFilter(_req, file, cb) {
+  const okMime = SPREADSHEET_MIMES.has(file.mimetype);
+  const okExt = SPREADSHEET_EXT.test(file.originalname || '');
+  if (okMime || okExt) return cb(null, true);
+  cb(new Error('Invalid file type. Please upload an .xlsx, .xls, or .csv file.'));
+}
+
+const uploadBulkMemory = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024, // default 25 MB
+  },
+  fileFilter: bulkFileFilter,
+});
 
 // --- helpers: role guards (strict students-only) ---
 function isStudentUser(u = {}) {
@@ -136,7 +160,7 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
 }));
 
 // === PUT /api/classes/:id ===
-// body: { name?, gradeLevel?, section?, schoolYear?, semester? }
+// body: { title?, gradeLevel?, section?, schoolYear?, semester? }
 router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, gradeLevel, section, schoolYear, semester } = req.body;
@@ -350,7 +374,7 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
 // === ROSTER: BULK ENROLL (xlsx/csv) ===
 router.post(
   '/api/classes/:id/students/bulk',
-  uploadBulk.single('file'),
+  uploadBulkMemory.single('file'),
   asyncHandler(async (req, res) => {
     const classId = req.params.id;
 
@@ -360,13 +384,22 @@ router.post(
       return res.status(403).json({ success: false, message: 'Class is archived; bulk enrollment is disabled.' });
     }
 
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    if (!req.file || !req.file.buffer || !req.file.originalname) {
+      return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
 
     const preferredCol = String(req.body.column || 'studentId').trim().toLowerCase();
 
-    const wb = XLSX.readFile(req.file.path);
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    // Read from memory buffer (works for .xlsx/.xls/.csv)
+    let rows = [];
+    try {
+      const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    } catch (e) {
+      return res.status(400).json({ success: false, message: 'Failed to parse spreadsheet. Ensure it is a valid .xlsx, .xls, or .csv file.' });
+    }
+
     if (!rows.length) return res.status(400).json({ success: false, message: 'No rows found in file.' });
 
     const headerKeys = Object.keys(rows[0] || {}).map(k => ({ raw: k, lower: k.toLowerCase().trim() }));
@@ -572,7 +605,6 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
   // Cap the response size
   return res.json({ success: true, students: matches.slice(0, 25) });
 }));
-
 
 // === STUDENT: GET ENROLLMENTS ===
 // GET /api/students/:userId/enrollments?includeTeacher=true

@@ -9,15 +9,9 @@
   <title>EduConnect Teacher - Module Content</title>
 
   <!-- Bootstrap & Icons -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
   <link rel="stylesheet" href="list.css" />
 
   <style>
@@ -34,7 +28,6 @@
 
     body { background-color: var(--color-bg); color: var(--color-text); }
 
-    /* Base layout + responsive sidebar expansion */
     .dashboard{ display:flex; min-height:100vh; }
     .main{ margin-left:70px; width:calc(100% - 70px); transition:margin-left .3s,width .3s; }
     .dashboard.sidebar-expanded .main{ margin-left:220px; width:calc(100% - 220px); }
@@ -48,68 +41,84 @@
       padding: 2rem;
       max-width: 2000px;
       border: 1px solid var(--color-border);
-      transition: box-shadow 0.2s;
     }
 
-    .profile-btn {
-      display: flex; align-items: center; gap: 8px;
-      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;
-    }
+    .profile-btn { display:flex; align-items:center; gap:8px; background:none; border:none; color:#fff; }
     .profile-btn .username { font-size: 14px; }
-
-    /* Avatar-style initials */
     #dashboardUsername{
       display:inline-flex; align-items:center; justify-content:center;
-      width:36px; height:36px; border-radius:999px; font-weight:800; letter-spacing:.5px;
-      background:#ffffff; color:var(--color-primary);
+      width:36px; height:36px; border-radius:999px; font-weight:800; background:#fff; color:var(--color-primary);
     }
 
-    .module-title {
-      color: var(--color-secondary);
-      font-weight: 700;
-      font-size: 2rem;
-      margin-bottom: 1rem;
+    .module-title { color: var(--color-secondary); font-weight:700; font-size:2rem; margin-bottom:1rem; text-align:center; }
+
+    .nav-pills { overflow-x:auto; white-space:nowrap; margin-bottom:1.5rem; padding-bottom:.5rem; border-bottom:1px solid var(--color-border); }
+    .nav-pills .nav-item { display:inline-block; margin-right:.5rem; }
+    .nav-pills .nav-link { border-radius:.75rem; padding:.5rem 1rem; font-weight:500; }
+    .nav-pills .nav-link.active { background-color: var(--color-primary) !important; color:#fff; }
+
+    .module-subtitle { color: var(--color-primary) !important; font-weight:600; font-size:1.3rem; margin-bottom:.5rem; }
+    .module-desc, .main-desc { font-size:1rem; line-height:1.5; margin-bottom:1rem; }
+    .main-desc { border-top:1px solid var(--color-border); padding-top:1.5rem; margin-top:2rem; }
+
+    .attachment-item { background:#e3eafc; border-radius:.75rem; padding:1rem; margin-bottom:1rem; }
+    .attachment-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+    .attachment-item .small { font-size:.85rem; color:#6b7280; margin-top:.25rem; }
+
+    /* ==== Full-screen-ish preview modal (matches your example) ==== */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content {
+      height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #filePreviewModal .modal-body {
+      flex: 1 1 auto;
+      padding: 0;
+      background: #f8fafc;
+      position: relative;
+    }
+    .preview-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .preview-wrap iframe,
+    .preview-wrap embed,
+    .preview-wrap object,
+    .preview-wrap img,
+    .preview-wrap video,
+    .preview-wrap audio {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      object-fit: contain;
+      background: #fff;
+    }
+    .preview-fallback {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem;
       text-align: center;
     }
-
-    /* Top‐aligned, scrollable nav-pills */
-    .nav-pills {
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-      margin-bottom: 1.5rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--color-border);
+    #filePreviewFooter {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
     }
-    .nav-pills .nav-item { display: inline-block; margin-right: 0.5rem; }
-    .nav-pills .nav-link {
-      border-radius: 0.75rem; padding: 0.5rem 1rem; font-weight: 500;
+    .spinner-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
     }
-    .nav-pills .nav-link.active { background-color: var(--color-primary) !important; color: #fff; }
-
-    .module-subtitle {
-      color: var(--color-primary) !important;
-      font-weight: 600; font-size: 1.3rem; margin-bottom: 0.5rem;
-    }
-
-    .module-desc, .main-desc {
-      font-size: 1rem; line-height: 1.5; margin-bottom: 1rem;
-    }
-
-    .main-desc {
-      border-top: 1px solid var(--color-border);
-      padding-top: 1.5rem; margin-top: 2rem;
-    }
-
-    .attachment-item {
-      background: #e3eafc;
-      border-radius: 0.75rem;
-      padding: 1rem; margin-bottom: 1rem;
-    }
-    .attachment-item a {
-      font-weight: 600; color: var(--color-primary); text-decoration: none;
-    }
-    .attachment-item .small { font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem; }
   </style>
 </head>
 
@@ -121,15 +130,13 @@
       document.addEventListener("DOMContentLoaded", () => {
         fetch("/components/sidebar.html")
           .then(res => res.text())
-          .then(html => {
-            document.getElementById("sidebar-container").innerHTML = html;
-          });
+          .then(html => { document.getElementById("sidebar-container").innerHTML = html; })
+          .catch(()=>{});
       });
     </script>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <div class="main">
-      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
@@ -150,66 +157,302 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Preview Modal (matches your provided structure) -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
 
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    /* ------------------------------
-       Auth guard + initials-only header
-       ------------------------------ */
+    // ========= CONFIG =========
+    const API_BASE = "http://localhost:5000";
+    const FILE_BASE = "http://127.0.0.1:5000";
+
+    // ========= Auth header initials =========
     function initHeaderInitialsAndGuard() {
       try{
         const raw = localStorage.getItem("user") || "{}";
-        const stored = JSON.parse(raw);
-        const u = stored.user || stored;
+        const obj = JSON.parse(raw);
+        const u = obj.user || obj;
+        if (!u?.userId || !u?.isTeacher) { window.location.replace("/TEACHER/login/login.html"); return null; }
 
-        // Gate: must be a teacher with an id
-        if (!u?.userId || !u?.isTeacher) {
-          window.location.replace("/TEACHER/login/login.html");
-          return null;
-        }
-
-        // Set header initials
         const el = document.getElementById("dashboardUsername");
         if (el) {
-          const initials = getInitials(u);
-          el.textContent = initials; // initials only
-          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                          || u.username || u.email || 'Profile';
-          el.setAttribute('title', fullLabel);
-          el.setAttribute('aria-label', fullLabel);
+          const fn=(u.firstName||"").trim(), ln=(u.lastName||"").trim();
+          const initials = (fn && ln) ? (fn[0]+ln[0]).toUpperCase() : (u.email||"U")[0].toUpperCase();
+          el.textContent = initials;
+          el.setAttribute("title", [u.firstName,u.lastName].filter(Boolean).join(" ").trim() || u.username || u.email || "Profile");
         }
         return u;
       }catch(e){
-        console.error('auth/initHeaderInitials failed:', e);
+        console.error(e);
         window.location.replace("/TEACHER/login/login.html");
         return null;
       }
-
-      function getInitials(u){
-        const fn = (u.firstName || '').trim();
-        const ln = (u.lastName  || '').trim();
-        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-        const nameish = (u.username || u.displayName || u.name || '').trim();
-        if (nameish){
-          const parts = nameish
-            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-            .split(/[\s._-]+/)
-            .filter(Boolean);
-          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-          return parts[0][0].toUpperCase();
-        }
-        const em = (u.email || '').trim();
-        return em ? em[0].toUpperCase() : 'U';
-      }
     }
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      // 1) Guard + initials
-      const user = initHeaderInitialsAndGuard();
-      if (!user) return; // redirected
+    // ========= Helpers: file kinds, YouTube detection =========
+    function isYouTubeUrl(url = '') {
+      try {
+        const u = new URL(url);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+      } catch { return false; }
+    }
+    function toYouTubeEmbed(url=''){
+      try{
+        const u = new URL(url);
+        const host = u.hostname.replace(/^www\./,'').toLowerCase();
+        let id = '';
+        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start,10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start,10);
+        if (!Number.isFinite(start)) start = '';
+        if (host === 'youtu.be'){
+          id = (u.pathname || '').replace(/^\//,'').split('/')[0];
+        } else {
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
+      }catch{ return null; }
+    }
+    function getExtFromUrl(url=''){
+      const clean = String(url).split('?')[0].split('#')[0];
+      const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : '';
+    }
+    function kindFromUrl(url){
+      if (isYouTubeUrl(url)) return 'youtube';
+      const ext = getExtFromUrl(url);
+      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if (['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
+      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (ext==='pdf') return 'pdf';
+      if (['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
 
-      // 2) Fetch module content
+    function setFileInfoUI(kind, url) {
+      const info = document.getElementById('fileInfoText');
+      const hdr  = document.getElementById('filePreviewModalLabel');
+      const badgeId = 'fileKindBadge';
+
+      const labelMap = {
+        youtube:'YouTube', video:'Video', audio:'Audio', image:'Image',
+        pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File'
+      };
+      const colorMap = {
+        youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
+        audio:'bg-secondary-subtle text-secondary', image:'bg-success-subtle text-success',
+        pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
+        office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
+      };
+
+      let badge = document.getElementById(badgeId);
+      if (!badge){
+        badge = document.createElement('span');
+        badge.id = badgeId;
+        badge.className = 'ms-2 badge rounded-pill';
+        hdr.appendChild(badge);
+      }
+      badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
+      badge.textContent = labelMap[kind] || 'File';
+
+      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href = url || '#';
+    }
+
+    function showSpinner(show) {
+      document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none';
+    }
+
+    // Render into the big modal
+    function renderFilePreviewInto(container, url) {
+      container.innerHTML = '';
+      showSpinner(true);
+
+      const done = () => showSpinner(false);
+      const kind = kindFromUrl(url);
+
+      // YouTube embed
+      if (kind === 'youtube') {
+        const embed = toYouTubeEmbed(url);
+        if (embed) {
+          container.innerHTML = `
+            <div class="ratio ratio-16x9">
+              <iframe
+                src="${embed}"
+                title="YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin"
+                style="border:0"></iframe>
+            </div>
+          `;
+          done();
+          return;
+        }
+        container.innerHTML = `
+          <div class="preview-fallback">
+            <div class="text-muted mb-2">Couldn’t embed this YouTube link.</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        `;
+        done();
+        return;
+      }
+
+      const ext = getExtFromUrl(url);
+
+      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
+        const img = new Image();
+        img.onload = done;
+        img.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Image preview failed.</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        img.src = url;
+        container.appendChild(img);
+        return;
+      }
+
+      if (ext === 'pdf') {
+        const iframe = document.createElement('iframe');
+        iframe.title = 'PDF preview';
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">PDF preview failed (viewer blocked or CORS).</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        iframe.src = url;
+        container.appendChild(iframe);
+        return;
+      }
+
+      if (['mp4','webm','ogg'].includes(ext)) {
+        const video = document.createElement('video');
+        video.controls = true;
+        video.onloadeddata = done;
+        video.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Video preview failed.</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        video.src = url;
+        container.appendChild(video);
+        return;
+      }
+
+      if (['mp3','wav','m4a','ogg'].includes(ext)) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.onloadeddata = done;
+        audio.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Audio preview failed.</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        audio.src = url;
+        container.appendChild(audio);
+        return;
+      }
+
+      if (['txt','csv','log'].includes(ext)) {
+        const iframe = document.createElement('iframe');
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Text preview failed.</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        iframe.src = url;
+        container.appendChild(iframe);
+        return;
+      }
+
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) {
+        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const iframe = document.createElement('iframe');
+        iframe.title = 'Document preview';
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Office preview failed (Google Viewer blocked or CORS).</div>
+            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a></div>`;
+          done();
+        };
+        iframe.src = gview;
+        container.appendChild(iframe);
+        return;
+      }
+
+      // Last-resort object
+      const obj = document.createElement('object');
+      obj.data = url;
+      obj.type = 'application/octet-stream';
+      obj.onload = done;
+      obj.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">This file type cannot be previewed here.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      container.appendChild(obj);
+      setTimeout(() => { if (!obj.contentDocument) { /* heuristic */ } done(); }, 1200);
+    }
+
+    // ========= Page logic =========
+    document.addEventListener("DOMContentLoaded", async () => {
+      const user = initHeaderInitialsAndGuard();
+      if (!user) return;
+
       const params = new URLSearchParams(location.search);
       const moduleId = params.get("moduleId");
       const subIdx = parseInt(params.get("subIdx"), 10) || 0;
@@ -221,148 +464,100 @@
       }
 
       try {
-        const res = await fetch(`http://localhost:5000/modules/${moduleId}`);
+        const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
         const mod = await res.json();
-        if (!mod.title) throw new Error("Module not found");
+        if (!mod || !mod.title) throw new Error("Module not found");
 
-        // Build HTML
-        let html = `
-          <div class="module-title">${mod.title}</div>
-          <ul class="nav nav-pills" id="lessonTabs" role="tablist">
-        `;
-        mod.moduleSubTitles?.forEach((sub, i) => {
-          html += `
-            <li class="nav-item" role="presentation">
-              <button
-                class="nav-link${i === subIdx ? " active" : ""}"
-                id="tab-${i}"
-                data-bs-toggle="pill"
-                data-bs-target="#lesson-${i}"
-                type="button"
-                role="tab"
-                aria-controls="lesson-${i}"
-                aria-selected="${i === subIdx}"
-              >${sub || "(No Title)"}</button>
-            </li>`;
+        let html = `<div class="module-title">${(mod.title||'')}</div><ul class="nav nav-pills" role="tablist">`;
+        (mod.moduleSubTitles||[]).forEach((sub, i) => {
+          html += `<li class="nav-item" role="presentation">
+            <button class="nav-link${i===subIdx?' active':''}" id="tab-${i}" data-bs-toggle="pill" data-bs-target="#lesson-${i}" type="button" role="tab" aria-controls="lesson-${i}" aria-selected="${i===subIdx}">
+              ${sub || "(No Title)"}
+            </button></li>`;
         });
         html += `</ul><div class="tab-content">`;
 
-        mod.moduleSubTitles?.forEach((sub, i) => {
-          // Find all attachments for this lesson
-          let lessonAttachments = Array.isArray(mod.attachments)
-            ? mod.attachments.filter(att => att.lessonIdx === i)
-            : [];
+        (mod.moduleSubTitles||[]).forEach((sub, i) => {
+          const lessonAttachments = Array.isArray(mod.attachments) ? mod.attachments.filter(a => a.lessonIdx === i) : [];
           html += `
-            <div
-              class="tab-pane fade${i === subIdx ? " show active" : ""}"
-              id="lesson-${i}"
-              role="tabpanel"
-              aria-labelledby="tab-${i}"
-            >
+            <div class="tab-pane fade${i===subIdx?' show active':''}" id="lesson-${i}" role="tabpanel" aria-labelledby="tab-${i}">
               <h6 class="module-subtitle">${sub || "(No Title)"}</h6>
               <p class="module-desc">${
-                mod.moduleSubDescs?.[i]
-                  ? mod.moduleSubDescs[i].replace(/\n/g, "<br>")
+                (mod.moduleSubDescs && mod.moduleSubDescs[i])
+                  ? String(mod.moduleSubDescs[i]).replace(/\n/g, "<br>")
                   : "<span class='text-muted'>(No Description)</span>"
               }</p>
-              ${lessonAttachments.length > 0 ? lessonAttachments.map((att, attIdx) => {
-                let preview = '';
-                if (att.filePath) {
-                  const ext = att.filePath.split('.').pop().toLowerCase();
-                  if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
-                    preview = `<img src="http://127.0.0.1:5000${att.filePath}" alt="Preview" style="max-width:180px;max-height:120px;display:block;margin-bottom:0.5rem;border-radius:0.5rem;box-shadow:0 2px 8px #0001;cursor:pointer;" onclick="showAttachmentPreview('${att.filePath}','image')">`;
-                  } else if (ext === "pdf") {
-                    preview = `<embed src="http://127.0.0.1:5000${att.filePath}" type="application/pdf" width="180" height="120" style="border-radius:0.5rem;box-shadow:0 2px 8px #0001;cursor:pointer;" onclick="showAttachmentPreview('${att.filePath}','pdf')" />`;
-                  } else if (["mp4","webm","ogg"].includes(ext)) {
-                    preview = `<video controls style="max-width:180px;max-height:120px;display:block;margin-bottom:0.5rem;border-radius:0.5rem;box-shadow:0 2px 8px #0001;">
-                      <source src="http://127.0.0.1:5000${att.filePath}" type="video/${ext}">
-                      Your browser does not support the video tag.
-                    </video>`;
-                  }
-                }
-                // For video/text modules, show video URL and its description
-                let linkHtml = '';
-                if (att.url) {
-                  linkHtml = `<a href="${att.url}" target="_blank">
-                                <i class="bi bi-link-45deg me-2"></i>External Link
-                              </a>`;
-                } else if (att.filePath) {
-                  linkHtml = `<a href="http://127.0.0.1:5000${att.filePath}" target="_blank">
-                                <i class="bi bi-file-earmark-pdf-fill me-2"></i>Download File
-                              </a>`;
-                }
-                // Prefer videoDesc, then description, then fallback
+              ${lessonAttachments.map((att, idx) => {
+                const fileLabel = `File ${idx+1}`;
                 const desc = att.videoDesc || att.description || "(no description)";
+                const fname = (att.originalName || att.name || mod.title || "File").replace(/"/g, "&quot;");
+                const url = att.url || (att.filePath ? (FILE_BASE + att.filePath) : '');
+                const kind = url ? kindFromUrl(url) : 'other';
+                const icon = kind==='youtube' ? '▶️' : (kind==='video' ? '🎬' : (att.url ? '🔗' : '📄'));
+                const label = kind==='youtube' ? 'YouTube' : (kind==='video' ? 'Video' : (att.url ? 'Link' : 'File'));
                 return `
-                  <div class="attachment-item mt-3">
-                    <div class="fw-bold mb-1">File ${attIdx + 1}</div>
-                    ${preview}
-                    ${linkHtml}
+                  <div class="attachment-item">
+                    <div class="fw-bold mb-1">${icon} ${label} — ${fileLabel}</div>
+                    <div class="attachment-actions">
+                      <button class="btn btn-amber btn-sm file-preview-btn"
+                              data-file-url="${(url||'').replace(/"/g,'&quot;')}"
+                              data-file-name="${fname}">
+                        <i class="bi bi-eye me-1"></i> Preview
+                      </button>
+
+                    </div>
                     <div class="small">${desc}</div>
-                  </div>
-                `;
-              }).join('') : ''}
+                  </div>`;
+              }).join('')}
             </div>`;
         });
 
-        // Main description
         if (mod.description) {
           html += `
             <div class="main-desc">
               <strong class="text-primary">Main Description</strong>
-              <p>${mod.description.replace(/\n/g, "<br>")}</p>
+              <p>${String(mod.description).replace(/\n/g,'<br>')}</p>
             </div>`;
         }
 
-        container.classList.remove("text-center", "text-muted");
+        html += `</div>`;
+        container.classList.remove("text-center","text-muted");
         container.innerHTML = html;
 
-        // Update URL when user switches tabs
-        const tabs = container.querySelectorAll('#lessonTabs [data-bs-toggle="pill"]');
-        tabs.forEach(btn => {
-          btn.addEventListener('shown.bs.tab', e => {
+        // Update URL when tab changes
+        container.querySelectorAll('[data-bs-toggle="pill"]').forEach(btn=>{
+          btn.addEventListener('shown.bs.tab', e=>{
             const idx = e.target.id.split('-')[1];
-            history.replaceState(null, '', `?moduleId=${moduleId}&subIdx=${idx}`);
+            history.replaceState(null, '', `?moduleId=${encodeURIComponent(moduleId)}&subIdx=${idx}`);
           });
         });
 
-        // Preview modal logic
-        if (!document.getElementById('attachmentPreviewModal')) {
-          const modalHtml = `
-            <div class="modal fade" id="attachmentPreviewModal" tabindex="-1" aria-labelledby="attachmentPreviewLabel" aria-hidden="true">
-              <div class="modal-dialog modal-xl modal-dialog-centered">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="attachmentPreviewLabel">Attachment Preview</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body" id="attachmentPreviewBody" style="min-height:400px;text-align:center;"></div>
-                </div>
-              </div>
-            </div>`;
-          document.body.insertAdjacentHTML('beforeend', modalHtml);
-        }
-        window.showAttachmentPreview = function(filePath, type) {
-          const body = document.getElementById('attachmentPreviewBody');
-          if (type === 'image') {
-            body.innerHTML = `<img src="http://127.0.0.1:5000${filePath}" alt="Preview" style="max-width:90vw;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
-          } else if (type === 'pdf') {
-            body.innerHTML = `<embed src="http://127.0.0.1:5000${filePath}" type="application/pdf" width="100%" height="70vh" style="border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
-          } else {
-            body.innerHTML = `<div class='text-muted'>No preview available.</div>`;
-          }
-          const modal = new bootstrap.Modal(document.getElementById('attachmentPreviewModal'));
-          modal.show();
-        }
+        // Delegated actions: preview (modal)
+        container.addEventListener('click', (ev) => {
+          const btn = ev.target.closest('.file-preview-btn');
+          if (!btn) return;
+          const fileUrl = btn.dataset.fileUrl || '';
+          const fileName = btn.dataset.fileName || 'File';
+
+          // header title + badge + footer link
+          document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
+          setFileInfoUI(kindFromUrl(fileUrl), fileUrl);
+
+          // render content
+          const content = document.getElementById("filePreviewContent");
+          renderFilePreviewInto(content, fileUrl);
+
+          // show modal
+          new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+        });
 
       } catch (err) {
         console.error(err);
         container.innerHTML = '<div class="text-danger">Failed to load module content.</div>';
       }
     });
-  </script>
 
-  <script>
+    // Sidebar hover expand
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
@@ -387,7 +582,7 @@
             });
           });
         })
-        .catch(err => console.error("Failed to load sidebar:", err));
+        .catch(()=>{});
     });
 
     function logoutUser(){

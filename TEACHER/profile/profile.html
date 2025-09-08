@@ -100,9 +100,16 @@
 
           <form id="profileForm" class="row g-4" enctype="multipart/form-data">
             <div class="col-12 text-center">
-              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover;" alt="Profile Picture" onerror="this.src='/assets/default-avatar.png'" />
+              <!-- Default avatar path; JS will override when photoURL exists -->
+              <img id="profilePreview"
+                   src="/assets/default-avatar.png"
+                   class="rounded-circle mb-3"
+                   width="120" height="120" style="object-fit:cover;"
+                   alt="Profile Picture" loading="lazy" decoding="async" />
               <div class="d-flex justify-content-center">
-                <input type="file" id="profilePic" name="profilePic" accept="image/png, image/jpeg, image/webp" class="form-control w-auto" />
+                <input type="file" id="profilePic" name="profilePic"
+                       accept="image/png, image/jpeg, image/webp"
+                       class="form-control w-auto" />
               </div>
             </div>
 
@@ -220,6 +227,7 @@
   <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // Adjust this path if your teacher sidebar lives somewhere else
       fetch("/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
@@ -249,21 +257,32 @@
 
   <!-- Profile Logic -->
   <script>
-    const SERVER_BASE = "http://localhost:5000";
+    // ===== Base URLs =====
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : "";
     const API = `${SERVER_BASE}/api`;
+
+    // Default avatar (adjust if your file lives elsewhere)
+    const DEFAULT_AVATAR = "/assets/default-avatar.png";
+
+    // Helpers to safely use absolute/relative URLs coming from the server
+    function isAbsoluteUrl(u) { return /^https?:\/\//i.test(u || ""); }
+    function resolveURL(u, { cacheBust = false } = {}) {
+      if (!u) return DEFAULT_AVATAR;
+      const url = isAbsoluteUrl(u) ? u : `${SERVER_BASE}${u}`;
+      if (!cacheBust) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}t=${Date.now()}`;
+    }
 
     /* ===== Initials helper (used for header) ===== */
     function getInitials(u = {}) {
       const fn = (u.firstName || "").trim();
       const ln = (u.lastName || "").trim();
       if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
       const nameish = (u.username || u.displayName || u.name || "").trim();
       if (nameish) {
-        const parts = nameish
-          .replace(/[^A-Za-z0-9 _.\-]+/g, " ")
-          .split(/[\s._-]+/)
-          .filter(Boolean);
+        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, " ").split(/[\s._-]+/).filter(Boolean);
         if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
         return parts[0][0].toUpperCase();
       }
@@ -273,14 +292,14 @@
     function setHeaderInitials(u = {}) {
       const el = document.getElementById("Username");
       if (!el) return;
-      el.textContent = getInitials(u); // 👈 initials only
+      el.textContent = getInitials(u);
       const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
                      || u.username || u.email || "Profile";
       el.setAttribute("title", fullLabel);
       el.setAttribute("aria-label", fullLabel);
     }
 
-    /* ===== Modal helpers (robust) ===== */
+    /* ===== Modal helpers ===== */
     const infoModalEl = document.getElementById('infoModal');
     const infoTitleEl = document.getElementById('infoModalLabel');
     const infoBodyEl  = document.getElementById('infoModalBody');
@@ -294,7 +313,6 @@
       }
       m.show();
     }
-
     const successModalEl = document.getElementById('successModal');
     const successBodyEl  = document.getElementById('successModalBody');
     function showSuccess(html = 'Done!') {
@@ -306,7 +324,7 @@
     // ===== Auth + Guards =====
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     if (!userData || !userData.userId) {
-      window.location.href = "../login/login.html";
+      window.location.href = "/TEACHER/login/login.html";
     }
     const userId = encodeURIComponent(userData.userId);
 
@@ -340,8 +358,18 @@
     const MAX_MB = 5;
     const VALID_TYPES = ["image/png", "image/jpeg", "image/webp"];
     let previewUrl;
+    let avatarErrorHandled = false;
 
-    function resetPreviewURL() { if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; } }
+    // Fallback to default avatar on image load error (handles bad tokens/links)
+    profilePreview.addEventListener("error", () => {
+      if (avatarErrorHandled) return;
+      avatarErrorHandled = true;
+      profilePreview.src = DEFAULT_AVATAR;
+    });
+
+    function resetPreviewURL() {
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    }
 
     profilePicInput.addEventListener("change", () => {
       const f = profilePicInput.files[0];
@@ -358,7 +386,6 @@
       previewUrl = URL.createObjectURL(f);
       profilePreview.src = previewUrl;
     });
-
     window.addEventListener("beforeunload", resetPreviewURL);
 
     // ===== Teacher ID (read-only) =====
@@ -386,20 +413,26 @@
         document.getElementById("username").value = liveUser.username || '';
         document.getElementById("email").value = liveUser.email || '';
 
-        // 👇 initials-only in header (override any previous text)
+        // Header initials
         setHeaderInitials(liveUser);
 
+        // Teacher ID
         lockTeacherId(resolveTeacherId(liveUser));
 
+        // Avatar
         if (liveUser.photoURL) {
-          profilePreview.src = `${SERVER_BASE}${liveUser.photoURL}?t=${Date.now()}`;
+          profilePreview.src = resolveURL(liveUser.photoURL, { cacheBust: true });
           userData.photoURL = liveUser.photoURL;
-          userData.username = liveUser.username;
-          userData.firstName = liveUser.firstName;
-          userData.middleName = liveUser.middleName;
-          userData.lastName = liveUser.lastName;
-          localStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          profilePreview.src = DEFAULT_AVATAR;
         }
+
+        // persist a few fields
+        userData.username = liveUser.username;
+        userData.firstName = liveUser.firstName;
+        userData.middleName = liveUser.middleName;
+        userData.lastName = liveUser.lastName;
+        localStorage.setItem("user", JSON.stringify(userData));
       } catch (err) {
         console.error("Error fetching user:", err);
         showInfo('Load Error', 'Could not load your profile. Please refresh the page.');
@@ -444,7 +477,7 @@
             userData.firstName  = updated.firstName ?? userData.firstName;
             userData.middleName = updated.middleName ?? userData.middleName;
             userData.lastName   = updated.lastName ?? userData.lastName;
-            setHeaderInitials(updated); // 👈 refresh initials in header
+            setHeaderInitials(updated);
           }
 
           const newPhoto = updated?.photoURL || null;
@@ -453,10 +486,8 @@
 
           if (photoActuallyChanged || hadNewPhoto) {
             resetPreviewURL();
-            if (newPhoto) {
-              profilePreview.src = `${SERVER_BASE}${newPhoto}?t=${Date.now()}`;
-              userData.photoURL = newPhoto;
-            }
+            profilePreview.src = newPhoto ? resolveURL(newPhoto, { cacheBust: true }) : DEFAULT_AVATAR;
+            if (newPhoto) userData.photoURL = newPhoto;
             profilePicInput.value = '';
             showSuccess('✅ Profile photo updated successfully.');
           } else {
@@ -478,7 +509,7 @@
       }
     });
 
-    // ===== Change password + auto re-login =====
+    // ===== Change password UI wiring (criteria only; submit flow can be added similarly) =====
     const newPw = document.getElementById("newPassword");
     const confirmPw = document.getElementById("confirmPassword");
     const msg = document.getElementById("changePasswordMsg");

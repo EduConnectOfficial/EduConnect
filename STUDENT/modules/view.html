@@ -21,6 +21,7 @@
     .lesson-pill.active { background:#dbeafe; font-weight:600; }
     .attachment-badge { background:#f1f5f9; color:#0f172a; }
     .safe-pre { white-space:pre-wrap; }
+    .btn-link { text-align: start;}
   </style>
 </head>
 <body>
@@ -125,7 +126,8 @@
         </div>
         <div class="modal-body" id="filePreviewContent" style="min-height:400px; text-align:center;"></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <a id="fileOpenNewTabBtn" target="_blank" class="btn btn-secondary">Open in New Tab</a>
+          <a id="fileDownloadBtn" target="_blank" class="btn btn-amber" download>Download</a>
         </div>
       </div>
     </div>
@@ -167,50 +169,81 @@
     if (!user || !user.userId || !user.isStudent) {
       window.location.href = "/STUDENT/login/login.html";
     }
-  // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
 
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
+    // === Initials-only header display ===
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
+    }
+    (function setUserHeader(){
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = userData.userId || userData.uid || userData.id || userData.email;
+      if (!userId) { window.location.href = "../login/login.html"; return; }
+      const displayName = userData.fullName || userData.username || userData.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      el.textContent = initials;
+      el.title = displayName;
+      el.setAttribute("aria-label", displayName);
+      if (!userData.uid) {
+        userData.uid = userId;
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
+    })();
 
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
+    // === Modal helpers (preview + actions)
+    function filePreviewHtml(url){
+      const ext = (url.split('.').pop() || '').toLowerCase();
+      if (['jpg','jpeg','png','gif','bmp','webp'].includes(ext)) {
+        return `<img src="${url}" alt="Preview" style="max-width:90vw;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
+      }
+      if (ext === 'pdf') {
+        return `<embed src="${url}" type="application/pdf" width="100%" height="70vh" style="border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
+      }
+      if (['mp4','webm','ogg'].includes(ext)) {
+        return `<video controls style="max-width:100%;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;"><source src="${url}" type="video/${ext}" />Your browser does not support the video tag.</video>`;
+      }
+      // generic iframe fallback (some sites may block embedding)
+      return `<iframe src="${url}" style="width:100%;height:70vh;border:0;border-radius:1rem;box-shadow:0 2px 16px #0002;"></iframe>
+              <div class="small text-muted mt-2">If the preview is blocked, use the buttons below.</div>`;
+    }
+    function openFilePreview(title, url) {
+      document.getElementById('filePreviewModalLabel').textContent = title || 'File Preview';
+      document.getElementById('filePreviewContent').innerHTML = filePreviewHtml(url);
+      // action buttons
+      const openBtn = document.getElementById('fileOpenNewTabBtn');
+      const dlBtn   = document.getElementById('fileDownloadBtn');
+      openBtn.href = url;
+      dlBtn.href   = url;      // if server sets Content-Disposition:inline, browser may still open preview
+      dlBtn.setAttribute('download', ''); // hint download
+      new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    }
 
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
+    // === YouTube helpers
+    function isYouTube(url) {
+      return /youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\//i.test(url || '');
+    }
+    function ytEmbed(url) {
+      let id = null;
+      try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
+        if (u.searchParams.get('v')) id = u.searchParams.get('v');
+        const parts = u.pathname.split('/embed/');
+        if (!id && parts[1]) id = parts[1];
+      } catch {}
+      return id ? `https://www.youtube.com/embed/${id}` : url;
+    }
 
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
-
+    // === Page state
     const params = new URLSearchParams(window.location.search);
     const moduleId = params.get('moduleId');
     const startIdx = parseInt(params.get('subIdx') || '0', 10) || 0;
@@ -229,45 +262,6 @@ if (!userId) {
         .replaceAll("'",'&#039;');
     }
 
-    function isYouTube(url) {
-      return /youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\//i.test(url || '');
-    }
-    function ytEmbed(url) {
-      // best-effort id extraction
-      let id = null;
-      try {
-        const u = new URL(url);
-        if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
-        if (u.searchParams.get('v')) id = u.searchParams.get('v');
-        const parts = u.pathname.split('/embed/');
-        if (!id && parts[1]) id = parts[1];
-      } catch {}
-      return id ? `https://www.youtube.com/embed/${id}` : url;
-    }
-
-    function filePreviewHtml(fileUrl) {
-      const ext = (fileUrl.split('.').pop() || '').toLowerCase();
-      if (['jpg','jpeg','png','gif','bmp','webp'].includes(ext)) {
-        return `<img src="${fileUrl}" alt="Preview" style="max-width:100%;max-height:70vh;" />`;
-      }
-      if (ext === 'pdf') {
-        return `
-          <embed src="${fileUrl}" type="application/pdf" width="100%" height="70vh" />
-          <div class="mt-2 text-center">
-            <a href="${fileUrl}" target="_blank" class="btn btn-primary">Open PDF in New Tab</a>
-            <div class="text-muted small mt-1">If the PDF does not display, your browser may block embedded PDFs.</div>
-          </div>
-        `;
-      }
-      return `<a href="${fileUrl}" target="_blank" class="btn btn-primary">Download File</a>`;
-    }
-
-    function openFilePreview(title, url) {
-      document.getElementById('filePreviewModalLabel').textContent = title || 'File Preview';
-      document.getElementById('filePreviewContent').innerHTML = filePreviewHtml(url);
-      new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
-    }
-
     async function fetchModule() {
       if (!moduleId) {
         alert('No moduleId provided.');
@@ -277,27 +271,23 @@ if (!userId) {
       const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
       if (!res.ok) throw new Error('Failed to load module');
 
-      moduleDoc = await res.json(); // { id, title, courseId, moduleSubTitles, moduleSubDescs, attachments[]... }
+      moduleDoc = await res.json();
       courseId = moduleDoc.courseId || null;
 
-      // Fill top meta
       document.getElementById('moduleTitle').textContent = moduleDoc.title || 'Module';
       document.getElementById('metaTitle').textContent = moduleDoc.title || '—';
       document.getElementById('moduleNumberBadge').textContent = `Module #${moduleDoc.moduleNumber || ''}`;
 
-      // Back button to the course modules list
       const back = document.getElementById('backToCourseBtn');
       if (courseId) back.href = `/STUDENT/modules/list.html?id=${encodeURIComponent(courseId)}`;
       else back.href = '/STUDENT/courses/my_courses.html';
 
-      // Lessons
       const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
       const descs = Array.isArray(moduleDoc.moduleSubDescs) ? moduleDoc.moduleSubDescs : [];
       lessonCount = Math.max(subs.length, descs.length);
       document.getElementById('metaLessons').textContent = `Lessons: ${lessonCount}`;
       document.getElementById('moduleMeta').style.display = '';
 
-      // Build lesson list
       const list = document.getElementById('lessonList');
       list.innerHTML = '';
       for (let i=0; i<lessonCount; i++) {
@@ -309,7 +299,6 @@ if (!userId) {
         list.appendChild(btn);
       }
 
-      // Optional: resolve course title for meta
       try {
         if (courseId) {
           const cr = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
@@ -320,7 +309,6 @@ if (!userId) {
         }
       } catch {}
 
-      // Optional: find quiz for this module
       try {
         const qRes = await fetch(`${API_BASE}/quizzes`);
         if (qRes.ok) {
@@ -335,10 +323,7 @@ if (!userId) {
         }
       } catch {}
 
-      // Load completion state
       await refreshCompletion();
-
-      // Show initial lesson
       showLesson(startIdx < lessonCount ? startIdx : 0);
     }
 
@@ -363,32 +348,23 @@ if (!userId) {
           btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Module Complete';
           btn.disabled = false;
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
 
     function showLesson(idx) {
       currentIdx = Math.max(0, Math.min(idx, lessonCount - 1));
-
-      // mark active in list
       document.querySelectorAll('#lessonList .lesson-pill').forEach((el, i) => {
         el.classList.toggle('active', i === currentIdx);
       });
-
-      // set badges
       document.getElementById('lessonIndexBadge').textContent = `Lesson ${currentIdx + 1}`;
 
-      // titles & content
       const subs = moduleDoc.moduleSubTitles || [];
       const descs = moduleDoc.moduleSubDescs || [];
       const title = subs[currentIdx] || '(No Title)';
       const body  = descs[currentIdx] || '(No Content)';
-
       document.getElementById('lessonTitle').textContent = title;
-      document.getElementById('lessonBody').textContent  = body; // pre-wrapped with CSS
+      document.getElementById('lessonBody').textContent  = body;
 
-      // attachments for this lesson
       const wrap = document.getElementById('attachments');
       wrap.innerHTML = '';
       const atts = Array.isArray(moduleDoc.attachments) ? moduleDoc.attachments.filter(a => a.lessonIdx === currentIdx) : [];
@@ -400,14 +376,21 @@ if (!userId) {
           const item = document.createElement('div');
           item.className = 'attachment-item';
 
+          // 1) Files stored on your server -> open in modal
           if (att.filePath) {
             const full = `http://127.0.0.1:5000${att.filePath}`;
             item.innerHTML = `
               <span class="badge attachment-badge me-2">File</span>
-              <button class="btn btn-link p-0 text-decoration-none" type="button">${escapeHTML(att.description || 'Open file')}</button>
+              <button class="btn btn-link p-0 text-decoration-none" type="button">
+                ${escapeHTML(att.description || 'Open file')}
+              </button>
+              ${att.videoDesc ? `<div class="small text-muted mt-1">${escapeHTML(att.videoDesc)}</div>` : ''}
             `;
             item.querySelector('button').addEventListener('click', () => openFilePreview(title, full));
-          } else if (att.url) {
+          }
+          // 2) URL attachments
+          else if (att.url) {
+            // YouTube -> inline embed
             if (isYouTube(att.url)) {
               item.innerHTML = `
                 <span class="badge attachment-badge me-2">Video</span>
@@ -417,17 +400,21 @@ if (!userId) {
                 <div class="small text-muted mt-1">${escapeHTML(att.videoDesc || '')}</div>
               `;
             } else {
+              // Non-YouTube external URL -> try modal preview first (with buttons to open/download)
               item.innerHTML = `
                 <span class="badge attachment-badge me-2">Link</span>
-                <a href="${att.url}" target="_blank" class="text-decoration-none">${escapeHTML(att.videoDesc || att.url)}</a>
+                <button class="btn btn-link p-0 text-decoration-none" type="button">
+                  ${escapeHTML(att.videoDesc || att.url)}
+                </button>
               `;
+              item.querySelector('button').addEventListener('click', () => openFilePreview(title, att.url));
             }
           }
+
           wrap.appendChild(item);
         });
       }
 
-      // nav buttons
       document.getElementById('prevLesson').disabled = currentIdx <= 0;
       document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
     }
@@ -449,9 +436,7 @@ if (!userId) {
       }
     }
 
-    // Wiring
     document.addEventListener('DOMContentLoaded', async () => {
-      // user label already set
       document.getElementById('prevLesson').addEventListener('click', () => showLesson(currentIdx - 1));
       document.getElementById('nextLesson').addEventListener('click', () => showLesson(currentIdx + 1));
       document.getElementById('completeBtn').addEventListener('click', markComplete);

@@ -61,6 +61,18 @@
     /* Control polish */
     .form-label{margin-bottom:.25rem;font-weight:600}
     .ui-controls .form-select, .ui-controls .form-control{height:40px}
+
+    /* ===== File Preview Modal ===== */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
+    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
+    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
+    }
+    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
+    #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
   </style>
 </head>
 <body>
@@ -269,6 +281,35 @@
     </div>
   </div>
 
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -292,66 +333,6 @@
         });
     });
   </script>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
-
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
-
-    const initials = getInitials(u);
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
-
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
-
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
-
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -389,7 +370,7 @@
     const elSortBy   = document.getElementById('sortBy');
 
     /* ---------- State ---------- */
-    let assignmentMeta = null; // { title, points, dueAt, moduleNumber, ... }
+    let assignmentMeta = null;
     let moduleTitle = '—';
     let submissions = [];
     let filtered = [];
@@ -445,18 +426,129 @@
     function fmt(dt){ if (!dt) return '—'; const d=dt instanceof Date?dt:new Date(dt); return isNaN(d.getTime())?'—':d.toLocaleString(); }
     function toApiUrl(pathOrUrl){ return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
 
+    // ===== File-kind detection + preview utils (modal) =====
+    function getExtFromUrl(url=''){ const clean=String(url).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start='';if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];}else{if(u.pathname.startsWith('/embed/'))id=u.pathname.split('/')[2]||'';if(!id)id=u.searchParams.get('v')||'';}if(!id)return null;const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;const qs=new URLSearchParams();qs.set('rel','0');if(start)qs.set('start',String(start));return `${base}?${qs.toString()}`;}catch{return null;} }
+    function kindFromUrl(url){
+      if(isYouTubeUrl(url))return'youtube';
+      const ext=getExtFromUrl(url);
+      if(['mp4','webm','ogg','ogv','mov'].includes(ext))return'video';
+      if(['mp3','wav','m4a','ogg','aac','flac'].includes(ext))return'audio';
+      if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext))return'image';
+      if(ext==='pdf')return'pdf';
+      if(['txt','csv','log'].includes(ext))return'text';
+      if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext))return'office';
+      return'other';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={youtube:'YouTube',video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      const colorMap={youtube:'bg-danger-subtle text-danger',video:'bg-danger-subtle text-danger',audio:'bg-secondary-subtle text-secondary',image:'bg-success-subtle text-success',pdf:'bg-primary-subtle text-primary',text:'bg-info-subtle text-info',office:'bg-warning-subtle text-warning',other:'bg-dark-subtle text-dark'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill '+(colorMap[kind]||colorMap.other); badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+    function renderFilePreviewInto(container,url){
+      container.innerHTML=''; showSpinner(true); const done=()=>showSpinner(false); const kind=kindFromUrl(url);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+
+      if(kind==='youtube'){ const embed=toYouTubeEmbed(url); if(embed){container.innerHTML=`<div class="ratio ratio-16x9"><iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="border:0"></iframe></div>`; done(); return;} fallback('Couldn’t embed this YouTube link.'); return; }
+
+      const ext=getExtFromUrl(url);
+      if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(ext==='pdf'){ const iframe=document.createElement('iframe'); iframe.title='PDF preview'; iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed (viewer blocked or CORS).'); iframe.src=url; container.appendChild(iframe); return; }
+      if(['mp4','webm','ogg','ogv','mov'].includes(ext)){ const video=document.createElement('video'); video.controls=true; video.onloadeddata=done; video.onerror=()=>fallback('Video preview failed.'); video.src=url; container.appendChild(video); return; }
+      if(['mp3','wav','m4a','ogg','aac','flac'].includes(ext)){ const audio=document.createElement('audio'); audio.controls=true; audio.onloadeddata=done; audio.onerror=()=>fallback('Audio preview failed.'); audio.src=url; container.appendChild(audio); return; }
+      if(['txt','csv','log'].includes(ext)){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.title='Document preview'; iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked or CORS).'); iframe.src=gview; container.appendChild(iframe); return; }
+
+      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+    function openPreviewModal(viewUrl, title='File'){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
+    /* ===== Cloud-storage helpers (with signing) ===== */
+    function pickHref(obj = {}) {
+      return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
+             (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+             (obj.filePath ? toApiUrl(obj.filePath) : '');
+    }
+    function pickName(obj = {}) {
+      const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
+      const fromUrl  = (obj.url || '').split('/').pop();
+      return obj.originalName || fromPath || fromUrl || 'file';
+    }
+    function extractStoragePath(obj = {}) {
+      if (obj.storagePath) return String(obj.storagePath);
+      if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
+        const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
+      }
+      if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
+        try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
+      }
+      if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
+        try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
+      }
+      return '';
+    }
+
+    // Open preview (modal) after resolving a safe URL (uses signed URL if needed)
+    async function openPreviewFromObj(obj = {}) {
+      const direct = pickHref(obj);
+      // If it's already a Firebase token URL, preview it directly
+      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
+        openPreviewModal(direct, pickName(obj));
+        return;
+      }
+      const storagePath = extractStoragePath(obj);
+      if (!storagePath) {
+        if (direct) openPreviewModal(direct, pickName(obj));
+        return;
+      }
+      try {
+        const r = await fetch(`${API}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
+        const js = await r.json().catch(()=>null);
+        if (r.ok && js?.success && js?.url) {
+          openPreviewModal(js.url, pickName(obj));
+          return;
+        }
+      } catch {}
+      if (direct) openPreviewModal(direct, pickName(obj));
+    }
+
+    // Legacy new-tab fallback if you still need it elsewhere
+    async function openAttachmentWithFallback(obj) {
+      const direct = pickHref(obj);
+      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
+        window.open(direct, '_blank', 'noopener'); return;
+      }
+      const storagePath = extractStoragePath(obj);
+      if (!storagePath) { if (direct) window.open(direct, '_blank', 'noopener'); return; }
+      try {
+        const r = await fetch(`${API}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
+        const js = await r.json().catch(()=>null);
+        if (r.ok && js?.success && js?.url) { window.open(js.url, '_blank', 'noopener'); return; }
+      } catch {}
+      if (direct) window.open(direct, '_blank', 'noopener');
+    }
+
     // Status helpers
     function computeStatus(row){
       if (row.grade != null) return 'graded';
       if (!row.submittedAt || !row.dueAt) return 'on-time';
       return row.submittedAt.getTime() <= row.dueAt.getTime() ? 'on-time' : 'late';
     }
-    // Sorting by status: Late → On-time → Graded
-    // Sorting by status: Late → On-time (graded not sorted)
     function statusRank(s){
-      return s === 'late' ? 0 : (s === 'on-time' ? 1 : 2); // 'graded' will not be sorted specially
+      return s === 'late' ? 0 : (s === 'on-time' ? 1 : 2);
     }
-
     function statusPill(s){
       const map = { 'graded':'status-graded', 'late':'status-late', 'on-time':'status-ontime' };
       const cls = map[s] || 'status-ontime';
@@ -498,7 +590,7 @@
       return a;
     }
 
-    // Load submissions for this assignment (keep classId, set placeholder className)
+    // Load submissions
     async function loadSubmissions(){
       try {
         const resp = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`);
@@ -535,7 +627,7 @@
       }
     }
 
-    // Resolve missing class names, refresh filters + table
+    // Resolve missing class names
     async function resolveMissingClassNames(list){
       const promises = [];
       for (const row of list) {
@@ -573,8 +665,8 @@
       const q = (elSearch.value || '').toLowerCase().trim();
       const fClass = elClass.value;
       const fModule = elModule.value;
-      const fDue = elDue.value; // yyyy-mm-dd
-      const fStatus = elStatus.value; // '', 'on-time', 'late', 'graded'
+      const fDue = elDue.value;
+      const fStatus = elStatus.value;
       const sort = (elSortBy?.value) || 'submitted_desc';
 
       filtered = submissions.filter(s => {
@@ -613,7 +705,6 @@
         if (sort === 'due_asc')        return (dueA || Number.MAX_SAFE_INTEGER) - (dueB || Number.MAX_SAFE_INTEGER);
         if (sort === 'due_desc')       return (dueB || 0) - (dueA || 0);
         if (sort === 'status') {
-          // Only sort 'late' and 'on-time', leave 'graded' in place
           const rankA = statusRank(a._status);
           const rankB = statusRank(b._status);
           if (a._status === 'graded' && b._status === 'graded') return 0;
@@ -621,7 +712,6 @@
           if (b._status === 'graded') return -1;
           return rankA - rankB;
         }
-        /* default: newest submitted first */
         return subB - subA || (dueA - dueB);
       });
 
@@ -725,13 +815,25 @@
 
       vmStatusBadge.innerHTML = buildStatusBadge(item);
 
-      // Files
+      // Files (open in Preview Modal with signing)
       if (item.files && item.files.length){
         const fileLis = item.files.map(f => {
-          const name = escapeHTML(f.originalName || (f.filePath || '').split('/').pop() || 'file');
-          const href = f.filePath ? toApiUrl(f.filePath) : '#';
-          const sizeTxt = f.size ? ` (${Math.round(f.size / 1024)} KB)` : '';
-          return `<li class="mb-1"><a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+          const name = escapeHTML(pickName(f));
+          const payload = {
+            downloadUrl: f.downloadUrl || '',
+            publicUrl:   f.publicUrl   || '',
+            previewUrl:  f.previewUrl  || '',
+            url:         f.url         || '',
+            storagePath: f.storagePath || '',
+            gsUri:       f.gsUri       || '',
+            originalName:f.originalName|| ''
+          };
+          const safeJson = JSON.stringify(payload).replace(/"/g,'&quot;'); // inline-safe
+          return `<li class="mb-1">
+                    <button type="button" class="btn btn-link p-0 align-baseline" onclick='openPreviewFromObj(${safeJson})'>
+                      ${name}
+                    </button>
+                  </li>`;
         }).join('');
 
         vmFiles.innerHTML = `
@@ -746,7 +848,7 @@
       // Note
       vmNote.innerHTML = `
         <div class="fw-semibold mb-1"><i class="bi bi-chat-left-text"></i> Student Note</div>
-        <div class="whitespace-prewrap">${escapeHTML(item.text || '').trim() || '—'}</div>`;
+        <div class="whitespace-prewrap">${escapeHTML((item.text || '').trim()) || '—'}</div>`;
 
       // Grade
       const maxPts = (typeof item.maxPoints === 'number') ? item.maxPoints : null;
@@ -847,7 +949,7 @@
       }
     }
 
-    /* ---------- Events (apply immediately) ---------- */
+    /* ---------- Events ---------- */
     elSearch.addEventListener('input', applyFilters);
     elSortBy.addEventListener('change', applyFilters);
     elClass.addEventListener('change', applyFilters);
@@ -875,9 +977,9 @@
 
       try{
         submissions = await loadSubmissions();
-        populateFilters(submissions);   // fill Class/Module lists
-        applyFilters();                 // initial paint
-        resolveMissingClassNames(submissions); // async enrich class names then refresh
+        populateFilters(submissions);
+        applyFilters();
+        resolveMissingClassNames(submissions);
       }catch(e){
         console.error(e);
         elBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load submissions.</td></tr>`;

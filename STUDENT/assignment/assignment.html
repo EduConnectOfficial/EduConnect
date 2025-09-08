@@ -70,7 +70,7 @@
     .hint { color:var(--muted); font-size:.9rem; }
     .attachment-list a { text-decoration:none; }
 
-    /* ===== Pills (course / module) + counts row ===== */
+    /* ===== Pills ===== */
     .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
     .pill{
       display:inline-flex;align-items:center;gap:.4rem;
@@ -86,7 +86,7 @@
     .pill-graded{ background:#f3e8ff;border-color:#e9d5ff;color:#6b21a8; }
     .pill-closed{ background:#fee2e2;border-color:#fecaca;color:#991b1b; }
 
-    /* ===== Description clamp (multi-line ellipsis) ===== */
+    /* ===== Description clamp ===== */
     .assignment-card .desc{
       display:-webkit-box; -webkit-box-orient:vertical;
       line-clamp:4; -webkit-line-clamp:4;
@@ -95,13 +95,68 @@
       font-size:.9rem; color:#6b7280;
     }
 
-    /* ======= Modal long-text safety (wrap anywhere) ======= */
+    /* ===== Modal long-text safety ===== */
     .wrap-anywhere{
       overflow-wrap:anywhere;
       word-break:break-word;
       line-break:anywhere;
     }
     #modalContent{ white-space:pre-wrap; } /* preserve author line breaks while wrapping long tokens */
+
+    /* ===== Full-screen-ish Preview Modal ===== */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content {
+      height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #filePreviewModal .modal-body {
+      flex: 1 1 auto;
+      padding: 0;
+      background: #f8fafc;
+      position: relative;
+    }
+    .preview-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .preview-wrap iframe,
+    .preview-wrap embed,
+    .preview-wrap object,
+    .preview-wrap img,
+    .preview-wrap video,
+    .preview-wrap audio {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      object-fit: contain;
+      background: #fff;
+    }
+    .preview-fallback {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem;
+      text-align: center;
+    }
+    #filePreviewFooter {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .spinner-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+    }
   </style>
 </head>
 <body>
@@ -215,6 +270,37 @@
         <div class="modal-footer">
           <span id="modalDueBadge" class="badge-soft me-auto px-2"></span>
           <button type="button" class="btn btn-amber-outline" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full-screen-ish File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -345,6 +431,67 @@
     return 'open';
   }
 
+  // === Cloud-safe attachment helpers ===
+  function pickHref(obj = {}) {
+    return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
+           (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+           (obj.filePath ? toApiUrl(obj.filePath) : '');
+  }
+
+  function pickName(obj = {}) {
+    const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
+    const fromUrl  = (obj.url || '').split('/').pop();
+    return obj.originalName || fromPath || fromUrl || 'file';
+  }
+
+  function extractStoragePath(obj = {}) {
+    if (obj.storagePath) return String(obj.storagePath);
+
+    if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
+      const parts = obj.gsUri.replace('gs://','').split('/');
+      parts.shift(); // bucket
+      return parts.join('/');
+    }
+
+    if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
+      try {
+        const u = new URL(obj.publicUrl);
+        const parts = u.pathname.replace(/^\/+/, '').split('/');
+        parts.shift(); // bucket
+        return parts.join('/');
+      } catch {}
+    }
+
+    if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
+      try {
+        const u = new URL(obj.downloadUrl);
+        if (u.pathname.includes('/o/')) {
+          const enc = u.pathname.split('/o/')[1];
+          return decodeURIComponent(enc);
+        }
+      } catch {}
+    }
+
+    return '';
+  }
+
+  async function getSignedViewUrlIfNeeded(obj) {
+    const direct = pickHref(obj);
+    // If it's a Firebase storage v0 endpoint, it's already signed token URL.
+    if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
+
+    const storagePath = extractStoragePath(obj);
+    if (!storagePath) return direct || null;
+
+    // Try server signer for inline viewing
+    try {
+      const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
+      const js = await r.json().catch(()=>null);
+      if (r.ok && js?.success && js?.url) return js.url;
+    } catch {}
+    return direct || null;
+  }
+
   // --- Fetch module meta & cache ---
   async function fetchModuleMeta(moduleId) {
     if (!moduleId) return null;
@@ -361,7 +508,7 @@
     }
   }
 
-  // --- Fetch course meta & cache (for course pill fallback) ---
+  // --- Fetch course meta & cache ---
   async function fetchCourseMeta(courseId) {
     if (!courseId) return null;
     if (courseCache.has(courseId)) return courseCache.get(courseId);
@@ -378,7 +525,7 @@
     }
   }
 
-  // --- Enrich assignments with moduleTitle/moduleNumber + courseTitle if missing ---
+  // --- Enrich assignments with meta ---
   async function hydrateMetaForAssignments(list) {
     const moduleIds = [...new Set((list || []).map(a => a.moduleId).filter(Boolean))];
     const courseIds = [...new Set((list || []).map(a => a.courseId).filter(Boolean))];
@@ -407,7 +554,6 @@
     const js = await res.json();
     const list = Array.isArray(js.courses) ? js.courses : [];
     courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
-    // seed courseCache (helps avoid extra fetch)
     courses.forEach(c => courseCache.set(c.id, { title: c.title }));
     filterCourse.innerHTML = `<option value="All">All Courses</option>` +
       courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
@@ -435,10 +581,10 @@
             title: a.title || 'Untitled',
             content: a.content || '',
             courseId: c.id,
-            courseTitle: c.title,                 // may be overridden by hydrate
+            courseTitle: c.title,
             moduleId: a.moduleId || null,
             moduleNumber: a.moduleNumber || null,
-            moduleTitle: a.moduleTitle || '',      // may be overridden by hydrate
+            moduleTitle: a.moduleTitle || '',
             publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt) : null,
             dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt) : null,
             points: a.points ?? null,
@@ -463,11 +609,232 @@
       attachments: Array.isArray(a.attachments) ? a.attachments : []
     }));
 
-    // Ensure we have moduleTitle/moduleNumber and courseTitle when possible
     await hydrateMetaForAssignments(assignments);
 
     renderGrid();
-    refreshStatusPills(assignments); // initial totals
+    refreshStatusPills(assignments);
+  }
+
+  // ========= Kind detection & preview helpers =========
+  function isYouTubeUrl(url = '') {
+    try {
+      const u = new URL(url);
+      const h = u.hostname.replace(/^www\./, '').toLowerCase();
+      return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+    } catch { return false; }
+  }
+  function toYouTubeEmbed(url=''){
+    try{
+      const u = new URL(url);
+      const host = u.hostname.replace(/^www\./,'').toLowerCase();
+      let id = '';
+      let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+      if (start && /^\d+s$/.test(start)) start = parseInt(start,10);
+      if (start && /^\d+$/.test(start)) start = parseInt(start,10);
+      if (!Number.isFinite(start)) start = '';
+      if (host === 'youtu.be'){
+        id = (u.pathname || '').replace(/^\//,'').split('/')[0];
+      } else {
+        if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+        if (!id) id = u.searchParams.get('v') || '';
+      }
+      if (!id) return null;
+      const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+      const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+      return `${base}?${qs.toString()}`;
+    }catch{ return null; }
+  }
+  function getExtFromUrl(url=''){
+    const clean = String(url).split('?')[0].split('#')[0];
+    const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : '';
+  }
+  function kindFromUrl(url){
+    if (isYouTubeUrl(url)) return 'youtube';
+    const ext = getExtFromUrl(url);
+    if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+    if (['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
+    if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+    if (ext==='pdf') return 'pdf';
+    if (['txt','csv','log'].includes(ext)) return 'text';
+    if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+    return 'other';
+  }
+  function setFileInfoUI(kind, url) {
+    const info = document.getElementById('fileInfoText');
+    const hdr  = document.getElementById('filePreviewModalLabel');
+    const badgeId = 'fileKindBadge';
+
+    const labelMap = {
+      youtube:'YouTube', video:'Video', audio:'Audio', image:'Image',
+      pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File'
+    };
+    const colorMap = {
+      youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
+      audio:'bg-secondary-subtle text-secondary', image:'bg-success-subtle text-success',
+      pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
+      office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
+    };
+
+    let badge = document.getElementById(badgeId);
+    if (!badge){
+      badge = document.createElement('span');
+      badge.id = badgeId;
+      badge.className = 'ms-2 badge rounded-pill';
+      hdr.appendChild(badge);
+    }
+    badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
+    badge.textContent = labelMap[kind] || 'File';
+
+    info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+    document.getElementById('openInNewTabBtn').href = url || '#';
+  }
+  function showSpinner(show) {
+    document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none';
+  }
+  function renderFilePreviewInto(container, url) {
+    container.innerHTML = '';
+    showSpinner(true);
+    const done = () => showSpinner(false);
+    const kind = kindFromUrl(url);
+
+    if (kind === 'youtube') {
+      const embed = toYouTubeEmbed(url);
+      if (embed) {
+        container.innerHTML = `
+          <div class="ratio ratio-16x9">
+            <iframe
+              src="${embed}"
+              title="YouTube video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"
+              style="border:0"></iframe>
+          </div>`;
+        done();
+        return;
+      }
+      container.innerHTML = `
+        <div class="preview-fallback">
+          <div class="text-muted mb-2">Couldn’t embed this YouTube link.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a>
+        </div>`;
+      done();
+      return;
+    }
+
+    const ext = getExtFromUrl(url);
+
+    if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
+      const img = new Image();
+      img.onload = done;
+      img.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Image preview failed.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      img.src = url;
+      container.appendChild(img);
+      return;
+    }
+
+    if (ext === 'pdf') {
+      const iframe = document.createElement('iframe');
+      iframe.title = 'PDF preview';
+      iframe.onload = done;
+      iframe.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">PDF preview failed (viewer blocked or CORS).</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      iframe.src = url;
+      container.appendChild(iframe);
+      return;
+    }
+
+    if (['mp4','webm','ogg'].includes(ext)) {
+      const video = document.createElement('video');
+      video.controls = true;
+      video.onloadeddata = done;
+      video.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Video preview failed.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      video.src = url;
+      container.appendChild(video);
+      return;
+    }
+
+    if (['mp3','wav','m4a','ogg'].includes(ext)) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.onloadeddata = done;
+      audio.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Audio preview failed.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      audio.src = url;
+      container.appendChild(audio);
+      return;
+    }
+
+    if (['txt','csv','log'].includes(ext)) {
+      const iframe = document.createElement('iframe');
+      iframe.onload = done;
+      iframe.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Text preview failed.</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      iframe.src = url;
+      container.appendChild(iframe);
+      return;
+    }
+
+    if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) {
+      const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+      const iframe = document.createElement('iframe');
+      iframe.title = 'Document preview';
+      iframe.onload = done;
+      iframe.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Office preview failed (Google Viewer blocked or CORS).</div>
+          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a></div>`;
+        done();
+      };
+      iframe.src = gview;
+      container.appendChild(iframe);
+      return;
+    }
+
+    // Last-resort object
+    const obj = document.createElement('object');
+    obj.data = url;
+    obj.type = 'application/octet-stream';
+    obj.onload = done;
+    obj.onerror = () => {
+      container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">This file type cannot be previewed here.</div>
+        <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+          <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+        </a></div>`;
+      done();
+    };
+    container.appendChild(obj);
+    setTimeout(() => { done(); }, 1200);
   }
 
   // ========= Render =========
@@ -508,7 +875,6 @@
       list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
     }
 
-    // Update status pills to reflect the filtered view
     refreshStatusPills(list);
 
     grid.innerHTML = '';
@@ -529,7 +895,6 @@
         return `<span class="status-dot ${cls}"></span>${label}`;
       })();
 
-      // Course & Module pills (with titles)
       const courseLabel = (a.courseTitle || '').trim();
       const coursePill = courseLabel
         ? `<span class="pill pill-course" title="${escapeHTML(courseLabel)}">
@@ -558,14 +923,12 @@
             <div class="muted small text-end">${statusBadge}</div>
           </div>
 
-          <!-- Pills row -->
           <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
 
           <div class="muted small mb-2">
             Due: <strong>${dueTxt}</strong>
           </div>
 
-          <!-- Shortened description (clamped) -->
           <div class="desc mb-3" title="${escapeHTML(a.content || '')}">
             ${escapeHTML(a.content || '')}
           </div>
@@ -583,7 +946,6 @@
       grid.appendChild(col);
     });
 
-    // Wire actions
     grid.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
@@ -600,13 +962,10 @@
     });
   }
 
-  // ========= Modal (details only) =========
+  // ========= Modal (details + attachments with PREVIEW) =========
   function openAssignmentModal(a) {
-    // Title
-    const titleSafe = a.title || 'Assignment';
-    document.getElementById('modalTitle').innerText = softWrap(titleSafe);
+    document.getElementById('modalTitle').innerText = softWrap(a.title || 'Assignment');
 
-    // Module label
     let moduleLabel = '';
     if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
       moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
@@ -616,34 +975,51 @@
       moduleLabel = a.moduleTitle;
     }
 
-    // Meta
     const metaText = `${a.courseTitle || 'Course'}${moduleLabel ? ' • ' + moduleLabel : ''} • Due: ${fmtDateTime(a.dueAt)}`;
     document.getElementById('modalMeta').innerText = softWrap(metaText);
+    document.getElementById('modalContent').innerText = softWrap(a.content || '');
 
-    // Content (use innerText + pre-wrap)
-    const contentText = a.content || '';
-    document.getElementById('modalContent').innerText = softWrap(contentText);
-
-    // Attachments (links & uploaded files)
     const attWrap = document.getElementById('modalAttachments');
     const atts = Array.isArray(a.attachments) ? a.attachments : [];
     if (!atts.length) {
       attWrap.innerHTML = '';
     } else {
       const items = atts.map(x => {
-        if (x.url) {
+        // External link
+        if (x.url && /^https?:\/\//i.test(String(x.url))) {
           const display = softWrap(x.url);
-          const href = x.url.replace(/"/g, '&quot;'); // attribute safety
-          return `<li class="mb-1"><i class="bi bi-link-45deg"></i> <a href="${href}" target="_blank" rel="noopener">${display}</a></li>`;
-        } else if (x.filePath) {
-          const rel = String(x.filePath);
-          const href = toApiUrl(rel).replace(/"/g, '&quot;'); // attribute safety
-          const name = softWrap(x.originalName || rel.split('/').pop());
-          const sizeTxt = x.size ? ` (${Math.round(x.size/1024)} KB)` : '';
-          return `<li class="mb-1"><i class="bi bi-paperclip"></i> <a href="${href}" target="_blank" rel="noopener">${name}</a>${sizeTxt}</li>`;
+          const safe = x.url.replace(/"/g,'&quot;');
+          const kind = kindFromUrl(x.url);
+          const icon = kind==='youtube' ? '▶️' : (kind==='video' ? '🎬' : '🔗');
+          return `<li class="mb-1">
+                    ${icon}
+                    <button type="button" class="btn btn-link p-0 align-baseline att-preview-btn"
+                            data-external-url="${safe}">
+                      ${display}
+                    </button>
+                  </li>`;
         }
-        return '';
-      }).filter(Boolean).join('');
+
+        // File-like (cloud upload)
+        const payload = {
+          downloadUrl: x.downloadUrl || '',
+          publicUrl: x.publicUrl || '',
+          previewUrl: x.previewUrl || '',
+          url: x.url || '',
+          storagePath: x.storagePath || '',
+          gsUri: x.gsUri || '',
+          originalName: x.originalName || ''
+        };
+        const label = softWrap(pickName(x));
+        const data = escapeHTML(JSON.stringify(payload));
+        return `<li class="mb-1">
+                  <i class="bi bi-paperclip"></i>
+                  <button type="button" class="btn btn-link p-0 align-baseline att-preview-btn"
+                          data-payload="${data}">
+                    ${label}
+                  </button>
+                </li>`;
+      }).join('');
 
       attWrap.innerHTML = `
         <div class="mt-2">
@@ -651,6 +1027,37 @@
           <ul class="attachment-list ps-3 mb-0">${items}</ul>
         </div>`;
     }
+
+    // Wire preview clicks inside the modal
+    attWrap.onclick = async (ev) => {
+      const btn = ev.target.closest('.att-preview-btn');
+      if (!btn) return;
+
+      let viewUrl = '';
+      let fileName = '';
+      if (btn.dataset.externalUrl) {
+        viewUrl = btn.dataset.externalUrl;
+        fileName = viewUrl.split('/').pop() || 'Link';
+      } else if (btn.dataset.payload) {
+        try {
+          const payload = JSON.parse(btn.dataset.payload);
+          fileName = payload.originalName || 'File';
+          viewUrl = await getSignedViewUrlIfNeeded(payload);
+        } catch {}
+      }
+
+      if (!viewUrl) return;
+
+      // Set header and footer info
+      document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
+      setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
+
+      // Render into big modal
+      const content = document.getElementById("filePreviewContent");
+      renderFilePreviewInto(content, viewUrl);
+
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    };
 
     assignmentModal.show();
   }

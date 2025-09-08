@@ -3,6 +3,9 @@ const multer = require('multer');
 const path = require('path');
 const { ensureDir, sanitizeName } = require('../utils/fsUtils');
 
+/**
+ * ===== Allowed MIME Types =====
+ */
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
   'application/msword',
@@ -20,6 +23,9 @@ const ALLOWED_MIME_TYPES = new Set([
   'video/ogg',
 ]);
 
+/**
+ * ===== DISK STORAGE (legacy, saves to /uploads) =====
+ */
 const makeStorage = (folder) =>
   multer.diskStorage({
     destination: (req, file, cb) => {
@@ -32,7 +38,6 @@ const makeStorage = (folder) =>
     },
   });
 
-// “modules” upload with size limit + allowlist
 const commonUpload = multer({
   storage: makeStorage('modules'),
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
@@ -51,7 +56,25 @@ const uploadAssign = multer({ storage: makeStorage('assignments') });
 const uploadSubmission = multer({ storage: makeStorage('assignment_submissions') });
 const uploadBulk = multer({ storage: makeStorage('bulk_enrollments') });
 
+/**
+ * ===== MEMORY STORAGE (for Firebase Cloud Storage) =====
+ * Use this for new endpoints that should bypass local disk
+ */
+const memoryStorage = multer.memoryStorage();
+
+function memoryFileFilter(req, file, cb) {
+  if (ALLOWED_MIME_TYPES.has(file.mimetype)) return cb(null, true);
+  cb(new Error('File type not allowed'), false);
+}
+
+const uploadMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: memoryFileFilter,
+});
+
 module.exports = {
+  // Disk-based (legacy/local)
   commonUpload,
   uploadQuiz,
   uploadProfilePic,
@@ -61,4 +84,7 @@ module.exports = {
   uploadSubmission,
   uploadBulk,
   makeStorage,
+
+  // Cloud Storage–ready (new)
+  uploadMemory,
 };

@@ -310,6 +310,18 @@
     const SERVER_BASE = isLocal ? "http://localhost:5000" : "";
     const API = `${SERVER_BASE}/api`;
 
+    // Helpers to safely use absolute/relative URLs coming from the server
+    function isAbsoluteUrl(u) {
+      return /^https?:\/\//i.test(u || "");
+    }
+    function resolveURL(u, { cacheBust = false } = {}) {
+      if (!u) return "";
+      const url = isAbsoluteUrl(u) ? u : `${SERVER_BASE}${u}`;
+      if (!cacheBust) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}t=${Date.now()}`;
+    }
+
     // ===== Startup auth guard =====
     const rawUser = localStorage.getItem("user");
     if (!rawUser) { window.location.href = "/STUDENT/login/login.html"; }
@@ -394,10 +406,10 @@
               : user.username || user.email || ""
           );
 
-          // Persist safe fields
+          // Persist safe fields + avatar
           storedUser.username = user.username ?? storedUser.username;
           if (user.photoURL) {
-            profilePreview.src = `${SERVER_BASE}${user.photoURL}?t=${Date.now()}`;
+            profilePreview.src = resolveURL(user.photoURL, { cacheBust: true });
             storedUser.photoURL = user.photoURL;
           }
           localStorage.setItem("user", JSON.stringify(storedUser));
@@ -461,7 +473,7 @@
           }
           if (result.updatedUser?.photoURL) {
             if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-            profilePreview.src = `${SERVER_BASE}${result.updatedUser.photoURL}?t=${Date.now()}`;
+            profilePreview.src = resolveURL(result.updatedUser.photoURL, { cacheBust: true });
             storedUser.photoURL = result.updatedUser.photoURL;
           }
           localStorage.setItem("user", JSON.stringify(storedUser));

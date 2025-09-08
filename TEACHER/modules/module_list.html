@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,6 +13,73 @@
 
   <!-- (Optional) your page css -->
   <link rel="stylesheet" href="list.css" />
+
+  <style>
+    /* Make the preview modal feel “full screen” and let content breathe */
+    #filePreviewModal .modal-dialog {
+      max-width: 96vw;
+    }
+
+    #filePreviewModal .modal-content {
+      height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #filePreviewModal .modal-body {
+      flex: 1 1 auto;
+      padding: 0;
+      background: #f8fafc;
+      position: relative;
+    }
+
+    /* Preview area */
+    .preview-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .preview-wrap iframe,
+    .preview-wrap embed,
+    .preview-wrap object,
+    .preview-wrap img,
+    .preview-wrap video,
+    .preview-wrap audio {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .preview-fallback {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    #filePreviewFooter {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .spinner-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+    }
+  </style>
 </head>
 
 <body>
@@ -71,7 +139,8 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Course Modules</h2>
-            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.</div>
+            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.
+            </div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -138,7 +207,8 @@
   </div>
 
   <!-- Full Description Modal -->
-  <div class="modal fade" id="fullDescriptionModal" tabindex="-1" aria-labelledby="fullDescriptionLabel" aria-hidden="true">
+  <div class="modal fade" id="fullDescriptionModal" tabindex="-1" aria-labelledby="fullDescriptionLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -154,16 +224,32 @@
   </div>
 
   <!-- File Preview Modal -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="filePreviewContent" style="min-height:400px; text-align:center;"></div>
-        <div class="modal-footer">
-          <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Close</button>
+
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -206,8 +292,8 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // ---- Auth guard + header initials (initials-only) ----
-    (function initHeaderInitials(){
-      try{
+    (function initHeaderInitials() {
+      try {
         const raw = localStorage.getItem("user") || "{}";
         const stored = JSON.parse(raw);
         const u = stored.user || stored;
@@ -222,31 +308,27 @@
         const el = document.getElementById("dashboardUsername");
         if (el) {
           const initials = getInitials(u);
-          el.textContent = initials; // 👈 initials only
-          // tooltip/aria with full name/username/email
+          el.textContent = initials; // initials only
           const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
-                         || u.username
-                         || u.email
-                         || "Profile";
+            || u.username || u.email || "Profile";
           el.setAttribute("title", fullLabel);
           el.setAttribute("aria-label", fullLabel);
         }
-      }catch(e){
+      } catch (e) {
         console.error("initHeaderInitials failed:", e);
         window.location.href = "/TEACHER/login/login.html";
       }
 
-      function getInitials(u){
+      function getInitials(u) {
         const fn = (u.firstName || "").trim();
-        const ln = (u.lastName  || "").trim();
+        const ln = (u.lastName || "").trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
         const nameish = (u.username || u.displayName || u.name || "").trim();
-        if (nameish){
+        if (nameish) {
           const parts = nameish
             .replace(/[^A-Za-z0-9 _.\-]+/g, " ")
-            .split(/[\s._-]+/)
-            .filter(Boolean);
+            .split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
           return parts[0][0].toUpperCase();
         }
@@ -262,7 +344,7 @@
     const infoModal = new bootstrap.Modal(infoModalEl);
     const infoTitleEl = document.getElementById('infoModalLabel');
     const infoBodyEl = document.getElementById('infoModalBody');
-    function showInfo(title='Notice', html='', opts={}) {
+    function showInfo(title = 'Notice', html = '', opts = {}) {
       infoTitleEl.textContent = title;
       infoBodyEl.innerHTML = html;
       if (opts && typeof opts.onHidden === 'function') {
@@ -329,18 +411,18 @@
       uploadBtn.href = `/TEACHER/Modules/upload_module.html?courseId=${encodeURIComponent(courseId)}`;
     }
 
-    function escapeHtml(s=""){
-      return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    function escapeHtml(s = "") {
+      return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
     function truncateDescription(desc = "", limit = 200) {
       if (!desc) return "";
       return desc.length <= limit ? desc : (desc.substring(0, limit).trim() + "…");
     }
-    function tsToMs(ts){
+    function tsToMs(ts) {
       if (!ts) return null;
       const s = ts._seconds ?? ts.seconds;
       const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
-      if (typeof s === 'number') return (s*1000) + Math.floor(ns/1e6);
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
       if (typeof ts === 'number') return ts;
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d.getTime();
@@ -349,7 +431,7 @@
     // Header search
     const searchInput = document.querySelector('.search-box input[type="text"]');
     if (searchInput) {
-      searchInput.addEventListener('input', function(){
+      searchInput.addEventListener('input', function () {
         applyFiltersAndRender();
       });
     }
@@ -358,17 +440,17 @@
     const btnActive = document.getElementById('btnActive');
     const btnArchived = document.getElementById('btnArchived');
     const btnAll = document.getElementById('btnAll');
-    function setSegmentedActive(which){
+    function setSegmentedActive(which) {
       statusFilter = which;
-      [btnActive,btnArchived,btnAll].forEach(b=>{ b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
-      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected','true'); }
-      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
-      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected','true'); }
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
       applyFiltersAndRender();
     }
-    btnActive.addEventListener('click', ()=> setSegmentedActive('active'));
-    btnArchived.addEventListener('click', ()=> setSegmentedActive('archived'));
-    btnAll.addEventListener('click', ()=> setSegmentedActive('all'));
+    btnActive.addEventListener('click', () => setSegmentedActive('active'));
+    btnArchived.addEventListener('click', () => setSegmentedActive('archived'));
+    btnAll.addEventListener('click', () => setSegmentedActive('all'));
 
     // Sort dropdown
     document.getElementById('sortBy').addEventListener('change', e => {
@@ -376,12 +458,12 @@
       applyFiltersAndRender();
     });
 
-    function applyFiltersAndRender(){
+    function applyFiltersAndRender() {
       const q = (searchInput?.value || '').trim().toLowerCase();
 
       // search
       let list = modulesAll.filter(m => {
-        const hay = `${m.title||''} ${m.description||''} ${(m.moduleSubTitles||[]).join(' ')}`.toLowerCase();
+        const hay = `${m.title || ''} ${m.description || ''} ${(m.moduleSubTitles || []).join(' ')}`.toLowerCase();
         return !q || hay.includes(q);
       });
 
@@ -391,31 +473,148 @@
 
       // sort
       if (sortBy === 'num') {
-        list.sort((a,b)=>(Number(a.moduleNumber)||0)-(Number(b.moduleNumber)||0));
+        list.sort((a, b) => (Number(a.moduleNumber) || 0) - (Number(b.moduleNumber) || 0));
       } else if (sortBy === 'az') {
-        list.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); 
+        list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       } else if (sortBy === 'new') {
-        list.sort((a,b)=>(tsToMs(b.createdAt)||0) - (tsToMs(a.createdAt)||0));
+        list.sort((a, b) => (tsToMs(b.createdAt) || 0) - (tsToMs(a.createdAt) || 0));
       }
 
       renderModules(list);
     }
 
-    function getFilePreviewHtml(fileUrl) {
-      const ext = (fileUrl.split('.').pop() || '').toLowerCase();
-      if (["jpg","jpeg","png","gif","bmp","webp"].includes(ext)) {
-        return `<img src="${fileUrl}" alt="Preview" style="max-width:100%;max-height:70vh;" />`;
-      }
-      if (ext === "pdf") {
-        return `
-          <embed src="${fileUrl}" type="application/pdf" width="100%" height="70vh" />
-          <div class="mt-2 text-center">
-            <a href="${fileUrl}" target="_blank" class="btn btn-amber">Open PDF in New Tab</a>
-            <div class="text-muted small mt-1">If the PDF does not display, your browser may block embedded PDFs.</div>
-          </div>
+    /* ---------- SMART FILE PREVIEW ---------- */
+
+    function buildOpenBtn(url, label = 'Open in New Tab') {
+      const a = document.getElementById('openInNewTabBtn');
+      a.href = url;
+      a.textContent = label;
+    }
+
+    function showSpinner(show) {
+      const s = document.getElementById('filePreviewSpinner');
+      s.style.display = show ? 'flex' : 'none';
+    }
+
+    // Try to embed; always show “Open in new tab” as fallback
+    function renderFilePreviewInto(container, url) {
+      container.innerHTML = ''; // clear
+
+      const ext = ((url.split('?')[0].split('#')[0].split('.').pop() || '')).toLowerCase();
+      const isImg = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"].includes(ext);
+      const isPdf = ext === "pdf";
+      const isVideo = ["mp4", "webm", "ogg", "ogv", "mov"].includes(ext);
+      const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext);
+      const isText = ["txt", "csv", "log"].includes(ext);
+      const isOffice = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext);
+
+      // Loader
+      showSpinner(true);
+      const done = () => showSpinner(false);
+
+      // Helper to set a graceful fallback
+      const fallback = (note) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'preview-fallback';
+        wrap.innerHTML = `
+          <div class="text-muted mb-2">${note || 'Preview failed or is blocked by the browser.'}</div>
+          <a href="${url}" target="_blank" rel="noopener" class="btn btn-amber">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a>
         `;
+        container.innerHTML = '';
+        container.appendChild(wrap);
+        done();
+      };
+
+      // Embedding strategies
+      if (isImg) {
+        const img = new Image();
+        img.onload = done;
+        img.onerror = () => fallback('Image preview failed.');
+        img.src = url;
+        container.appendChild(img);
+        return;
       }
-      return `<a href="${fileUrl}" target="_blank" class="btn btn-amber">Download File</a>`;
+
+      if (isPdf) {
+        const iframe = document.createElement('iframe');
+        iframe.title = 'PDF preview';
+        iframe.allow = 'encrypted-media';
+        iframe.referrerPolicy = 'no-referrer';
+        iframe.onload = done;
+        iframe.onerror = () => fallback('PDF preview failed (CORS or viewer blocked).');
+        iframe.src = url; // relies on token/public access
+        container.appendChild(iframe);
+        return;
+      }
+
+      if (isVideo) {
+        const video = document.createElement('video');
+        video.controls = true;
+        video.onloadeddata = done;
+        video.onerror = () => fallback('Video preview failed.');
+        video.src = url;
+        container.appendChild(video);
+        return;
+      }
+
+      if (isAudio) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.onloadeddata = done;
+        audio.onerror = () => fallback('Audio preview failed.');
+        audio.src = url;
+        container.appendChild(audio);
+        return;
+      }
+
+      if (isText) {
+        const iframe = document.createElement('iframe');
+        iframe.onload = done;
+        iframe.onerror = () => fallback('Text preview failed.');
+        iframe.src = url;
+        container.appendChild(iframe);
+        return;
+      }
+
+      if (isOffice) {
+        // Google Viewer for Office docs
+        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const iframe = document.createElement('iframe');
+        iframe.title = 'Document preview';
+        iframe.onload = done;
+        iframe.onerror = () => fallback('Office preview failed (Google Viewer blocked or CORS).');
+        iframe.src = gview;
+        container.appendChild(iframe);
+        return;
+      }
+
+      // Last try: <object>
+      const obj = document.createElement('object');
+      obj.data = url;
+      obj.type = 'application/octet-stream';
+      obj.onload = done;
+      obj.onerror = () => fallback('This file type cannot be previewed here.');
+      container.appendChild(obj);
+
+      // Give it a short moment; if still blank, show fallback
+      setTimeout(() => {
+        // Heuristic check: if object has little size, show fallback
+        if (!obj.contentDocument) fallback();
+      }, 1500);
+    }
+
+    function getFilePreviewHtml(url) {
+      // (Kept for reuse in description modal code; not used for the main preview now)
+      return `
+        <div class="preview-fallback">
+          <div class="text-muted">Inline preview is not available for this file type.</div>
+          <a href="${url}" target="_blank" rel="noopener" class="btn btn-amber mt-2">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a>
+        </div>
+      `;
     }
 
     function renderModules(list) {
@@ -439,20 +638,32 @@
             attachmentsHtml += `<div class="attachment-item ps-2">`;
             if (att.filePath) {
               const url = FILE_BASE + att.filePath;
+              const kind = kindFromUrl(url);
+              const icon = (kind === 'youtube') ? '▶️' : (kind === 'video' ? '🎬' : '📄');
+              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video' ? 'Video' : 'File');
               attachmentsHtml += `
-                <button type="button"
-                        class="btn btn-link p-0 file-preview-btn fw-bold d-block text-decoration-none"
-                        data-file-url="${escapeHtml(url)}"
-                        data-file-name="${escapeHtml(module.title || 'File')}">
-                  📄 File (${escapeHtml(module.title)})
-                </button>
-              `;
+    <button type="button"
+            class="btn btn-link p-0 file-preview-btn fw-bold d-block text-decoration-none"
+            data-file-url="${escapeHtml(url)}"
+            data-file-name="${escapeHtml(module.title || 'File')}">
+      ${icon} ${label} (${escapeHtml(module.title)})
+    </button>
+  `;
             } else if (att.url) {
+              const url = att.url;
+              const kind = kindFromUrl(url);
+              const icon = (kind === 'youtube') ? '▶️' : (kind === 'video' ? '🎬' : '🔗');
+              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video' ? 'Video' : 'File');
               attachmentsHtml += `
-                <a href="${escapeHtml(att.url)}" target="_blank" class="fw-bold d-block text-decoration-none">
-                  🔗 Link (${escapeHtml(module.title)})
-                </a>`;
+    <button type="button"
+            class="btn btn-link p-0 file-preview-btn fw-bold d-block text-decoration-none"
+            data-file-url="${escapeHtml(url)}"
+            data-file-name="${escapeHtml(module.title || 'File')}">
+      ${icon} ${label} (${escapeHtml(module.title)})
+    </button>
+  `;
             }
+
             attachmentsHtml += `<div class="text-muted small ms-3">${fileDesc}</div></div>`;
           });
           attachmentsHtml += `</div>`;
@@ -471,7 +682,7 @@
                   ${archivedBadge}
                 </div>
                 <div class="mb-2">
-                  <span class="fw-semibold text-secondary">${escapeHtml(truncateDescription(module.description||''))}</span>
+                  <span class="fw-semibold text-secondary">${escapeHtml(truncateDescription(module.description || ''))}</span>
                 </div>
 
                 <div class="dropdown mt-2">
@@ -479,9 +690,8 @@
                     <i class="fas fa-list me-1"></i> Sub Titles
                   </button>
                   <ul class="dropdown-menu w-100 shadow-sm" style="max-height: 260px; overflow-y: auto;">
-                    ${
-                      Array.isArray(module.moduleSubTitles) && module.moduleSubTitles.length
-                        ? module.moduleSubTitles.map((sub, idx) => `
+                    ${Array.isArray(module.moduleSubTitles) && module.moduleSubTitles.length
+            ? module.moduleSubTitles.map((sub, idx) => `
                             <li>
                               <a class="dropdown-item d-flex justify-content-between align-items-center sub-lesson-link"
                                  data-module-id="${escapeHtml(module.id)}"
@@ -491,8 +701,8 @@
                                 <i class="fas fa-arrow-up-right-from-square ms-2 text-primary"></i>
                               </a>
                             </li>`).join('')
-                        : '<li><span class="dropdown-item text-muted">(No Sub Titles)</span></li>'
-                    }
+            : '<li><span class="dropdown-item text-muted">(No Sub Titles)</span></li>'
+          }
                   </ul>
                 </div>
 
@@ -506,13 +716,13 @@
                   </button>
 
                   ${archivedFlag
-                    ? `<button class="btn btn-success btn-sm unarchive-module-btn" data-id="${escapeHtml(module.id)}">
+            ? `<button class="btn btn-success btn-sm unarchive-module-btn" data-id="${escapeHtml(module.id)}">
                          <i class="fa-solid fa-rotate-left me-1"></i> Unarchive
                        </button>`
-                    : `<button class="btn btn-warning btn-sm archive-module-btn" data-id="${escapeHtml(module.id)}">
+            : `<button class="btn btn-warning btn-sm archive-module-btn" data-id="${escapeHtml(module.id)}">
                          <i class="fa-solid fa-box-archive me-1"></i> Archive
                        </button>`
-                  }
+          }
 
                   <button class="btn btn-outline-danger btn-sm delete-module-btn" data-id="${escapeHtml(module.id)}">
                     <i class="fas fa-trash"></i> Delete
@@ -531,13 +741,12 @@
     }
 
     async function loadModules() {
-      if (!courseId) { 
-        showInfo('Missing Course', 'No <strong>courseId</strong> provided.'); 
-        return; 
+      if (!courseId) {
+        showInfo('Missing Course', 'No <strong>courseId</strong> provided.');
+        return;
       }
 
       try {
-        // Always include archived so local filters can switch instantly
         const res = await fetch(`http://localhost:5000/courses/${courseId}/modules?includeArchived=true`);
         const data = await res.json();
         modulesAll = Array.isArray(data) ? data : [];
@@ -681,7 +890,7 @@
             console.error("Error deleting module:", err);
             showInfo('Server Error', 'An error occurred during delete.');
           } finally {
-            btn.disabled=false; btn.innerHTML=prevHTML;
+            btn.disabled = false; btn.innerHTML = prevHTML;
           }
         })();
         return;
@@ -703,7 +912,7 @@
             html += `
               <li class='list-group-item bg-light border-0 mb-2 rounded-3 shadow-sm px-3 py-2'>
                 <span class='fw-semibold text-dark'>${escapeHtml(sub || '(No Sub Title)')}</span><br>
-                <span class='text-secondary'>${escapeHtml(desc || '(No Description)').replace(/\n/g,'<br>')}</span>
+                <span class='text-secondary'>${escapeHtml(desc || '(No Description)').replace(/\n/g, '<br>')}</span>
               </li>`;
           });
         } else {
@@ -715,7 +924,7 @@
           html += `
             <div class='mt-3'>
               <span class='fw-bold text-primary' style='font-size:1.1rem;'>Main Description</span><br>
-              <span class='text-secondary'>${escapeHtml(module.description).replace(/\n/g,'<br>')}</span>
+              <span class='text-secondary'>${escapeHtml(module.description).replace(/\n/g, '<br>')}</span>
             </div>`;
         }
 
@@ -727,19 +936,18 @@
       if (fileBtn) {
         const fileUrl = fileBtn.dataset.fileUrl;
         const fileName = fileBtn.dataset.fileName || "File";
-        document.getElementById("filePreviewModalLabel").textContent = fileName + " - Preview";
-        const ext = (fileUrl.split('.').pop() || '').toLowerCase();
-        if (ext === "pdf") {
-          document.getElementById("filePreviewContent").innerHTML = `
-            <embed src="${fileUrl}" type="application/pdf" width="100%" height="70vh" />
-            <div class="mt-2 text-center">
-              <a href="${fileUrl}" target="_blank" class="btn btn-amber">Open PDF in New Tab</a>
-              <div class="text-muted small mt-1">If the PDF does not display, your browser may block embedded PDFs.</div>
-            </div>
-          `;
-        } else {
-          document.getElementById("filePreviewContent").innerHTML = getFilePreviewHtml(fileUrl);
-        }
+
+        // header title
+        document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
+
+        // set badge + footer info
+        const kind = kindFromUrl(fileUrl);
+        setFileInfoUI(kind, fileUrl);
+
+        // render full preview (YouTube embeds here)
+        const content = document.getElementById("filePreviewContent");
+        renderFilePreviewInto(content, fileUrl);
+
         new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
         return;
       }
@@ -753,7 +961,7 @@
       wrapper.innerHTML = `
         <div class="col-5">
           <input type="text" class="form-control sub-title-input" placeholder="Sub Title"
-                 value="${escapeHtml(subTitle).replace(/"/g,'&quot;')}">
+                 value="${escapeHtml(subTitle).replace(/"/g, '&quot;')}">
         </div>
         <div class="col-6">
           <textarea class="form-control sub-desc-input" rows="1" placeholder="Description">${escapeHtml(subDesc)}</textarea>
@@ -765,7 +973,7 @@
         </div>
       `;
       subList.appendChild(wrapper);
-      wrapper.querySelector(".remove-sub-title-desc").onclick = function(){ wrapper.remove(); };
+      wrapper.querySelector(".remove-sub-title-desc").onclick = function () { wrapper.remove(); };
     }
     document.getElementById("addSubTitleDescBtn").addEventListener("click", () => addSubTitleDescField());
 
@@ -774,9 +982,9 @@
 
       const id = document.getElementById("editModuleId").value;
       const title = document.getElementById("editModuleTitle").value.trim();
-      if (!title) { 
-        showInfo('Validation', 'Title cannot be empty.'); 
-        return; 
+      if (!title) {
+        showInfo('Validation', 'Title cannot be empty.');
+        return;
       }
 
       const subTitles = [], subDescs = [];
@@ -813,11 +1021,176 @@
       }
     });
 
-    function logoutUser(){
+    function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/TEACHER/login/login.html";
     }
   </script>
+
+  <script>
+    // --- URL kind detection ---
+    function isYouTubeUrl(url = '') {
+      try {
+        const u = new URL(url);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (h === 'youtu.be') return true;
+        if (h === 'youtube.com' || h === 'm.youtube.com' || h === 'music.youtube.com') return true;
+        if (h === 'youtube-nocookie.com') return true;
+        return false;
+      } catch { return false; }
+    }
+
+    function toYouTubeEmbed(url = '') {
+      // supports: https://youtu.be/ID?t=60  | https://www.youtube.com/watch?v=ID&start=60
+      try {
+        const u = new URL(url);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+
+        let id = '';
+        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10); // "60s" -> 60
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
+        if (!Number.isFinite(start)) start = '';
+
+        if (h === 'youtu.be') {
+          // pathname: /VIDEOID
+          id = (u.pathname || '').replace(/^\//, '').split('/')[0];
+        } else {
+          // watch?v=VIDEOID or embed/VIDEOID
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
+
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams();
+        qs.set('rel', '0');
+        if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
+      } catch { return null; }
+    }
+
+    function getExtFromUrl(url = '') {
+      const clean = String(url).split('?')[0].split('#')[0];
+      const parts = clean.split('.');
+      return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    }
+
+    function kindFromUrl(url) {
+      if (isYouTubeUrl(url)) return 'youtube';
+      const ext = getExtFromUrl(url);
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+
+    function setFileInfoUI(kind, url) {
+      const info = document.getElementById('fileInfoText');
+      const hdr = document.getElementById('filePreviewModalLabel');
+      const badgeId = 'fileKindBadge';
+
+      const labelMap = {
+        youtube: 'YouTube', video: 'Video', audio: 'Audio', image: 'Image',
+        pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File'
+      };
+      const colorMap = {
+        youtube: 'bg-danger-subtle text-danger', video: 'bg-danger-subtle text-danger',
+        audio: 'bg-secondary-subtle text-secondary', image: 'bg-success-subtle text-success',
+        pdf: 'bg-primary-subtle text-primary', text: 'bg-info-subtle text-info',
+        office: 'bg-warning-subtle text-warning', other: 'bg-dark-subtle text-dark'
+      };
+
+      let badge = document.getElementById(badgeId);
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = badgeId;
+        badge.className = 'ms-2 badge rounded-pill';
+        hdr.appendChild(badge);
+      }
+      badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
+      badge.textContent = labelMap[kind] || 'File';
+
+      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href = url;
+    }
+
+    // Renders the preview content into a container element.
+    function renderFilePreviewInto(containerEl, url) {
+      const kind = kindFromUrl(url);
+
+      // Always provide a fallback message area (optional)
+      const fallback = `
+      <div class="text-center mt-3">
+      
+      </div>
+    `;
+
+      if (kind === 'youtube') {
+        const embed = toYouTubeEmbed(url);
+        if (embed) {
+          containerEl.innerHTML = `
+          <div class="ratio ratio-16x9">
+            <iframe
+              src="${embed}"
+              title="YouTube video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"
+              style="border:0"></iframe>
+          </div>
+          ${fallback}
+        `;
+          return;
+        }
+        // If we couldn't extract an ID, just show the button:
+        containerEl.innerHTML = `
+        <div class="text-muted">Couldn’t embed this YouTube link.</div>
+        ${fallback}
+      `;
+        return;
+      }
+
+      // Non-YouTube: reuse your existing preview logic
+      const ext = getExtFromUrl(url);
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) {
+        containerEl.innerHTML = `<img src="${url}" alt="Preview" style="max-width:100%;max-height:70vh;" />${fallback}`;
+        return;
+      }
+      if (ext === 'pdf') {
+        containerEl.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="70vh" />${fallback}`;
+        return;
+      }
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) {
+        containerEl.innerHTML = `<video src="${url}" controls style="max-width:100%;max-height:70vh;"></video>${fallback}`;
+        return;
+      }
+      if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) {
+        containerEl.innerHTML = `<audio src="${url}" controls style="width:100%"></audio>${fallback}`;
+        return;
+      }
+      if (['txt', 'csv', 'log'].includes(ext)) {
+        containerEl.innerHTML = `<iframe src="${url}" style="width:100%;height:70vh;border:0"></iframe>${fallback}`;
+        return;
+      }
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        containerEl.innerHTML = `<iframe src="${gview}" style="width:100%;height:70vh;border:0"></iframe>${fallback}`;
+        return;
+      }
+      containerEl.innerHTML = `
+      <object data="${url}" type="application/octet-stream" width="100%" height="70vh">
+        <div class="text-muted">This file type cannot be previewed here.</div>
+      </object>
+      ${fallback}
+    `;
+    }
+  </script>
+
 </body>
+
 </html>

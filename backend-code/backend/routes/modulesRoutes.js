@@ -4,17 +4,18 @@ const multer = require('multer');
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { commonUpload } = require('../config/multerConfig');
+const { uploadMemory } = require('../config/multerConfig');
+const { saveBufferToStorage, buildStoragePath, safeName } = require('../services/storageService');
 
 // ---------------- File size limit (PER FILE) ----------------
-// Keep this in sync with your frontend (default 300 MB).
-// You can override via env: MODULE_FILE_LIMIT_MB=300
+// Keep this in sync with your frontend. You can override via env: MODULE_FILE_LIMIT_MB=300
 const PER_FILE_LIMIT_MB = parseInt(process.env.MODULE_FILE_LIMIT_MB || '300', 10);
 const PER_FILE_LIMIT_BYTES = PER_FILE_LIMIT_MB * 1024 * 1024;
 
-// Helpers for upload fallback behavior
-const arrayUpload = commonUpload.array('attachmentFiles');
-const singleUpload = commonUpload.single('moduleFile');
+// Helpers for upload fallback behavior (array field)
+const arrayUpload = uploadMemory.array('attachmentFiles');
+// Legacy single
+const singleUpload = uploadMemory.single('moduleFile');
 
 // ---- Upload middleware: prefer array; fallback to single on LIMIT_UNEXPECTED_FILE ----
 const flexibleUpload = (req, res, next) => {
@@ -83,7 +84,7 @@ async function setArchiveStateForModule(moduleId, archived) {
 }
 
 /* -----------------------------------------------------------
-   MODULE: UPLOAD
+   MODULE: UPLOAD (Cloud Storage + inline previews)
 ----------------------------------------------------------- */
 
 // POST /upload-module
@@ -148,7 +149,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   if (typeof moduleSubTitles === 'string') moduleSubTitles = [moduleSubTitles];
   if (typeof moduleSubDescs === 'string') moduleSubDescs = [moduleSubDescs];
 
-  const moduleData = {
+  const moduleDocRef = await firestore.collection('modules').add({
     title: moduleTitle,
     type: moduleType,
     courseId,
@@ -156,87 +157,110 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     moduleSubTitles,
     moduleSubDescs,
-    // Important: ensure the field is always present so we can reliably filter
     archived: false
-  };
+  });
 
-  // Attachments for file type
+  const moduleId = moduleDocRef.id;
+
+  // Attachments for file type (save to Cloud Storage with inline disposition)
   if (moduleType === 'file' && files && files.length > 0) {
     let lessonIdxs = req.body.attachmentLessonIdx;
     if (lessonIdxs && !Array.isArray(lessonIdxs)) lessonIdxs = [lessonIdxs];
 
     if (!lessonIdxs || lessonIdxs.length !== files.length) {
+      // Rollback module shell
+      await moduleDocRef.delete().catch(() => {});
       return res.status(400).json({
         success: false,
         message: 'Lesson index missing or mismatched for attachments.'
       });
     }
 
-    // (Safety) Double-check per-file size at this stage as well
-    const oversizeAgain = findOversizeFile(files);
-    if (oversizeAgain) {
-      const mb = (oversizeAgain.size / (1024 * 1024)).toFixed(1);
-      return res.status(400).json({
-        success: false,
-        message: `File "${oversizeAgain.originalname || oversizeAgain.filename}" is ${mb} MB, which exceeds the per-file limit of ${PER_FILE_LIMIT_MB} MB.`
+    const lessonCount = Array.isArray(moduleSubTitles) ? moduleSubTitles.length : 0;
+    const flatAttachments = [];
+
+    // Save all files to storage
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const idx = parseInt(lessonIdxs[i], 10);
+      if (Number.isNaN(idx) || idx < 0 || idx >= lessonCount) continue;
+
+      const originalName = f.originalname || f.filename || 'file';
+      const destPath = buildStoragePath('modules', moduleId, originalName);
+      const saved = await saveBufferToStorage(f.buffer, {
+        destPath,
+        contentType: f.mimetype || 'application/octet-stream',
+        metadata: { originalName },
+        filenameForDisposition: originalName, // 👈 ensures inline rendering filename
+      });
+
+      flatAttachments.push({
+        // Keep a direct token URL for embedding in your modal
+        url: saved.downloadUrl,
+        // Optional: also keep gs:// & public URL
+        gsUri: saved.gsUri,
+        publicUrl: saved.publicUrl,
+        description: (attachmentDescs && attachmentDescs[i]) ? attachmentDescs[i] : '',
+        lessonIdx: idx,
+        originalName,
+        size: f.size || null,
+        mime: f.mimetype || null
       });
     }
 
-    const lessonCount = Array.isArray(moduleSubTitles) ? moduleSubTitles.length : 0;
-    const flatAttachments = [];
-    files.forEach((file, i) => {
-      const idx = parseInt(lessonIdxs[i], 10);
-      if (!Number.isNaN(idx) && idx >= 0 && idx < lessonCount) {
-        flatAttachments.push({
-          filePath: `/uploads/modules/${file.filename}`,
-          description: (attachmentDescs && attachmentDescs[i]) ? attachmentDescs[i] : '',
-          lessonIdx: idx
-        });
-      }
-    });
-
     if (!flatAttachments.length) {
+      await moduleDocRef.delete().catch(() => {});
       return res.status(400).json({ success: false, message: 'File upload failed. Please try again.' });
     }
 
-    moduleData.attachments = flatAttachments;
+    await moduleDocRef.set({ attachments: flatAttachments }, { merge: true });
   }
 
-  // For text type, store each video URL as an attachment with lessonIdx
+  // For text type, store each video URL as an attachment and also create a tiny placeholder file
   if (moduleType === 'text' && videoUrls && Array.isArray(videoUrls)) {
     let videoDescs = req.body.videoDesc || req.body['videoDesc[]'] || req.body['videoDescs'] || [];
     if (typeof videoDescs === 'string') videoDescs = [videoDescs];
 
-    const urlAttachments = videoUrls
-      .map((url, idx) => {
-        if (url && String(url).trim()) {
-          return {
-            url: String(url).trim(),
-            videoDesc: (videoDescs && videoDescs[idx]) ? videoDescs[idx] : '',
-            lessonIdx: idx
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    const urlAttachments = [];
+    for (let i = 0; i < videoUrls.length; i++) {
+      const url = String(videoUrls[i] || '').trim();
+      if (!url) continue;
+
+      // Optional: create a tiny .txt object representing this link so you can still preview inline
+      const pretty = `VIDEO_URL_${i + 1}.txt`;
+      const placeholderPath = buildStoragePath('modules', moduleId, pretty);
+      const placeholderBody = Buffer.from(`Video URL:\n${url}\n`);
+      const saved = await saveBufferToStorage(placeholderBody, {
+        destPath: placeholderPath,
+        contentType: 'text/plain',
+        metadata: { originalName: pretty },
+        filenameForDisposition: pretty,
+      });
+
+      urlAttachments.push({
+        url,                              // <— the real external link for new tab
+        previewUrl: saved.downloadUrl,    // <— token URL you can embed in modal as inline text
+        videoDesc: (videoDescs && videoDescs[i]) ? videoDescs[i] : '',
+        lessonIdx: i
+      });
+    }
 
     if (!urlAttachments.length) {
+      await moduleDocRef.delete().catch(() => {});
       return res.status(400).json({
         success: false,
         message: 'URL upload failed. Please provide at least one valid video URL.'
       });
     }
 
-    moduleData.attachments = urlAttachments;
+    await moduleDocRef.set({ attachments: urlAttachments }, { merge: true });
   }
-
-  // Save to Firestore
-  await firestore.collection('modules').add(moduleData);
 
   const processingTime = Date.now() - startTime;
   return res.status(200).json({
     success: true,
     message: 'Module uploaded successfully.',
+    moduleId,
     moduleNumber: nextModuleNumber,
     processingTime
   });
@@ -285,7 +309,6 @@ router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const includeArchived = String(req.query.includeArchived).toLowerCase() === 'true';
 
-  // We fetch all for the course, then filter in-memory to avoid Firestore inequality+orderBy constraints
   const snapshot = await firestore
     .collection('modules')
     .where('courseId', '==', id)
@@ -295,7 +318,6 @@ router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
   let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
   if (!includeArchived) {
-    // keep if archived is not true (missing -> treated as active)
     list = list.filter(m => m.archived !== true);
   }
 
