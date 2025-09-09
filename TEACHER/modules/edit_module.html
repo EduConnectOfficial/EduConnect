@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Edit Module • EduConnect</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+
+  <!-- Page theme -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+
+  <style>
+    :root{
+      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
+      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--brand-accent-1:#FF6A00;--brand-accent-2:#B03C10;
+      --radius:14px;
+    }
+    html,body{background:var(--bg);color:var(--text)}
+    .brand{background:linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+    .muted{color:#6b7280}
+    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;padding:12px 16px}
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .btn-amber{ background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2)); color:#fff; border:none; }
+    .btn-amber:hover{ filter:brightness(1.05); color:#fff; }
+    .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
+
+    /* Full-width, gapless controls */
+    .ctrl-row{ --bs-gutter-x:0; }
+    .ctrl-row .col-left{ padding-right:.5rem!important; }
+    .ctrl-row .col-right{ padding-left:.5rem!important; display:flex; gap:.5rem; }
+    @media (max-width:768px){
+      .ctrl-row .col-left{ padding-right:0!important; margin-bottom:.5rem; }
+      .ctrl-row .col-right{ padding-left:0!important; }
+    }
+
+    /* File list (badges, chips) */
+    .file-list{list-style:none;padding-left:0;margin:0}
+    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    .file-item + .file-item{margin-top:.5rem}
+    .file-name{flex:1 1 auto;min-width:0}
+    .file-name a,.file-name button{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
+    .btn-icon{padding:.375rem .5rem}
+    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
+    .badge-file{background:#eef2ff;border-color:#c7d2fe}
+    .badge-link{background:#ecfeff;border-color:#a5f3fc}
+    .badge-stage{background:#dcfce7;border-color:#86efac}
+    .badge-removal{background:#fee2e2;border-color:#fecaca}
+    .name-removed{ text-decoration: line-through; color:#94a3b8; }
+
+    /* Lesson page card */
+    .lesson-page.card{border:1px solid var(--border)}
+    .step-dots{display:flex;gap:6px;align-items:center}
+    .step-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
+    .step-dots .dot.active{background:#111827}
+
+    .pager-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid var(--border);font-size:.8rem;background:#fff;color:#374151}
+
+    /* Preview modal */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
+    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
+    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
+    }
+    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
+    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect" class="logo-header"/>
+        <div class="search-box position-relative" style="max-width:520px;">
+          <input type="text" class="form-control" disabled placeholder="Edit Module"/>
+          <i class="bi bi-pencil-square position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="bi bi-person-circle fs-2"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <section class="content container-fluid p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="page-title brand mb-0">Edit Module</h1>
+          <div class="d-flex flex-wrap gap-2">
+            <button id="btnBack" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</button>
+            <button id="btnArchive" class="btn btn-outline-warning"><i class="bi bi-archive"></i> Archive</button>
+            <button id="btnUnarchive" class="btn btn-outline-success d-none"><i class="bi bi-arrow-counterclockwise"></i> Unarchive</button>
+            <button id="btnDelete" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+            <button id="btnSave" class="btn btn-amber">
+              <span class="save-text">Save Changes</span>
+              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- LEFT -->
+          <div class="col-12 col-lg-8">
+            <!-- Details -->
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-pencil-square"></i> Details</h2>
+              </div>
+              <div class="p-3">
+                <div id="formError" class="text-danger mb-2" style="min-height:1rem;"></div>
+
+                <div class="row g-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Title</label>
+                    <input type="text" id="titleInput" class="form-control" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Attachment Type</label>
+                    <select id="moduleType" class="form-select" disabled>
+                      <option value="file">File</option>
+                      <option value="text">Video (URL)</option>
+                      <option value="textonly">Text Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                <input type="hidden" id="descHidden" value=" " />
+
+                <!-- Lessons header / pager controls -->
+                <div class="mt-3 d-flex justify-content-between align-items-center">
+                  <label class="form-label mb-0 fw-semibold">Lessons (Sub Title, Content, and Attachment/Video URL)</label>
+                  <div class="lesson-toolbar d-flex align-items-center gap-2 flex-wrap">
+                    <span class="pager-chip"><span id="pageNow">1</span>/<span id="pageTotal">1</span></span>
+                    <div id="stepDots" class="step-dots" aria-hidden="true"><span class="dot active"></span></div>
+                    <div class="btn-group">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="prevBtn">Prev</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="nextBtn">Next</button>
+                    </div>
+                    <button type="button" class="btn btn-amber btn-sm" id="addLessonBtn">Add Lesson</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeLessonBtn">Remove</button>
+                  </div>
+                </div>
+
+                <!-- Lessons container (paged) -->
+                <div id="lessonPager" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT -->
+          <div class="col-12 col-lg-4">
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-info-circle"></i> Meta</h2>
+              </div>
+              <div class="p-3">
+                <div class="mb-2"><span class="muted">Course:</span> <span id="metaCourse">—</span></div>
+                <div class="mb-2"><span class="muted">Module #:</span> <span id="metaNumber">—</span></div>
+                <div class="mb-2"><span class="muted">Created:</span> <span id="metaCreated">—</span></div>
+                <div class="mb-2"><span class="muted">Last Updated:</span> <span id="metaUpdated">—</span></div>
+                <div class="mb-2"><span class="muted">Status:</span> <span id="metaStatus" class="badge text-bg-success">Active</span></div>
+              </div>
+            </div>
+
+            <div class="ui-card">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-lightbulb"></i> Tips</h2>
+              </div>
+              <div class="p-3">
+                <ul class="mb-0">
+                  <li>Use <em>Archive</em> to hide the module from students.</li>
+                  <li>Preview files (including staged ones) to confirm compatibility.</li>
+                  <li>Files are shown only for <strong>File</strong> type; link URLs only for <strong>Video (URL)</strong>.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto d-flex gap-2">
+            <!-- Shown only when previewing pre-upload selections -->
+            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+              <i class="bi bi-cloud-plus me-1"></i> Stage selected
+            </button>
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info / Confirm -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="infoTitle">Notice</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="infoBody">—</div>
+      <div class="modal-footer"><button class="btn btn-amber" data-bs-dismiss="modal">OK</button></div>
+    </div></div>
+  </div>
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header bg-danger text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="confirmBody">Are you sure?</div>
+      <div class="modal-footer">
+        <button class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmYesBtn" class="btn btn-danger">Yes</button>
+      </div>
+    </div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    /* -------------------- CONFIG & SIDEBAR -------------------- */
+    const API = "http://localhost:5000";
+    const FILE_LIMIT_MB = 300;
+    const FILE_LIMIT_BYTES = FILE_LIMIT_MB * 1024 * 1024;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(r => r.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sb = document.querySelector(".sidebar"), db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        });
+    });
+
+    /* -------------------- AUTH + HEADER INITIALS -------------------- */
+    (function initHeaderInitials(){
+      try{
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
+        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
+        window.currentUser = u;
+
+        const initials = (function(u){
+          const fn=(u.firstName||'').trim(), ln=(u.lastName||'').trim();
+          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
+          const nameish=(u.username||u.displayName||u.name||'').trim();
+          if(nameish){ const parts=nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ').split(/[\s._-]+/).filter(Boolean);
+            if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase(); return parts[0][0].toUpperCase(); }
+          const em=(u.email||'').trim(); return em?em[0].toUpperCase():'U';
+        })(u);
+
+        window.addEventListener("DOMContentLoaded", ()=>{
+          const el=document.getElementById("Username"); if(!el) return; el.textContent=initials;
+          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Profile';
+          el.setAttribute('title', full); el.setAttribute('aria-label', full);
+        });
+      }catch(e){ console.error(e); window.location.href="/TEACHER/login/login.html"; }
+    })();
+
+    /* -------------------- HELPERS -------------------- */
+    const qs = s => document.querySelector(s);
+    const create = (tag, cls) => { const el = document.createElement(tag); if (cls) el.className = cls; return el; };
+    const url = new URL(location.href);
+    const moduleId = url.searchParams.get('moduleId') || '';
+    const backCourseId = url.searchParams.get('courseId') || '';
+
+    function showInfo(title, body){ document.getElementById('infoTitle').textContent=title; document.getElementById('infoBody').innerHTML=body; bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show(); }
+    function confirmDanger(title, body){ return new Promise(resolve=>{ document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmBody').innerHTML=body; const btn=document.getElementById('confirmYesBtn'); const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')); const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); }; const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); }; btn.addEventListener('click',onYes,{once:true}); document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true}); modal.show(); }); }
+    function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0; if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime(); }
+    function msToLocal(ms){ return ms ? new Date(ms).toLocaleString() : '—'; }
+    const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
+
+    // Preview helpers
+    function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start=''; if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];} else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; } if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start) qs.set('start', String(start)); return `${base}?${qs.toString()}`; }catch{return null;} }
+    function kindFrom({url='', name='', mime=''}) {
+      const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
+      if (isYouTubeUrl(url)) return 'youtube';
+      if ((mime||'').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+      if ((mime||'').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if ((mime||'').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if ((mime||'').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+    function extractStoragePath(obj = {}) {
+      if (obj.storagePath) return String(obj.storagePath);
+      if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
+        const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
+      }
+      if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
+        try { const u=new URL(obj.publicUrl); const parts=u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
+      }
+      if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
+        try { const u=new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
+      }
+      return '';
+    }
+    function pickHref(obj = {}) {
+      return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
+             (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+             (obj.filePath ? API + String(obj.filePath) : '');
+    }
+    function pickName(obj = {}) {
+      if (obj.__stagedName) return obj.__stagedName;
+      const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
+      const fromUrl  = (obj.url || '').split('/').pop();
+      return obj.fileName || obj.originalName || fromPath || fromUrl || 'file';
+    }
+
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={youtube:'YouTube',video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function renderFilePreviewInto(container, {url, name='', mime='', isStaged=false}){
+      container.innerHTML=''; showSpinner(true);
+      const done=()=>showSpinner(false);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+      const kind = kindFrom({url, name, mime});
+      if(kind==='youtube'){ const embed=toYouTubeEmbed(url); if(embed){container.innerHTML=`<div class="ratio ratio-16x9"><iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`; done(); return;} return fallback('Couldn’t embed this YouTube link.'); }
+      if(kind==='image'){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(kind==='pdf'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='video'){ const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=()=>fallback('Video preview failed.'); v.src=url; container.appendChild(v); return; }
+      if(kind==='audio'){ const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=()=>fallback('Audio preview failed.'); a.src=url; container.appendChild(a); return; }
+      if(kind==='text'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='office' && url.startsWith('blob:')){ return fallback('Office documents cannot be previewed until they’re uploaded.'); }
+      if(kind==='office'){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed.'); iframe.src=gview; container.appendChild(iframe); return; }
+      const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+
+    let currentPreviewRevoke = null;
+    let previewStageCtx = null; // { idx, files: File[] }
+    const stageFromPreviewBtn = document.getElementById('stageFromPreviewBtn');
+    function showStageBtn(show, label){
+      stageFromPreviewBtn.classList.toggle('d-none', !show);
+      if (label) stageFromPreviewBtn.innerHTML = `<i class="bi bi-cloud-plus me-1"></i> ${label}`;
+    }
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', ()=>{
+      if (typeof currentPreviewRevoke === 'function') { try { currentPreviewRevoke(); } catch {} }
+      currentPreviewRevoke = null; previewStageCtx = null; showStageBtn(false);
+    });
+
+    // ✅ Stage directly from preview (with size validation + clearing selector)
+    stageFromPreviewBtn.addEventListener('click', ()=>{
+      if (!previewStageCtx) return;
+      const { idx, files } = previewStageCtx;
+      // size check
+      const oversize = (files||[]).find(f => typeof f.size === 'number' && f.size > FILE_LIMIT_BYTES);
+      if (oversize) {
+        showInfo('File too large', `❌ <strong>${oversize.name}</strong> is ${formatKB(oversize.size)}, exceeding the per-file limit of <strong>${FILE_LIMIT_MB} MB</strong>.`);
+        return;
+      }
+      files.forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); stagedByLesson[idx].addFiles.push(f); });
+      // clear the file input for this lesson so we don't double-stage later
+      const input = document.querySelector(`.lesson-page[data-index="${idx}"] .lesson-file-input`);
+      if (input) input.value = '';
+      markDirty(); renderLesson(idx);
+      bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+      showInfo('Staged','File(s) will be uploaded on Save.');
+    });
+
+    /* -------------------- Dirty guard -------------------- */
+    let __dirty=false;
+    function markDirty(){ __dirty = true; }
+    function clearDirty(){ __dirty = false; }
+    function isDirty(){
+      if (__dirty) return true;
+      for (const k in stagedByLesson) {
+        const s = stagedByLesson[k];
+        if (s.addFiles.length || s.addLinks.length || s.removeIds.size) return true;
+      }
+      return false;
+    }
+    window.addEventListener('beforeunload', (e)=>{ if(!isDirty()) return; e.preventDefault(); e.returnValue=''; });
+
+    /* -------------------- Pager + Lesson builder -------------------- */
+    const pager = { cur:0, pages:[] };
+    const attachmentsByLesson = {}; // idx -> existing items[]
+    const stagedByLesson = {};      // idx -> { addFiles:[], addLinks:[], removeIds:Set }
+
+    function ensureLessonState(idx){
+      if (!attachmentsByLesson[idx]) attachmentsByLesson[idx] = [];
+      if (!stagedByLesson[idx]) stagedByLesson[idx] = { addFiles:[], addLinks:[], removeIds:new Set() };
+    }
+
+    function badgeForType(t){
+      if (t==='link') return `<span class="badge-soft badge-link"><i class="bi bi-link-45deg"></i> Link</span>`;
+      return `<span class="badge-soft badge-file"><i class="bi bi-file-earmark"></i> File</span>`;
+    }
+    function chip(text, cls=''){ return `<span class="badge-soft ${cls}" style="font-size:.72rem">${text}</span>`; }
+
+    function buildLessonPage(idx){
+      ensureLessonState(idx);
+
+      const wrap = create('div','lesson-page card card-body mb-3'); wrap.dataset.index=idx;
+
+      // Sub Title + Content
+      const sub = create('input','form-control mb-2 lesson-subtitle'); sub.placeholder='Lesson Sub Title (optional)';
+      const cont = create('textarea','form-control mb-3 lesson-content'); cont.rows=3; cont.placeholder='Lesson Content...';
+
+      // mark dirty when typing in lessons
+      sub.addEventListener('input', markDirty);
+      cont.addEventListener('input', markDirty);
+
+      // Upload file(s) row (File type only)
+      const fileRow = create('div','row align-items-end ctrl-row mb-2 file-row');
+      fileRow.innerHTML = `
+        <div class="col-12 col-md-8 col-left">
+          <label class="form-label">Upload file(s)</label>
+          <input type="file" class="form-control lesson-file-input" multiple>
+          <div class="form-text">You can select multiple files. Each up to your configured limit.</div>
+        </div>
+        <div class="col-12 col-md-4 col-right">
+          <button class="btn btn-outline-secondary w-100 w-md-auto btn-prev-files"><i class="bi bi-eye"></i> Preview Selected</button>
+          <button class="btn btn-outline-primary w-100 w-md-auto btn-stage-files"><i class="bi bi-cloud-plus"></i> Stage Files</button>
+        </div>
+      `;
+
+      // Add a link row (Video URL only)
+      const linkRow = create('div','row align-items-end ctrl-row mb-2 link-row');
+      linkRow.innerHTML = `
+        <div class="col-12 col-md-8 col-left">
+          <label class="form-label">Add a link</label>
+          <input type="url" class="form-control lesson-link-input" placeholder="https://…">
+          <div class="form-text">Paste a public URL (Docs, YouTube, etc.).</div>
+        </div>
+        <div class="col-12 col-md-4 col-right">
+          <button class="btn btn-outline-secondary w-100 w-md-auto btn-prev-link"><i class="bi bi-eye"></i> Preview</button>
+          <button class="btn btn-outline-secondary w-100 w-md-auto btn-stage-link"><i class="bi bi-link-45deg"></i> Stage Link</button>
+        </div>
+      `;
+
+      // Attachments list
+      const list = create('ul','file-list'); list.id = `filesList_${idx}`;
+
+      // -------- Events (file) --------
+      const fileInput = fileRow.querySelector('.lesson-file-input');
+
+      // 🔹 Auto open pre-upload preview on selection (with stage button)
+      fileInput.addEventListener('change', ()=>{
+        markDirty();
+        const fs = fileInput.files;
+        if (!fs || !fs.length) return;
+        const first = fs[0];
+        const blobUrl = URL.createObjectURL(first);
+        currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+        const label = fs.length === 1 ? 'Stage selected file' : `Stage selected (${fs.length})`;
+        openPreviewModalWithMeta({
+          url: blobUrl,
+          title: first.name,
+          mime: first.type || '',
+          isStaged: true,
+          stageContext: { idx, files: Array.from(fs) },
+          stageLabel: label
+        });
+      });
+
+      // Manual preview button (still available)
+      fileRow.querySelector('.btn-prev-files').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const fs = fileInput.files;
+        if (!fs || !fs.length) { showInfo('Nothing selected','Choose one or more files first.'); return; }
+        const f = fs[0]; const blobUrl=URL.createObjectURL(f); currentPreviewRevoke=()=>URL.revokeObjectURL(blobUrl);
+        const label = fs.length === 1 ? 'Stage selected file' : `Stage selected (${fs.length})`;
+        openPreviewModalWithMeta({url:blobUrl,title:f.name,mime:f.type||'',isStaged:true, stageContext:{ idx, files:Array.from(fs) }, stageLabel: label});
+      });
+
+      // Stage files from row button
+      fileRow.querySelector('.btn-stage-files').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const fs = fileInput.files;
+        if (!fs || !fs.length) { showInfo('Nothing to Stage','Please choose one or more files.'); return; }
+        let oversize = null;
+        Array.from(fs).forEach(f=>{ if (f.size > FILE_LIMIT_BYTES) oversize = {name:f.name, size:f.size}; });
+        if (oversize) {
+          showInfo('File too large', `❌ <strong>${oversize.name}</strong> is ${formatKB(oversize.size)}, exceeding the per-file limit of <strong>${FILE_LIMIT_MB} MB</strong>.`);
+          return;
+        }
+        Array.from(fs).forEach(f=>{ f.__uid=Math.random().toString(36).slice(2,10); stagedByLesson[idx].addFiles.push(f); });
+        fileInput.value='';
+        markDirty(); renderLesson(idx); showInfo('Staged','File(s) will be uploaded on Save.');
+      });
+
+      // -------- Events (link) --------
+      linkRow.querySelector('.btn-prev-link').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const val = (linkRow.querySelector('.lesson-link-input').value||'').trim();
+        if (!val) { showInfo('No link entered','Paste a URL first.'); return; }
+        openPreviewModalWithMeta({url:val,title:val,mime:''});
+      });
+      linkRow.querySelector('.btn-stage-link').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const val = (linkRow.querySelector('.lesson-link-input').value||'').trim();
+        if (!val) { showInfo('No Link','Please paste a URL.'); return; }
+        stagedByLesson[idx].addLinks.push(val);
+        linkRow.querySelector('.lesson-link-input').value='';
+        markDirty(); renderLesson(idx); showInfo('Staged','Link will be added on Save.');
+      });
+
+      // Assemble
+      wrap.appendChild(sub);
+      wrap.appendChild(cont);
+      wrap.appendChild(fileRow);
+      wrap.appendChild(linkRow);
+      wrap.appendChild(list);
+
+      // Flip UI based on module type
+      function syncLessonTypeUI(){
+        const type = document.getElementById('moduleType').value;
+        if (type === 'file'){ fileRow.style.display=''; linkRow.style.display='none'; }
+        else if (type === 'text'){ fileRow.style.display='none'; linkRow.style.display=''; }
+        else { fileRow.style.display='none'; linkRow.style.display='none'; }
+      }
+      syncLessonTypeUI();
+
+      wrap.syncLessonTypeUI = syncLessonTypeUI; // expose for global toggles
+      return wrap;
+    }
+
+    function renderLesson(idx){
+      ensureLessonState(idx);
+      const list = document.getElementById(`filesList_${idx}`);
+      const cur = attachmentsByLesson[idx];
+      const staged = stagedByLesson[idx];
+
+      const view = [];
+      // existing (with pending removal flag)
+      for (const a of (cur||[])) {
+        const id = String(a.id||'');
+        const isRemoved = id && staged.removeIds.has(id);
+        view.push({ ...a, __pendingRemoval: !!isRemoved });
+      }
+      // staged files
+      for (const f of (staged.addFiles||[])){
+        view.push({ id:`__staged_file_${f.__uid}`, type:'file', __staged:true, __stagedName:f.name });
+      }
+      // staged links
+      for (const link of (staged.addLinks||[])){
+        view.push({ id:`__staged_link_${btoa(link).slice(0,12)}`, type:'link', url:link, __staged:true, __stagedName:link });
+      }
+
+      if (!view.length) { list.innerHTML=`<li class="text-muted">No files or links.</li>`; return; }
+
+      list.innerHTML = view.map(att=>{
+        let baseName = pickName(att);
+        let nameHtml = `<a href="javascript:void(0)" data-act="preview">${baseName}</a>`;
+        if (att.__pendingRemoval) nameHtml = `<span class="name-removed">${baseName}</span>`;
+        let stagedChip = att.__staged ? chip('Staged','badge-stage') : '';
+        let removalChip = att.__pendingRemoval ? chip('Pending removal','badge-removal') : '';
+
+        let controls = `
+          <button class="btn btn-outline-secondary btn-sm btn-icon" data-act="preview" title="Preview"><i class="bi bi-eye"></i></button>`;
+        if (!att.__staged && att.type !== 'link') {
+          controls += `
+            <label class="btn btn-outline-secondary btn-sm btn-icon mb-0" title="Stage replace">
+              <i class="bi bi-arrow-repeat"></i>
+              <input type="file" class="d-none input-replace" data-id="${att.id}">
+            </label>`;
+        }
+        if (!att.__staged) {
+          controls += `<button class="btn btn-outline-danger btn-sm btn-icon btn-stage-delete" data-id="${att.id}" title="Stage delete"><i class="bi bi-trash"></i></button>`;
+        } else {
+          controls += `<button class="btn btn-outline-danger btn-sm btn-icon btn-unstage" data-id="${att.id}" title="Remove from staging"><i class="bi bi-x-lg"></i></button>`;
+        }
+
+        return `
+          <li class="file-item" data-id="${att.id}" data-type="${att.type}">
+            ${badgeForType(att.type)}
+            <div class="file-name">${nameHtml}</div>
+            ${stagedChip}${removalChip}
+            <div class="d-flex align-items-center gap-1">${controls}</div>
+          </li>`;
+      }).join('');
+
+      // delegates
+      list.querySelectorAll('[data-act="preview"]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          const li = el.closest('.file-item'); if(!li) return;
+          const id = li.getAttribute('data-id');
+          const item = (function(){
+            const found = (attachmentsByLesson[idx]||[]).find(a=>String(a.id)===String(id));
+            if (found) return found;
+            const st = stagedByLesson[idx];
+            if (id.startsWith('__staged_file_')) {
+              const f = st.addFiles.find(f=>`__staged_file_${f.__uid}`===id);
+              if (!f) return null;
+              const blobUrl=URL.createObjectURL(f); currentPreviewRevoke=()=>URL.revokeObjectURL(blobUrl);
+              // keep stage context to allow re-stage (unlikely needed, but harmless)
+              openPreviewModalWithMeta({url:blobUrl,title:f.name,mime:f.type||'',isStaged:true, stageContext:{ idx, files:[f] }, stageLabel:'Stage selected file'});
+              return null;
+            }
+            if (id.startsWith('__staged_link_')) {
+              const link = st.addLinks.find(l=>`__staged_link_${btoa(l).slice(0,12)}`===id);
+              if (link) openPreviewModalWithMeta({url:link,title:link,mime:'',isStaged:true});
+              return null;
+            }
+            return null;
+          })();
+          if (item){
+            const direct = pickHref(item);
+            const sp = extractStoragePath(item);
+            if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
+              openPreviewModalWithMeta({url:direct,title:pickName(item),mime:item.mime||''}); return;
+            }
+            if (!sp){ if (direct) openPreviewModalWithMeta({url:direct,title:pickName(item),mime:item.mime||''}); return; }
+            fetch(`${API}/api/attachments/signed?path=${encodeURIComponent(sp)}`)
+              .then(r=>r.json().catch(()=>null).then(js=>({ok:r.ok, js})))
+              .then(({ok,js})=>{
+                if(ok && js?.success && js?.url) openPreviewModalWithMeta({url:js.url,title:pickName(item),mime:item.mime||''});
+                else if (direct) openPreviewModalWithMeta({url:direct,title:pickName(item),mime:item.mime||''});
+              })
+              .catch(()=>{ if (direct) openPreviewModalWithMeta({url:direct,title:pickName(item),mime:item.mime||''}); });
+          }
+        });
+      });
+
+      list.querySelectorAll('.btn-stage-delete').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-id');
+          if (id) { stagedByLesson[idx].removeIds.add(String(id)); markDirty(); renderLesson(idx); }
+        });
+      });
+      list.querySelectorAll('.btn-unstage').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-id');
+          if (id.startsWith('__staged_file_')) {
+            stagedByLesson[idx].addFiles = stagedByLesson[idx].addFiles.filter(f=>`__staged_file_${f.__uid}`!==id);
+          } else if (id.startsWith('__staged_link_')) {
+            stagedByLesson[idx].addLinks = stagedByLesson[idx].addLinks.filter(l=>`__staged_link_${btoa(l).slice(0,12)}`!==id);
+          }
+          markDirty(); renderLesson(idx);
+        });
+      });
+      list.querySelectorAll('.input-replace').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const file = inp.files && inp.files[0]; if (!file) return;
+          if (file.size > FILE_LIMIT_BYTES) { showInfo('File too large', `❌ Selected file exceeds ${FILE_LIMIT_MB} MB.`); return; }
+          const replaceId = inp.getAttribute('data-id');
+          const f = file; f.__uid=Math.random().toString(36).slice(2,10);
+          stagedByLesson[idx].addFiles.push(f);
+          if (replaceId) stagedByLesson[idx].removeIds.add(String(replaceId));
+          markDirty(); renderLesson(idx);
+
+          const blobUrl=URL.createObjectURL(file); currentPreviewRevoke=()=>URL.revokeObjectURL(blobUrl);
+          openPreviewModalWithMeta({url:blobUrl,title:file.name,mime:file.type||'',isStaged:true, stageContext:{ idx, files:[f] }, stageLabel:'Stage selected file'});
+        });
+      });
+    }
+
+    function addLesson(goToNew=true){
+      const idx = pager.pages.length;
+      const page = buildLessonPage(idx);
+      pager.pages.push(page);
+      document.getElementById('lessonPager').appendChild(page);
+      ensureLessonState(idx);
+      if (goToNew) {
+        pager.cur = pager.pages.length - 1;
+        renderPager();
+        setTimeout(() => { page.scrollIntoView({behavior:'smooth',block:'center'}); }, 120);
+      } else {
+        renderPager();
+      }
+      renderLesson(idx);
+      markDirty();
+    }
+    function removeCurrentLesson(){
+      if (pager.pages.length <= 1) return;
+      const idx = pager.cur;
+      pager.pages[idx].remove();
+      pager.pages.splice(idx,1);
+      // reindex state
+      const oldAttachments = {...attachmentsByLesson};
+      const oldStaged = {...stagedByLesson};
+      for (const k in attachmentsByLesson) delete attachmentsByLesson[k];
+      for (const k in stagedByLesson) delete stagedByLesson[k];
+      pager.pages.forEach((p,i)=>{ p.dataset.index=i; attachmentsByLesson[i]=oldAttachments[i>=idx?i+1:i]||[]; stagedByLesson[i]=oldStaged[i>=idx?i+1:i]||{addFiles:[],addLinks:[],removeIds:new Set()}; });
+      if (pager.cur >= pager.pages.length) pager.cur = pager.pages.length - 1;
+      renderPager();
+      pager.pages.forEach((_,i)=>renderLesson(i));
+      markDirty();
+    }
+    function renderPager(){
+      pager.pages.forEach((p,i)=>{
+        p.classList.toggle('active', i===pager.cur);
+        p.style.display = (i===pager.cur) ? '' : 'none';
+      });
+      document.getElementById('pageNow').textContent = pager.cur + 1;
+      document.getElementById('pageTotal').textContent = pager.pages.length;
+
+      // Paging dots with click navigation
+      const dots = document.getElementById('stepDots'); dots.innerHTML='';
+      for (let i=0;i<pager.pages.length;i++){
+        const d = create('span','dot'+(i===pager.cur?' active':'')); d.style.cursor = 'pointer'; d.title = `Go to lesson ${i+1}`;
+        d.addEventListener('click',()=>{ pager.cur = i; renderPager(); });
+        dots.appendChild(d);
+      }
+      pager.pages.forEach(p=>p.syncLessonTypeUI && p.syncLessonTypeUI());
+    }
+    document.getElementById('addLessonBtn').addEventListener('click', ()=>addLesson(true));
+    document.getElementById('removeLessonBtn').addEventListener('click', removeCurrentLesson);
+    document.getElementById('prevBtn').addEventListener('click', ()=>{ if(pager.cur>0){ pager.cur--; renderPager(); }});
+    document.getElementById('nextBtn').addEventListener('click', ()=>{ if(pager.cur<pager.pages.length-1){ pager.cur++; renderPager(); }});
+    document.getElementById('moduleType').addEventListener('change', ()=>{ renderPager(); });
+
+    /* -------------------- Load module -------------------- */
+    let initialModule=null;
+
+    async function loadCourseTitle(cid){
+      if (!cid) return;
+      try{
+        const r = await fetch(`${API}/courses/${encodeURIComponent(cid)}`);
+        const js = await r.json().catch(()=>null);
+        if (js && js.title) document.getElementById('metaCourse').textContent = js.title;
+      }catch{}
+    }
+    async function loadModule(){
+      if (!moduleId){ showInfo('Missing ID','No <code>moduleId</code> provided.'); return; }
+      try{
+        const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache:'no-store' });
+        const m = await res.json();
+        if (!res.ok || m.success===false) throw new Error(m.message || 'Failed to load module');
+
+        initialModule = m;
+        document.querySelector('.page-title').textContent = `Edit Module ${m.moduleNumber ? `#${m.moduleNumber} – ` : ''}${m.title || ''}`;
+        document.getElementById('metaNumber').textContent  = m.moduleNumber ?? '—';
+        document.getElementById('metaCreated').textContent = msToLocal(tsToMs(m.createdAt));
+        document.getElementById('metaUpdated').textContent = msToLocal(tsToMs(m.updatedAt));
+        updateStatusBadge(m.archived === true);
+
+        document.getElementById('titleInput').value = m.title || '';
+        document.getElementById('moduleType').value = (m.type==='textonly'?'textonly':m.type||'file');
+
+        // Build pages
+        const subs = Array.isArray(m.moduleSubTitles) ? m.moduleSubTitles : [];
+        const descs= Array.isArray(m.moduleSubDescs) ? m.moduleSubDescs : [];
+        const maxLessonsFromAttachments = Math.max(0, ...(Array.isArray(m.attachments)?m.attachments.map(a=>(a.lessonIdx??0)+1):[0]));
+        const max = Math.max(subs.length, descs.length, maxLessonsFromAttachments, 1);
+        document.getElementById('lessonPager').innerHTML=''; pager.pages=[];
+
+        for (let i=0;i<max;i++) addLesson(false);
+        pager.cur=0; renderPager();
+
+        // Fill titles/contents
+        pager.pages.forEach((p,i)=>{
+          p.querySelector('.lesson-subtitle').value = subs[i] || '';
+          p.querySelector('.lesson-content').value  = descs[i] || '';
+        });
+
+        // Split existing attachments by lesson
+        for (let i=0;i<max;i++){ ensureLessonState(i); attachmentsByLesson[i]=[]; stagedByLesson[i]={addFiles:[],addLinks:[],removeIds:new Set()}; }
+        if (Array.isArray(m.attachments)){
+          m.attachments.forEach(att=>{
+            const idx = Number(att.lessonIdx ?? 0);
+            ensureLessonState(idx);
+            attachmentsByLesson[idx].push(att);
+          });
+        }
+        pager.pages.forEach((_,i)=>renderLesson(i));
+
+        await loadCourseTitle(m.courseId || '');
+        clearDirty();
+      }catch(e){ console.error(e); showInfo('Error', e.message || 'Failed to load module.'); }
+    }
+
+    function updateStatusBadge(archived){
+      const metaStatus = document.getElementById('metaStatus');
+      metaStatus.textContent = archived ? 'Archived' : 'Active';
+      metaStatus.className = `badge ${archived?'text-bg-secondary':'text-bg-success'}`;
+      document.getElementById('btnArchive').classList.toggle('d-none', archived);
+      document.getElementById('btnUnarchive').classList.toggle('d-none', !archived);
+    }
+
+    /* -------------------- Save / Archive / Delete -------------------- */
+
+    function collectLessonsForSave(){
+      const subs=[], descs=[];
+      pager.pages.forEach(p=>{
+        subs.push(p.querySelector('.lesson-subtitle').value.trim());
+        descs.push(p.querySelector('.lesson-content').value.trim());
+      });
+
+      function hasAny(i){
+        if (subs[i] || descs[i]) return true;
+        const cur = attachmentsByLesson[i]||[];
+        const st  = stagedByLesson[i]||{addFiles:[],addLinks:[]};
+        return cur.length>0 || st.addFiles.length>0 || st.addLinks.length>0;
+      }
+      let last=-1; for(let i=0;i<subs.length;i++){ if(hasAny(i)) last=i; }
+      const trimmedSubs  = subs.slice(0, last+1);
+      const trimmedDescs = descs.slice(0, last+1);
+      return { subs: trimmedSubs, descs: trimmedDescs, count: Math.max(0,last+1) };
+    }
+
+    async function applySave(){
+      const title = document.getElementById('titleInput').value.trim();
+      if (!title){ document.getElementById('formError').textContent='Title is required.'; return; }
+      document.getElementById('formError').textContent='';
+
+      const { subs, descs, count } = collectLessonsForSave();
+
+      const payload = {
+        title,
+        description: (document.getElementById('descHidden').value || " "),
+        moduleSubTitles: subs,
+        moduleSubDescs:  descs,
+        lessonCount: count
+      };
+      const upd = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const updJs = await upd.json().catch(()=>({}));
+      if (!upd.ok || updJs.success===false) throw new Error(updJs.message || 'Failed to save details.');
+
+      // New files (File type only)
+      if (document.getElementById('moduleType').value === 'file'){
+        const form = new FormData();
+        let hasFiles=false;
+        pager.pages.forEach((_,idx)=>{
+          stagedByLesson[idx].addFiles.forEach(f=>{
+            hasFiles=true;
+            form.append('attachmentFiles', f);
+            form.append('attachmentDescs', '');
+            form.append('attachmentLessonIdx', String(idx));
+          });
+        });
+        if (hasFiles){
+          const up = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files`, { method:'POST', body: form });
+          const upJs = await up.json().catch(()=>({}));
+          if (!up.ok || upJs.success===false) throw new Error(upJs.message || 'Failed to upload attachments.');
+        }
+      }
+
+      // New links (Video URL type only)
+      if (document.getElementById('moduleType').value === 'text'){
+        const urls=[], descsJson=[], idxs=[];
+        pager.pages.forEach((_,idx)=>{
+          stagedByLesson[idx].addLinks.forEach(u=>{
+            urls.push(u); descsJson.push(''); idxs.push(String(idx));
+          });
+        });
+        if (urls.length){
+          const add = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ videoUrls: urls, videoDesc: descsJson, attachmentLessonIdx: idxs })
+          });
+          const addJs = await add.json().catch(()=>({}));
+          if (!add.ok || addJs.success===false) throw new Error(addJs.message || 'Failed to add links.');
+        }
+      }
+
+      // Removals (both types)
+      for (const idx in stagedByLesson){
+        for (const id of stagedByLesson[idx].removeIds){
+          const del = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files/${encodeURIComponent(id)}`, { method:'DELETE' });
+          const delJs = await del.json().catch(()=>({}));
+          if (!del.ok || delJs.success===false) throw new Error(delJs.message || 'Failed to remove file/link.');
+        }
+      }
+
+      await loadModule();
+      clearDirty();
+      document.getElementById('infoTitle').textContent = 'Success';
+      document.getElementById('infoBody').innerHTML = 'Your changes (including staged files/links) have been saved.';
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
+    }
+
+    const btnSave = document.getElementById('btnSave');
+    const saveSpinner = btnSave.querySelector('.spinner-border');
+    const saveText = btnSave.querySelector('.save-text');
+
+    btnSave.addEventListener('click', async ()=>{
+      btnSave.disabled = true; saveSpinner.classList.remove('visually-hidden'); saveText.textContent='Saving…';
+      try{ await applySave(); }
+      catch(e){ console.error(e); document.getElementById('formError').textContent = e.message || 'Server error while saving.'; }
+      finally{ btnSave.disabled = false; saveSpinner.classList.add('visually-hidden'); saveText.textContent='Save Changes'; }
+    });
+
+    document.getElementById('btnArchive').addEventListener('click', async ()=>{
+      if (!moduleId) return;
+      const ok = await confirmDanger('Archive Module','Archive this module? It will be hidden from students.');
+      if (!ok) return;
+      try{
+        const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/archive`, { method:'PUT' });
+        const js = await r.json().catch(()=>({}));
+        if(!r.ok||js.success===false) throw new Error(js.message||'Failed to archive.');
+        updateStatusBadge(true); showInfo('Archived','The module is now hidden from students.');
+      }catch(e){ showInfo('Error', e.message||'Failed to archive.'); }
+    });
+    document.getElementById('btnUnarchive').addEventListener('click', async ()=>{
+      if (!moduleId) return;
+      try{
+        const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/unarchive`, { method:'PUT' });
+        const js = await r.json().catch(()=>({}));
+        if(!r.ok||js.success===false) throw new Error(js.message||'Failed to unarchive.');
+        updateStatusBadge(false); showInfo('Unarchived','Students can see this module again.');
+      }catch(e){ showInfo('Error', e.message||'Failed to unarchive.'); }
+    });
+
+    // 🔹 Compute a safe back URL that always includes courseId (fixes "No courseId provided.")
+    function computeBackUrl() {
+      const cid = backCourseId || initialModule?.courseId || '';
+      if (cid) return `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(cid)}`;
+      // Fallback: still go to list even if no cid (shouldn’t happen for valid modules)
+      return `/TEACHER/Modules/module_list.html`;
+    }
+
+    document.getElementById('btnDelete').addEventListener('click', async ()=>{
+      if (!moduleId) return;
+      const ok = await confirmDanger('Delete Module','<strong>Permanently delete</strong> this module? This cannot be undone.');
+      if (!ok) return;
+      try{
+        const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, { method:'DELETE' });
+        const js = await r.json().catch(()=>({}));
+        if(!r.ok||js.success===false) throw new Error(js.message||'Failed to delete.');
+        showInfo('Deleted','Module deleted.');
+        setTimeout(()=>{ location.href = computeBackUrl(); }, 800);
+      }catch(e){ showInfo('Error', e.message||'Failed to delete.'); }
+    });
+
+    // Back button with guard (and courseId-safe URL)
+    document.getElementById('btnBack').addEventListener('click', ()=>{
+      if (isDirty() && !confirm('You have unsaved changes (including staged files/links). Leave without saving?')) return;
+      location.href = computeBackUrl();
+    });
+
+    function openPreviewModalWithMeta({url, title='File', mime='', isStaged=false, stageContext=null, stageLabel}){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      const kind = kindFrom({url, name:title, mime});
+      setFileInfoUI(kind, url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime, isStaged});
+      previewStageCtx = stageContext || null;
+
+      // If we have stage context, show button with a friendly label
+      if (previewStageCtx && Array.isArray(previewStageCtx.files)) {
+        const n = previewStageCtx.files.length || 1;
+        showStageBtn(true, stageLabel || (n === 1 ? 'Stage selected file' : `Stage selected (${n})`));
+      } else {
+        showStageBtn(false);
+      }
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
+    // Boot
+    (function boot(){
+      addLesson(false);       // start with one lesson
+      loadModule();
+    })();
+  </script>
+</body>
+</html>

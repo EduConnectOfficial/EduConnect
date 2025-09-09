@@ -8,13 +8,12 @@ const { uploadMemory } = require('../config/multerConfig');
 const { saveBufferToStorage, buildStoragePath, safeName } = require('../services/storageService');
 
 // ---------------- File size limit (PER FILE) ----------------
-// Keep this in sync with your frontend. You can override via env: MODULE_FILE_LIMIT_MB=300
+// Keep this in sync with your frontend. Override via env: MODULE_FILE_LIMIT_MB=300
 const PER_FILE_LIMIT_MB = parseInt(process.env.MODULE_FILE_LIMIT_MB || '300', 10);
 const PER_FILE_LIMIT_BYTES = PER_FILE_LIMIT_MB * 1024 * 1024;
 
 // Helpers for upload fallback behavior (array field)
 const arrayUpload = uploadMemory.array('attachmentFiles');
-// Legacy single
 const singleUpload = uploadMemory.single('moduleFile');
 
 // ---- Upload middleware: prefer array; fallback to single on LIMIT_UNEXPECTED_FILE ----
@@ -35,6 +34,72 @@ const flexibleUpload = (req, res, next) => {
 function findOversizeFile(files) {
   if (!files || !files.length) return null;
   return files.find(f => typeof f.size === 'number' && f.size > PER_FILE_LIMIT_BYTES) || null;
+}
+
+// Random id for attachments
+function genId() {
+  return firestore.collection('_').doc().id;
+}
+
+/* -----------------------------------------------------------
+   STORAGE HELPERS (delete)
+----------------------------------------------------------- */
+
+function pathFromGsUri(gsUri = '') {
+  if (!gsUri || typeof gsUri !== 'string') return '';
+  if (!gsUri.startsWith('gs://')) return '';
+  const noScheme = gsUri.replace('gs://', '');
+  const parts = noScheme.split('/');
+  parts.shift(); // bucket
+  return parts.join('/');
+}
+function pathFromPublicUrl(publicUrl = '') {
+  try {
+    if (!publicUrl) return '';
+    const u = new URL(publicUrl);
+    // https://storage.googleapis.com/<bucket>/<path>
+    const parts = u.pathname.replace(/^\/+/, '').split('/');
+    parts.shift(); // bucket
+    return parts.join('/');
+  } catch {
+    return '';
+  }
+}
+function pathFromDownloadUrl(downloadUrl = '') {
+  try {
+    if (!downloadUrl) return '';
+    const u = new URL(downloadUrl);
+    // https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<ENCODED_PATH>?...
+    if (u.pathname.includes('/o/')) {
+      const enc = u.pathname.split('/o/')[1];
+      return decodeURIComponent(enc);
+    }
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
+async function deleteStorageObjectFromAttachment(att) {
+  try {
+    const bucket = admin.storage().bucket();
+    // Prefer explicit storagePath if you saved it
+    let storagePath =
+      att.storagePath ||
+      pathFromGsUri(att.gsUri) ||
+      pathFromDownloadUrl(att.downloadUrl || att.previewUrl) ||
+      pathFromPublicUrl(att.publicUrl);
+
+    if (!storagePath) {
+      // Nothing to delete (likely a pure external link)
+      return;
+    }
+    const file = bucket.file(storagePath);
+    await file.delete({ ignoreNotFound: true });
+  } catch (e) {
+    // Non-fatal: log and continue
+    console.warn('deleteStorageObjectFromAttachment failed:', e.message);
+  }
 }
 
 /* -----------------------------------------------------------
@@ -191,20 +256,21 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
         destPath,
         contentType: f.mimetype || 'application/octet-stream',
         metadata: { originalName },
-        filenameForDisposition: originalName, // 👈 ensures inline rendering filename
+        filenameForDisposition: originalName, // ensures inline rendering filename
       });
 
       flatAttachments.push({
-        // Keep a direct token URL for embedding in your modal
+        id: genId(),
         url: saved.downloadUrl,
-        // Optional: also keep gs:// & public URL
         gsUri: saved.gsUri,
         publicUrl: saved.publicUrl,
+        storagePath: destPath,
         description: (attachmentDescs && attachmentDescs[i]) ? attachmentDescs[i] : '',
         lessonIdx: idx,
         originalName,
         size: f.size || null,
-        mime: f.mimetype || null
+        mime: f.mimetype || null,
+        createdAt: admin.firestore.Timestamp.now() // ✅ array-safe timestamp
       });
     }
 
@@ -226,7 +292,6 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
       const url = String(videoUrls[i] || '').trim();
       if (!url) continue;
 
-      // Optional: create a tiny .txt object representing this link so you can still preview inline
       const pretty = `VIDEO_URL_${i + 1}.txt`;
       const placeholderPath = buildStoragePath('modules', moduleId, pretty);
       const placeholderBody = Buffer.from(`Video URL:\n${url}\n`);
@@ -238,10 +303,15 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
       });
 
       urlAttachments.push({
-        url,                              // <— the real external link for new tab
-        previewUrl: saved.downloadUrl,    // <— token URL you can embed in modal as inline text
+        id: genId(),
+        url,                              // external link for new tab
+        previewUrl: saved.downloadUrl,    // token URL you can embed in modal as inline text
+        gsUri: saved.gsUri,
+        publicUrl: saved.publicUrl,
+        storagePath: placeholderPath,
         videoDesc: (videoDescs && videoDescs[i]) ? videoDescs[i] : '',
-        lessonIdx: i
+        lessonIdx: i,
+        createdAt: admin.firestore.Timestamp.now() // ✅ array-safe
       });
     }
 
@@ -270,7 +340,6 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      // Mirror frontend / route limit
       return res.status(400).json({
         success: false,
         message: `File too large. Maximum per-file size is ${PER_FILE_LIMIT_MB} MB.`
@@ -281,7 +350,7 @@ router.use((error, req, res, next) => {
   if (error && error.message === 'File type not allowed') {
     return res.status(400).json({ success: false, message: 'File type not allowed. Please upload a supported file type.' });
   }
-  return next(error); // let the global error handler catch other errors
+  return next(error);
 });
 
 /* -----------------------------------------------------------
@@ -329,29 +398,214 @@ router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
 ----------------------------------------------------------- */
 
 // PUT /modules/:id  body: { title, description, moduleSubTitles?, moduleSubDescs? }
-router.put('/modules/:id', asyncHandler(async (req, res) => {
+// PATCH /modules/:id  body: { title?, description?, moduleSubTitles?, moduleSubDescs?, lessonCount? }
+router.patch('/modules/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { title, description, moduleSubTitles, moduleSubDescs } = req.body;
+  const { title, description, moduleSubTitles, moduleSubDescs, lessonCount } = req.body;
 
-  if (!title || !description) {
-    return res.status(400).json({ success: false, message: 'Title and description are required.' });
-  }
-
-  const moduleDoc = await firestore.collection('modules').doc(id).get();
+  const moduleRef = firestore.collection('modules').doc(id);
+  const moduleDoc = await moduleRef.get();
   if (!moduleDoc.exists) {
     return res.status(404).json({ success: false, message: 'Module not found.' });
   }
 
+  // Only update provided fields
   const updateObj = {
-    title,
-    description,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   };
+  if (typeof title === 'string') updateObj.title = title;
+  if (typeof description === 'string') updateObj.description = description;
   if (Array.isArray(moduleSubTitles)) updateObj.moduleSubTitles = moduleSubTitles;
   if (Array.isArray(moduleSubDescs)) updateObj.moduleSubDescs = moduleSubDescs;
+  if (typeof lessonCount === 'number') updateObj.lessonCount = lessonCount;
 
-  await firestore.collection('modules').doc(id).update(updateObj);
+  await moduleRef.update(updateObj);
   res.json({ success: true, message: 'Module updated successfully.' });
+}));
+
+// POST /modules/:id/files
+// - multipart/form-data with field 'attachmentFiles' (+ 'attachmentLessonIdx', 'attachmentDescs')
+// - application/json with body { links:[...]} OR { videoUrls:[...], videoDesc:[...], attachmentLessonIdx:[...] }
+router.post('/modules/:id/files', flexibleUpload, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const moduleRef = firestore.collection('modules').doc(id);
+  const snap = await moduleRef.get();
+  if (!snap.exists) return res.status(404).json({ success: false, message: 'Module not found.' });
+
+  const moduleData = snap.data() || {};
+  const type = moduleData.type || 'file';
+  let attachments = Array.isArray(moduleData.attachments) ? moduleData.attachments.slice() : [];
+
+  // ---------- JSON branch (add links) ----------
+  const isJson = req.is('application/json');
+  if (isJson) {
+    if (type !== 'text') {
+      return res.status(400).json({ success: false, message: 'Links can only be added to text (Video URL) modules.' });
+    }
+
+    // Accept both shapes
+    let links = req.body.links ?? req.body.videoUrls ?? [];
+    if (!Array.isArray(links)) links = [links];
+
+    let linkDescs = req.body.videoDesc ?? req.body.videoDescs ?? req.body['videoDesc[]'] ?? [];
+    if (!Array.isArray(linkDescs)) linkDescs = [linkDescs];
+
+    let linkIdxs = req.body.attachmentLessonIdx ?? req.body.lessonIdx ?? [];
+    if (!Array.isArray(linkIdxs)) linkIdxs = [linkIdxs];
+
+    links = links.map(v => String(v || '').trim()).filter(Boolean);
+    if (!links.length) return res.status(400).json({ success: false, message: 'No valid links provided.' });
+
+    const linkItems = [];
+    for (let i = 0; i < links.length; i++) {
+      const url = links[i];
+      const pretty = `VIDEO_URL_${Date.now()}_${i + 1}.txt`;
+      const destPath = buildStoragePath('modules', id, safeName(pretty));
+      const body = Buffer.from(`Video URL:\n${url}\n`);
+
+      const saved = await saveBufferToStorage(body, {
+        destPath,
+        contentType: 'text/plain',
+        metadata: { originalName: pretty },
+        filenameForDisposition: pretty,
+      });
+
+      let idxRaw = linkIdxs[i] ?? i;
+      const idx = Number.isFinite(parseInt(idxRaw, 10)) ? Math.max(0, parseInt(idxRaw, 10)) : 0;
+
+      linkItems.push({
+        id: genId(),
+        url,                          // external link
+        previewUrl: saved.downloadUrl, // inline text preview
+        gsUri: saved.gsUri,
+        publicUrl: saved.publicUrl,
+        storagePath: destPath,
+        videoDesc: linkDescs[i] || '',
+        lessonIdx: idx,
+        createdAt: admin.firestore.Timestamp.now()
+      });
+    }
+
+    attachments = attachments.concat(linkItems);
+    await moduleRef.update({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return res.json({ success: true, files: attachments });
+  }
+
+  // ---------- Multipart branch (add files) ----------
+  let files = req.files;
+  if ((!files || !files.length) && req.file) files = [req.file];
+
+  if (!files || !files.length) {
+    return res.status(400).json({ success: false, message: 'No files found in request.' });
+  }
+  if (type !== 'file') {
+    return res.status(400).json({ success: false, message: 'Files can only be uploaded to file-type modules.' });
+  }
+
+  // Enforce per-file size limit
+  const oversize = findOversizeFile(files);
+  if (oversize) {
+    const mb = (oversize.size / (1024 * 1024)).toFixed(1);
+    return res.status(400).json({
+      success: false,
+      message: `File "${oversize.originalname || oversize.filename}" is ${mb} MB, which exceeds the per-file limit of ${PER_FILE_LIMIT_MB} MB.`
+    });
+  }
+
+  // Optional per-file descriptions + lesson indices
+  let lessonIdxs = req.body.attachmentLessonIdx;
+  if (lessonIdxs && !Array.isArray(lessonIdxs)) lessonIdxs = [lessonIdxs];
+
+  let descs = req.body.attachmentDescs;
+  if (descs && !Array.isArray(descs)) descs = [descs];
+
+  const newItems = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const originalName = f.originalname || f.filename || 'file';
+    const destPath = buildStoragePath('modules', id, originalName);
+
+    const saved = await saveBufferToStorage(f.buffer, {
+      destPath,
+      contentType: f.mimetype || 'application/octet-stream',
+      metadata: { originalName },
+      filenameForDisposition: originalName,
+    });
+
+    let idxRaw = lessonIdxs?.[i];
+    const idx = Number.isFinite(parseInt(idxRaw, 10)) ? Math.max(0, parseInt(idxRaw, 10)) : 0;
+
+    newItems.push({
+      id: genId(),
+      url: saved.downloadUrl,
+      gsUri: saved.gsUri,
+      publicUrl: saved.publicUrl,
+      storagePath: destPath,
+      originalName,
+      description: descs?.[i] || '',
+      lessonIdx: idx,                           // ✅ tie to lesson
+      size: f.size || null,
+      mime: f.mimetype || null,
+      createdAt: admin.firestore.Timestamp.now()
+    });
+  }
+
+  attachments = attachments.concat(newItems);
+  await moduleRef.update({
+    attachments,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  res.json({ success: true, files: attachments });
+}));
+
+
+/* -----------------------------------------------------------
+   MODULE: ATTACHMENT DELETE (and delete storage object)
+----------------------------------------------------------- */
+
+// DELETE /modules/:id/files/:fileId
+// Supports both true attachment ids and a fallback "__idx_<n>" for older entries without ids.
+router.delete('/modules/:id/files/:fileId', asyncHandler(async (req, res) => {
+  const { id, fileId } = req.params;
+
+  const moduleRef = firestore.collection('modules').doc(id);
+  const snap = await moduleRef.get();
+  if (!snap.exists) return res.status(404).json({ success: false, message: 'Module not found.' });
+
+  const data = snap.data() || {};
+  let attachments = Array.isArray(data.attachments) ? data.attachments.slice() : [];
+  if (!attachments.length) return res.json({ success: true, files: attachments });
+
+  // Find by id or by fallback index token
+  let idx = attachments.findIndex(a => String(a.id || '') === String(fileId));
+  if (idx < 0) {
+    const m = String(fileId).match(/^__idx_(\d+)$/);
+    if (m) {
+      const iNum = parseInt(m[1], 10);
+      if (!Number.isNaN(iNum) && iNum >= 0 && iNum < attachments.length) {
+        idx = iNum;
+      }
+    }
+  }
+
+  if (idx < 0) return res.status(404).json({ success: false, message: 'Attachment not found.' });
+
+  const target = attachments[idx];
+
+  // Attempt to delete the storage object if we own one
+  await deleteStorageObjectFromAttachment(target);
+
+  // Remove from array
+  attachments.splice(idx, 1);
+
+  await moduleRef.update({
+    attachments,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  res.json({ success: true, files: attachments });
 }));
 
 /* -----------------------------------------------------------
@@ -379,14 +633,14 @@ router.put('/modules/:id/unarchive', asyncHandler(async (req, res) => {
 }));
 
 /* -----------------------------------------------------------
-   MODULE: DELETE & RENUMBER
+   MODULE: DELETE & RENUMBER (also delete stored files)
 ----------------------------------------------------------- */
 
 // DELETE /modules/:id
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   const moduleId = req.params.id;
 
-  // Get the module to find its courseId
+  // Get the module to find its courseId and attachments
   const moduleRef = firestore.collection('modules').doc(moduleId);
   const moduleDoc = await moduleRef.get();
 
@@ -394,9 +648,14 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Module not found.' });
   }
 
-  const { courseId } = moduleDoc.data();
+  const { courseId, attachments } = moduleDoc.data();
 
-  // Delete module
+  // Best-effort delete of stored objects
+  if (Array.isArray(attachments)) {
+    await Promise.all(attachments.map(a => deleteStorageObjectFromAttachment(a)));
+  }
+
+  // Delete module doc
   await moduleRef.delete();
 
   // Re-number remaining modules for this course by moduleNumber ASC
@@ -414,7 +673,7 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
   });
   await batch.commit();
 
-  res.json({ success: true, message: 'Module deleted and modules renumbered.' });
+  res.json({ success: true, message: 'Module deleted (files cleaned) and modules renumbered.' });
 }));
 
 /* -----------------------------------------------------------

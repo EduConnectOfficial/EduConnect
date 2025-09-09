@@ -21,7 +21,21 @@
     .lesson-pill.active { background:#dbeafe; font-weight:600; }
     .attachment-badge { background:#f1f5f9; color:#0f172a; }
     .safe-pre { white-space:pre-wrap; }
-    .btn-link { text-align: start;}
+    .btn-link { text-align: start; }
+
+    /* ===== Preview modal: match teacher’s (dark theater look) ===== */
+    #filePreviewModal .modal-dialog { max-width:96vw; }
+    #filePreviewModal .modal-content { height:92vh; display:flex; flex-direction:column; }
+    #filePreviewModal .modal-header { background:#5e2211; color:#ffd9be; }
+    #filePreviewModal .btn-close { filter: invert(1); opacity:.85; }
+    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#111; position:relative; }
+    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width:100%; height:100%; border:0; object-fit:contain; background:#000;
+    }
+    .spinner-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }
+    #filePreviewFooter { display:flex; gap:.5rem; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    #fileInfoText { color:#6b7280; }
   </style>
 </head>
 <body>
@@ -33,12 +47,12 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-       <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
           <input type="text" id="lessonSearch" placeholder="Search lessons in this module..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -116,18 +130,30 @@
     </div>
   </div>
 
-  <!-- File Preview Modal -->
+  <!-- ===== File Preview Modal (matches teacher) ===== -->
   <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
-           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">Open file – Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="filePreviewContent" style="min-height:400px; text-align:center;"></div>
-        <div class="modal-footer">
-          <a id="fileOpenNewTabBtn" target="_blank" class="btn btn-secondary">Open in New Tab</a>
-          <a id="fileDownloadBtn" target="_blank" class="btn btn-amber" download>Download</a>
+
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center text-white">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="small" id="fileInfoText">Type: <span id="fileTypeText">File</span></div>
+          <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+          </a>
         </div>
       </div>
     </div>
@@ -199,48 +225,145 @@
       }
     })();
 
-    // === Modal helpers (preview + actions)
-    function filePreviewHtml(url){
-      const ext = (url.split('.').pop() || '').toLowerCase();
-      if (['jpg','jpeg','png','gif','bmp','webp'].includes(ext)) {
-        return `<img src="${url}" alt="Preview" style="max-width:90vw;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
-      }
-      if (ext === 'pdf') {
-        return `<embed src="${url}" type="application/pdf" width="100%" height="70vh" style="border-radius:1rem;box-shadow:0 2px 16px #0002;" />`;
-      }
-      if (['mp4','webm','ogg'].includes(ext)) {
-        return `<video controls style="max-width:100%;max-height:70vh;border-radius:1rem;box-shadow:0 2px 16px #0002;"><source src="${url}" type="video/${ext}" />Your browser does not support the video tag.</video>`;
-      }
-      // generic iframe fallback (some sites may block embedding)
-      return `<iframe src="${url}" style="width:100%;height:70vh;border:0;border-radius:1rem;box-shadow:0 2px 16px #0002;"></iframe>
-              <div class="small text-muted mt-2">If the preview is blocked, use the buttons below.</div>`;
-    }
-    function openFilePreview(title, url) {
-      document.getElementById('filePreviewModalLabel').textContent = title || 'File Preview';
-      document.getElementById('filePreviewContent').innerHTML = filePreviewHtml(url);
-      // action buttons
-      const openBtn = document.getElementById('fileOpenNewTabBtn');
-      const dlBtn   = document.getElementById('fileDownloadBtn');
-      openBtn.href = url;
-      dlBtn.href   = url;      // if server sets Content-Disposition:inline, browser may still open preview
-      dlBtn.setAttribute('download', ''); // hint download
-      new bootstrap.Modal(document.getElementById('filePreviewModal')).show();
+    // === Escape HTML helper ===
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
     }
 
-    // === YouTube helpers
-    function isYouTube(url) {
-      return /youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\//i.test(url || '');
-    }
-    function ytEmbed(url) {
-      let id = null;
+    // === URL / Preview helpers (MATCH TEACHER MODAL) ===
+    function isYouTube(url='') {
       try {
         const u = new URL(url);
-        if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
-        if (u.searchParams.get('v')) id = u.searchParams.get('v');
-        const parts = u.pathname.split('/embed/');
-        if (!id && parts[1]) id = parts[1];
-      } catch {}
-      return id ? `https://www.youtube.com/embed/${id}` : url;
+        const h = u.hostname.replace(/^www\./,'').toLowerCase();
+        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+      } catch { return false; }
+    }
+    function ytEmbed(url='') {
+      try {
+        const u = new URL(url);
+        const host = u.hostname.replace(/^www\./,'').toLowerCase();
+        let id = '';
+        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
+        if (!Number.isFinite(start)) start = '';
+        if (host === 'youtu.be') id = u.pathname.replace(/^\//,'').split('/')[0];
+        else {
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
+      } catch { return null; }
+    }
+    function extFromUrl(u=''){ const c=String(u).split('?')[0].split('#')[0]; const p=c.split('.'); return p.length>1?p.pop().toLowerCase():''; }
+    function kindFromUrl(url=''){
+      if (isYouTube(url)) return 'youtube';
+      const ext = extFromUrl(url);
+      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (ext==='pdf') return 'pdf';
+      if (['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+
+    function setFileInfoUI(kind, url){
+      const map = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'Link' };
+      document.getElementById('fileTypeText').textContent = map[kind] || 'Link';
+      document.getElementById('openInNewTabBtn').href = url || '#';
+      // Put/refresh a badge next to the modal title like teacher
+      const titleEl = document.getElementById('filePreviewModalLabel');
+      let badge = document.getElementById('fileKindBadge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'fileKindBadge';
+        badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+        titleEl.appendChild(badge);
+      }
+      badge.textContent = map[kind] || 'Link';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+
+    function renderFilePreviewInto(container, url){
+      container.innerHTML=''; showSpinner(true);
+      const done = ()=>showSpinner(false);
+      const kind = kindFromUrl(url);
+
+      if (kind === 'youtube') {
+        const embed = ytEmbed(url);
+        if (embed) {
+          container.innerHTML = `
+            <div class="ratio ratio-16x9">
+              <iframe
+                src="${embed}"
+                title="YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin"
+                style="border:0"></iframe>
+            </div>`;
+          return done();
+        }
+      }
+
+      if (kind === 'image') {
+        const img = new Image();
+        img.onload = done; img.onerror = done; img.src = url; container.appendChild(img); return;
+      }
+      if (kind === 'pdf') {
+        const iframe = document.createElement('iframe'); iframe.onload=done; iframe.onerror=done; iframe.src=url; container.appendChild(iframe); return;
+      }
+      if (kind === 'video') {
+        const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=done; v.src=url; container.appendChild(v); return;
+      }
+      if (kind === 'audio') {
+        const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=done; a.src=url; container.appendChild(a); return;
+      }
+      if (kind === 'text') {
+        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return;
+      }
+      if (kind === 'office') {
+        const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=gview; container.appendChild(i); return;
+      }
+
+      // Fallback
+      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=done; container.appendChild(obj);
+      setTimeout(done, 1000);
+    }
+
+    // For storage/external precedence when choosing URL
+    function isStorageDomain(u='') {
+      return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(u);
+    }
+    function isExternalHttp(u='') {
+      return /^https?:\/\//i.test(u) && !isStorageDomain(u) && !/localhost|127\.0\.0\.1:5000/i.test(u);
+    }
+    function bestFileUrl(att) {
+      if (att.url && isExternalHttp(att.url)) return att.url;
+      if (att.previewUrl) return att.previewUrl;
+      if (att.url)       return att.url;
+      if (att.publicUrl) return att.publicUrl;
+      if (att.filePath)  return `http://127.0.0.1:5000${att.filePath}`;
+      return '';
+    }
+
+    function openFilePreview(title, url){
+      const kind = kindFromUrl(url);
+      const titleEl = document.getElementById("filePreviewModalLabel");
+      titleEl.textContent = (title || 'File') + ' – Preview';
+      setFileInfoUI(kind, url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), url);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
 
     // === Page state
@@ -253,22 +376,13 @@
     let lessonCount = 0;
     let courseId = null;
 
-    function escapeHTML(str='') {
-      return String(str)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
-    }
-
     async function fetchModule() {
       if (!moduleId) {
         alert('No moduleId provided.');
-        window.location.href = '/STUDENT/courses/my_courses.html';
+        window.location.href = '/STUDENT/courses/courses.html';
         return;
       }
-      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
+      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load module');
 
       moduleDoc = await res.json();
@@ -280,11 +394,11 @@
 
       const back = document.getElementById('backToCourseBtn');
       if (courseId) back.href = `/STUDENT/modules/list.html?id=${encodeURIComponent(courseId)}`;
-      else back.href = '/STUDENT/courses/my_courses.html';
+      else back.href = '/STUDENT/courses/courses.html';
 
       const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
       const descs = Array.isArray(moduleDoc.moduleSubDescs) ? moduleDoc.moduleSubDescs : [];
-      lessonCount = Math.max(subs.length, descs.length);
+      lessonCount = Math.max(moduleDoc.lessonCount || 0, subs.length, descs.length);
       document.getElementById('metaLessons').textContent = `Lessons: ${lessonCount}`;
       document.getElementById('moduleMeta').style.display = '';
 
@@ -367,7 +481,10 @@
 
       const wrap = document.getElementById('attachments');
       wrap.innerHTML = '';
-      const atts = Array.isArray(moduleDoc.attachments) ? moduleDoc.attachments.filter(a => a.lessonIdx === currentIdx) : [];
+
+      const atts = Array.isArray(moduleDoc.attachments)
+        ? moduleDoc.attachments.filter(a => (a.lessonIdx ?? 0) === currentIdx)
+        : [];
 
       if (!atts.length) {
         wrap.innerHTML = `<div class="text-muted">No attachments for this lesson.</div>`;
@@ -376,41 +493,23 @@
           const item = document.createElement('div');
           item.className = 'attachment-item';
 
-          // 1) Files stored on your server -> open in modal
-          if (att.filePath) {
-            const full = `http://127.0.0.1:5000${att.filePath}`;
-            item.innerHTML = `
-              <span class="badge attachment-badge me-2">File</span>
-              <button class="btn btn-link p-0 text-decoration-none" type="button">
-                ${escapeHTML(att.description || 'Open file')}
-              </button>
-              ${att.videoDesc ? `<div class="small text-muted mt-1">${escapeHTML(att.videoDesc)}</div>` : ''}
-            `;
-            item.querySelector('button').addEventListener('click', () => openFilePreview(title, full));
-          }
-          // 2) URL attachments
-          else if (att.url) {
-            // YouTube -> inline embed
-            if (isYouTube(att.url)) {
-              item.innerHTML = `
-                <span class="badge attachment-badge me-2">Video</span>
-                <div class="ratio ratio-16x9 mt-1">
-                  <iframe class="video-embed" src="${ytEmbed(att.url)}" allowfullscreen></iframe>
-                </div>
-                <div class="small text-muted mt-1">${escapeHTML(att.videoDesc || '')}</div>
-              `;
-            } else {
-              // Non-YouTube external URL -> try modal preview first (with buttons to open/download)
-              item.innerHTML = `
-                <span class="badge attachment-badge me-2">Link</span>
-                <button class="btn btn-link p-0 text-decoration-none" type="button">
-                  ${escapeHTML(att.videoDesc || att.url)}
-                </button>
-              `;
-              item.querySelector('button').addEventListener('click', () => openFilePreview(title, att.url));
-            }
-          }
+          const url = bestFileUrl(att);
+          const label = att.originalName || att.description || att.videoDesc || att.url || 'Open file';
+          const kind = isYouTube(url || att.url) ? 'Video' : (isExternalHttp(url) ? 'Link' : 'File');
 
+          item.innerHTML = `
+            <span class="badge attachment-badge me-2">${kind}</span>
+            <button class="btn btn-link p-0 text-decoration-none" type="button">
+              ${escapeHTML(label)}
+            </button>
+            ${
+              att.description
+                ? `<div class="small text-muted mt-1">${escapeHTML(att.description)}</div>`
+                : att.videoDesc ? `<div class="small text-muted mt-1">${escapeHTML(att.videoDesc)}</div>` : ''
+            }
+          `;
+
+          item.querySelector('button').addEventListener('click', () => openFilePreview(label, url));
           wrap.appendChild(item);
         });
       }
@@ -454,7 +553,7 @@
       } catch (e) {
         console.error(e);
         alert('Failed to load module.');
-        window.location.href = '/STUDENT/courses/my_courses.html';
+        window.location.href = '/STUDENT/courses/courses.html';
       }
     });
 

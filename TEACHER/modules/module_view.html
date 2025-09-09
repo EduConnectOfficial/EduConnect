@@ -2,562 +2,168 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, shrink-to-fit=no"
-  />
-  <title>EduConnect Teacher - Module Content</title>
+  <title>EduConnect Teacher – Module Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
-  <link rel="stylesheet" href="list.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Optional: re-use your teacher theme -->
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
 
   <style>
-    :root {
-      --color-primary: #4A1A0C;
-      --color-secondary: #7A2810;
-      --color-bg: #f8fafc;
-      --color-border: #e0e7ef;
-      --color-text: #374151;
-      --radius-card: 1.5rem;
-      --shadow-light: 0 1.5px 6px rgba(30, 34, 90, 0.07);
-      --shadow-strong: 0 6px 32px rgba(30, 34, 90, 0.13);
-    }
+    /* ——— Layout + look (copied to match the screenshot/student view) ——— */
+    .lesson-nav .btn { min-width: 110px; }
+    .attachment-item + .attachment-item { margin-top:.5rem; }
+    .video-embed { aspect-ratio: 16 / 9; width:100%; border:0; }
+    .viewer-card { background:#f8fafc; }
+    .lesson-pill { background:#eef2ff; color:#374151; }
+    .lesson-pill.active { background:#dbeafe; font-weight:600; }
+    .attachment-badge { background:#f1f5f9; color:#0f172a; }
+    .safe-pre { white-space:pre-wrap; }
+    .btn-link { text-align:start; }
 
-    body { background-color: var(--color-bg); color: var(--color-text); }
-
-    .dashboard{ display:flex; min-height:100vh; }
-    .main{ margin-left:70px; width:calc(100% - 70px); transition:margin-left .3s,width .3s; }
-    .dashboard.sidebar-expanded .main{ margin-left:220px; width:calc(100% - 220px); }
-
-    main.container { padding-top: 2rem; padding-bottom: 2rem; }
-
-    .module-content-card {
-      background: #fff;
-      border-radius: var(--radius-card);
-      box-shadow: var(--shadow-strong), var(--shadow-light);
-      padding: 2rem;
-      max-width: 2000px;
-      border: 1px solid var(--color-border);
+    /* Header strip look */
+    .ui-card.card-themed { border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+    .ui-card.card-themed .ui-card-head {
+      background:#5e2211; color:#ffd9be; padding:10px 14px;
+      display:flex; align-items:center; justify-content:space-between;
     }
+    .ui-card.card-themed .ui-card-title { margin:0; display:flex; gap:.5rem; align-items:center; font-weight:700; color:#ffe9ca; }
+    .text-name { color:#ffe9ca; opacity:.9; }
 
-    .profile-btn { display:flex; align-items:center; gap:8px; background:none; border:none; color:#fff; }
-    .profile-btn .username { font-size: 14px; }
-    #dashboardUsername{
-      display:inline-flex; align-items:center; justify-content:center;
-      width:36px; height:36px; border-radius:999px; font-weight:800; background:#fff; color:var(--color-primary);
-    }
+    .btn-amber { background:linear-gradient(to bottom,#FF6A00,#B03C10); color:#fff; border:none; }
+    .btn-amber:hover { filter:brightness(1.05); color:#fff; }
+    .btn-amber-outline { color:#B03C10; border:1px solid #B03C10; background:#fff; }
+    .btn-amber-outline:hover { background:#fff1ea; color:#7A2810; }
 
-    .module-title { color: var(--color-secondary); font-weight:700; font-size:2rem; margin-bottom:1rem; text-align:center; }
+    .page-title.brand { font-weight:700; font-size:1.25rem; margin:0; }
 
-    .nav-pills { overflow-x:auto; white-space:nowrap; margin-bottom:1.5rem; padding-bottom:.5rem; border-bottom:1px solid var(--color-border); }
-    .nav-pills .nav-item { display:inline-block; margin-right:.5rem; }
-    .nav-pills .nav-link { border-radius:.75rem; padding:.5rem 1rem; font-weight:500; }
-    .nav-pills .nav-link.active { background-color: var(--color-primary) !important; color:#fff; }
+    /* Preview modal (YouTube-style) */
+    #filePreviewModal .modal-dialog { max-width:96vw; }
+    #filePreviewModal .modal-content { height:92vh; display:flex; flex-direction:column; }
+    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#111; position:relative; }
+    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width:100%; height:100%; border:0; object-fit:contain; background:#000;
+    }
+    .spinner-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }
+    #filePreviewFooter { display:flex; gap:.5rem; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    #fileInfoText { color:#6b7280; }
 
-    .module-subtitle { color: var(--color-primary) !important; font-weight:600; font-size:1.3rem; margin-bottom:.5rem; }
-    .module-desc, .main-desc { font-size:1rem; line-height:1.5; margin-bottom:1rem; }
-    .main-desc { border-top:1px solid var(--color-border); padding-top:1.5rem; margin-top:2rem; }
-
-    .attachment-item { background:#e3eafc; border-radius:.75rem; padding:1rem; margin-bottom:1rem; }
-    .attachment-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
-    .attachment-item .small { font-size:.85rem; color:#6b7280; margin-top:.25rem; }
-
-    /* ==== Full-screen-ish preview modal (matches your example) ==== */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content {
-      height: 92vh;
-      display: flex;
-      flex-direction: column;
-    }
-    #filePreviewModal .modal-body {
-      flex: 1 1 auto;
-      padding: 0;
-      background: #f8fafc;
-      position: relative;
-    }
-    .preview-wrap {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .preview-wrap iframe,
-    .preview-wrap embed,
-    .preview-wrap object,
-    .preview-wrap img,
-    .preview-wrap video,
-    .preview-wrap audio {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      object-fit: contain;
-      background: #fff;
-    }
-    .preview-fallback {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 2rem;
-      text-align: center;
-    }
-    #filePreviewFooter {
-      display: flex;
-      gap: .5rem;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .spinner-wrap {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-    }
+    .dashboard { min-height:100vh; }
   </style>
 </head>
-
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
     <div id="sidebar-container"></div>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        fetch("/components/sidebar.html")
-          .then(res => res.text())
-          .then(html => { document.getElementById("sidebar-container").innerHTML = html; })
-          .catch(()=>{});
-      });
-    </script>
 
     <!-- Main -->
     <div class="main">
-      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+      <!-- Header -->
+      <header class="header-top">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box">
-          <input id="searchBox" type="text" placeholder="Search my module..." />
+          <input type="text" id="lessonSearch" placeholder="Search lessons in this module..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn btn" type="button" title="Profile">
-          <i class="fas fa-user-circle fa-2x" aria-hidden="true"></i>
-          <span id="dashboardUsername" class="username ms-2 fw-semibold" aria-label="Profile"></span>
+        <button class="profile-btn" type="button">
+          <i class="fas fa-user-circle"></i>
+          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
       </header>
 
-      <main class="container">
-        <div id="moduleContent" class="module-content-card text-center text-muted">
-          Loading module...
-        </div>
-      </main>
-    </div>
-  </div>
+      <!-- Content -->
+      <div class="content container-fluid">
+        <!-- Top meta strip (matches screenshot) -->
+        <div class="ui-card card-themed mb-3 mt-3" id="moduleMeta" style="display:none;">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title">
+              <i class="bi bi-journal-text"></i>
+              <span id="metaTitle">edit</span>
+            </h2>
 
-  <!-- Preview Modal (matches your provided structure) -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-
-        <div class="modal-body">
-          <div class="spinner-wrap" id="filePreviewSpinner">
-            <div class="text-center">
-              <div class="spinner-border" role="status" aria-hidden="true"></div>
-              <div class="mt-2 text-muted small">Preparing preview…</div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="text-name" id="metaCourse">Course: —</div>
+              <a id="backToCourseBtn" class="btn btn-sm btn-amber-outline" href="#">
+                <i class="bi bi-arrow-left"></i> Back to Modules
+              </a>
             </div>
           </div>
-          <div class="preview-wrap" id="filePreviewContent"></div>
+
+          <div class="p-2 px-3 small">Lessons: <span id="metaLessons">0</span></div>
         </div>
 
-        <div class="modal-footer" id="filePreviewFooter">
-          <div class="text-muted small" id="fileInfoText"></div>
-          <div class="ms-auto">
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a>
+        <div class="row g-3">
+          <!-- Left: lessons list -->
+          <div class="col-12 col-lg-4">
+            <div class="card shadow border-0 rounded-4 viewer-card p-3">
+              <h5 class="mb-2">Lessons</h5>
+              <div id="lessonList" class="d-grid gap-2"></div>
+            </div>
+          </div>
+
+          <!-- Right: lesson viewer -->
+          <div class="col-12 col-lg-8">
+            <div class="card shadow border-0 rounded-4 viewer-card p-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <span class="badge bg-primary me-2" id="moduleNumberBadge">Module #—</span>
+                  <span class="badge lesson-pill" id="lessonIndexBadge">Lesson —</span>
+                </div>
+                <div class="lesson-nav">
+                  <button id="prevLesson" class="btn btn-sm btn-amber-outline"><i class="bi bi-arrow-left"></i> Prev</button>
+                  <button id="nextLesson" class="btn btn-sm btn-amber-outline">Next <i class="bi bi-arrow-right"></i></button>
+                </div>
+              </div>
+
+              <h3 class="mt-3" id="lessonTitle">(No Title)</h3>
+              <div class="safe-pre text-secondary" id="lessonBody">(No Content)</div>
+
+              <hr class="my-3" />
+              <h6 class="mb-2">Attachments</h6>
+              <div id="attachments"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // ========= CONFIG =========
-    const API_BASE = "http://localhost:5000";
-    const FILE_BASE = "http://127.0.0.1:5000";
+  <!-- File Preview Modal (YouTube style) -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background:#5e2211; color:#ffd9be;">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">Open file – Preview</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
 
-    // ========= Auth header initials =========
-    function initHeaderInitialsAndGuard() {
-      try{
-        const raw = localStorage.getItem("user") || "{}";
-        const obj = JSON.parse(raw);
-        const u = obj.user || obj;
-        if (!u?.userId || !u?.isTeacher) { window.location.replace("/TEACHER/login/login.html"); return null; }
-
-        const el = document.getElementById("dashboardUsername");
-        if (el) {
-          const fn=(u.firstName||"").trim(), ln=(u.lastName||"").trim();
-          const initials = (fn && ln) ? (fn[0]+ln[0]).toUpperCase() : (u.email||"U")[0].toUpperCase();
-          el.textContent = initials;
-          el.setAttribute("title", [u.firstName,u.lastName].filter(Boolean).join(" ").trim() || u.username || u.email || "Profile");
-        }
-        return u;
-      }catch(e){
-        console.error(e);
-        window.location.replace("/TEACHER/login/login.html");
-        return null;
-      }
-    }
-
-    // ========= Helpers: file kinds, YouTube detection =========
-    function isYouTubeUrl(url = '') {
-      try {
-        const u = new URL(url);
-        const h = u.hostname.replace(/^www\./, '').toLowerCase();
-        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
-      } catch { return false; }
-    }
-    function toYouTubeEmbed(url=''){
-      try{
-        const u = new URL(url);
-        const host = u.hostname.replace(/^www\./,'').toLowerCase();
-        let id = '';
-        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
-        if (start && /^\d+s$/.test(start)) start = parseInt(start,10);
-        if (start && /^\d+$/.test(start)) start = parseInt(start,10);
-        if (!Number.isFinite(start)) start = '';
-        if (host === 'youtu.be'){
-          id = (u.pathname || '').replace(/^\//,'').split('/')[0];
-        } else {
-          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
-          if (!id) id = u.searchParams.get('v') || '';
-        }
-        if (!id) return null;
-        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
-        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
-        return `${base}?${qs.toString()}`;
-      }catch{ return null; }
-    }
-    function getExtFromUrl(url=''){
-      const clean = String(url).split('?')[0].split('#')[0];
-      const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : '';
-    }
-    function kindFromUrl(url){
-      if (isYouTubeUrl(url)) return 'youtube';
-      const ext = getExtFromUrl(url);
-      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if (['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
-      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
-      if (ext==='pdf') return 'pdf';
-      if (['txt','csv','log'].includes(ext)) return 'text';
-      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
-      return 'other';
-    }
-
-    function setFileInfoUI(kind, url) {
-      const info = document.getElementById('fileInfoText');
-      const hdr  = document.getElementById('filePreviewModalLabel');
-      const badgeId = 'fileKindBadge';
-
-      const labelMap = {
-        youtube:'YouTube', video:'Video', audio:'Audio', image:'Image',
-        pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File'
-      };
-      const colorMap = {
-        youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
-        audio:'bg-secondary-subtle text-secondary', image:'bg-success-subtle text-success',
-        pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
-        office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
-      };
-
-      let badge = document.getElementById(badgeId);
-      if (!badge){
-        badge = document.createElement('span');
-        badge.id = badgeId;
-        badge.className = 'ms-2 badge rounded-pill';
-        hdr.appendChild(badge);
-      }
-      badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
-      badge.textContent = labelMap[kind] || 'File';
-
-      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
-      document.getElementById('openInNewTabBtn').href = url || '#';
-    }
-
-    function showSpinner(show) {
-      document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none';
-    }
-
-    // Render into the big modal
-    function renderFilePreviewInto(container, url) {
-      container.innerHTML = '';
-      showSpinner(true);
-
-      const done = () => showSpinner(false);
-      const kind = kindFromUrl(url);
-
-      // YouTube embed
-      if (kind === 'youtube') {
-        const embed = toYouTubeEmbed(url);
-        if (embed) {
-          container.innerHTML = `
-            <div class="ratio ratio-16x9">
-              <iframe
-                src="${embed}"
-                title="YouTube video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowfullscreen
-                referrerpolicy="strict-origin-when-cross-origin"
-                style="border:0"></iframe>
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center text-white">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 small">Preparing preview…</div>
             </div>
-          `;
-          done();
-          return;
-        }
-        container.innerHTML = `
-          <div class="preview-fallback">
-            <div class="text-muted mb-2">Couldn’t embed this YouTube link.</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a>
           </div>
-        `;
-        done();
-        return;
-      }
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
 
-      const ext = getExtFromUrl(url);
-
-      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
-        const img = new Image();
-        img.onload = done;
-        img.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Image preview failed.</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        img.src = url;
-        container.appendChild(img);
-        return;
-      }
-
-      if (ext === 'pdf') {
-        const iframe = document.createElement('iframe');
-        iframe.title = 'PDF preview';
-        iframe.onload = done;
-        iframe.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">PDF preview failed (viewer blocked or CORS).</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        iframe.src = url;
-        container.appendChild(iframe);
-        return;
-      }
-
-      if (['mp4','webm','ogg'].includes(ext)) {
-        const video = document.createElement('video');
-        video.controls = true;
-        video.onloadeddata = done;
-        video.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Video preview failed.</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        video.src = url;
-        container.appendChild(video);
-        return;
-      }
-
-      if (['mp3','wav','m4a','ogg'].includes(ext)) {
-        const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.onloadeddata = done;
-        audio.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Audio preview failed.</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        audio.src = url;
-        container.appendChild(audio);
-        return;
-      }
-
-      if (['txt','csv','log'].includes(ext)) {
-        const iframe = document.createElement('iframe');
-        iframe.onload = done;
-        iframe.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Text preview failed.</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        iframe.src = url;
-        container.appendChild(iframe);
-        return;
-      }
-
-      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) {
-        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
-        const iframe = document.createElement('iframe');
-        iframe.title = 'Document preview';
-        iframe.onload = done;
-        iframe.onerror = () => {
-          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Office preview failed (Google Viewer blocked or CORS).</div>
-            <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
-              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-            </a></div>`;
-          done();
-        };
-        iframe.src = gview;
-        container.appendChild(iframe);
-        return;
-      }
-
-      // Last-resort object
-      const obj = document.createElement('object');
-      obj.data = url;
-      obj.type = 'application/octet-stream';
-      obj.onload = done;
-      obj.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">This file type cannot be previewed here.</div>
-          <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
+        <div class="modal-footer" id="filePreviewFooter">
+          <div class="small" id="fileInfoText">Type: <span id="fileTypeText">File</span></div>
+          <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
-          </a></div>`;
-        done();
-      };
-      container.appendChild(obj);
-      setTimeout(() => { if (!obj.contentDocument) { /* heuristic */ } done(); }, 1200);
-    }
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    // ========= Page logic =========
-    document.addEventListener("DOMContentLoaded", async () => {
-      const user = initHeaderInitialsAndGuard();
-      if (!user) return;
-
-      const params = new URLSearchParams(location.search);
-      const moduleId = params.get("moduleId");
-      const subIdx = parseInt(params.get("subIdx"), 10) || 0;
-      const container = document.getElementById("moduleContent");
-
-      if (!moduleId) {
-        container.innerHTML = '<div class="text-danger">No module selected.</div>';
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
-        const mod = await res.json();
-        if (!mod || !mod.title) throw new Error("Module not found");
-
-        let html = `<div class="module-title">${(mod.title||'')}</div><ul class="nav nav-pills" role="tablist">`;
-        (mod.moduleSubTitles||[]).forEach((sub, i) => {
-          html += `<li class="nav-item" role="presentation">
-            <button class="nav-link${i===subIdx?' active':''}" id="tab-${i}" data-bs-toggle="pill" data-bs-target="#lesson-${i}" type="button" role="tab" aria-controls="lesson-${i}" aria-selected="${i===subIdx}">
-              ${sub || "(No Title)"}
-            </button></li>`;
-        });
-        html += `</ul><div class="tab-content">`;
-
-        (mod.moduleSubTitles||[]).forEach((sub, i) => {
-          const lessonAttachments = Array.isArray(mod.attachments) ? mod.attachments.filter(a => a.lessonIdx === i) : [];
-          html += `
-            <div class="tab-pane fade${i===subIdx?' show active':''}" id="lesson-${i}" role="tabpanel" aria-labelledby="tab-${i}">
-              <h6 class="module-subtitle">${sub || "(No Title)"}</h6>
-              <p class="module-desc">${
-                (mod.moduleSubDescs && mod.moduleSubDescs[i])
-                  ? String(mod.moduleSubDescs[i]).replace(/\n/g, "<br>")
-                  : "<span class='text-muted'>(No Description)</span>"
-              }</p>
-              ${lessonAttachments.map((att, idx) => {
-                const fileLabel = `File ${idx+1}`;
-                const desc = att.videoDesc || att.description || "(no description)";
-                const fname = (att.originalName || att.name || mod.title || "File").replace(/"/g, "&quot;");
-                const url = att.url || (att.filePath ? (FILE_BASE + att.filePath) : '');
-                const kind = url ? kindFromUrl(url) : 'other';
-                const icon = kind==='youtube' ? '▶️' : (kind==='video' ? '🎬' : (att.url ? '🔗' : '📄'));
-                const label = kind==='youtube' ? 'YouTube' : (kind==='video' ? 'Video' : (att.url ? 'Link' : 'File'));
-                return `
-                  <div class="attachment-item">
-                    <div class="fw-bold mb-1">${icon} ${label} — ${fileLabel}</div>
-                    <div class="attachment-actions">
-                      <button class="btn btn-amber btn-sm file-preview-btn"
-                              data-file-url="${(url||'').replace(/"/g,'&quot;')}"
-                              data-file-name="${fname}">
-                        <i class="bi bi-eye me-1"></i> Preview
-                      </button>
-
-                    </div>
-                    <div class="small">${desc}</div>
-                  </div>`;
-              }).join('')}
-            </div>`;
-        });
-
-        if (mod.description) {
-          html += `
-            <div class="main-desc">
-              <strong class="text-primary">Main Description</strong>
-              <p>${String(mod.description).replace(/\n/g,'<br>')}</p>
-            </div>`;
-        }
-
-        html += `</div>`;
-        container.classList.remove("text-center","text-muted");
-        container.innerHTML = html;
-
-        // Update URL when tab changes
-        container.querySelectorAll('[data-bs-toggle="pill"]').forEach(btn=>{
-          btn.addEventListener('shown.bs.tab', e=>{
-            const idx = e.target.id.split('-')[1];
-            history.replaceState(null, '', `?moduleId=${encodeURIComponent(moduleId)}&subIdx=${idx}`);
-          });
-        });
-
-        // Delegated actions: preview (modal)
-        container.addEventListener('click', (ev) => {
-          const btn = ev.target.closest('.file-preview-btn');
-          if (!btn) return;
-          const fileUrl = btn.dataset.fileUrl || '';
-          const fileName = btn.dataset.fileName || 'File';
-
-          // header title + badge + footer link
-          document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
-          setFileInfoUI(kindFromUrl(fileUrl), fileUrl);
-
-          // render content
-          const content = document.getElementById("filePreviewContent");
-          renderFilePreviewInto(content, fileUrl);
-
-          // show modal
-          new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
-        });
-
-      } catch (err) {
-        console.error(err);
-        container.innerHTML = '<div class="text-danger">Failed to load module content.</div>';
-      }
-    });
-
-    // Sidebar hover expand
+  <!-- Sidebar loader -->
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
@@ -566,7 +172,6 @@
 
           const sidebar = document.querySelector(".sidebar");
           const dashboard = document.querySelector(".dashboard");
-
           if (sidebar && dashboard) {
             sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
             sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
@@ -584,12 +189,313 @@
         })
         .catch(()=>{});
     });
-
-    function logoutUser(){
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/TEACHER/login/login.html";
-    }
   </script>
+
+  <!-- Page Logic -->
+  <script>
+    const API_BASE = 'http://localhost:5000';
+
+    // Guard + initials for teacher header
+    (function setUserHeader(){
+      try{
+        const raw = localStorage.getItem("user") || "{}";
+        const uObj = JSON.parse(raw);
+        const u = uObj.user || uObj;
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.replace("/TEACHER/login/login.html");
+          return;
+        }
+        const initials = (function(us){
+          const fn=(us.firstName||'').trim(), ln=(us.lastName||'').trim();
+          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
+          const em=(us.email||'').trim(); return em?em[0].toUpperCase():'U';
+        })(u);
+        const el = document.getElementById("Username");
+        el.textContent = initials;
+        const full=[u.firstName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Teacher';
+        el.title = full; el.setAttribute('aria-label', full);
+      }catch{ window.location.replace("/TEACHER/login/login.html"); }
+    })();
+
+    // Helpers
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+    function isYouTube(url='') {
+      try {
+        const u = new URL(url);
+        const h = u.hostname.replace(/^www\./,'').toLowerCase();
+        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+      } catch { return false; }
+    }
+    function ytEmbed(url='') {
+      try {
+        const u = new URL(url);
+        const host = u.hostname.replace(/^www\./,'').toLowerCase();
+        let id = '';
+        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
+        if (!Number.isFinite(start)) start = '';
+        if (host === 'youtu.be') id = u.pathname.replace(/^\//,'').split('/')[0];
+        else {
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
+      } catch { return null; }
+    }
+    function extFromUrl(u=''){ const c=String(u).split('?')[0].split('#')[0]; const p=c.split('.'); return p.length>1?p.pop().toLowerCase():''; }
+    function kindFromUrl(url=''){
+      if (isYouTube(url)) return 'youtube';
+      const ext = extFromUrl(url);
+      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (ext==='pdf') return 'pdf';
+      if (['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+
+    // Preview modal rendering
+    function setFileInfoUI(kind, url){
+      const map = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text', office:'Office Doc', other:'Link' };
+      document.getElementById('fileTypeText').textContent = map[kind] || 'Link';
+      document.getElementById('openInNewTabBtn').href = url || '#';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+
+    function renderFilePreviewInto(container, url){
+      container.innerHTML=''; showSpinner(true);
+      const done = ()=>showSpinner(false);
+      const kind = kindFromUrl(url);
+
+      if (kind === 'youtube') {
+        const embed = ytEmbed(url);
+        if (embed) {
+          container.innerHTML = `
+            <div class="ratio ratio-16x9">
+              <iframe
+                src="${embed}"
+                title="YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+                referrerpolicy="strict-origin-when-cross-origin"
+                style="border:0"></iframe>
+            </div>`;
+          return done();
+        }
+      }
+
+      if (kind === 'image') {
+        const img = new Image();
+        img.onload = done; img.onerror = done; img.src = url; container.appendChild(img); return;
+      }
+      if (kind === 'pdf') {
+        const iframe = document.createElement('iframe'); iframe.onload=done; iframe.onerror=done; iframe.src=url; container.appendChild(iframe); return;
+      }
+      if (kind === 'video') {
+        const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=done; v.src=url; container.appendChild(v); return;
+      }
+      if (kind === 'audio') {
+        const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=done; a.src=url; container.appendChild(a); return;
+      }
+      if (kind === 'text') {
+        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return;
+      }
+      if (kind === 'office') {
+        const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=gview; container.appendChild(i); return;
+      }
+
+      // Fallback
+      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=done; container.appendChild(obj);
+      setTimeout(done, 1000);
+    }
+
+    // Page state
+    const params = new URLSearchParams(window.location.search);
+    const moduleId = params.get('moduleId');
+    const startIdx = parseInt(params.get('subIdx') || '0', 10) || 0;
+    let moduleDoc=null, currentIdx=0, lessonCount=0, courseId=null;
+
+    // Fetch + render
+    async function fetchModule() {
+      if (!moduleId) {
+        alert('No moduleId provided.');
+        window.location.href = '/TEACHER/Modules/module_list.html';
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache:'no-store' });
+      if (!res.ok) throw new Error('Failed to load module');
+      moduleDoc = await res.json();
+      courseId = moduleDoc.courseId || null;
+
+      // Header meta
+      document.getElementById('metaTitle').textContent = moduleDoc.title || 'edit';
+      document.getElementById('moduleNumberBadge').textContent = `Module #${moduleDoc.moduleNumber || ''}`;
+
+      // Back button target
+      const back = document.getElementById('backToCourseBtn');
+      if (courseId) back.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
+      else {
+        back.addEventListener('click', (e)=>{
+          e.preventDefault();
+          if (document.referrer) history.back();
+          else location.href = '/TEACHER/Modules/module_list.html';
+        });
+      }
+
+      // Course label
+      try {
+        if (courseId) {
+          const cr = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
+          if (cr.ok) {
+            const c = await cr.json();
+            document.getElementById('metaCourse').textContent = `Course: ${c.title || '—'}`;
+          }
+        }
+      } catch {}
+
+      // Lesson arrays
+      const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
+      const descs = Array.isArray(moduleDoc.moduleSubDescs) ? moduleDoc.moduleSubDescs : [];
+      lessonCount = Math.max(moduleDoc.lessonCount || 0, subs.length, descs.length);
+      document.getElementById('metaLessons').textContent = String(lessonCount);
+      document.getElementById('moduleMeta').style.display = '';
+
+      // Build list
+      const list = document.getElementById('lessonList');
+      list.innerHTML = '';
+      for (let i=0;i<lessonCount;i++){
+        const btn = document.createElement('button');
+        btn.type='button';
+        btn.className = `btn btn-sm lesson-pill text-start ${i===startIdx?'active':''}`;
+        btn.textContent = `${i+1}. ${subs[i] || '(No Title)'}`;
+        btn.addEventListener('click', ()=>showLesson(i));
+        list.appendChild(btn);
+      }
+
+      showLesson(startIdx < lessonCount ? startIdx : 0);
+    }
+
+    function bestFileUrl(att) {
+      if (att.previewUrl) return att.previewUrl;
+      if (att.url) return att.url;
+      if (att.publicUrl) return att.publicUrl;
+      if (att.filePath) return `http://127.0.0.1:5000${att.filePath}`;
+      return '';
+    }
+
+    function showLesson(idx){
+      currentIdx = Math.max(0, Math.min(idx, lessonCount - 1));
+      document.querySelectorAll('#lessonList .lesson-pill').forEach((el, i) => {
+        el.classList.toggle('active', i === currentIdx);
+      });
+      document.getElementById('lessonIndexBadge').textContent = `Lesson ${currentIdx + 1}`;
+
+      const subs = moduleDoc.moduleSubTitles || [];
+      const descs = moduleDoc.moduleSubDescs || [];
+      const title = subs[currentIdx] || '(No Title)';
+      const body  = descs[currentIdx] || '(No Content)';
+      document.getElementById('lessonTitle').textContent = title;
+      document.getElementById('lessonBody').textContent  = body;
+
+      const wrap = document.getElementById('attachments');
+      wrap.innerHTML = '';
+
+      const atts = Array.isArray(moduleDoc.attachments)
+        ? moduleDoc.attachments.filter(a => (a.lessonIdx ?? 0) === currentIdx)
+        : [];
+
+      if (!atts.length) {
+        wrap.innerHTML = `<div class="text-muted">No attachments for this lesson.</div>`;
+      } else {
+        atts.forEach(att => {
+          const item = document.createElement('div');
+          item.className = 'attachment-item';
+
+          const label = att.originalName || att.description || att.videoDesc || att.url || 'Open file';
+          const url = bestFileUrl(att);
+
+          // YouTube or external link
+          if (att.url && isYouTube(att.url)) {
+            item.innerHTML = `
+              <span class="badge attachment-badge me-2">Video</span>
+              <div class="ratio ratio-16x9 mt-1">
+                <iframe class="video-embed" src="${ytEmbed(att.url) || att.url}" allowfullscreen></iframe>
+              </div>
+              ${(att.videoDesc ? `<div class="small text-muted mt-1">${escapeHTML(att.videoDesc)}</div>` : '')}
+              <div class="mt-2">
+                <button class="btn btn-sm btn-amber" type="button" data-open="${att.url}">
+                  <i class="bi bi-eye me-1"></i> Preview
+                </button>
+              </div>
+            `;
+          } else {
+            // File or generic link -> open in modal
+            item.innerHTML = `
+              <span class="badge attachment-badge me-2">File</span>
+              <button class="btn btn-link p-0 text-decoration-none" type="button" data-open="${url}">
+                ${escapeHTML(label)}
+              </button>
+              ${(att.description ? `<div class="small text-muted mt-1">${escapeHTML(att.description)}</div>` : '')}
+            `;
+          }
+
+          // hook up preview
+          item.querySelectorAll('[data-open]').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+              const openUrl = btn.getAttribute('data-open');
+              openPreview(openUrl, label);
+            });
+          });
+
+          wrap.appendChild(item);
+        });
+      }
+
+      document.getElementById('prevLesson').disabled = currentIdx <= 0;
+      document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
+    }
+
+    function openPreview(url, title='File'){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      setFileInfoUI(kindFromUrl(url), url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), url);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
+    // Controls
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('prevLesson').addEventListener('click', () => showLesson(currentIdx - 1));
+      document.getElementById('nextLesson').addEventListener('click', () => showLesson(currentIdx + 1));
+
+      const searchTop = document.getElementById('lessonSearch');
+      searchTop.addEventListener('input', () => {
+        const q = searchTop.value.trim().toLowerCase();
+        const subs = moduleDoc?.moduleSubTitles || [];
+        const idx = subs.findIndex(s => (s || '').toLowerCase().includes(q));
+        if (q && idx >= 0) showLesson(idx);
+      });
+
+      try { await fetchModule(); }
+      catch (e) {
+        console.error(e);
+        alert('Failed to load module.');
+        window.location.href = '/TEACHER/Modules/module_list.html';
+      }
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
