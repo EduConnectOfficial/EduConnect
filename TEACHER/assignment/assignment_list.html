@@ -14,92 +14,6 @@
   <!-- Global dashboard CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <link rel="stylesheet" href="list.css" />
-
-  <!-- Pills (course / module / archived) -->
-  <style>
-    .pill{
-      display:inline-flex;align-items:center;gap:.4rem;
-      padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700;
-      border:1px solid var(--border, #e5e7eb);background:#fff;color:#374151;white-space:nowrap;
-    }
-    .pill .bi{font-size:.9rem}
-    .pill-course{ background:#fff7ed;border-color:#fed7aa;color:#9a3412; }
-    .pill-module{ background:#ecfdf5;border-color:#a7f3d0;color:#065f46; }
-    .pill-archived{ background:#f3f4f6;border-color:#e5e7eb;color:#374151; }
-
-    /* Soft badge used for points display */
-    .badge-soft{
-      display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;
-      padding:2px 10px;font-size:.75rem;color:var(--brand-accent-2, #B03C10);
-      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
-    }
-
-    /* keep toast anchored */
-    .toast-fixed{position:fixed;right:16px;bottom:16px;z-index:1056}
-
-    /* Pills row (always-visible counts) */
-    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin:10px 0 18px}
-    /* Pills (course / module / archived) */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: .3rem;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: .8rem;
-  font-weight: 700;
-  border: 1px solid var(--border, #e5e7eb);
-  background: #fff;
-  color: #374151;
-  max-width: 100%;
-  overflow: hidden;
-}
-.pill .bi {
-  font-size: .9rem;
-}
-.pill-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  display: inline-block;
-}
-.pill-course { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
-.pill-module { background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
-.pill-archived { background:#f3f4f6; border-color:#e5e7eb; color:#374151; }
-.assignment-card .desc {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  line-clamp: 4;             /* fallback for future spec */
-  -webkit-line-clamp: 4;     /* limit lines (3–5 is fine, adjust number) */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-word;
-  line-height: 1.4;
-  max-height: calc(1.4em * 4); /* sync with line-clamp count */
-  font-size: .9rem;
-  color: #6b7280; /* muted gray */
-}
-.assignment-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%; /* equal height cards */
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 16px;
-}
-
-/* push the buttons row to the bottom */
-.assignment-card .card-footer-actions {
-  margin-top: auto;  /* pushes it down */
-  display: flex;
-  justify-content: flex-end;
-  gap: .5rem;
-  flex-wrap: wrap;
-}
-
-  </style>
 </head>
 
 <body>
@@ -167,7 +81,7 @@
           </div>
         </div>
 
-        <!-- NEW: Always-visible count pills -->
+        <!-- Always-visible count pills -->
         <div class="pill-row">
           <span id="activeCountPill" class="badge rounded-pill text-bg-light">
             <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
@@ -181,71 +95,6 @@
       </div>
     </div>
   </div>
-
-  <!-- EDIT MODAL -->
-  <div class="modal fade" id="editAssignmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <form id="editForm">
-          <div class="modal-header" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); color:#FFD8A9;">
-            <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Assignment</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-
-            <div id="editError" class="text-danger mb-2" style="min-height:1rem;"></div>
-
-            <input type="hidden" id="editAssignmentId" />
-
-            <div class="row g-3">
-              <div class="col-md-8">
-                <label class="form-label">Title</label>
-                <input type="text" id="editTitle" class="form-control" required />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Points</label>
-                <input type="number" id="editPoints" min="0" step="1" class="form-control" />
-              </div>
-              <div class="col-12">
-                <label class="form-label">Content / Instructions</label>
-                <textarea id="editContent" rows="5" class="form-control" required></textarea>
-              </div>
-            </div>
-
-            <div class="row g-3 mt-1">
-              <div class="col-md-6">
-                <label class="form-label">Publish At</label>
-                <input type="datetime-local" id="editPublishAt" class="form-control" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Due At</label>
-                <input type="datetime-local" id="editDueAt" class="form-control" />
-              </div>
-            </div>
-
-            <div class="row g-3 mt-1">
-              <div class="col-md-12">
-                <label class="form-label">Module</label>
-                <select id="editModuleId" class="form-select">
-                  <option value="">— Keep current —</option>
-                </select>
-                <div class="form-text">Change only if you want to move this assignment to another module.</div>
-              </div>
-            </div>
-
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
-            <button id="saveEditBtn" type="submit" class="btn btn-amber">
-              <span class="save-text">Save Changes</span>
-              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  <!-- /EDIT MODAL -->
 
   <!-- GENERIC INFO MODAL -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
@@ -317,66 +166,58 @@
         });
     });
   </script>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
+  <!-- Header initials -->
+  <script>
+    // ---- Auth guard + header initials (robust) ----
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
 
-    const initials = getInitials(u);
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
+        const initials = getInitials(u);
 
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+          el.textContent = initials;
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
 
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/).filter(Boolean);
 
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+  </script>
 
   <!-- Page logic -->
   <script>
@@ -398,26 +239,9 @@
     const btnArchived = document.getElementById('btnArchived');
     const btnAll = document.getElementById('btnAll');
 
-    // NEW: pill DOM
+    // Count pills
     const elActiveCount = document.getElementById('activeCount');
     const elArchivedCount = document.getElementById('archivedCount');
-    const elResultsCount = document.getElementById('assignmentCount');
-    const elResultsPill = document.getElementById('assignmentCountPill');
-
-    // Edit modal DOM
-    let editModal; // bootstrap modal instance
-    const elEditId = document.getElementById('editAssignmentId');
-    const elEditTitle = document.getElementById('editTitle');
-    const elEditPoints = document.getElementById('editPoints');
-    const elEditContent = document.getElementById('editContent');
-    const elEditPublish = document.getElementById('editPublishAt');
-    const elEditDue = document.getElementById('editDueAt');
-    const elEditModule = document.getElementById('editModuleId');
-    const elEditForm = document.getElementById('editForm');
-    const elEditError = document.getElementById('editError');
-    const elSaveBtn = document.getElementById('saveEditBtn');
-    const elSaveSpinner = elSaveBtn.querySelector('.spinner-border');
-    const elSaveText = elSaveBtn.querySelector('.save-text');
 
     // State
     let coursesList = [];
@@ -434,29 +258,28 @@
     function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
     function escapeHTML(str = '') { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", "&#039;"); }
     function goUpload() { window.location.href = "/TEACHER/assignment/assignment_upload.html"; }
+    function goEdit(courseId, assignmentId) {
+      const params = new URLSearchParams({ courseId, assignmentId });
+      window.location.href = `/TEACHER/assignment/edit_assignment.html?${params.toString()}`;
+    }
     function goToGraded(courseId, assignmentId) {
       const params = new URLSearchParams({ courseId, assignmentId });
       window.location.href = `/TEACHER/assignment/grade_submission.html?${params.toString()}`;
     }
     function tsToMs(ts) {
       if (!ts) return null;
-      const s = ts._seconds ?? ts.seconds;
-      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      const s = ts?._seconds ?? ts?.seconds;
+      const ns = ts?._nanoseconds ?? ts?.nanoseconds ?? 0;
       if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
       if (typeof ts === 'number') return ts;
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d.getTime();
     }
-    function preview(text, n = 120) { const t = (text || '').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; }
     function msToLocalInput(ms) {
       if (!ms) return '';
       const d = new Date(ms);
       const pad = n => String(n).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const mm = pad(d.getMonth() + 1);
-      const dd = pad(d.getDate());
-      const hh = pad(d.getHours());
-      const mi = pad(d.getMinutes());
+      const yyyy = d.getFullYear(), mm = pad(d.getMonth() + 1), dd = pad(d.getDate()), hh = pad(d.getHours()), mi = pad(d.getMinutes());
       return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
     }
     function showToast(msg, variant = 'success') {
@@ -467,7 +290,7 @@
       t.show();
     }
 
-    // ===== Modals helpers =====
+    // Modals helpers
     function showInfoModal({ title = 'Notice', html = '', autoHideMs = 0, onHidden = null } = {}) {
       const el = document.getElementById('infoModal');
       document.getElementById('infoModalLabel').textContent = title;
@@ -494,9 +317,9 @@
           el.removeEventListener('hidden.bs.modal', onDismiss);
           resolve(val);
         };
-        function onYes(){ modal.hide(); cleanup(true); }
-        function onNo(){ modal.hide(); cleanup(false); }
-        function onDismiss(){ cleanup(false); }
+        function onYes() { modal.hide(); cleanup(true); }
+        function onNo() { modal.hide(); cleanup(false); }
+        function onDismiss() { cleanup(false); }
 
         yesBtn.addEventListener('click', onYes);
         noBtn.addEventListener('click', onNo);
@@ -522,27 +345,6 @@
       const opts = ['<option value="">All courses</option>'];
       coursesList.forEach(c => opts.push(`<option value="${c.id}">${escapeHTML(c.label)}</option>`));
       elCourse.innerHTML = opts.join('');
-    }
-
-    // Fetch course modules for modal select
-    async function loadModulesForCourse(courseId, selectedModuleId) {
-      elEditModule.innerHTML = `<option value="">— Keep current —</option>`;
-      if (!courseId) return;
-      try {
-        const res = await fetch(`${API}/api/courses/${encodeURIComponent(courseId)}/modules`);
-        const js = await res.json();
-        const mods = Array.isArray(js) ? js : (js.modules || []);
-        mods.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
-        mods.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.id;
-          opt.textContent = `Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
-          if (selectedModuleId && String(selectedModuleId) === String(m.id)) opt.selected = true;
-          elEditModule.appendChild(opt);
-        });
-      } catch (e) {
-        console.warn('Failed loading modules for course', e);
-      }
     }
 
     // Fetch a module doc and cache it
@@ -620,7 +422,7 @@
       refreshAssignmentPills();
     }
 
-    // NEW: update active/archived counts from full snapshot
+    // Update active/archived counts
     function refreshAssignmentPills() {
       const activeCount = masterAssignments.filter(a => a.archived !== true).length;
       const archivedCount = masterAssignments.filter(a => a.archived === true).length;
@@ -652,10 +454,6 @@
 
       filtered = list;
 
-      // NEW: update Results pill (null-safe & auto-hide on 0)
-      if (elResultsCount) elResultsCount.textContent = String(filtered.length);
-      if (elResultsPill) elResultsPill.classList.toggle('d-none', filtered.length <= 0);
-
       renderGrid();
     }
 
@@ -686,94 +484,6 @@
     }
     function unarchiveAssignment(id) {
       setArchiveState(id, false);
-    }
-
-    // Edit modal open
-    async function openEditModal(assignmentId) {
-      const elModalRoot = document.getElementById('editAssignmentModal'); // ensure present before using Bootstrap
-      if (!elModalRoot) return showInfoModal({ title: 'Editor Unavailable', html: 'Editor unavailable on this page.' });
-
-      elEditError.textContent = '';
-      elSaveBtn.disabled = false;
-      elSaveSpinner.classList.add('visually-hidden');
-      elSaveText.textContent = 'Save Changes';
-
-      try {
-        const res = await fetch(`${API}/api/assignments/${assignmentId}`);
-        const js = await res.json();
-        if (!res.ok || !js.success) throw new Error(js.message || 'Failed to fetch assignment');
-
-        const a = js.assignment || js.data || {};
-        elEditId.value = assignmentId;
-        elEditTitle.value = a.title || '';
-        elEditContent.value = a.content || '';
-        elEditPoints.value = (typeof a.points === 'number') ? a.points : '';
-        elEditPublish.value = msToLocalInput(tsToMs(a.publishAt));
-        elEditDue.value = msToLocalInput(tsToMs(a.dueAt));
-
-        // Load modules list for this course & preselect current
-        await loadModulesForCourse(a.courseId, a.moduleId);
-
-        if (!editModal) editModal = new bootstrap.Modal(elModalRoot);
-        editModal.show();
-      } catch (e) {
-        console.error(e);
-        showInfoModal({ title: 'Error', html: 'Failed to open editor: ' + escapeHTML(e.message) });
-      }
-    }
-
-    // Save edit (PATCH)
-    const elEditFormRef = document.getElementById('editForm');
-    if (elEditFormRef) {
-      elEditFormRef.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        elEditError.textContent = '';
-
-        const id = elEditId.value;
-        const title = elEditTitle.value.trim();
-        const content = elEditContent.value.trim();
-        const pointsStr = elEditPoints.value;
-        const publishVal = elEditPublish.value;
-        const dueVal = elEditDue.value;
-        const moduleId = elEditModule.value;
-
-        if (!title || !content) {
-          elEditError.textContent = 'Title and Content are required.';
-          return;
-        }
-
-        const payload = { title, content };
-        if (pointsStr !== '') payload.points = Number(pointsStr);
-        if (publishVal) payload.publishAt = String(new Date(publishVal).getTime());
-        if (dueVal) payload.dueAt = String(new Date(dueVal).getTime());
-        if (moduleId) payload.moduleId = moduleId;
-
-        elSaveBtn.disabled = true;
-        elSaveSpinner.classList.remove('visually-hidden');
-        elSaveText.textContent = 'Saving…';
-
-        try {
-          const res = await fetch(`${API}/api/assignments/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-          const js = await res.json();
-          if (!res.ok || js.success === false) {
-            throw new Error(js.message || js.error || 'Failed to save changes.');
-          }
-
-          await preloadAllAssignments();   // refresh full list + pills
-          if (editModal) editModal.hide();
-        } catch (err) {
-          console.error(err);
-          elEditError.textContent = err.message || 'Server error while saving.';
-        } finally {
-          elSaveBtn.disabled = false;
-          elSaveSpinner.classList.add('visually-hidden');
-          elSaveText.textContent = 'Save Changes';
-        }
-      });
     }
 
     // Delete assignment
@@ -812,27 +522,27 @@
         const pts = (typeof a.points === 'number') ? `${a.points} pts` : '';
 
         const coursePill = a.courseLabel
-  ? `<span class="pill pill-course" title="${escapeHTML(a.courseLabel)}">
-       <i class="bi bi-collection"></i>
-       <span class="pill-text">${escapeHTML(a.courseLabel)}</span>
-     </span>`
-  : '';
+          ? `<span class="pill pill-course" title="${escapeHTML(a.courseLabel)}">
+              <i class="bi bi-collection"></i>
+              <span class="pill-text">${escapeHTML(a.courseLabel)}</span>
+             </span>`
+          : '';
 
-let moduleLabel = '';
-if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
-  moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
-} else if (a.moduleNumber != null) {
-  moduleLabel = `Module ${a.moduleNumber}`;
-} else if ((a.moduleTitle || '').trim()) {
-  moduleLabel = a.moduleTitle;
-}
+        let moduleLabel = '';
+        if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+          moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+        } else if (a.moduleNumber != null) {
+          moduleLabel = `Module ${a.moduleNumber}`;
+        } else if ((a.moduleTitle || '').trim()) {
+          moduleLabel = a.moduleTitle;
+        }
 
-const modulePill = moduleLabel
-  ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
-       <i class="bi bi-box"></i>
-       <span class="pill-text">${escapeHTML(moduleLabel)}</span>
-     </span>`
-  : '';
+        const modulePill = moduleLabel
+          ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+              <i class="bi bi-box"></i>
+              <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+             </span>`
+          : '';
 
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
@@ -847,35 +557,33 @@ const modulePill = moduleLabel
 
               <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
 
-             <div class="desc mb-2" title="${escapeHTML(a.content || '')}">
-  ${escapeHTML(a.content || '')}
-</div>
-
+              <div class="desc mb-2" title="${escapeHTML(a.content || '')}">
+                ${escapeHTML(a.content || '')}
+              </div>
 
               <div class="d-flex align-items-center justify-content-between small mb-3">
                 <span class="text-muted"><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueStr}</span>
                 <span class="text-muted">${a.submissionCount ?? '—'} submissions</span>
               </div>
-<div class="card-footer-actions">
-  ${
-    a.archived === true
-      ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
-           <i class="bi bi-arrow-counterclockwise"></i> Unarchive
-         </button>`
-      : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
-           <i class="bi bi-archive"></i> Archive
-         </button>`
-  }
-  <button class="btn btn-sm btn-outline-secondary" onclick="openEditModal('${a.id}')">
-    <i class="bi bi-pencil"></i> Edit
-  </button>
-  <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
-    <i class="bi bi-trash"></i> Delete
-  </button>
-  <button class="btn btn-sm btn-amber" onclick="goToGraded('${a.courseId}','${a.id}')">
-    <i class="bi bi-list-check"></i> Grade
-  </button>
-</div>
+
+              <div class="card-footer-actions">
+                ${a.archived === true
+                  ? `<button class="btn btn-sm btn-outline-success" onclick="unarchiveAssignment('${a.id}')">
+                       <i class="bi bi-arrow-counterclockwise"></i> Unarchive
+                     </button>`
+                  : `<button class="btn btn-sm btn-outline-secondary" onclick="archiveAssignment('${a.id}')">
+                       <i class="bi bi-archive"></i> Archive
+                     </button>`}
+                <button class="btn btn-sm btn-outline-secondary" onclick="goEdit('${a.courseId}','${a.id}')">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+                <button class="btn btn-sm btn-amber" onclick="goToGraded('${a.courseId}','${a.id}')">
+                  <i class="bi bi-list-check"></i> Grade
+                </button>
+              </div>
 
             </div>
           </div>
@@ -915,7 +623,7 @@ const modulePill = moduleLabel
         if (preCourse && courseMap.has(preCourse)) {
           currentCourseId = preCourse;
           elCourse.value = preCourse;
-          applyFilters(); // will also refresh results pill
+          applyFilters();
         }
       } catch (e) {
         console.error(e);
@@ -924,11 +632,11 @@ const modulePill = moduleLabel
     })();
 
     // Expose for inline buttons
-    window.openEditModal = openEditModal;
     window.deleteAssignment = deleteAssignment;
     window.goToGraded = goToGraded;
     window.archiveAssignment = archiveAssignment;
     window.unarchiveAssignment = unarchiveAssignment;
+    window.goEdit = goEdit;
   </script>
 
   <!-- Bootstrap JS -->

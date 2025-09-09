@@ -12,8 +12,42 @@
   <link href="./ass_upload.css" rel="stylesheet"/>
 
   <style>
-    .file-too-large{ color:#b91c1c; font-weight:600; }
+    :root{ --radius:14px; }
+    html,body{ background:#f6f8fa; }
+    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1, #2a3f5f),var(--brand-dark-2, #20334b));color:#FFD8A9;padding:12px 16px}
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .ui-subtext{font-size:.9rem;opacity:.9}
+    .brand{color:#20334b}
     .small-muted { color:#6b7280; font-size:.9rem; }
+    .file-too-large{ color:#b91c1c; font-weight:600; }
+    .hint{color:#6b7280;font-size:.85rem}
+
+    /* Attachments list */
+    .file-list{list-style:none;padding-left:0;margin:0}
+    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    .file-item + .file-item{margin-top:.5rem}
+    .file-name{flex:1 1 auto;min-width:0}
+    .file-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
+    .btn-icon{padding:.375rem .5rem}
+
+    /* badges (match edit page) */
+    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
+    .badge-rubric{background:#fff3cd;border-color:#ffe69c}
+    .badge-file{background:#eef2ff;border-color:#c7d2fe}
+    .badge-link{background:#ecfeff;border-color:#a5f3fc}
+    .badge-stage{background:#dcfce7;border-color:#86efac}
+
+    /* modal preview (match edit page) */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
+    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
+    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
+    }
+    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
+    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
   </style>
 </head>
 <body>
@@ -24,13 +58,12 @@
     <!-- Main -->
     <div class="main">
       <!-- Header -->
-      <header class="header-top">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
-        <div class="search-box position-relative">
+        <div class="search-box position-relative" style="max-width:520px;">
           <input type="text" id="searchBox" class="form-control" placeholder="Search assignments..."/>
-          <i class="fas fa-search position-absolute"></i>
+          <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
-        <!-- fixed extra quote here -->
         <button class="profile-btn btn btn-link text-decoration-none">
           <i class="fas fa-user-circle fa-2x"></i>
           <span id="Username" class="username ms-2 fw-semibold"></span>
@@ -38,16 +71,16 @@
       </header>
 
       <!-- Content -->
-      <div class="content container-fluid">
+      <div class="content container-fluid p-4">
         <h1 class="page-title brand">Assignment Upload</h1>
 
-        <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1000px;">
+        <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1080px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-clipboard-plus"></i> Create Assignment</h2>
-            <div class="ui-subtext">Pick a course, then its module, add details & files.</div>
+            <div class="ui-subtext">Pick a course & module, add details, then stage files/links/rubric and create.</div>
           </div>
 
-          <form id="assignmentForm" class="px-1" enctype="multipart/form-data" novalidate>
+          <form id="assignmentForm" class="px-3 py-3" enctype="multipart/form-data" novalidate>
             <!-- Row: Course / Module -->
             <div class="row g-3">
               <div class="col-md-6">
@@ -97,18 +130,73 @@
               </div>
             </div>
 
-            <!-- Files -->
-            <div class="mt-3">
-              <label class="form-label">Attachments (optional)</label>
-              <input id="files" type="file" class="form-control" multiple/>
-              <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>.</div>
-              <div id="fileList" class="small-muted mt-1"></div>
-            </div>
-            <div class="mt-3">
-              <label class="form-label">Rubrics File (optional)</label>
-              <input id="rubricsFile" type="file" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"/>
-              <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>.</div>
-              <div id="rubricsFileList" class="small-muted mt-1"></div>
+            <!-- MATCH EDIT PAGE: Staging UI -->
+            <div class="ui-card mt-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-paperclip"></i> Attachments & Rubric</h2>
+              </div>
+              <div class="p-3">
+                <!-- Upload area: files -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Upload file(s)</label>
+                    <input id="fileInput" type="file" multiple class="form-control" />
+                    <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>. You can select multiple; preview before staging.</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewSelectedFiles" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview Selected
+                    </button>
+                    <button id="btnStageFiles" class="btn btn-outline-primary w-100 w-sm-auto">
+                      <i class="bi bi-cloud-plus"></i> Stage Files
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Upload area: rubric (single) -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Upload rubric (single file)</label>
+                    <input id="rubricInput" type="file" class="form-control" />
+                    <div class="small-muted mt-1">Only one rubric; staging a new one replaces the staged rubric.</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewRubric" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview
+                    </button>
+                    <button id="btnStageRubric" class="btn btn-outline-warning w-100 w-sm-auto">
+                      <i class="bi bi-clipboard-plus"></i> Stage Rubric
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-12"><hr class="my-2"></div>
+
+                <!-- Add link -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Add a link</label>
+                    <input id="linkInput" type="url" class="form-control" placeholder="https://…" />
+                    <div class="small-muted mt-1">Paste a public URL (Docs, YouTube, etc.).</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview
+                    </button>
+                    <button id="btnStageLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-link-45deg"></i> Stage Link
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Staged list -->
+                <ul id="filesList" class="file-list"></ul>
+                <div class="form-text mt-2">
+                  <strong>Staging:</strong> items marked with
+                  <span class="badge-soft badge-stage">Staged</span>
+                  will be uploaded/added when you click <strong>Create Assignment</strong>.
+                </div>
+              </div>
             </div>
 
             <!-- Error / debug -->
@@ -128,7 +216,39 @@
     </div>
   </div>
 
-  <!-- Info Modal (replaces alert) -->
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto d-flex gap-2">
+            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+              <i class="bi bi-cloud-plus me-1"></i> Stage this file
+            </button>
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Modal -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -170,141 +290,421 @@
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
+  <!-- Auth guard + header initials -->
+  <script>
+    (function initHeaderInitials(){
+      try{
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
 
-    const initials = getInitials(u);
+        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
+        window.currentUser = u;
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
+        const initials = (function(u){
+          const fn=(u.firstName||'').trim(), ln=(u.lastName||'').trim();
+          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
+          const nameish=(u.username||u.displayName||u.name||'').trim();
+          if(nameish){
+            const parts=nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ').split(/[\s._-]+/).filter(Boolean);
+            if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+            return parts[0][0].toUpperCase();
+          }
+          const em=(u.email||'').trim();
+          return em?em[0].toUpperCase():'U';
+        })(u);
 
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        window.addEventListener("DOMContentLoaded", ()=>{
+          const el=document.getElementById("Username");
+          if(!el) return;
+          el.textContent=initials;
+          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Profile';
+          el.setAttribute('title', full);
+          el.setAttribute('aria-label', full);
+        });
+      }catch(e){ console.error('initHeaderInitials failed:', e); window.location.href = "/TEACHER/login/login.html"; }
+    })();
+  </script>
 
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
-
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
-
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
-
-  <!-- Page Logic -->
+  <!-- Page Logic (MATCHES EDIT PAGE BEHAVIOR) -->
   <script>
     const API_BASE = "http://localhost:5000";
     const TEACHER_MAX_MB = 500;
     const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
-    // ==== Auth guard (teacher-only) ====
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!userData?.userId || !userData?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-    }
-    document.getElementById("Username").textContent = userData.username || "";
-    const TEACHER_ID = userData.userId;
+    /* ===== Utilities (copied/trimmed from edit page for parity) ===== */
+    const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const toMillis = v => v ? new Date(v).getTime() : null;
 
-    // ==== DOM refs ====
+    function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start=''; if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];} else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; } if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start) qs.set('start', String(start)); return `${base}?${qs.toString()}`; }catch{return null;} }
+    function kindFrom({url='', name='', mime=''}) {
+      const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
+      if (isYouTubeUrl(url)) return 'youtube';
+      if ((mime||'').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+      if ((mime||'').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if ((mime||'').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if ((mime||'').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={youtube:'YouTube',video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+    function renderFilePreviewInto(container, {url, name='', mime='', isStaged=false}){
+      container.innerHTML=''; showSpinner(true);
+      const done=()=>showSpinner(false);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+      const kind = kindFrom({url, name, mime});
+      if(kind==='youtube'){ const embed=toYouTubeEmbed(url); if(embed){container.innerHTML=`<div class="ratio ratio-16x9"><iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`; done(); return;} return fallback('Couldn’t embed this YouTube link.'); }
+      if(kind==='image'){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(kind==='pdf'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='video'){ const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=()=>fallback('Video preview failed.'); v.src=url; container.appendChild(v); return; }
+      if(kind==='audio'){ const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=()=>fallback('Audio preview failed.'); a.src=url; container.appendChild(a); return; }
+      if(kind==='text'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='office' && url.startsWith('blob:')){ return fallback('Office documents cannot be previewed until they’re uploaded. Please Create first, then preview in Edit.'); }
+      if(kind==='office'){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked).'); iframe.src=gview; container.appendChild(iframe); return; }
+      const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+
+    /* ===== Previews & Stage button context ===== */
+    let currentPreviewRevoke = null;
+    let previewStageCtx = null; // { mode:'file'|'rubric', files?:File[], file?:File }
+    const stageFromPreviewBtn = document.getElementById('stageFromPreviewBtn');
+
+    function showStageBtn(show, label){
+      stageFromPreviewBtn.classList.toggle('d-none', !show);
+      if (label) stageFromPreviewBtn.innerHTML = `<i class="bi bi-cloud-plus me-1"></i> ${label}`;
+    }
+
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', ()=>{
+      if (typeof currentPreviewRevoke === 'function') { try { currentPreviewRevoke(); } catch {} }
+      currentPreviewRevoke = null;
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
+
+    function openPreviewModalWithMeta({url, title='File', mime='', isStaged=false, stageContext=null}){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      setFileInfoUI(kindFrom({url, name:title, mime}), url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime, isStaged});
+      previewStageCtx = stageContext || null;
+      if (previewStageCtx) {
+        const label = (previewStageCtx.mode === 'rubric') ? 'Stage this rubric' : 'Stage this file';
+        showStageBtn(true, label);
+      } else {
+        showStageBtn(false);
+      }
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
+    stageFromPreviewBtn.addEventListener('click', ()=>{
+      if (!previewStageCtx) return;
+
+      if (previewStageCtx.mode === 'file' && Array.isArray(previewStageCtx.files)) {
+        previewStageCtx.files.forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
+        fileInput.value = '';
+        renderAttachments();
+        bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+        showInfo('Staged','File(s) are staged and will be uploaded on Create.');
+      }
+      if (previewStageCtx.mode === 'rubric' && previewStageCtx.file) {
+        const f = previewStageCtx.file;
+        f.__uid = Math.random().toString(36).slice(2,10);
+        staged.addRubric = f; // replace any previous staged rubric
+        rubricInput.value = '';
+        renderAttachments();
+        bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+        showInfo('Staged','Rubric is staged and will be uploaded on Create.');
+      }
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
+
+    function showInfo(title, body){
+      document.getElementById('infoModalLabel').textContent = title;
+      document.getElementById('infoModalBody').innerHTML = body;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
+    }
+
+    /* ===== DOM refs ===== */
     const courseSelect = document.getElementById("courseSelect");
     const moduleSelect = document.getElementById("moduleSelect");
     const moduleHelp   = document.getElementById("moduleHelp");
     const form         = document.getElementById("assignmentForm");
     const formError    = document.getElementById("formError");
-    const fileInput    = document.getElementById("files");
-    const fileList     = document.getElementById("fileList");
-    const rubricsFileInput = document.getElementById("rubricsFile");
-    const rubricsFileList  = document.getElementById("rubricsFileList");
     const submitBtn    = document.getElementById("submitBtn");
     const spinner      = submitBtn.querySelector(".spinner-border");
     const submitText   = submitBtn.querySelector(".submit-text");
 
-    // ==== utils ====
-    const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    const toMillis = v => v ? new Date(v).getTime() : null;
-    const human = bytes => {
-      if (!Number.isFinite(bytes)) return '';
-      const mb = bytes / (1024 * 1024);
-      return mb >= 1024 ? (mb/1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB';
+    const fileInput      = document.getElementById('fileInput');
+    const btnPreviewSelectedFiles = document.getElementById('btnPreviewSelectedFiles');
+    const btnStageFiles  = document.getElementById('btnStageFiles');
+    const rubricInput    = document.getElementById('rubricInput');
+    const btnPreviewRubric = document.getElementById('btnPreviewRubric');
+    const btnStageRubric = document.getElementById('btnStageRubric');
+    const linkInput      = document.getElementById('linkInput');
+    const btnPreviewLink = document.getElementById('btnPreviewLink');
+    const btnStageLink   = document.getElementById('btnStageLink');
+    const filesList      = document.getElementById('filesList');
+
+    /* ===== Staging (like edit page, but no currentAttachments) ===== */
+    let staged = {
+      addFiles: [],      // File[]
+      addLinks: [],      // string[]
+      addRubric: null    // File | null
     };
 
+    function badgeForType(att){
+      if (att.type === 'link') return `<span class="badge-soft badge-link"><i class="bi bi-link-45deg"></i> Link</span>`;
+      if (att.type === 'rubrics') return `<span class="badge-soft badge-rubric"><i class="bi bi-clipboard-check"></i> Rubric</span>`;
+      return `<span class="badge-soft badge-file"><i class="bi bi-file-earmark"></i> File</span>`;
+    }
+    function chip(text, cls=''){ return `<span class="badge-soft ${cls}" style="font-size:.72rem">${esc(text)}</span>`; }
+
+    function getStagedView(){
+      const out = [];
+      for (const f of staged.addFiles) {
+        out.push({ id:`__staged_file_${f.__uid}`, type:'file', __staged:true, __stagedName:f.name });
+      }
+      if (staged.addRubric) {
+        out.push({ id:`__staged_rubric_${staged.addRubric.__uid}`, type:'rubrics', __staged:true, __stagedName: staged.addRubric.name });
+      }
+      for (const link of staged.addLinks) {
+        out.push({ id:`__staged_link_${btoa(link).slice(0,12)}`, type:'link', __staged:true, __stagedName: link, url: link });
+      }
+      return out;
+    }
+
+    function renderAttachments(){
+      const view = getStagedView();
+      if (!view.length) {
+        filesList.innerHTML = `<li class="text-muted">Nothing staged yet.</li>`;
+        return;
+      }
+      filesList.innerHTML = view.map(att=>{
+        const nameHtml = `<span>${esc(att.__stagedName || '')}</span>`;
+        const left = `
+          ${badgeForType(att)}
+          <div class="file-name">
+            <button type="button" class="btn btn-link p-0 align-baseline" data-act="preview" title="Preview">${nameHtml}</button>
+          </div>
+        `;
+        let controls = `
+          <button class="btn btn-outline-secondary btn-sm btn-icon" data-act="preview" title="Preview">
+            <i class="bi bi-eye"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm btn-icon" data-act="unstage" title="Remove from staging">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        `;
+        // Optional: allow quick replace for staged rubric
+        if (att.type === 'rubrics') {
+          controls = `
+            <label class="btn btn-outline-secondary btn-sm btn-icon mb-0" title="Replace rubric">
+              <i class="bi bi-arrow-repeat"></i>
+              <input type="file" class="d-none input-replace-rubric"/>
+            </label>
+            ${controls}
+          `;
+        }
+        return `
+          <li class="file-item" data-id="${esc(att.id)}" data-type="${att.type}">
+            ${left}
+            ${chip('Staged','badge-stage')}
+            <div class="d-flex align-items-center gap-1">${controls}</div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    /* Delegated actions (fixes gray-eye issue) */
+    filesList.addEventListener('click', (e)=>{
+      const li = e.target.closest('.file-item'); if (!li) return;
+      const id = li.getAttribute('data-id');
+      const type = li.getAttribute('data-type');
+      const item = getStagedView().find(x => x.id === id);
+      if (!item) return;
+
+      if (e.target.closest('[data-act="preview"]')) {
+        // Preview staged
+        if (type === 'link') {
+          openPreviewModalWithMeta({ url: item.__stagedName, title: item.__stagedName, mime:'', isStaged:true });
+          return;
+        }
+        if (type === 'file') {
+          const file = staged.addFiles.find(f => `__staged_file_${f.__uid}` === id);
+          if (!file) return showInfo('Preview','Cannot preview this staged file.');
+          const url = URL.createObjectURL(file); currentPreviewRevoke = ()=>URL.revokeObjectURL(url);
+          openPreviewModalWithMeta({ url, title:file.name, mime:file.type||'', isStaged:true });
+          return;
+        }
+        if (type === 'rubrics') {
+          const f = staged.addRubric;
+          if (!f) return showInfo('Preview','No staged rubric to preview.');
+          const url = URL.createObjectURL(f); currentPreviewRevoke = ()=>URL.revokeObjectURL(url);
+          openPreviewModalWithMeta({ url, title:f.name, mime:f.type||'', isStaged:true });
+          return;
+        }
+      }
+
+      if (e.target.closest('[data-act="unstage"]')) {
+        if (type === 'file') staged.addFiles = staged.addFiles.filter(f => `__staged_file_${f.__uid}` !== id);
+        if (type === 'rubrics') staged.addRubric = null;
+        if (type === 'link') {
+          const it = getStagedView().find(x => x.id === id);
+          if (it?.__stagedName) staged.addLinks = staged.addLinks.filter(l => l !== it.__stagedName);
+        }
+        renderAttachments();
+      }
+    });
+
+    filesList.addEventListener('change', (e)=>{
+      if (!e.target.matches('.input-replace-rubric')) return;
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      file.__uid = Math.random().toString(36).slice(2,10);
+      staged.addRubric = file;
+      e.target.value = '';
+      renderAttachments();
+
+      const url = URL.createObjectURL(file); currentPreviewRevoke = ()=>URL.revokeObjectURL(url);
+      openPreviewModalWithMeta({ url, title:file.name, mime:file.type||'', isStaged:true });
+    });
+
+    /* ===== Pre-stage preview buttons ===== */
+    btnPreviewSelectedFiles.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files || !files.length) { showInfo('Nothing selected','Choose one or more files first.'); return; }
+      const f = files[0];
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '', isStaged:true,
+        stageContext: { mode:'file', files: Array.from(files) }
+      });
+    });
+
+    btnPreviewRubric.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const f = rubricInput.files && rubricInput.files[0];
+      if (!f) { showInfo('No rubric selected','Choose a rubric file first.'); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '', isStaged:true,
+        stageContext: { mode:'rubric', file: f }
+      });
+    });
+
+    btnPreviewLink.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = (linkInput.value || '').trim();
+      if (!val) { showInfo('No link entered','Paste a URL first.'); return; }
+      openPreviewModalWithMeta({url: val, title: val, mime:''});
+    });
+
+    /* ===== Stage buttons ===== */
+    btnStageFiles.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files || !files.length) { showInfo('Nothing to Stage','Please choose one or more files.'); return; }
+      const tooBig = Array.from(files).find(f => f.size > TEACHER_MAX_BYTES);
+      if (tooBig) { showInfo('Too large', `${esc(tooBig.name)} exceeds ${TEACHER_MAX_MB} MB.`); return; }
+      Array.from(files).forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
+      fileInput.value = '';
+      renderAttachments();
+      showInfo('Staged','File(s) are staged and will be uploaded on Create.');
+    });
+
+    btnStageRubric.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const f = rubricInput.files && rubricInput.files[0];
+      if (!f) { showInfo('No Rubric Selected','Please choose a rubric file.'); return; }
+      if (f.size > TEACHER_MAX_BYTES) { showInfo('Too large', `${esc(f.name)} exceeds ${TEACHER_MAX_MB} MB.`); return; }
+      f.__uid = Math.random().toString(36).slice(2,10);
+      staged.addRubric = f; // keep only latest
+      rubricInput.value = '';
+      renderAttachments();
+      showInfo('Staged','Rubric is staged and will be uploaded on Create.');
+    });
+
+    btnStageLink.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = (linkInput.value || '').trim();
+      if (!val) { showInfo('No Link','Please paste a URL.'); return; }
+      staged.addLinks.push(val);
+      linkInput.value = '';
+      renderAttachments();
+      showInfo('Staged','Link will be added on Create.');
+    });
+
+    /* Auto pre-preview when selecting one file/rubric */
+    fileInput.addEventListener('change', ()=>{
+      const fs = fileInput.files;
+      if (fs && fs.length === 1) {
+        const f = fs[0];
+        if (f.size > TEACHER_MAX_BYTES) { showInfo('Too large', `${esc(f.name)} exceeds ${TEACHER_MAX_MB} MB.`); return; }
+        const blobUrl = URL.createObjectURL(f);
+        currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+        openPreviewModalWithMeta({
+          url: blobUrl, title: f.name, mime: f.type||'', isStaged:true,
+          stageContext: { mode:'file', files: [f] }
+        });
+      }
+    });
+    rubricInput.addEventListener('change', ()=>{
+      const f = rubricInput.files && rubricInput.files[0];
+      if (f) {
+        if (f.size > TEACHER_MAX_BYTES) { showInfo('Too large', `${esc(f.name)} exceeds ${TEACHER_MAX_MB} MB.`); rubricInput.value=''; return; }
+        const blobUrl = URL.createObjectURL(f);
+        currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+        openPreviewModalWithMeta({
+          url: blobUrl, title: f.name, mime: f.type||'', isStaged:true,
+          stageContext: { mode:'rubric', file: f }
+        });
+      }
+    });
+
+    /* ===== Load courses & modules ===== */
     async function fetchFirst(urls, opts) {
       for (const u of urls) {
-        try {
-          const res = await fetch(u, opts);
-          if (res.ok) return res;
-        } catch (_) { /* try next */ }
+        try { const res = await fetch(u, opts); if (res.ok) return res; } catch(_) {}
       }
       return fetch(urls[0], opts);
     }
 
-    // ==== load courses ====
     async function loadCourses() {
       courseSelect.innerHTML = `<option value="">Loading courses…</option>`;
       moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
       moduleSelect.disabled = true;
 
       try {
-        const courseUrls = [
-          `${API_BASE}/api/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`,
-          `${API_BASE}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`,
-        ];
-        const res = await fetchFirst(courseUrls);
+        const res = await fetchFirst([
+          `${API_BASE}/api/courses?uploadedBy=${encodeURIComponent((window.currentUser||{}).userId||'')}`,
+          `${API_BASE}/courses?uploadedBy=${encodeURIComponent((window.currentUser||{}).userId||'')}`
+        ]);
         const data = await res.json();
-
-        const courses = Array.isArray(data) ? data
-                        : Array.isArray(data.courses) ? data.courses
-                        : [];
-
-        courses.sort((a,b) => (a.title||'').localeCompare(b.title||''));
-
+        const courses = Array.isArray(data) ? data : Array.isArray(data.courses) ? data.courses : [];
+        courses.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
         if (!courses.length) {
           courseSelect.innerHTML = `<option value="" selected disabled>No courses yet — create one first</option>`;
           return;
         }
-
-        courseSelect.innerHTML =
-          `<option value="">Select a course…</option>` +
+        courseSelect.innerHTML = `<option value="">Select a course…</option>` +
           courses.map(c => `<option value="${esc(c.id)}">${esc(c.title || 'Untitled')}${c.courseNumber ? ` (#${esc(c.courseNumber)})` : ''}</option>`).join('');
       } catch (err) {
         console.error("loadCourses failed:", err);
@@ -312,42 +712,30 @@
       }
     }
 
-    // ==== load modules for a course ====
     async function loadModules(courseId) {
       moduleSelect.innerHTML = `<option value="">Loading…</option>`;
       moduleSelect.disabled = true;
       moduleHelp.textContent = "";
-
-      if (!courseId) {
-        moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
-        return;
-      }
+      if (!courseId) { moduleSelect.innerHTML = `<option value="">Select a course first…</option>`; return; }
 
       try {
-        const modUrls = [
+        const res = await fetchFirst([
           `${API_BASE}/api/courses/${encodeURIComponent(courseId)}/modules`,
           `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`,
-        ];
-        const res = await fetchFirst(modUrls);
+        ]);
         const data = await res.json();
-
-        const mods = Array.isArray(data) ? data
-                   : Array.isArray(data.modules) ? data.modules
-                   : [];
-
-        const sorted = mods.sort((a,b) => (a.moduleNumber||0) - (b.moduleNumber||0));
-
+        const mods = Array.isArray(data) ? data : Array.isArray(data.modules) ? data.modules : [];
+        const sorted = mods.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
         if (!sorted.length) {
           moduleSelect.innerHTML = `<option value="" selected disabled>No modules in this course</option>`;
           moduleHelp.textContent = "Add modules to this course before creating assignments.";
           return;
         }
-
         moduleSelect.innerHTML = `<option value="">Select a module…</option>`;
-        sorted.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.id;
-          opt.textContent = `Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
+        sorted.forEach(m=>{
+          const opt=document.createElement('option');
+          opt.value=m.id;
+          opt.textContent=`Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
           moduleSelect.appendChild(opt);
         });
         moduleSelect.disabled = false;
@@ -358,71 +746,17 @@
       }
     }
 
-    // ==== file list preview + client-side size validation (500 MB per file) ====
-    function renderFileList(el, files, maxBytes) {
-      if (!files.length) { el.textContent = ""; return { ok:true }; }
-      let ok = true;
-      el.innerHTML = files.map(f => {
-        const tooBig = f.size > maxBytes;
-        if (tooBig) ok = false;
-        return `<div class="${tooBig ? 'file-too-large' : ''}">
-          ${esc(f.name)} — ${human(f.size)}${tooBig ? ` (exceeds ${TEACHER_MAX_MB} MB)` : ''}</div>`;
-      }).join("");
-      return { ok };
-    }
+    courseSelect.addEventListener("change", (e)=> loadModules(e.target.value));
 
-    fileInput.addEventListener("change", () => {
-      const files = Array.from(fileInput.files || []);
-      renderFileList(fileList, files, TEACHER_MAX_BYTES);
-    });
-
-    rubricsFileInput.addEventListener("change", () => {
-      const files = Array.from(rubricsFileInput.files || []);
-      renderFileList(rubricsFileList, files, TEACHER_MAX_BYTES);
-    });
-
-    // ==== course -> modules linkage ====
-    courseSelect.addEventListener("change", (e) => loadModules(e.target.value));
-
-    // ====== Info modal helper ======
-    function showInfoModal({ title = 'Notice', html = '', autoHideMs = 0, onHidden = null } = {}) {
-      const el = document.getElementById('infoModal');
-      const titleEl = document.getElementById('infoModalLabel');
-      const bodyEl = document.getElementById('infoModalBody');
-      titleEl.textContent = title;
-      bodyEl.innerHTML = html;
-
-      const modal = new bootstrap.Modal(el);
-      const handler = () => {
-        el.removeEventListener('hidden.bs.modal', handler);
-        if (typeof onHidden === 'function') onHidden();
-      };
-      el.addEventListener('hidden.bs.modal', handler, { once: true });
-
-      modal.show();
-      if (autoHideMs && autoHideMs > 0) {
-        setTimeout(() => modal.hide(), autoHideMs);
-      }
-    }
-
-    // ==== submit ====
+    /* ===== Submit (create) – sends staged items ===== */
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       formError.textContent = "";
 
-      const tooLargeRegular = Array.from(fileInput.files || []).find(f => f.size > TEACHER_MAX_BYTES);
-      const tooLargeRubrics = Array.from(rubricsFileInput.files || []).find(f => f.size > TEACHER_MAX_BYTES);
-      if (tooLargeRegular || tooLargeRubrics) {
-        formError.textContent = `Each file must be ≤ ${TEACHER_MAX_MB} MB. Too large: ${
-          esc((tooLargeRegular || tooLargeRubrics).name)
-        } (${human((tooLargeRegular || tooLargeRubrics).size)})`;
-        return;
-      }
-
-      const courseId = courseSelect.value.trim();
-      const moduleId = moduleSelect.value.trim();
-      const title    = document.getElementById("title").value.trim();
-      const content  = document.getElementById("content").value.trim();
+      const courseId = (courseSelect.value || '').trim();
+      const moduleId = (moduleSelect.value || '').trim();
+      const title    = (document.getElementById("title").value || '').trim();
+      const content  = (document.getElementById("content").value || '').trim();
       const pointsV  = document.getElementById("points").value;
       const points   = pointsV ? parseInt(pointsV, 10) : null;
 
@@ -431,11 +765,19 @@
         return;
       }
 
+      // size checks (500MB/file)
+      const allFiles = [...staged.addFiles, ...(staged.addRubric ? [staged.addRubric] : [])];
+      const tooLarge = allFiles.find(f => f.size > TEACHER_MAX_BYTES);
+      if (tooLarge) {
+        formError.textContent = `Each file must be ≤ ${TEACHER_MAX_MB} MB. Too large: ${tooLarge.name}`;
+        return;
+      }
+
       const publishAtVal = document.getElementById("publishAt").value;
       const dueAtVal     = document.getElementById("dueAt").value;
 
       const fd = new FormData();
-      fd.append("teacherId", userData.userId);
+      fd.append("teacherId", (window.currentUser||{}).userId || '');
       fd.append("courseId", courseId);
       fd.append("moduleId", moduleId);
       fd.append("title", title);
@@ -444,10 +786,10 @@
       if (publishAtVal) fd.append("publishAt", String(toMillis(publishAtVal)));
       if (dueAtVal)     fd.append("dueAt", String(toMillis(dueAtVal)));
 
-      Array.from(fileInput.files || []).forEach(f => fd.append("files", f));
-      if (rubricsFileInput.files && rubricsFileInput.files.length > 0) {
-        fd.append("rubrics", rubricsFileInput.files[0]);
-      }
+      // staged files
+      staged.addFiles.forEach(f => fd.append("files", f));
+      if (staged.addRubric) fd.append("rubrics", staged.addRubric);
+      staged.addLinks.forEach(l => fd.append("links", l)); // server accepts links or links[]
 
       // UI lock
       submitBtn.disabled = true;
@@ -457,24 +799,15 @@
       try {
         const res = await fetch(`${API_BASE}/api/assignments`, { method: "POST", body: fd });
         const raw = await res.text();
-        let js = {};
-        try { js = JSON.parse(raw); } catch {}
-
+        let js = {}; try { js = JSON.parse(raw); } catch {}
         if (!res.ok || js.success === false) {
           const msg = (js && (js.message || js.error)) || `HTTP ${res.status} – ${raw.slice(0,200)}`;
           formError.textContent = msg || "Failed to create assignment.";
           return;
         }
-
-        // ✅ Success
-        showInfoModal({
-          title: "Success",
-          html: "✅ Assignment created!",
-          autoHideMs: 1200,
-          onHidden: () => {
-            window.location.href = `/TEACHER/assignment/assignment_list.html?courseId=${encodeURIComponent(courseId)}`;
-          }
-        });
+        // Success
+        showInfo('Success','✅ Assignment created!');
+        setTimeout(()=>{ window.location.href = `/TEACHER/assignment/assignment_list.html?courseId=${encodeURIComponent(courseId)}`; }, 900);
       } catch (err) {
         console.error(err);
         formError.textContent = "Server error while creating assignment.";
@@ -485,18 +818,11 @@
       }
     });
 
-    function logoutUser() {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/TEACHER/login/login.html";
-    }
-
-    // ==== boot ====
-    (async function init(){
-      await loadCourses();
-    })();
+    // Boot
+    (async function init(){ await loadCourses(); renderAttachments(); })();
   </script>
 
+  <!-- Mobile-friendly datetime helper (unchanged) -->
   <script>
     (function enhanceDateTimeForMobile(){
       const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -556,9 +882,7 @@
       function syncOriginals(){
         if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
         if (due) due.original.value = toLocalDatetimeValue(due.date.value, due.time.value);
-        if (pub && due) {
-          due.date.min = pub.date.value || '';
-        }
+        if (pub && due) due.date.min = pub.date.value || '';
       }
 
       ['input','change'].forEach(ev => {

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <!-- Your quiz styles (keep it) -->
+  <!-- Your quiz styles (keep if you have it) -->
   <link rel="stylesheet" href="quiz.css" />
 
   <style>
@@ -66,15 +66,25 @@
 
     .preview-table{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:10px}
 
-    .file-pill{border:1px dashed var(--border);border-radius:10px;padding:10px;background:#fff;display:flex;justify-content:space-between;align-items:center}
-    .file-pill.bad{border-color:#fca5a5;background:#fff5f5}
-    .file-pill .size{color:var(--muted);font-size:.85rem}
-    .file-pill .warn{color:#b91c1c;font-weight:600;font-size:.85rem}
-
+    /* Rubric row UI (like your screenshot) */
+    .badge-soft{background:#fff7ed;border:1px solid #fde68a;border-radius:999px;padding:.35rem .6rem;font-weight:600;color:#92400e}
+    .pill{display:inline-flex;align-items:center;gap:.4rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:.85rem;white-space:nowrap}
+    .rubric-row{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
     .rubric-disabled{opacity:.7}
     .rubric-note{font-size:.9rem}
     .rubric-note .on{color:#166534}
     .rubric-note .off{color:#7a1f1f}
+
+    /* File preview modal */
+    #filePreviewModal .modal-dialog{ max-width:96vw }
+    #filePreviewModal .modal-content{ height:92vh; display:flex; flex-direction:column }
+    #filePreviewModal .modal-body{ flex:1 1 auto; padding:0; background:#f8fafc; position:relative }
+    .preview-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio{
+      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
+    }
+    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff }
+    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center }
 
     @media (max-width: 480px){
       .logo-header{display:none}
@@ -156,21 +166,45 @@
                 </div>
               </div>
 
-              <!-- Rubric -->
+              <!-- Rubric (full width + row UI) -->
               <div class="row g-3 mt-2" id="rubricSection">
-                <div class="col-12 col-lg-8">
+                <div class="col-12">
                   <label class="form-label fw-bold d-flex align-items-center gap-2">
                     <i class="bi bi-clipboard2-check"></i>
                     Rubric File <span class="text-muted">(applies to Essay questions only)</span>
                   </label>
-                  <input type="file" id="rubricsFile" class="form-control"
-                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" disabled aria-disabled="true">
+
+                  <!-- Accept expanded to allow images too (for easy preview like your screenshot) -->
+                  <input
+                    type="file"
+                    id="rubricsFile"
+                    class="form-control"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*"
+                    aria-disabled="true" disabled
+                  />
+
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
                     <span id="rubricStateNote" class="off">Add an Essay question to enable rubric upload.</span>
                   </div>
-                  <div id="rubricPreview" class="mt-2"></div>
+
+                  <!-- Staged rubric row -->
+                  <div id="rubricRow" class="rubric-row mt-2 d-none">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge-soft"><i class="bi bi-clipboard-check me-1"></i>Rubric</span>
+                      <button id="rubricNameBtn" type="button" class="btn btn-link p-0 align-baseline text-decoration-none"></button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                      <span id="rubricChip" class="pill text-truncate" style="max-width:220px;"></span>
+                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm" title="Preview"><i class="bi bi-eye"></i></button>
+                      <label class="btn btn-outline-secondary btn-sm mb-0" title="Replace">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <input id="rubricReplaceInput" type="file" class="d-none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
+                      </label>
+                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i class="bi bi-trash"></i></button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -385,6 +419,39 @@
           <div class="modal-footer"><button class="btn" data-bs-dismiss="modal">Got it</button></div>
         </div></div>
       </div>
+
+      <!-- File Preview Modal (pre-upload) -->
+      <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="spinner-wrap" id="filePreviewSpinner">
+                <div class="text-center">
+                  <div class="spinner-border" role="status" aria-hidden="true"></div>
+                  <div class="mt-2 text-muted small">Preparing preview…</div>
+                </div>
+              </div>
+              <div class="preview-wrap" id="filePreviewContent"></div>
+            </div>
+            <div class="modal-footer">
+              <div class="text-muted small" id="fileInfoText"></div>
+              <div class="ms-auto d-flex gap-2">
+                <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+                  <i class="bi bi-cloud-plus me-1"></i> Stage this file
+                </button>
+                <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+                  <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -427,13 +494,13 @@
     (function initHeaderInitials(){
       try{
         const stored = JSON.parse(localStorage.getItem("user") || "{}");
-        const u = stored.user || stored; // supports {user:{}} or flat
+        const u = stored.user || stored;
 
         if (!u?.userId || !u?.isTeacher) {
           window.location.href = "/TEACHER/login/login.html";
           return;
         }
-        window.currentUser = u; // expose for later
+        window.currentUser = u;
         const el = document.getElementById("Username");
 
         const initials = getInitials(u);
@@ -443,7 +510,7 @@
                         || 'Profile';
 
         if (el){
-          el.textContent = initials;           // 👈 initials only
+          el.textContent = initials;
           el.setAttribute('title', fullLabel);
           el.setAttribute('aria-label', fullLabel);
         }
@@ -461,10 +528,7 @@
 
         const nameish = (u.username || u.displayName || u.name || '').trim();
         if (nameish){
-          const parts = nameish
-            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-            .split(/[\s._-]+/)
-            .filter(Boolean);
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
           return parts[0][0].toUpperCase();
         }
@@ -473,7 +537,6 @@
       }
     })();
 
-    // Provide TEACHER_ID binding for later functions
     const TEACHER_ID = (window.currentUser && window.currentUser.userId) || null;
 
     /* ---------- Utilities ---------- */
@@ -491,7 +554,59 @@
     }
     function bytesToKB(b){ return Math.round((b || 0)/102.4)/10; }
 
-    /* ---------- Load Courses & Modules ---------- */
+    /* ---------- File preview helpers (modal) ---------- */
+    function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function kindFrom({url='', name='', mime=''}) {
+      const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
+      if ((mime||'').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+      if ((mime||'').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if ((mime||'').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if ((mime||'').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx','csv'].includes(ext)) return 'office';
+      return 'other';
+    }
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+    function renderFilePreviewInto(container, {url, name='', mime=''}){
+      container.innerHTML=''; showSpinner(true);
+      const done=()=>showSpinner(false);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+
+      const kind = kindFrom({url, name, mime});
+      if(kind==='image'){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(kind==='pdf'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='video'){ const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=()=>fallback('Video preview failed.'); v.src=url; container.appendChild(v); return; }
+      if(kind==='audio'){ const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=()=>fallback('Audio preview failed.'); a.src=url; container.appendChild(a); return; }
+      if(kind==='text'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='office' && url.startsWith('blob:')){ return fallback('Office documents cannot be previewed until they’re uploaded.'); }
+      if(kind==='office'){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked).'); iframe.src=gview; container.appendChild(iframe); return; }
+
+      const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+    function openPreviewModalWithMeta({url, title='File', mime='', stageContext=null}){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      const kind = kindFrom({url, name:title, mime});
+      setFileInfoUI(kind, url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime});
+
+      previewStageCtx = stageContext || null;
+      showStageBtn(!!previewStageCtx);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+    function showStageBtn(show){ document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
+
+    /* ---------- Course / Module ---------- */
     async function loadCourses() {
       const courseSelect = document.getElementById("courseSelect");
       const moduleSelect = document.getElementById("moduleSelect");
@@ -527,7 +642,6 @@
         courseSelect.innerHTML = `<option value="">(Failed to load)</option>`;
       }
     }
-
     async function loadModules(courseId) {
       const moduleSelect = document.getElementById("moduleSelect");
       moduleSelect.innerHTML = `<option value="">Loading…</option>`;
@@ -537,7 +651,6 @@
         moduleSelect.innerHTML = `<option value="">-- Select a Course first --</option>`;
         return;
       }
-
       try {
         const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules`);
         const mods = await res.json();
@@ -552,7 +665,6 @@
         moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
       }
     }
-
     document.getElementById("courseSelect").addEventListener("change", function(){
       const cid = this.value;
       if (cid) loadModules(cid);
@@ -569,99 +681,154 @@
     const qPager = { cur: 0 };
 
     const rubricsFileInput = document.getElementById('rubricsFile');
-    const rubricPreview = document.getElementById('rubricPreview');
-    const essayCountText = document.getElementById('essayCountText');
+    const rubricRow = document.getElementById('rubricRow');
+    const rubricNameBtn = document.getElementById('rubricNameBtn');
+    const rubricChip = document.getElementById('rubricChip');
+    const rubricPreviewBtn = document.getElementById('rubricPreviewBtn');
+    const rubricReplaceInput = document.getElementById('rubricReplaceInput');
+    const rubricDeleteBtn = document.getElementById('rubricDeleteBtn');
     const rubricStateNote = document.getElementById('rubricStateNote');
+    const essayCountText = document.getElementById('essayCountText');
     const submitBtn = document.getElementById('submitBtn');
+
+    let __stagedRubricFile = null;     // <- the staged file
+    let previewStageCtx = null;
+    let currentPreviewRevoke = null;   // revoke object URLs after modal close
+
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', ()=>{
+      if (currentPreviewRevoke){ try{ currentPreviewRevoke(); }catch{} }
+      currentPreviewRevoke = null;
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
 
     function countEssayQuestions(){
       return document.querySelectorAll(".question-block[data-type='essay']").length;
     }
     function updateEssayRubricState(){
       const n = countEssayQuestions();
-      if (essayCountText) essayCountText.textContent = String(n);
+      essayCountText.textContent = String(n);
 
       if (n > 0){
         rubricsFileInput.removeAttribute('disabled');
         rubricsFileInput.setAttribute('aria-disabled', 'false');
         rubricsFileInput.classList.remove('rubric-disabled');
-        if (rubricStateNote){
-          rubricStateNote.classList.remove('off');
-          rubricStateNote.classList.add('on');
-          rubricStateNote.textContent = 'Rubric upload enabled (applies to Essay questions).';
-        }
+        rubricStateNote.classList.remove('off'); rubricStateNote.classList.add('on');
+        rubricStateNote.textContent = __stagedRubricFile
+          ? 'Rubric staged and ready to upload.'
+          : 'Rubric upload enabled (applies to Essay questions).';
       } else {
-        rubricsFileInput.value = "";
-        rubricPreview.innerHTML = "";
         rubricsFileInput.setAttribute('disabled', 'true');
         rubricsFileInput.setAttribute('aria-disabled', 'true');
         rubricsFileInput.classList.add('rubric-disabled');
-        if (rubricStateNote){
-          rubricStateNote.classList.remove('on');
-          rubricStateNote.classList.add('off');
-          rubricStateNote.textContent = 'Add an Essay question to enable rubric upload.';
-        }
-        submitBtn.disabled = false;
+        rubricStateNote.classList.remove('on'); rubricStateNote.classList.add('off');
+        rubricStateNote.textContent = __stagedRubricFile
+          ? 'Rubric staged, but it will only be uploaded if you add an Essay question.'
+          : 'Add an Essay question to enable rubric upload.';
       }
     }
 
-    function renderQPager(){
-      const blocks = [...document.querySelectorAll(".question-block")];
-      blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
-
-      const nowEl = document.getElementById("qPageNow");
-      const totalEl = document.getElementById("qPageTotal");
-      if (blocks.length === 0) {
-        nowEl.textContent = '0'; totalEl.textContent = '0';
-      } else {
-        nowEl.textContent = String(Math.min(qPager.cur+1, blocks.length));
-        totalEl.textContent = String(blocks.length);
+    function renderRubricRow(){
+      if (!__stagedRubricFile){
+        rubricRow.classList.add('d-none');
+        rubricNameBtn.textContent = '';
+        rubricChip.textContent = '';
+        return;
       }
-
-      const dots = document.getElementById("qDots");
-      dots.innerHTML = "";
-      for (let i=0;i<blocks.length;i++){
-        const d = document.createElement("span");
-        d.className = "dot" + (i===qPager.cur ? " active" : "");
-        d.title = "Go to question " + (i+1);
-        d.style.cursor = "pointer";
-        d.addEventListener("click", ()=>{ qPager.cur = i; renderQPager(); });
-        dots.appendChild(d);
-      }
-
-      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur>0);
-      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur<blocks.length-1);
+      rubricRow.classList.remove('d-none');
+      rubricNameBtn.textContent = __stagedRubricFile.name;
+      rubricChip.textContent = __stagedRubricFile.name;
     }
 
+    // Pick rubric -> open pre-upload preview modal immediately
+    rubricsFileInput.addEventListener('change', ()=>{
+      const f = rubricsFileInput.files && rubricsFileInput.files[0];
+      if (!f) return;
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      submitBtn.disabled = tooBig;
+      if (tooBig){
+        alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`);
+        return;
+      }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '',
+        stageContext: { file: f }
+      });
+    });
+
+    // Stage from preview (pre-upload)
+    document.getElementById('stageFromPreviewBtn').addEventListener('click', ()=>{
+      if (!previewStageCtx || !previewStageCtx.file) return;
+      __stagedRubricFile = previewStageCtx.file;
+      renderRubricRow();
+      updateEssayRubricState();
+      bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+      // clear input so re-choosing the same file re-triggers change
+      rubricsFileInput.value = '';
+    });
+
+    // Click filename or eye -> preview staged
+    function openPreviewOfStaged(){
+      if (!__stagedRubricFile) return;
+      const blobUrl = URL.createObjectURL(__stagedRubricFile);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '',
+        stageContext: null   // already staged; hide button
+      });
+    }
+    rubricNameBtn.addEventListener('click', openPreviewOfStaged);
+    rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
+
+    // Replace -> file picker -> modal preview with stage button again
+    rubricReplaceInput.addEventListener('change', ()=>{
+      const f = rubricReplaceInput.files && rubricReplaceInput.files[0];
+      if (!f) return;
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      submitBtn.disabled = tooBig;
+      if (tooBig){ alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '',
+        stageContext: { file: f }
+      });
+      rubricReplaceInput.value = '';
+    });
+
+    // Delete staged
+    rubricDeleteBtn.addEventListener('click', ()=>{
+      __stagedRubricFile = null;
+      renderRubricRow();
+      updateEssayRubricState();
+      rubricsFileInput.value = '';
+      submitBtn.disabled = false;
+    });
+
+    /* ---------- Render Questions & Pager ---------- */
     function renderBody(type, idx) {
       if (type === "mcq") {
         return `
           <div class="form-label"><strong>Choices</strong> <span class="hint">(pick the correct one)</span></div>
           <div class="input-group mb-2">
-            <div class="input-group-text">
-              <input type="radio" name="correct_${idx}" value="A" required>
-            </div>
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="A" required></div>
             <span class="input-group-text">A</span>
             <input type="text" class="form-control" name="choiceA" placeholder="Choice A" required>
           </div>
           <div class="input-group mb-2">
-            <div class="input-group-text">
-              <input type="radio" name="correct_${idx}" value="B" required>
-            </div>
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="B" required></div>
             <span class="input-group-text">B</span>
             <input type="text" class="form-control" name="choiceB" placeholder="Choice B" required>
           </div>
           <div class="input-group mb-2">
-            <div class="input-group-text">
-              <input type="radio" name="correct_${idx}" value="C" required>
-            </div>
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="C" required></div>
             <span class="input-group-text">C</span>
             <input type="text" class="form-control" name="choiceC" placeholder="Choice C" required>
           </div>
           <div class="input-group mb-2">
-            <div class="input-group-text">
-              <input type="radio" name="correct_${idx}" value="D" required>
-            </div>
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="D" required></div>
             <span class="input-group-text">D</span>
             <input type="text" class="form-control" name="choiceD" placeholder="Choice D" required>
           </div>
@@ -705,9 +872,7 @@
             <span class="chip ${type==='essay'?'active':''}" data-type="essay">Essay</span>
           </div>
           <div class="q-actions">
-            <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove">
-              <i class="bi bi-trash"></i>
-            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove"><i class="bi bi-trash"></i></button>
           </div>
         </div>
 
@@ -752,13 +917,29 @@
       return block;
     }
 
-    document.getElementById("qPrevBtn").addEventListener("click", ()=>{
-      if (qPager.cur>0){ qPager.cur--; renderQPager(); }
-    });
-    document.getElementById("qNextBtn").addEventListener("click", ()=>{
-      const total = document.querySelectorAll(".question-block").length;
-      if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }
-    });
+    function renderQPager(){
+      const blocks = [...document.querySelectorAll(".question-block")];
+      blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
+
+      document.getElementById("qPageNow").textContent = blocks.length ? String(qPager.cur+1) : '0';
+      document.getElementById("qPageTotal").textContent = String(blocks.length);
+
+      const dots = document.getElementById("qDots");
+      dots.innerHTML = "";
+      for (let i=0;i<blocks.length;i++){
+        const d = document.createElement("span");
+        d.className = "dot" + (i===qPager.cur ? " active" : "");
+        d.title = "Go to question " + (i+1);
+        d.style.cursor = "pointer";
+        d.addEventListener("click", ()=>{ qPager.cur = i; renderQPager(); });
+        dots.appendChild(d);
+      }
+      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur>0);
+      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur<blocks.length-1);
+    }
+
+    document.getElementById("qPrevBtn").addEventListener("click", ()=>{ if (qPager.cur>0){ qPager.cur--; renderQPager(); }});
+    document.getElementById("qNextBtn").addEventListener("click", ()=>{ const total = document.querySelectorAll(".question-block").length; if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }});
     document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
     document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
 
@@ -771,29 +952,17 @@
     const perPageEl = document.getElementById("perPageInput");
     const allowBacktrackingEl = document.getElementById("allowBacktracking");
 
-    function resetTimerUI() {
-      enableTimerEl.checked = false;
-      timerMinutesEl.value = "";
-      gracePeriodEl.value  = "";
-      timerMinutesEl.disabled = true;
-      gracePeriodEl.disabled  = true;
-    }
     enableTimerEl.addEventListener("change", () => {
       const on = enableTimerEl.checked;
       timerMinutesEl.disabled = !on;
       gracePeriodEl.disabled  = !on;
       if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
     });
-    function updatePaginationUI() {
-      const on = enablePaginationEl.checked;
-      perPageEl.disabled = !on;
-    }
-    enablePaginationEl.addEventListener("change", updatePaginationUI);
+    enablePaginationEl.addEventListener("change", ()=>{ perPageEl.disabled = !enablePaginationEl.checked; });
 
     /* ---------- Bulk Import ---------- */
     const bulkFileEl = document.getElementById('bulkFile');
     const parseBulkBtn = document.getElementById('parseBulkBtn');
-    const bulkResult = document.getElementById('bulkResult');
     const bulkTbody = document.getElementById('bulkTbody');
     const bulkSummary = document.getElementById('bulkSummary');
     const addValidBtn = document.getElementById('addValidBtn');
@@ -1024,14 +1193,10 @@
         if (qInput) qInput.value = q.question || '';
 
         if (q.type === 'mcq'){
-          const A = block.querySelector("input[name='choiceA']");
-          const B = block.querySelector("input[name='choiceB']");
-          const C = block.querySelector("input[name='choiceC']");
-          const D = block.querySelector("input[name='choiceD']");
-          if (A) A.value = q.choices.A || '';
-          if (B) B.value = q.choices.B || '';
-          if (C) C.value = q.choices.C || '';
-          if (D) D.value = q.choices.D || '';
+          block.querySelector("input[name='choiceA']").value = q.choices.A || '';
+          block.querySelector("input[name='choiceB']").value = q.choices.B || '';
+          block.querySelector("input[name='choiceC']").value = q.choices.C || '';
+          block.querySelector("input[name='choiceD']").value = q.choices.D || '';
           const idx = block.dataset.index;
           const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
           if (rb) rb.checked = true;
@@ -1068,30 +1233,6 @@
       }
       return false;
     }
-
-    /* ---------- Rubric input: preview + size gate ---------- */
-    rubricsFileInput.addEventListener('change', () => {
-      rubricPreview.innerHTML = '';
-      const f = rubricsFileInput.files && rubricsFileInput.files[0];
-      if (!f) { submitBtn.disabled = false; return; }
-
-      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-      const pill = document.createElement('div');
-      pill.className = 'file-pill' + (tooBig ? ' bad' : '');
-      pill.innerHTML = `
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-file-earmark-text"></i>
-          <div>
-            <div class="fw-semibold">${escapeHTML(f.name)}</div>
-            <div class="size">${bytesToKB(f.size)} KB</div>
-          </div>
-        </div>
-        ${tooBig ? '<div class="warn"><i class="bi bi-exclamation-triangle me-1"></i> Exceeds limit</div>' : ''}
-      `;
-      rubricPreview.appendChild(pill);
-
-      submitBtn.disabled = tooBig;
-    });
 
     /* ---------- SUBMIT ---------- */
     document.getElementById("quizForm").addEventListener("submit", async (e)=>{
@@ -1163,7 +1304,7 @@
       const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
 
       const essayCount = countEssayQuestions();
-      const rubricFile = rubricsFileInput?.files?.[0] || null;
+      const rubricFile = __stagedRubricFile || null;
 
       if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
         alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`);
@@ -1210,8 +1351,7 @@
             idRow.classList.add('d-none');
           }
 
-          const modal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
-          modal.show();
+          new bootstrap.Modal(document.getElementById('uploadSuccessModal')).show();
 
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
@@ -1222,7 +1362,8 @@
           document.getElementById("enablePagination").checked = false;
           document.getElementById("perPageInput").disabled = true;
 
-          rubricPreview.innerHTML = "";
+          __stagedRubricFile = null;
+          renderRubricRow();
           updateEssayRubricState();
 
           addQuestion(); renderQPager();
@@ -1249,6 +1390,7 @@
       document.getElementById("perPageInput").disabled = true;
       await loadCourses();
     })();
+
     function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();

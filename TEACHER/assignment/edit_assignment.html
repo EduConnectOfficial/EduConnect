@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Edit Assignment • EduConnect</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link rel="stylesheet" href="list.css" />
+
+  <style>
+    :root{ --radius:14px; }
+    html,body{ background:#f6f8fa; }
+    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
+    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;padding:12px 16px}
+    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
+    .muted{color:#6b7280}
+    .file-list{list-style:none;padding-left:0}
+    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
+    .file-item + .file-item{margin-top:.5rem}
+    .file-name{flex:1 1 auto;min-width:0}
+    .file-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
+    .btn-icon{padding:.375rem .5rem}
+    .form-help{font-size:.85rem;color:#6b7280}
+
+    /* badges */
+    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
+    .badge-rubric{background:#fff3cd;border-color:#ffe69c}
+    .badge-file{background:#eef2ff;border-color:#c7d2fe}
+    .badge-link{background:#ecfeff;border-color:#a5f3fc}
+    .badge-stage{background:#dcfce7;border-color:#86efac}
+    .badge-removal{background:#fee2e2;border-color:#fecaca}
+
+    .name-removed{ text-decoration: line-through; color:#94a3b8; }
+
+    /* modal */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
+    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
+    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
+    }
+    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
+    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <img src="/assets/educonnect_logo.png" alt="EduConnect" class="logo-header"/>
+        <div class="search-box position-relative" style="max-width:520px;">
+          <input type="text" class="form-control" disabled placeholder="Edit Assignment"/>
+          <i class="fas fa-pen position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
+        </div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <section class="content container-fluid p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="page-title brand mb-0">Edit Assignment</h1>
+          <div class="d-flex flex-wrap gap-2">
+            <button id="btnBack" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</button>
+            <button id="btnArchive" class="btn btn-outline-warning"><i class="bi bi-archive"></i> Archive</button>
+            <button id="btnUnarchive" class="btn btn-outline-success d-none"><i class="bi bi-arrow-counterclockwise"></i> Unarchive</button>
+            <button id="btnDelete" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+            <button id="btnSave" class="btn btn-amber">
+              <span class="save-text">Save Changes</span>
+              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Left -->
+          <div class="col-12 col-lg-8">
+            <!-- Details -->
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-pencil-square"></i> Details</h2>
+              </div>
+              <div class="p-3">
+                <div id="formError" class="text-danger mb-2" style="min-height:1rem;"></div>
+                <div class="row g-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Title</label>
+                    <input type="text" id="titleInput" class="form-control" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Points</label>
+                    <input type="number" id="pointsInput" min="0" step="1" class="form-control" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Content / Instructions</label>
+                    <textarea id="contentInput" rows="6" class="form-control" required></textarea>
+                    <div class="form-help mt-1">Use this to give students the task details. Markdown/plain text supported.</div>
+                  </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                  <div class="col-md-6">
+                    <label class="form-label">Publish At</label>
+                    <input type="datetime-local" id="publishInput" class="form-control" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Due At</label>
+                    <input type="datetime-local" id="dueInput" class="form-control" />
+                  </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                  <div class="col-md-12">
+                    <label class="form-label">Module</label>
+                    <select id="moduleSelect" class="form-select">
+                      <option value="">— Keep current —</option>
+                    </select>
+                    <div class="form-help">Move the assignment to a different module (optional).</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Files & Rubric (staged) -->
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-paperclip"></i> Attachments & Rubric</h2>
+              </div>
+              <div class="p-3">
+
+                <!-- Upload area: files -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Upload file(s)</label>
+                    <input id="fileInput" type="file" multiple class="form-control" />
+                    <div class="form-help">You can select multiple files. Each up to your configured limit.</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewSelectedFiles" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview Selected
+                    </button>
+                    <button id="btnStageFiles" class="btn btn-outline-primary w-100 w-sm-auto">
+                      <i class="bi bi-cloud-plus"></i> Stage Files
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Upload area: rubric (staged like files) -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Upload rubric (single file)</label>
+                    <input id="rubricInput" type="file" class="form-control" />
+                    <div class="form-help">Rubric behaves like files: it’s staged and only applied on Save.</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewRubric" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview
+                    </button>
+                    <button id="btnStageRubric" class="btn btn-outline-warning w-100 w-sm-auto">
+                      <i class="bi bi-clipboard-plus"></i> Stage Rubric
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-12"><hr class="my-2"></div>
+
+                <!-- Add link -->
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Add a link</label>
+                    <input id="linkInput" type="url" class="form-control" placeholder="https://…" />
+                    <div class="form-help">Paste a public URL (Docs, YouTube, etc.).</div>
+                  </div>
+                  <div class="col-md-4 d-grid d-sm-flex gap-2">
+                    <button id="btnPreviewLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-eye"></i> Preview
+                    </button>
+                    <button id="btnStageLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                      <i class="bi bi-link-45deg"></i> Stage Link
+                    </button>
+                  </div>
+                </div>
+
+                <!-- List -->
+                <ul id="filesList" class="file-list"></ul>
+                <div class="form-text mt-2">
+                  <strong>Staging:</strong> items marked with
+                  <span class="badge-soft badge-stage">Staged</span> will be added/replaced on Save.
+                  Items marked with <span class="badge-soft badge-removal">Pending removal</span> will be removed on Save.<br>
+                  Changes to files/links/<strong>rubric</strong> are staged and applied only when you click <strong>Save</strong>.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right -->
+          <div class="col-12 col-lg-4">
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-info-circle"></i> Meta</h2>
+              </div>
+              <div class="p-3">
+                <div class="mb-2"><span class="muted">Course:</span> <span id="metaCourse">—</span></div>
+                <div class="mb-2"><span class="muted">Module:</span> <span id="metaModule">—</span></div>
+                <div class="mb-2"><span class="muted">Created:</span> <span id="metaCreated">—</span></div>
+                <div class="mb-2"><span class="muted">Last Updated:</span> <span id="metaUpdated">—</span></div>
+                <div class="mb-2"><span class="muted">Status:</span> <span id="metaStatus" class="badge text-bg-success">Active</span></div>
+              </div>
+            </div>
+
+            <div class="ui-card">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-lightbulb"></i> Tips</h2>
+              </div>
+              <div class="p-3">
+                <ul class="mb-0">
+                  <li>Use “Archive” when the assignment should be hidden from students.</li>
+                  <li>Preview files (including staged ones) to confirm web compatibility.</li>
+                  <li>Rubric is handled the same as files: stage/replace/delete and apply on Save.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2" id="filePreviewModalLabel">File Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="spinner-wrap" id="filePreviewSpinner">
+            <div class="text-center">
+              <div class="spinner-border" role="status" aria-hidden="true"></div>
+              <div class="mt-2 text-muted small">Preparing preview…</div>
+            </div>
+          </div>
+          <div class="preview-wrap" id="filePreviewContent"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="text-muted small" id="fileInfoText"></div>
+          <div class="ms-auto d-flex gap-2">
+            <!-- NEW: Stage button (shown only for pre-upload blob previews) -->
+            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+              <i class="bi bi-cloud-plus me-1"></i> Stage this file
+            </button>
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info / Confirm -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="infoTitle">Notice</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="infoBody">—</div>
+      <div class="modal-footer"><button class="btn btn-amber" data-bs-dismiss="modal">OK</button></div>
+    </div></div>
+  </div>
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header bg-danger text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="confirmBody">Are you sure?</div>
+      <div class="modal-footer">
+        <button class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmYesBtn" class="btn btn-danger">Yes</button>
+      </div>
+    </div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const API = "http://localhost:5000";
+
+    /* Sidebar loader */
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(r => r.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sb = document.querySelector(".sidebar"), db = document.querySelector(".dashboard");
+          if (sb && db) {
+            sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+            sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+            t.addEventListener('click', e => {
+              e.preventDefault();
+              const p = t.closest('.has-submenu');
+              p.classList.toggle('open');
+              t.setAttribute('aria-expanded', p.classList.contains('open'));
+            });
+          });
+        });
+    });
+
+    /* Auth + header initials */
+    (function initHeaderInitials(){
+      try{
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
+        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
+        window.currentUser = u;
+        const initials = (function(u){
+          const fn=(u.firstName||'').trim(), ln=(u.lastName||'').trim();
+          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
+          const nameish=(u.username||u.displayName||u.name||'').trim();
+          if(nameish){ const parts=nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ').split(/[\s._-]+/).filter(Boolean);
+            if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase(); return parts[0][0].toUpperCase(); }
+          const em=(u.email||'').trim(); return em?em[0].toUpperCase():'U';
+        })(u);
+        window.addEventListener("DOMContentLoaded", ()=>{
+          const el=document.getElementById("Username"); if(!el) return; el.textContent=initials;
+          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Profile';
+          el.setAttribute('title', full); el.setAttribute('aria-label', full);
+        });
+      }catch(e){ console.error(e); window.location.href="/TEACHER/login/login.html"; }
+    })();
+
+    /* --- Utilities --- */
+    function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+    function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0; if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime(); }
+    function msToLocalInput(ms){ if(!ms) return ''; const d=new Date(ms); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+    function showInfo(title, body){ document.getElementById('infoTitle').textContent=title; document.getElementById('infoBody').innerHTML=body; bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show(); }
+    function confirmDanger(title, body){ return new Promise(resolve=>{ document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmBody').innerHTML=body; const btn=document.getElementById('confirmYesBtn'); const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')); const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); }; const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); }; btn.addEventListener('click',onYes,{once:true}); document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true}); modal.show(); }); }
+
+    function pickHref(obj = {}) {
+      return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
+             (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+             (obj.filePath ? toApiUrl(obj.filePath) : '');
+    }
+    function toApiUrl(pathOrUrl){ return /^https?:\/\/|^blob:/i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
+    function pickName(obj = {}) {
+      if (obj.__stagedName) return obj.__stagedName;
+      const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
+      const fromUrl  = (obj.url || '').split('/').pop();
+      return obj.originalName || fromPath || fromUrl || 'file';
+    }
+    function extractStoragePath(obj = {}) {
+      if (obj.storagePath) return String(obj.storagePath);
+      if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
+        const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
+      }
+      if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
+        try { const u=new URL(obj.publicUrl); const parts=u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
+      }
+      if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
+        try { const u=new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
+      }
+      return '';
+    }
+
+    /* --- Preview helpers (support blob previews for staged) --- */
+    function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
+    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start=''; if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];} else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; } if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start) qs.set('start', String(start)); return `${base}?${qs.toString()}`; }catch{return null;} }
+
+    function kindFrom({url='', name='', mime=''}) {
+      const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
+      if (isYouTubeUrl(url)) return 'youtube';
+      if ((mime||'').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+      if ((mime||'').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if ((mime||'').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if ((mime||'').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+
+    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+
+    function setFileInfoUI(kind,url){
+      const info=document.getElementById('fileInfoText');
+      const hdr=document.getElementById('filePreviewModalLabel');
+      const labelMap={youtube:'YouTube',video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
+      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
+      badge.className='ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent=labelMap[kind]||'File';
+      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href=url||'#';
+    }
+
+    function renderFilePreviewInto(container, {url, name='', mime='', isStaged=false}){
+      container.innerHTML=''; showSpinner(true);
+      const done=()=>showSpinner(false);
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+
+      const kind = kindFrom({url, name, mime});
+
+      if(kind==='youtube'){ const embed=toYouTubeEmbed(url); if(embed){container.innerHTML=`<div class="ratio ratio-16x9"><iframe src="${embed}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`; done(); return;} return fallback('Couldn’t embed this YouTube link.'); }
+      if(kind==='image'){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
+      if(kind==='pdf'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='video'){ const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=()=>fallback('Video preview failed.'); v.src=url; container.appendChild(v); return; }
+      if(kind==='audio'){ const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=()=>fallback('Audio preview failed.'); a.src=url; container.appendChild(a); return; }
+      if(kind==='text'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
+      if(kind==='office' && url.startsWith('blob:')){ return fallback('Office documents cannot be previewed until they’re uploaded. Please Save first, then preview.'); }
+      if(kind==='office'){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked).'); iframe.src=gview; container.appendChild(iframe); return; }
+
+      const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+    }
+
+    let currentPreviewRevoke = null;
+
+    /* === NEW: preview stage context + Stage button control === */
+    let previewStageCtx = null; // { mode:'file'|'rubric', files?:File[], file?:File }
+    const stageFromPreviewBtn = document.getElementById('stageFromPreviewBtn');
+    function showStageBtn(show, label){
+      if (!stageFromPreviewBtn) return;
+      stageFromPreviewBtn.classList.toggle('d-none', !show);
+      if (label) stageFromPreviewBtn.innerHTML = `<i class="bi bi-cloud-plus me-1"></i> ${label}`;
+    }
+
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', ()=>{
+      if (typeof currentPreviewRevoke === 'function') { try { currentPreviewRevoke(); } catch {} }
+      currentPreviewRevoke = null;
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
+
+    stageFromPreviewBtn.addEventListener('click', ()=>{
+  if (!previewStageCtx) return;
+
+  if (previewStageCtx.mode === 'file' && Array.isArray(previewStageCtx.files)) {
+    previewStageCtx.files.forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
+    fileInput.value = '';
+    markDirty(); renderAttachments();
+
+    // Close preview modal before showing info
+    bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+    showInfo('Staged','File(s) are staged and will be uploaded on Save.');
+  }
+
+  if (previewStageCtx.mode === 'rubric' && previewStageCtx.file) {
+    const f = previewStageCtx.file;
+    f.__uid = Math.random().toString(36).slice(2,10);
+    staged.addRubric = f;
+    const hasExisting = (currentAttachments || []).some(a => a.type === 'rubrics');
+    staged.removeRubric = hasExisting;
+    rubricInput.value = '';
+    markDirty(); renderAttachments();
+
+    // Close preview modal before showing info
+    bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+    showInfo('Staged','Rubric is staged and will be uploaded on Save.');
+  }
+
+  previewStageCtx = null;
+  showStageBtn(false);
+});
+
+
+    function openPreviewModalWithMeta({url, title='File', mime='', isStaged=false, stageContext=null}){
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      const kind = kindFrom({url, name:title, mime});
+      setFileInfoUI(kind, url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime, isStaged});
+
+      // Show Stage button only for pre-upload (blob) previews where context is provided
+      previewStageCtx = stageContext || null;
+      if (previewStageCtx) {
+        const label = (previewStageCtx.mode === 'rubric') ? 'Stage this rubric' : 'Stage this file';
+        showStageBtn(true, label);
+      } else {
+        showStageBtn(false);
+      }
+
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+
+    function openPreviewExisting(att) {
+      const direct = pickHref(att);
+      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
+        openPreviewModalWithMeta({url: direct, title: pickName(att), mime: att.mime || ''});
+        return;
+      }
+      const storagePath = extractStoragePath(att);
+      if (!storagePath) { if (direct) openPreviewModalWithMeta({url: direct, title: pickName(att), mime: att.mime || ''}); return; }
+      fetch(`${API}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`)
+        .then(r=>r.json().catch(()=>null).then(js=>({ok:r.ok, js})))
+        .then(({ok, js})=>{
+          if (ok && js?.success && js?.url) {
+            openPreviewModalWithMeta({url: js.url, title: pickName(att), mime: att.mime || ''});
+          } else if (direct) {
+            openPreviewModalWithMeta({url: direct, title: pickName(att), mime: att.mime || ''});
+          }
+        })
+        .catch(()=>{ if (direct) openPreviewModalWithMeta({url: direct, title: pickName(att), mime: att.mime || ''}); });
+    }
+
+    function openPreviewStaged(att){
+      let fileObj = null;
+      if (att.type === 'rubrics') {
+        fileObj = staged.addRubric || null;
+      } else if (att.type === 'file') {
+        fileObj = staged.addFiles.find(f => `__staged_file_${f.__uid}` === att.id) || null;
+      } else if (att.type === 'link') {
+        openPreviewModalWithMeta({url: att.__stagedName, title: att.__stagedName, mime:'', isStaged:true});
+        return;
+      }
+      if (!fileObj) { showInfo('Preview','This staged item cannot be previewed.'); return; }
+      const blobUrl = URL.createObjectURL(fileObj);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({url: blobUrl, title: fileObj.name || 'file', mime: fileObj.type || '', isStaged:true});
+    }
+
+    function openPreviewFromItem(item){
+      // Always preview staged rubric if present
+      if (item.type === 'rubrics' && item.__hasStagedReplacement && staged.addRubric) {
+        return openPreviewStaged({ type: 'rubrics' });
+      }
+      if (item.__staged) return openPreviewStaged(item);
+      return openPreviewExisting(item);
+    }
+
+    /* --- DOM refs --- */
+    const titleInput   = document.getElementById('titleInput');
+    const pointsInput  = document.getElementById('pointsInput');
+    const contentInput = document.getElementById('contentInput');
+    const publishInput = document.getElementById('publishInput');
+    const dueInput     = document.getElementById('dueInput');
+    const moduleSelect = document.getElementById('moduleSelect');
+    const filesList    = document.getElementById('filesList');
+    const formError    = document.getElementById('formError');
+
+    const metaCourse  = document.getElementById('metaCourse');
+    const metaModule  = document.getElementById('metaModule');
+    const metaCreated = document.getElementById('metaCreated');
+    const metaUpdated = document.getElementById('metaUpdated');
+    const metaStatus  = document.getElementById('metaStatus');
+
+    const btnBack   = document.getElementById('btnBack');
+    const btnSave   = document.getElementById('btnSave');
+    const btnArc    = document.getElementById('btnArchive');
+    const btnUnarc  = document.getElementById('btnUnarchive');
+    const btnDel    = document.getElementById('btnDelete');
+    const saveSpinner = btnSave.querySelector('.spinner-border');
+    const saveText    = btnSave.querySelector('.save-text');
+
+    const fileInput      = document.getElementById('fileInput');
+    const btnPreviewSelectedFiles = document.getElementById('btnPreviewSelectedFiles');
+    const btnStageFiles  = document.getElementById('btnStageFiles');
+    const rubricInput    = document.getElementById('rubricInput');
+    const btnPreviewRubric = document.getElementById('btnPreviewRubric');
+    const btnStageRubric = document.getElementById('btnStageRubric');
+    const linkInput      = document.getElementById('linkInput');
+    const btnPreviewLink = document.getElementById('btnPreviewLink');
+    const btnStageLink   = document.getElementById('btnStageLink');
+
+    /* --- Params --- */
+    const url = new URL(location.href);
+    const assignmentId = url.searchParams.get('assignmentId') || '';
+    const courseId     = url.searchParams.get('courseId') || '';
+
+    if (!assignmentId) { showInfo('Missing ID','No assignmentId provided.'); }
+
+    // Back button guard
+    btnBack.addEventListener('click', ()=> {
+      if (dirtyGuard()) return;
+      const params = new URLSearchParams();
+      if (courseId) params.set('courseId', courseId);
+      window.location.href = `/TEACHER/assignment/assignment_list.html${params.toString()?`?${params}`:''}`;
+    });
+
+    /* --- Modules for course --- */
+    async function loadModulesForCourse(courseId, selectedModuleId){
+      moduleSelect.innerHTML = `<option value="">— Keep current —</option>`;
+      if (!courseId) return;
+      try{
+        const res = await fetch(`${API}/api/courses/${encodeURIComponent(courseId)}/modules`);
+        const js = await res.json();
+        const mods = Array.isArray(js) ? js : (js.modules || []);
+        mods.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+        mods.forEach(m=>{
+          const opt=document.createElement('option');
+          opt.value=m.id;
+          opt.textContent = `Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
+          if (selectedModuleId && String(selectedModuleId)===String(m.id)) opt.selected = true;
+          moduleSelect.appendChild(opt);
+        });
+      }catch(e){ console.warn('load modules failed', e); }
+    }
+
+    /* ===========================
+       STAGING STATE
+       =========================== */
+    let initialAssignment = null;
+    let currentAttachments = [];
+    let staged = {
+      addFiles: [],
+      addLinks: [],
+      addRubric: null,   // File
+      removeIds: new Set(),
+      removeRubric: false
+    };
+
+    function markDirty() { window.__dirty = true; }
+    function clearDirty() { window.__dirty = false; }
+    function isDirty() {
+      if (!initialAssignment) return false;
+      if (window.__dirty) return true;
+      if (staged.addFiles.length || staged.addLinks.length || staged.addRubric || staged.removeIds.size || staged.removeRubric) return true;
+      return false;
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+      if (!isDirty()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+    function dirtyGuard(){
+      if (!isDirty()) return false;
+      return !confirm('You have unsaved changes (including staged files/links/rubric). Leave without saving?');
+    }
+
+    /* Merge current + staged */
+    function getMergedAttachmentView() {
+      const keep = [];
+
+      // Existing attachments (flag pending removal)
+      for (const a of (currentAttachments || [])) {
+        const id = String(a.id || '');
+        const isRemoved = id && staged.removeIds.has(id);
+        keep.push({ ...a, __pendingRemoval: !!isRemoved });
+      }
+
+      // Rubric logic
+      const existingRubric = keep.find(k => k.type === 'rubrics');
+
+      if (staged.addRubric && existingRubric) {
+        existingRubric.__hasStagedReplacement = true;
+        existingRubric.__replacementName = staged.addRubric.name;
+        existingRubric.__pendingRemoval = false;  // hide red chip & line
+      }
+      if (staged.addRubric && !existingRubric) {
+        keep.push({
+          id: `__staged_rubric_${staged.addRubric.__uid}`,
+          type: 'rubrics',
+          __staged: true,
+          __stagedName: staged.addRubric.name
+        });
+      }
+      if (!staged.addRubric && staged.removeRubric && existingRubric) {
+        existingRubric.__pendingRemoval = true;
+      }
+
+      // Staged files
+      for (const f of staged.addFiles) {
+        keep.push({
+          id: `__staged_file_${f.__uid}`,
+          type: 'file',
+          __staged: true,
+          __stagedName: f.name,
+        });
+      }
+
+      // Staged links
+      for (const link of staged.addLinks) {
+        keep.push({
+          id: `__staged_link_${btoa(link).slice(0,12)}`,
+          type: 'link',
+          url: link,
+          __staged: true,
+          __stagedName: link
+        });
+      }
+
+      return keep;
+    }
+
+    function badgeForType(att){
+      if (att.type === 'link') return `<span class="badge-soft badge-link"><i class="bi bi-link-45deg"></i> Link</span>`;
+      if (att.type === 'rubrics') return `<span class="badge-soft badge-rubric"><i class="bi bi-clipboard-check"></i> Rubric</span>`;
+      return `<span class="badge-soft badge-file"><i class="bi bi-file-earmark"></i> File</span>`;
+    }
+    function chip(text, cls=''){ return `<span class="badge-soft ${cls}" style="font-size:.72rem">${escapeHTML(text)}</span>`; }
+
+    function renderAttachments(){
+      const view = getMergedAttachmentView();
+      if (!view.length) {
+        filesList.innerHTML = `<li class="text-muted">No files, links, or rubric.</li>`;
+        return;
+      }
+
+      filesList.innerHTML = view.map((att) => {
+        const isRubric = att.type === 'rubrics';
+        let baseName = pickName(att);
+        let nameHtml = `<span class="${att.__pendingRemoval ? 'name-removed' : ''}">${escapeHTML(baseName)}</span>`;
+        let stagedChip = att.__staged ? chip('Staged','badge-stage') : '';
+        let removalChip = att.__pendingRemoval ? chip('Pending removal','badge-removal') : '';
+        let replacementChip = att.__hasStagedReplacement ? chip(att.__replacementName || 'Staged','badge-stage') : '';
+        let showRightNameChip = (!att.__staged && att.originalName && att.type !== 'link' && !(isRubric && att.__hasStagedReplacement));
+        let rightNameChip = showRightNameChip ? chip(att.originalName) : '';
+
+        // Rubric replacement UX: show only the staged name + green "Staged" (no extra filename pill)
+        if (isRubric && att.__hasStagedReplacement) {
+          nameHtml = `<span>${escapeHTML(att.__replacementName || 'Staged Rubric')}</span>`;
+          stagedChip = chip('Staged','badge-stage');
+          rightNameChip = '';
+          replacementChip = '';  // <-- remove the extra filename pill
+        }
+
+        const left = `
+          ${badgeForType(att)}
+          <div class="file-name">
+            <button type="button" class="btn btn-link p-0 align-baseline" data-act="preview" title="Preview">
+              ${nameHtml}
+            </button>
+          </div>
+        `;
+
+        let controls = `
+          <button class="btn btn-outline-secondary btn-sm btn-icon" data-act="preview" title="Preview">
+            <i class="bi bi-eye"></i>
+          </button>
+        `;
+
+        if (!att.__staged) {
+          if (att.type !== 'link') {
+            controls += `
+              <label class="btn btn-outline-secondary btn-sm btn-icon mb-0" title="Stage replace">
+                <i class="bi bi-arrow-repeat"></i>
+                <input type="file" class="d-none input-replace"/>
+              </label>
+            `;
+          }
+          controls += `
+            <button class="btn btn-outline-danger btn-sm btn-icon btn-stage-delete" title="Stage delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          `;
+          if (att.__hasStagedReplacement) {
+            controls += `
+              <button class="btn btn-outline-secondary btn-sm btn-icon btn-unstage-replacement" title="Remove staged replacement">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            `;
+          }
+        } else {
+          controls += `
+            <button class="btn btn-outline-danger btn-sm btn-icon btn-unstage" title="Remove from staging">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          `;
+        }
+
+        return `
+          <li class="file-item" data-id="${escapeHTML(att.id || '')}" data-type="${att.type}">
+            ${left}
+            ${rightNameChip}
+            ${replacementChip}${stagedChip}${removalChip}
+            <div class="d-flex align-items-center gap-1">
+              ${controls}
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    /* Delegated actions on the list (fixes preview icon reliability) */
+    function attachListDelegates(){
+      filesList.addEventListener('click', (e)=>{
+        const li = e.target.closest('.file-item');
+        if (!li) return;
+        const id = li.getAttribute('data-id');
+        const type = li.getAttribute('data-type');
+        const merged = getMergedAttachmentView();
+        const item = merged.find(a => String(a.id) === String(id));
+
+        if (e.target.closest('[data-act="preview"]')) {
+          if (!item) return;
+          // Always preview staged rubric if present
+          if (item.type === 'rubrics' && item.__hasStagedReplacement && staged.addRubric) {
+            openPreviewStaged({ type: 'rubrics' });
+          } else if (item.__staged) {
+            openPreviewStaged(item);
+          } else {
+            openPreviewExisting(item);
+          }
+          return;
+        }
+
+        if (e.target.closest('.btn-stage-delete')) {
+          if (type === 'rubrics') {
+            staged.addRubric = null;
+            staged.removeRubric = true;
+          } else {
+            const target = currentAttachments.find(a => String(a.id)===String(id));
+            if (target?.id) staged.removeIds.add(String(target.id));
+          }
+          markDirty(); renderAttachments(); return;
+        }
+
+        if (e.target.closest('.btn-unstage-replacement')) {
+          staged.addRubric = null;
+          staged.removeRubric = false;
+          markDirty(); renderAttachments(); return;
+        }
+
+        if (e.target.closest('.btn-unstage')) {
+          if (type === 'rubrics') {
+            staged.addRubric = null;
+            staged.removeRubric = false;
+          } else if (type === 'file') {
+            staged.addFiles = staged.addFiles.filter(f => `__staged_file_${f.__uid}` !== id);
+          } else if (type === 'link') {
+            if (item?.__stagedName) {
+              staged.addLinks = staged.addLinks.filter(l => l !== item.__stagedName);
+            }
+          }
+          markDirty(); renderAttachments(); return;
+        }
+      });
+
+      filesList.addEventListener('change', (e)=>{
+        if (!e.target.matches('.input-replace')) return;
+        const li = e.target.closest('.file-item');
+        if (!li) return;
+        const id = li.getAttribute('data-id');
+        const type = li.getAttribute('data-type');
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        file.__uid = Math.random().toString(36).slice(2,10);
+        if (type === 'rubrics') {
+          staged.addRubric = file;
+          staged.removeRubric = true;
+        } else {
+          staged.addFiles.push(file);
+          const target = currentAttachments.find(a => String(a.id)===String(id));
+          if (target?.id) staged.removeIds.add(String(target.id));
+        }
+        markDirty();
+        renderAttachments();
+        e.target.value = '';
+
+        // Instant preview of replacement before upload
+        const blobUrl = URL.createObjectURL(file);
+        currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+        openPreviewModalWithMeta({url: blobUrl, title: file.name, mime: file.type||'', isStaged:true});
+      });
+    }
+    attachListDelegates();
+
+    /* Pre-stage preview buttons */
+    btnPreviewSelectedFiles.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files || !files.length) { showInfo('Nothing selected','Choose one or more files first.'); return; }
+      const f = files[0];
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '', isStaged:true,
+        stageContext: { mode:'file', files: Array.from(files) }
+      });
+    });
+
+    btnPreviewRubric.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const f = rubricInput.files && rubricInput.files[0];
+      if (!f) { showInfo('No rubric selected','Choose a rubric file first.'); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({
+        url: blobUrl, title: f.name, mime: f.type || '', isStaged:true,
+        stageContext: { mode:'rubric', file: f }
+      });
+    });
+
+    btnPreviewLink.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = (linkInput.value || '').trim();
+      if (!val) { showInfo('No link entered','Paste a URL first.'); return; }
+      openPreviewModalWithMeta({url: val, title: val, mime:''});
+    });
+
+    /* Stage buttons */
+    btnStageFiles.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const files = fileInput.files;
+      if (!files || !files.length) { showInfo('Nothing to Stage','Please choose one or more files.'); return; }
+      Array.from(files).forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
+      fileInput.value = '';
+      markDirty(); renderAttachments();
+      showInfo('Staged','File(s) are staged and will be uploaded on Save.');
+    });
+
+    btnStageRubric.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const f = rubricInput.files && rubricInput.files[0];
+      if (!f) { showInfo('No Rubric Selected','Please choose a rubric file.'); return; }
+      f.__uid = Math.random().toString(36).slice(2,10);
+      staged.addRubric = f;                         // keep only latest
+      const hasExisting = (currentAttachments || []).some(a => a.type === 'rubrics');
+      staged.removeRubric = hasExisting;            // replacement path
+      rubricInput.value = '';
+      markDirty(); renderAttachments();
+      showInfo('Staged','Rubric is staged and will be uploaded on Save.');
+    });
+
+    btnStageLink.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const val = (linkInput.value || '').trim();
+      if (!val) { showInfo('No Link','Please paste a URL.'); return; }
+      staged.addLinks.push(val);
+      linkInput.value = '';
+      markDirty(); renderAttachments();
+      showInfo('Staged','Link will be staged and added on Save.');
+    });
+
+    /* Auto preview on file selection (pre-upload check) */
+    fileInput.addEventListener('change', ()=>{
+      const fs = fileInput.files;
+      if (fs && fs.length === 1) {
+        const f = fs[0];
+        const blobUrl = URL.createObjectURL(f);
+        currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+        openPreviewModalWithMeta({
+          url: blobUrl, title: f.name, mime: f.type||'', isStaged:true,
+          stageContext: { mode:'file', files: [f] }
+        });
+      }
+    });
+    rubricInput.addEventListener('change', ()=>{
+      const f = rubricInput.files && rubricInput.files[0];
+      if (f) {
+        const blobUrl = URL.createObjectURL(f);
+        currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+        openPreviewModalWithMeta({
+          url: blobUrl, title: f.name, mime: f.type||'', isStaged:true,
+          stageContext: { mode:'rubric', file: f }
+        });
+      }
+    });
+
+    /* --- Status helpers --- */
+    function updateStatusBadge(archived){
+      metaStatus.textContent = archived ? 'Archived' : 'Active';
+      metaStatus.className = `badge ${archived?'text-bg-secondary':'text-bg-success'}`;
+      btnArc.classList.toggle('d-none', archived);
+      btnUnarc.classList.toggle('d-none', !archived);
+    }
+
+    /* --- Load + Save assignment --- */
+    async function loadAssignment(){
+      try{
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`);
+        const js = await res.json();
+        if (!res.ok || js.success===false) throw new Error(js.message || 'Failed to load assignment');
+
+        const a = js.assignment || js.data || {};
+        initialAssignment = a;
+
+        titleInput.value   = a.title || '';
+        contentInput.value = a.content || '';
+        pointsInput.value  = (typeof a.points==='number') ? a.points : '';
+        publishInput.value = msToLocalInput(tsToMs(a.publishAt));
+        dueInput.value     = msToLocalInput(tsToMs(a.dueAt));
+
+        metaCourse.textContent  = a.courseTitle || '—';
+        metaModule.textContent  = a.moduleTitle ? `${a.moduleTitle}` : (a.moduleNumber!=null ? `Module ${a.moduleNumber}` : '—');
+        metaCreated.textContent = tsToMs(a.createdAt) ? new Date(tsToMs(a.createdAt)).toLocaleString() : '—';
+        metaUpdated.textContent = tsToMs(a.updatedAt) ? new Date(tsToMs(a.updatedAt)).toLocaleString() : '—';
+        updateStatusBadge(a.archived === true);
+
+        currentAttachments = Array.isArray(a.attachments) ? a.attachments : [];
+        staged = { addFiles:[], addLinks:[], addRubric:null, removeIds:new Set(), removeRubric:false };
+        clearDirty();
+        renderAttachments();
+
+        const useCourseId = courseId || a.courseId || '';
+        await loadModulesForCourse(useCourseId, a.moduleId || '');
+      }catch(e){
+        console.error(e);
+        showInfo('Error', e.message || 'Failed to load assignment.');
+      }
+    }
+
+    [titleInput, contentInput, pointsInput, publishInput, dueInput, moduleSelect].forEach(el=>{
+      el.addEventListener('change', markDirty);
+      el.addEventListener('input', markDirty);
+    });
+
+    async function applySave(){
+      const title = titleInput.value.trim();
+      const content = contentInput.value.trim();
+      if (!title || !content){ formError.textContent='Title and Content are required.'; return; }
+
+      const payload = { title, content };
+      if (pointsInput.value !== '') payload.points = Number(pointsInput.value);
+      if (publishInput.value) payload.publishAt = String(new Date(publishInput.value).getTime());
+      if (dueInput.value) payload.dueAt = String(new Date(dueInput.value).getTime());
+      if (moduleSelect.value) payload.moduleId = moduleSelect.value;
+
+      const patch = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const patchJs = await patch.json().catch(()=>({}));
+      if (!patch.ok || patchJs.success === false) throw new Error(patchJs.message || 'Failed to save changes.');
+
+      // uploads / adds
+      if (staged.addFiles.length) {
+        const form = new FormData();
+        staged.addFiles.forEach(f => form.append('files', f));
+        const up = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/files`, { method:'POST', body: form });
+        const upJs = await up.json().catch(()=>({}));
+        if (!up.ok || upJs.success === false) throw new Error(upJs.message || 'Failed to upload staged files.');
+        currentAttachments = upJs.files || currentAttachments;
+      }
+      if (staged.addLinks.length) {
+        const add = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/files`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ links: staged.addLinks })
+        });
+        const addJs = await add.json().catch(()=>({}));
+        if (!add.ok || addJs.success === false) throw new Error(addJs.message || 'Failed to add staged links.');
+        currentAttachments = addJs.files || currentAttachments;
+      }
+      if (staged.addRubric) {
+        const form = new FormData();
+        form.append('rubric', staged.addRubric);
+        const up = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/rubric`, { method:'POST', body: form });
+        const upJs = await up.json().catch(()=>({}));
+        if (!up.ok || upJs.success === false) throw new Error(upJs.message || 'Failed to upload rubric.');
+        currentAttachments = upJs.files || currentAttachments;
+      } else if (staged.removeRubric) {
+        const del = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/rubric`, { method:'DELETE' });
+        const delJs = await del.json().catch(()=>({}));
+        if (!del.ok || delJs.success === false) throw new Error(delJs.message || 'Failed to remove rubric.');
+        currentAttachments = delJs.files || currentAttachments;
+      }
+
+      // removals
+      for (const id of staged.removeIds) {
+        const del = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/files/${encodeURIComponent(id)}`, { method:'DELETE' });
+        const delJs = await del.json().catch(()=>({}));
+        if (!del.ok || delJs.success === false) throw new Error(delJs.message || 'Failed to remove file/link.');
+        currentAttachments = delJs.files || currentAttachments;
+      }
+
+      await loadAssignment();
+      showInfo('Saved','Your changes (including staged files/links/rubric) have been saved.');
+    }
+
+    btnSave.addEventListener('click', async ()=>{
+      formError.textContent='';
+      btnSave.disabled = true; saveSpinner.classList.remove('visually-hidden'); saveText.textContent='Saving…';
+      try{
+        await applySave();
+      }catch(e){
+        console.error(e);
+        formError.textContent = e.message || 'Server error while saving.';
+      }finally{
+        btnSave.disabled = false; saveSpinner.classList.add('visually-hidden'); saveText.textContent='Save Changes';
+      }
+    });
+
+    btnArchive.addEventListener('click', async ()=>{
+      if (!assignmentId) return;
+      const ok = await confirmDanger('Archive Assignment','Archive this assignment? Students will no longer see it.');
+      if (!ok) return;
+      try{
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ archived:true }) });
+        const js = await res.json(); if(!res.ok||js.success===false) throw new Error(js.message||'Failed to archive.');
+        updateStatusBadge(true); showInfo('Archived','The assignment is now hidden from students.');
+      }catch(e){ showInfo('Error', e.message||'Failed to archive.'); }
+    });
+    btnUnarchive.addEventListener('click', async ()=>{
+      if (!assignmentId) return;
+      try{
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ archived:false }) });
+        const js = await res.json(); if(!res.ok||js.success===false) throw new Error(js.message||'Failed to unarchive.');
+        updateStatusBadge(false); showInfo('Unarchived','Students can see this assignment again.');
+      }catch(e){ showInfo('Error', e.message||'Failed to unarchive.'); }
+    });
+
+    btnDelete.addEventListener('click', async ()=>{
+      if (!assignmentId) return;
+      const ok = await confirmDanger('Delete Assignment','<strong>Permanently delete</strong> this assignment? This cannot be undone.');
+      if (!ok) return;
+      try{
+        const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`, { method:'DELETE' });
+        const js = await res.json(); if(!res.ok||js.success===false) throw new Error(js.message||'Failed to delete.');
+        showInfo('Deleted','Assignment deleted.');
+        setTimeout(()=>{
+          const params = new URLSearchParams(); if (courseId) params.set('courseId', courseId);
+          window.location.href = `/TEACHER/assignment/assignment_list.html${params.toString()?`?${params}`:''}`;
+        }, 800);
+      }catch(e){ showInfo('Error', e.message||'Failed to delete.'); }
+    });
+
+    // Boot
+    (async function boot(){ await loadAssignment(); })();
+  </script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 'use strict';
 
 const router = require('express').Router();
+const crypto = require('crypto'); // for genId
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin, bucket } = require('../config/firebase');
 const { uploadMemory } = require('../config/multerConfig');
@@ -13,6 +14,10 @@ const TEACHER_FILE_LIMIT_MB = parseInt(process.env.TEACHER_FILE_LIMIT_MB || '500
 const STUDENT_FILE_LIMIT_MB = parseInt(process.env.STUDENT_FILE_LIMIT_MB || '100', 10);
 
 /* ---------------- Helpers ---------------- */
+
+// deterministic id for attachments
+const genId = () =>
+  (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2,9)}`);
 
 // Convert millis/ISO to Firestore Timestamp (or null)
 function toTimestampOrNull(v) {
@@ -152,12 +157,39 @@ function runMulter(mw, maxMb) {
   };
 }
 
+/* -----------------------------------------------------------
+   Ensure previewable URLs for attachments (downloadUrl/publicUrl or signed)
+----------------------------------------------------------- */
+async function ensurePreviewableUrls(attArr = []) {
+  const out = [];
+  for (const a of attArr) {
+    const att = { ...a };
+    if (att.downloadUrl || att.publicUrl || att.previewUrl) {
+      out.push(att);
+      continue;
+    }
+    let path = att.storagePath || '';
+    if (!path && typeof att.gsUri === 'string' && att.gsUri.startsWith('gs://')) {
+      const parts = att.gsUri.replace('gs://', '').split('/');
+      parts.shift(); // bucket
+      path = parts.join('/');
+    }
+    if (path) {
+      try {
+        const [url] = await bucket.file(path).getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 10 * 60 * 1000,
+        });
+        att.previewUrl = url;
+      } catch { /* ignore */ }
+    }
+    out.push(att);
+  }
+  return out;
+}
+
 /* ===========================================================
-   CREATE ASSIGNMENT (archive-aware, Cloud Storage)
-   POST /assignments
-   multipart:
-     - files[] (0..n)     -> assignments/{assignmentId}/files/...
-     - rubrics (0..1)     -> assignments/{assignmentId}/rubrics/...
+   CREATE ASSIGNMENT
 =========================================================== */
 const memAssignUpload = uploadMemory.fields([
   { name: 'files',   maxCount: 30 },
@@ -177,7 +209,6 @@ router.post(
       return res.status(400).json({ success: false, message: 'Missing required fields: title, content, courseId, teacherId.' });
     }
 
-    // course/module archive checks
     const courseStatus = await checkCourseArchived(String(courseId).trim());
     if (!courseStatus.ok) return res.status(courseStatus.code).json({ success:false, message:courseStatus.message });
     if (courseStatus.archived) return res.status(403).json({ success:false, message:'Course is archived; cannot create assignments.' });
@@ -205,7 +236,7 @@ router.post(
       publishAt: toTimestampOrNull(publishAt) || admin.firestore.Timestamp.now(),
       dueAt: toTimestampOrNull(dueAt) || null,
       createdBy: String(teacherId).trim(),
-      attachments: [], // fill after uploads
+      attachments: [],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
@@ -213,13 +244,13 @@ router.post(
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
 
-    // create doc first to get assignmentId for storage path
+    // create doc first
     const ref = await firestore.collection('assignments').add(payloadBase);
 
     const filesArr   = (req.files && Array.isArray(req.files.files))   ? req.files.files   : [];
     const rubricsArr = (req.files && Array.isArray(req.files.rubrics)) ? req.files.rubrics : [];
 
-    // upload files (if any)
+    // upload files
     const fileAttachments = [];
     for (const f of filesArr) {
       if (typeof f.size === 'number' && f.size > TEACHER_FILE_LIMIT_MB * 1024 * 1024) {
@@ -234,12 +265,12 @@ router.post(
         filenameForDisposition: f.originalname || 'file',
       });
       fileAttachments.push({
+        id: genId(),
         type: 'file',
         originalName: f.originalname || 'file',
         size: f.size || null,
         mime: f.mimetype || null,
         gsUri,
-        // Always prefer tokenized URL for client access (works even if bucket is private)
         publicUrl: downloadUrl || publicUrl,
         downloadUrl: downloadUrl || publicUrl,
         storagePath: destPath,
@@ -247,7 +278,7 @@ router.post(
       });
     }
 
-    // upload rubric (0..1)
+    // upload rubric
     const rubricsAttachments = [];
     for (const f of rubricsArr) {
       if (typeof f.size === 'number' && f.size > TEACHER_FILE_LIMIT_MB * 1024 * 1024) {
@@ -262,6 +293,7 @@ router.post(
         filenameForDisposition: f.originalname || 'rubric',
       });
       rubricsAttachments.push({
+        id: genId(),
         type: 'rubrics',
         originalName: f.originalname || 'rubric',
         size: f.size || null,
@@ -277,7 +309,7 @@ router.post(
     const linkAttachments = (links || [])
       .map(u => String(u).trim())
       .filter(u => u.length)
-      .map(u => ({ type: 'link', url: u }));
+      .map(u => ({ id: genId(), type: 'link', url: u }));
 
     const attachAll = [...fileAttachments, ...rubricsAttachments, ...linkAttachments];
 
@@ -296,14 +328,16 @@ router.post(
 );
 
 /* ===========================================================
-   GET ONE ASSIGNMENT
-   (returns attachments with tokenized downloadUrl for direct access)
+   GET ONE ASSIGNMENT  (attachments include previewUrl if needed)
 =========================================================== */
 router.get('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const snap = await firestore.collection('assignments').doc(id).get();
   if (!snap.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
-  res.json({ success:true, assignment: { id: snap.id, ...snap.data() } });
+
+  const data = snap.data() || {};
+  const enriched = await ensurePreviewableUrls(Array.isArray(data.attachments) ? data.attachments : []);
+  res.json({ success:true, assignment: { id: snap.id, ...data, attachments: enriched } });
 }));
 
 /* ===========================================================
@@ -355,22 +389,54 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   DELETE ASSIGNMENT (cleanup storage)
+   DELETE ASSIGNMENT (cleanup storage + submissions)
 =========================================================== */
 router.delete('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
+
   const aRef = firestore.collection('assignments').doc(id);
   const snap = await aRef.get();
   if (!snap.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
 
-  await aRef.delete();
-  try { await bucket.deleteFiles({ prefix: `assignments/${id}/` }); } catch {}
+  // Grab attachments before deleting the doc (for defensive cleanup below)
+  const data = snap.data() || {};
+  const attachments = Array.isArray(data.attachments) ? data.attachments : [];
 
-  res.json({ success:true, message:'Assignment deleted.' });
+  // 1) Delete Firestore doc
+  await aRef.delete();
+
+  // 2) Best-effort delete of all GCS objects tied to this assignment
+  try {
+    // Primary prefixes where we store teacher files/rubrics and student submissions
+    const prefixes = [
+      `assignments/${id}/`,                // teacher files & rubric
+      `assignment_submissions/${id}/`,     // all student submissions for this assignment
+    ];
+
+    // Bulk delete by prefix (fast path)
+    await Promise.all(prefixes.map(prefix =>
+      bucket.deleteFiles({ prefix }).catch(() => {})
+    ));
+
+    // Defensive: if any attachment had a storagePath outside those prefixes, delete it too.
+    // (e.g. if structure changed historically)
+    await Promise.all(
+      attachments
+        .map(a => a && a.storagePath)
+        .filter(Boolean)
+        .map(storagePath => bucket.file(storagePath).delete().catch(() => {}))
+    );
+  } catch (e) {
+    // Don’t fail the request if storage cleanup partially fails; just log it.
+    console.error('Storage cleanup error for assignment', id, e);
+  }
+
+  return res.json({ success:true, message:'Assignment and associated files deleted.' });
 }));
 
+
 /* ===========================================================
-   LIST BY MODULE (archive-aware)
+   LIST BY MODULE
 =========================================================== */
 router.get('/modules/:moduleId/assignments', asyncHandler(async (req, res) => {
   const { moduleId } = req.params;
@@ -398,7 +464,7 @@ router.get('/modules/:moduleId/assignments', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   LIST BY COURSE (teacher, archive-aware)
+   LIST BY COURSE (teacher)
 =========================================================== */
 router.get('/courses/:courseId/assignments', asyncHandler(async (req, res) => {
   const { courseId } = req.params;
@@ -422,7 +488,7 @@ router.get('/courses/:courseId/assignments', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   CONSOLIDATED STUDENT ASSIGNMENTS (archive-aware)
+   CONSOLIDATED STUDENT ASSIGNMENTS
 =========================================================== */
 router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -492,7 +558,6 @@ router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    STUDENT SUBMIT ASSIGNMENT (Cloud Storage)
-   POST /assignments/:id/submissions
 =========================================================== */
 const memSubmissionUpload = uploadMemory.array('files', 30);
 
@@ -632,7 +697,7 @@ router.get('/assignments/:id/submissions/:studentId', asyncHandler(async (req, r
 }));
 
 /* ===========================================================
-   LIST ALL SUBMISSIONS FOR AN ASSIGNMENT (with names & class)
+   LIST ALL SUBMISSIONS FOR AN ASSIGNMENT
 =========================================================== */
 router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
   const assignmentId = req.params.id;
@@ -713,7 +778,7 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   COMPAT submit endpoints (keep; now they store storage URLs)
+   COMPAT submit endpoints
 =========================================================== */
 const uploadAny = uploadMemory.any();
 
@@ -802,7 +867,7 @@ router.post('/students/:studentId/assignments/:assignmentId/submit', runMulter(u
 }));
 
 /* ===========================================================
-   DELETE A STUDENT SUBMISSION (cleanup storage)
+   DELETE A STUDENT SUBMISSION
 =========================================================== */
 router.delete('/assignments/:id/submissions/:studentId', asyncHandler(async (req, res) => {
   const { id: assignmentId, studentId } = req.params;
@@ -826,8 +891,7 @@ router.delete('/assignments/:id/submissions/:studentId', asyncHandler(async (req
 }));
 
 /* ===========================================================
-   Attachment access helpers & routes (OPTIONAL with tokens)
-   You can keep these for strict auth flows or remove them.
+   Attachment access helpers & routes
 =========================================================== */
 
 // Helper to sign a GCS object path for READ
@@ -851,12 +915,36 @@ async function signUrlForPath(storagePath, { expiresInMs = 10 * 60 * 1000 } = {}
   return url;
 }
 
-/** Short-lived signed URL (not needed if you use downloadUrl on objects) */
+/** Short-lived signed URL (legacy by path) */
 router.get('/attachments/signed', asyncHandler(async (req, res) => {
   const storagePath = String(req.query.path || '').trim();
   if (!storagePath) return res.status(400).json({ success:false, message:'path is required' });
-  // TODO authZ
   const url = await signUrlForPath(storagePath);
+  res.json({ success:true, url });
+}));
+
+/** Signed URL by attachment id (precise; used by the editor preview) */
+router.get('/assignments/:id/attachments/:fileId/signed', asyncHandler(async (req, res) => {
+  const { id, fileId } = req.params;
+  const ref = firestore.collection('assignments').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
+  const attachments = Array.isArray(snap.data().attachments) ? snap.data().attachments : [];
+  const att = attachments.find(a => String(a.id||'') === String(fileId));
+  if (!att) return res.status(404).json({ success:false, message:'Attachment not found.' });
+
+  let path = att.storagePath || '';
+  if (!path && att.gsUri && att.gsUri.startsWith('gs://')) {
+    const parts = att.gsUri.replace('gs://', '').split('/');
+    parts.shift();
+    path = parts.join('/');
+  }
+  if (!path) return res.status(400).json({ success:false, message:'Attachment has no storage path.' });
+
+  const [url] = await bucket.file(path).getSignedUrl({
+    action: 'read',
+    expires: Date.now() + 10 * 60 * 1000,
+  });
   res.json({ success:true, url });
 }));
 
@@ -864,7 +952,6 @@ router.get('/attachments/signed', asyncHandler(async (req, res) => {
 router.get('/attachments/stream', asyncHandler(async (req, res) => {
   const storagePath = String(req.query.path || '').trim();
   if (!storagePath) return res.status(400).json({ success:false, message:'path required' });
-  // TODO authZ
   const file = bucket.file(storagePath);
   const [meta] = await file.getMetadata().catch(() => [null]);
   if (!meta) return res.status(404).json({ success:false, message:'Not found' });
@@ -879,6 +966,268 @@ router.get('/attachments/stream', asyncHandler(async (req, res) => {
       if (!res.headersSent) res.status(500).end();
     })
     .pipe(res);
+}));
+
+/* ===========================================================
+   ATTACHMENTS: add (upload or link), delete
+=========================================================== */
+
+const memAttachUpload = uploadMemory.array('files', 30);
+
+async function getAssignmentDocOr404(id) {
+  const ref = firestore.collection('assignments').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    const err = new Error('Assignment not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+  return { ref, snap };
+}
+
+// Normalize attachments; ensure array
+function ensureAttachmentsArray(docSnap) {
+  const data = docSnap.data() || {};
+  const arr = Array.isArray(data.attachments) ? data.attachments.slice() : [];
+  return arr;
+}
+
+/** POST /assignments/:id/files  (upload or link) */
+router.post(
+  '/assignments/:id/files',
+  runMulter(memAttachUpload, TEACHER_FILE_LIMIT_MB),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { ref, snap } = await getAssignmentDocOr404(id);
+    let attachments = ensureAttachmentsArray(snap);
+
+    // JSON link(s)
+    let bodyUsed = false;
+    if (req.is('application/json') || typeof req.body?.link === 'string' || Array.isArray(req.body?.links)) {
+      bodyUsed = true;
+      const links = [];
+      if (typeof req.body.link === 'string') links.push(req.body.link);
+      if (Array.isArray(req.body.links)) links.push(...req.body.links);
+
+      const toAdd = links
+        .map(u => String(u || '').trim())
+        .filter(Boolean)
+        .map(u => ({ id: genId(), type: 'link', url: u }));
+
+      if (!toAdd.length) {
+        return res.status(400).json({ success: false, message: 'No valid link provided.' });
+      }
+
+      attachments = attachments.concat(toAdd);
+      await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      const fresh = await ref.get();
+      return res.json({ success: true, files: ensureAttachmentsArray(fresh) });
+    }
+
+    // multipart files
+    const incoming = Array.isArray(req.files) ? req.files : [];
+    if (!incoming.length && !bodyUsed) {
+      return res.status(400).json({ success: false, message: 'No files uploaded and no link provided.' });
+    }
+
+    const toAdd = [];
+    for (const f of incoming) {
+      if (typeof f.size === 'number' && f.size > TEACHER_FILE_LIMIT_MB * 1024 * 1024) {
+        return res.status(413).json({ success:false, message:`Each file must be ≤ ${TEACHER_FILE_LIMIT_MB} MB.` });
+      }
+      const destPath = `assignments/${id}/files/${Date.now()}_${safeName(f.originalname || 'file')}`;
+      const { gsUri, downloadUrl, publicUrl, metadata } = await saveBufferToStorage(f.buffer, {
+        destPath,
+        contentType: f.mimetype || 'application/octet-stream',
+        metadata: { role: 'assignment-file', assignmentId: id },
+        filenameForDisposition: f.originalname || 'file',
+      });
+      toAdd.push({
+        id: genId(),
+        type: 'file',
+        originalName: f.originalname || 'file',
+        size: f.size || null,
+        mime: f.mimetype || null,
+        gsUri,
+        publicUrl: downloadUrl || publicUrl,
+        downloadUrl: downloadUrl || publicUrl,
+        storagePath: destPath,
+        storageMetadata: metadata
+      });
+    }
+
+    attachments = attachments.concat(toAdd);
+    await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    const fresh = await ref.get();
+    return res.json({ success: true, files: ensureAttachmentsArray(fresh) });
+  })
+);
+
+/** DELETE /assignments/:id/files/:fileId */
+router.delete('/assignments/:id/files/:fileId', asyncHandler(async (req, res) => {
+  const { id, fileId } = req.params;
+  const { ref, snap } = await getAssignmentDocOr404(id);
+  const attachments = ensureAttachmentsArray(snap);
+
+  const idx = attachments.findIndex(a => String(a.id || '') === String(fileId));
+  if (idx === -1) return res.status(404).json({ success:false, message:'Attachment not found.' });
+
+  const att = attachments[idx];
+  if (att?.storagePath) {
+    try { await bucket.file(att.storagePath).delete(); } catch {}
+  }
+
+  const newArr = attachments.slice(0, idx).concat(attachments.slice(idx + 1));
+  await ref.set({ attachments: newArr, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  const fresh = await ref.get();
+  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
+}));
+
+/** DELETE /assignments/:id/files   (fallback by url/storagePath) */
+router.delete('/assignments/:id/files', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const matchUrl = String(req.body?.url || '').trim();
+  const matchPath = String(req.body?.storagePath || '').trim();
+
+  const { ref, snap } = await getAssignmentDocOr404(id);
+  let attachments = ensureAttachmentsArray(snap);
+
+  const before = attachments.length;
+  const keep = [];
+  for (const a of attachments) {
+    const same =
+      (matchPath && a.storagePath && String(a.storagePath) === matchPath) ||
+      (matchUrl  && (a.url === matchUrl || a.publicUrl === matchUrl || a.downloadUrl === matchUrl));
+    if (same) {
+      if (a?.storagePath) { try { await bucket.file(a.storagePath).delete(); } catch {} }
+    } else {
+      keep.push(a);
+    }
+  }
+
+  if (before === keep.length) {
+    return res.status(404).json({ success:false, message:'No matching attachment found.' });
+  }
+
+  attachments = keep;
+  await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  const fresh = await ref.get();
+  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
+}));
+
+/* ===========================================================
+   RUBRIC: upsert & delete
+=========================================================== */
+
+// Accept any field name and robustly pick the rubric file.
+const memRubricAny = uploadMemory.any();
+
+// helper: remove existing rubric(s) from attachments & storage
+async function removeExistingRubricsAndReturnKeep(attachments) {
+  const keep = [];
+  for (const a of attachments) {
+    if (a?.type === 'rubrics') {
+      if (a.storagePath) {
+        try { await bucket.file(a.storagePath).delete(); } catch {}
+      }
+      // drop it
+    } else {
+      keep.push(a);
+    }
+  }
+  return keep;
+}
+
+// pick rubric file from req for single upload regardless of field name
+function pickRubricFileFromReq(req) {
+  if (req.file && req.file.buffer) return req.file;
+
+  if (Array.isArray(req.files) && req.files.length) {
+    const byRubric = req.files.find(f => f.fieldname === 'rubric');
+    if (byRubric) return byRubric;
+    const byFile = req.files.find(f => f.fieldname === 'file');
+    if (byFile) return byFile;
+    return req.files[0];
+  }
+
+  if (req.files && req.files.rubric && Array.isArray(req.files.rubric) && req.files.rubric.length) {
+    return req.files.rubric[0];
+  }
+
+  return null;
+}
+
+async function upsertRubric(req, res) {
+  const { id } = req.params;
+  const { ref, snap } = await getAssignmentDocOr404(id);
+  let attachments = ensureAttachmentsArray(snap);
+
+  const f = pickRubricFileFromReq(req);
+  if (!f) return res.status(400).json({ success:false, message:'No rubric file provided (field "rubric" or "file").' });
+
+  if (typeof f.size === 'number' && f.size > TEACHER_FILE_LIMIT_MB * 1024 * 1024) {
+    return res.status(413).json({ success:false, message:`Rubric must be ≤ ${TEACHER_FILE_LIMIT_MB} MB.` });
+  }
+
+  // delete any existing rubric(s)
+  attachments = await removeExistingRubricsAndReturnKeep(attachments);
+
+  // upload new rubric
+  const destPath = `assignments/${id}/rubrics/${Date.now()}_${safeName(f.originalname || 'rubric')}`;
+  const { gsUri, downloadUrl, publicUrl, metadata } = await saveBufferToStorage(f.buffer, {
+    destPath,
+    contentType: f.mimetype || 'application/octet-stream',
+    metadata: { role: 'assignment-rubric', assignmentId: id },
+    filenameForDisposition: f.originalname || 'rubric',
+  });
+
+  const rubricAtt = {
+    id: genId(),
+    type: 'rubrics',
+    originalName: f.originalname || 'rubric',
+    size: f.size || null,
+    mime: f.mimetype || null,
+    gsUri,
+    publicUrl: downloadUrl || publicUrl,
+    downloadUrl: downloadUrl || publicUrl,
+    storagePath: destPath,
+    storageMetadata: metadata
+  };
+
+  attachments.push(rubricAtt);
+
+  await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  const fresh = await ref.get();
+  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
+}
+
+router.post('/assignments/:id/rubric', runMulter(memRubricAny, TEACHER_FILE_LIMIT_MB), asyncHandler(upsertRubric));
+router.put('/assignments/:id/rubric',  runMulter(memRubricAny, TEACHER_FILE_LIMIT_MB), asyncHandler(upsertRubric));
+
+/** DELETE /assignments/:id/rubric */
+router.delete('/assignments/:id/rubric', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { ref, snap } = await getAssignmentDocOr404(id);
+  let attachments = ensureAttachmentsArray(snap);
+
+  const before = attachments.length;
+  const keep = [];
+  for (const a of attachments) {
+    if (a?.type === 'rubrics') {
+      if (a.storagePath) { try { await bucket.file(a.storagePath).delete(); } catch {} }
+      // drop
+    } else {
+      keep.push(a);
+    }
+  }
+  if (before === keep.length) {
+    return res.status(404).json({ success:false, message:'No rubric to delete.' });
+  }
+
+  attachments = keep;
+  await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  const fresh = await ref.get();
+  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
 }));
 
 module.exports = router;
