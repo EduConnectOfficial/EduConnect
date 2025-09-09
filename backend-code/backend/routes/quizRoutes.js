@@ -89,6 +89,7 @@ async function deleteDocsInChunks(docRefs, chunkSize = 400) {
   }
 }
 async function deleteQueryInChunks(query, chunkSize = 400) {
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const snap = await query.limit(chunkSize).get();
     if (snap.empty) break;
@@ -193,13 +194,13 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
       filenameForDisposition: req.file.originalname
     });
     rubricFile = {
-      storagePath,          // helpful for later backfills
+      storagePath,
       originalName: req.file.originalname,
       size: req.file.size,
       mime: req.file.mimetype,
       gsUri,
-      publicUrl,            // fallback (public buckets only)
-      downloadUrl,          // ✅ primary (works for private buckets)
+      publicUrl,
+      downloadUrl,
       storageMetadata: metadata,
       uploadedAt: admin.firestore.FieldValue.serverTimestamp()
     };
@@ -252,6 +253,7 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
       courseId: data.courseId,
       moduleId: data.moduleId,
       createdAt: data.createdAt,
+      updatedAt: data.updatedAt || null, // <-- include this
       archived: data.archived === true,
       totalQuestions: data.totalQuestions ?? qs.size,
       settings: data.settings || { timerEnabled:false, shuffleQuestions:true, pagination:{enabled:false, perPage:1}, backtrackingAllowed:true },
@@ -285,6 +287,7 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
       courseId: d.courseId,
       moduleId: d.moduleId,
       createdAt: d.createdAt,
+      updatedAt: d.updatedAt || null,     // <-- include this
       archived: d.archived === true,
       totalQuestions: d.totalQuestions ?? qs.size,
       settings: d.settings || { timerEnabled:false, shuffleQuestions:true, pagination:{enabled:false, perPage:1}, backtrackingAllowed:true },
@@ -345,6 +348,87 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
+   QUIZ: RUBRIC UPDATE/DELETE (for editor)
+=========================================================== */
+// Accept either 'rubric' or 'rubrics'
+const uploadRubricUpdate = (req, res, next) => {
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+  if (!ct.startsWith('multipart/form-data')) return next();
+  uploadMemory.any()(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success:false, code:err.code, message:`Rubric exceeds limit of ${TEACHER_FILE_LIMIT_MB} MB.` });
+      }
+      return res.status(400).json({ success:false, message: err.message || 'Upload error' });
+    }
+    return next();
+  });
+};
+
+// POST /quizzes/:quizId/rubric  (replace/set)
+router.post('/quizzes/:quizId/rubric', uploadRubricUpdate, asyncHandler(async (req, res) => {
+  const quizId = req.params.quizId;
+  const quizRef = firestore.collection('quizzes').doc(quizId);
+  const snap = await quizRef.get();
+  if (!snap.exists) return res.status(404).json({ success:false, message:'Quiz not found.' });
+
+  const file = (req.files || []).find(f => f.fieldname === 'rubric' || f.fieldname === 'rubrics');
+  if (!file) return res.status(400).json({ success:false, message:'No rubric file provided.' });
+  if (!rubricFileOk(file)) return res.status(400).json({ success:false, message:'Invalid rubric file type. Allowed: PDF, DOC/DOCX, XLS/XLSX, CSV, TXT.' });
+  if (file.size > TEACHER_FILE_LIMIT_BYTES) return res.status(413).json({ success:false, message:`Rubric exceeds limit of ${TEACHER_FILE_LIMIT_MB} MB.` });
+
+  // ensure at least one essay question exists (same rule as upload)
+  const qs = await quizRef.collection('questions').get();
+  const hasEssay = qs.docs.some(d => {
+    const q = d.data() || {};
+    const ch = q.choices && typeof q.choices === 'object' ? q.choices : {};
+    const keys = Object.keys(ch);
+    return (keys.length === 1 && keys[0] === 'A' && String(ch.A || '').toLowerCase().includes('essay response'));
+  });
+  if (!hasEssay) return res.status(400).json({ success:false, message:'Rubric can only be uploaded when there is at least one Essay question.' });
+
+  const destPath = `quizzes/${quizId}/rubrics/${Date.now()}_${safeName(file.originalname || 'rubric')}`;
+  const { gsUri, publicUrl, downloadUrl, metadata, storagePath } = await saveBufferToStorage(file.buffer, {
+    destPath,
+    contentType: file.mimetype,
+    metadata: { role:'quiz-rubric', quizId },
+    filenameForDisposition: file.originalname
+  });
+
+  await quizRef.set({
+    rubricFile: {
+      storagePath,
+      originalName: file.originalname,
+      size: file.size,
+      mime: file.mimetype,
+      gsUri,
+      publicUrl,
+      downloadUrl,
+      storageMetadata: metadata,
+      uploadedAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge:true });
+
+  res.json({ success:true, message:'Rubric uploaded.' });
+}));
+
+// DELETE /quizzes/:quizId/rubric  (remove)
+router.delete('/quizzes/:quizId/rubric', asyncHandler(async (req, res) => {
+  const quizId = req.params.quizId;
+  const ref = firestore.collection('quizzes').doc(quizId);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ success:false, message:'Quiz not found.' });
+
+  await ref.set({ rubricFile: admin.firestore.FieldValue.delete(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+
+  // best-effort: remove all rubric files
+  try { await bucket.deleteFiles({ prefix: `quizzes/${quizId}/rubrics/` }); } catch {}
+
+  res.json({ success:true, message:'Rubric removed.' });
+}));
+
+/* ===========================================================
    QUIZ: DELETE (cascade + Storage cleanup)
 =========================================================== */
 router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
@@ -362,10 +446,10 @@ router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
   await deleteAllAttemptsForQuiz(quizId);
   await quizRef.delete();
 
-  // remove rubric and any quiz assets
+  // remove rubric and ANY quiz assets (images, etc.) stored under this quiz
   try { await bucket.deleteFiles({ prefix: `quizzes/${quizId}/` }); } catch {}
 
-  res.json({ success:true, message:'Quiz and all related scores/attempts deleted.' });
+  res.json({ success:true, message:'Quiz and all related files/scores/attempts deleted.' });
 }));
 
 /* ===========================================================
@@ -510,7 +594,7 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   LIVE attempt status + RESULTS (unchanged APIs)
+   LIVE attempt status + RESULTS
 =========================================================== */
 router.get('/api/students/:userId/quiz-attempts', asyncHandler(async (req, res) => {
   const { userId } = req.params;
