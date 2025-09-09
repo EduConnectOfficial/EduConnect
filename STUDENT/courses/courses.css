@@ -169,6 +169,81 @@
   /* Fallback height */
   max-height: calc(1.35em * 4);
 }
+ /* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
+}
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Modal footer button with gradient */
+.modal-footer .btn,
+#successOkBtn, 
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
+}
+
+.modal-body {
+  color:black
+}
+.modal.show .modal-content {
+  border: none;                 /* remove default bootstrap border */
+  border-radius: 14px;          /* match your --radius vibe */
+  overflow: hidden;             /* ensures header corners look perfect */
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+}
+
+.btn-close-footer {
+  background-color: #6a737d !important;   /* light gray */
+  color: #fff !important;             
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;   /* darker hover */
+  color: #fff !important;
+  transform: scale(1.04);
+}
+/* Small screens: tighten the width a bit more */
+@media (max-width: 576px) {
+  .modal.show .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: 100%;
+  }
+}
 
 /* (nice-to-have) soft fade at the bottom of clamped text */
 @supports (mask-image: linear-gradient(#000, transparent)){
