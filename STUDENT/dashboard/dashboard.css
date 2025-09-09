@@ -424,6 +424,80 @@
     font-size: .9rem !important;
     line-height: 1.1 !important;
   }
+  /* ===================== Content Library search: responsive ===================== */
+
+/* Let the header wrap and keep spacing sane */
+.ui-card.card-themed .ui-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.5rem;
+  flex-wrap:wrap;
+}
+
+/* Title can shrink; controls live on the right (or next line on mobile) */
+.ui-card.card-themed .ui-card-head .ui-card-title{
+  flex:1 1 auto;
+  min-width:160px;
+}
+
+/* The controls wrapper in your HTML: <div class="d-flex flex-wrap gap-2 align-items-center"> */
+.ui-card.card-themed .ui-card-head > .d-flex.flex-wrap{
+  margin-left:auto;
+  flex:0 1 360px;                  /* prefers ~360px but may shrink */
+  min-width:0;                     /* allow shrinking inside flex */
+}
+
+/* Input group must fill its column and never overflow the card */
+.ui-card.card-themed .ui-card-head .input-group{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+
+/* Override the inline min-width="260px" set in HTML */
+.ui-card.card-themed .ui-card-head .input-group[style]{
+  min-width:0 !important;
+}
+
+/* Join the icon + field cleanly and avoid the -1px margin creep */
+.ui-card.card-themed .ui-card-head .input-group .input-group-text{
+  border-right:0;
+  border-top-right-radius:0;
+  border-bottom-right-radius:0;
+}
+.ui-card.card-themed .ui-card-head .input-group .form-control{
+  border-left:0;
+  border-top-left-radius:0;
+  border-bottom-left-radius:0;
+  min-width:0;                     /* prevents flex overflow */
+  margin-left:0 !important;        /* neutralize Bootstrap's fix that causes overflow */
+}
+
+/* Make the control finger-friendly everywhere */
+#searchModules{
+  height:44px;                     /* ≥44px tap target */
+  font-size:16px;                  /* avoids iOS zoom */
+  padding:8px 12px;
+}
+.ui-card.card-themed .ui-card-head .input-group .input-group-text{
+  height:44px;
+  padding:0 .75rem;
+}
+
+/* Tidy placeholder color */
+#searchModules::placeholder{ color:#9aa2a8; }
+
+/* -------- Mobile: stack under title, full width -------- */
+@media (max-width: 576px){
+  .ui-card.card-themed .ui-card-head > .d-flex.flex-wrap{
+    flex-basis:100%;
+    margin-left:0;
+    order:2;                       /* title first, search second */
+  }
+  .ui-card.card-themed .ui-card-head .ui-card-title{ order:1; }
+}
+
 }
 
 @media (max-width: 480px) {

@@ -503,3 +503,19 @@
     max-width: 100%;
   }
 }
+/* Stack page title above action buttons on small screens */
+@media (max-width: 576px){
+  .content .d-flex.align-items-center.justify-content-between{
+    flex-wrap: wrap;                 /* allow line break */
+    gap: .4rem .75rem;
+  }
+  .content .d-flex.align-items-center.justify-content-between .page-title{
+    flex: 1 0 100%;                  /* take full row */
+    order: -1;                       /* ensure it's above the buttons */
+    margin-bottom: .25rem;
+    text-align: left;                /* keep left-aligned */
+  }
+  .content .d-flex.align-items-center.justify-content-between > .d-flex.gap-2{
+    order: 0;                        /* buttons come after the title */
+  }
+}
