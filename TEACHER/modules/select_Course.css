@@ -595,3 +595,129 @@
     min-width:0;
   }
 }
+/* ---------- Mobile buttons for lesson editor ---------- */
+@media (max-width: 480px){
+
+  /* Toolbar at the top of Lessons */
+  .lesson-toolbar{
+    width: 100%;
+    gap: .5rem;
+    align-items: stretch;
+  }
+
+  /* Prev / Next sit side-by-side and are finger-friendly */
+  .lesson-toolbar .btn-group{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;   /* two equal columns */
+    gap: .5rem;
+  }
+  .lesson-toolbar .btn-group .btn{
+    width: 100%;
+    min-height: 44px;                 /* safe tap target */
+    border-radius: 12px;
+  }
+
+  /* Add Lesson and Remove are full width on mobile */
+  #addLessonBtn,
+  #removeLessonBtn{
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  /* File row action buttons (Preview Selected / Stage Files) */
+  .ctrl-row .col-right{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;   /* two columns 50/50 */
+    gap: .5rem;
+  }
+  .ctrl-row .col-right .btn{
+    width: 100%;
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  /* When it gets extra narrow, stack them */
+  @media (max-width: 360px){
+    .lesson-toolbar .btn-group,
+    .ctrl-row .col-right{
+      grid-template-columns: 1fr;     /* single column */
+    }
+  }
+
+  /* Per-file tiny controls: bigger tap targets, push to their own line */
+  .file-list .file-item > .d-flex{
+    order: 99;                        /* moves controls under filename */
+    width: 100%;
+    justify-content: flex-end;
+    gap: .5rem;
+  }
+  .file-list .btn-icon{
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+/* ========== Mobile: stack controls as wide pill buttons (≤480px) ========== */
+@media (max-width: 480px){
+
+  /* Let each attachment/rubric row wrap, with controls on their own line */
+  .file-list .file-item{
+    display:flex; flex-wrap:wrap; align-items:flex-start; gap:.5rem;
+  }
+
+  /* Controls container becomes a single-column grid */
+  .file-list .file-item > .d-flex{
+    order: 99;               /* move under filename */
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: .6rem;
+    justify-content: stretch;
+  }
+
+  /* Buttons/labels become full-width pills */
+  .file-list .file-item > .d-flex .btn,
+  .file-list .file-item > .d-flex label.btn{
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    height: 44px !important;            /* comfy tap target */
+    padding: .6rem 1rem !important;
+    border-radius: 999px !important;     /* pill */
+    font-size: 1rem;                     /* avoid iOS zoom */
+    line-height: 1.1;
+  }
+
+  /* Override the tiny icon-button padding */
+  .file-list .file-item > .d-flex .btn-icon{
+    padding: .6rem 1rem !important;
+  }
+  .file-list .file-item > .d-flex .btn i{ margin: 0 .15rem 0 0; }
+
+  /* Nice outlines for each action (optional, tweak to taste) */
+  /* Preview */
+  .file-list .file-item > .d-flex [data-act="preview"].btn{
+    background:#fff; border-color:#c7d2fe; color:#6a737d;
+  }
+  /* Replace (the <label> with hidden file input) */
+  .file-list .file-item > .d-flex label.btn{
+    background:#fff; border-color:#d1fae5; color:#6a737d;
+  }
+  /* Delete */
+  .file-list .file-item > .d-flex .btn-stage-delete{
+    background:#fff !important; border-color:#fecaca !important; color:#b91c1c !important;
+  }
+
+  /* Optional hover/active feedback */
+  .file-list .file-item > .d-flex .btn:hover{
+    filter: brightness(0.98);
+  }
+}
