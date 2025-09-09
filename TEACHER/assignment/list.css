@@ -632,3 +632,118 @@
    gap: .5rem;
    flex-wrap: wrap;
  }
+ /* ===== Mobile polish for <=480px ===== */
+@media (max-width: 480px){
+
+ 
+  
+
+  /* Header: one-line, compact */
+  .header-top{
+    padding:.6rem .8rem !important;
+    gap:.6rem !important;
+  }
+  .logo-header{ display:none !important; }               /* hide logo to free space */
+  .search-box{ flex:1 1 auto; min-width:0; margin:0 !important; max-width:100% !important; }
+  .search-box .form-control{
+    height:36px; padding:6px 36px 6px 12px; border-radius:28px;
+  }
+  .profile-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:0 .6rem; border-radius:999px;
+    max-width:42vw;
+  }
+  .profile-btn .username{
+    font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:calc(42vw - 28px - 12px); /* icon + gap */
+  }
+
+  /* Title above buttons */
+  .content .d-flex.align-items-center.justify-content-between{
+    flex-wrap:wrap; gap:.5rem .75rem;
+  }
+  .content .page-title{
+    flex:1 0 100%; order:-1; margin-bottom:.25rem !important; text-align:left;
+  }
+  .content .d-flex.flex-wrap.gap-2{ width:100%; }
+  .content .d-flex.flex-wrap.gap-2 > .btn{
+    flex:1 1 calc(50% - .5rem); min-width:0;
+  }
+  /* Make the “Back” button span full width on first row (optional) */
+  .content .d-flex.flex-wrap.gap-2 > .btn:first-child{ flex-basis:100%; }
+
+  /* Cards & padding */
+  .content{ padding:12px !important; }
+  .ui-card{ padding:12px; border-radius:12px; }
+ 
+
+  /* Upload rows: put actions under the input */
+  .row.g-2.align-items-end.mb-3 .d-grid.d-sm-flex.gap-2{
+    width:100%;
+  }
+  .row.g-2.align-items-end.mb-3 .d-grid.d-sm-flex.gap-2 > .btn{
+    flex:1 1 0; min-width:0;
+  }
+
+  /* File list: wrap nicely, keep controls on their own line, right-aligned */
+  #filesList{ gap:.5rem; }
+  .file-item{
+    display:flex; flex-wrap:wrap; align-items:center;
+    gap:.5rem .5rem; padding:.5rem .6rem; border-radius:10px;
+  }
+  .file-item .file-name span{
+    max-width:100%; white-space:normal; word-break:break-word; /* long names wrap */
+  }
+  .file-item > .d-flex{
+    order:99; width:100%; justify-content:flex-end; /* controls on 2nd line, right */
+  }
+  .file-item .btn-icon{ padding:.45rem .6rem; }      /* finger-friendly */
+  .file-item .badge-soft{ margin-top:.25rem; }       /* chip spacing */
+  .name-removed{ text-decoration:line-through; }
+
+  /* Preview modal fit */
+  #filePreviewModal .modal-dialog{ max-width:100vw; margin:0 8px; }
+  #filePreviewModal .modal-content{ height:88vh; }
+}
+/* ---- ui-card head: brand bar across ALL cards ---- */
+.ui-card{
+  overflow: hidden;                       /* clip rounded corners */
+  border-radius: var(--card-radius,14px); /* ensure rounded top on bar */
+}
+
+/* Full-width bar (counter the card padding) */
+.ui-card > .ui-card-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: -16px -16px 12px -16px;        /* reach card edges */
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  color:#FFD8A9;
+}
+
+/* Title + icon color */
+.ui-card > .ui-card-head .ui-card-title{
+  margin:0; font-weight:700; font-size:1rem; color:#FFE9CA;
+  display:inline-flex; gap:.5rem; align-items:center;
+}
+.ui-card > .ui-card-head .ui-card-title i{ color:#FFE9CA; }
+
+/* Optional right-side helper text (if you add one) */
+.ui-card > .ui-card-head .ui-head-note{
+  color:#FFE9CA; opacity:.95; font-weight:500; font-size:.9rem;
+}
+
+/* Also apply the same to .card-themed to override older rules */
+.ui-card.card-themed > .ui-card-head{
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  color:#FFD8A9;
+}
+
+/* Let the head wrap on small screens */
+@media (max-width:576px){
+  .ui-card > .ui-card-head{ flex-wrap:wrap; row-gap:.25rem; }
+  .ui-card > .ui-card-head .ui-head-note{ flex:1 0 100%; order:99; font-size:.85rem; }
+}

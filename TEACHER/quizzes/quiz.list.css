@@ -1194,3 +1194,296 @@
      gap: 4px;
    }
  }
+ /* ---- ui-card head: brand bar across ALL cards ---- */
+.ui-card{
+  overflow: hidden;                       /* clip rounded corners */
+  border-radius: var(--card-radius,14px); /* ensure rounded top on bar */
+}
+
+/* Full-width bar (counter the card padding) */
+.ui-card > .ui-card-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin: -16px -16px 12px -16px;        /* reach card edges */
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  color:#FFD8A9;
+}
+
+/* Title + icon color */
+.ui-card > .ui-card-head .ui-card-title{
+  margin:0; font-weight:700; font-size:1rem; color:#FFE9CA;
+  display:inline-flex; gap:.5rem; align-items:center;
+}
+.ui-card > .ui-card-head .ui-card-title i{ color:#FFE9CA; }
+
+/* Optional right-side helper text (if you add one) */
+.ui-card > .ui-card-head .ui-head-note{
+  color:#FFE9CA; opacity:.95; font-weight:500; font-size:.9rem;
+}
+
+/* Also apply the same to .card-themed to override older rules */
+.ui-card.card-themed > .ui-card-head{
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  color:#FFD8A9;
+}
+
+/* Let the head wrap on small screens */
+@media (max-width:576px){
+  .ui-card > .ui-card-head{ flex-wrap:wrap; row-gap:.25rem; }
+  .ui-card > .ui-card-head .ui-head-note{ flex:1 0 100%; order:99; font-size:.85rem; }
+}
+
+/* =========================
+   Rubric row – mobile (≤480)
+   ========================= */
+@media (max-width: 480px) {
+  /* Let the row wrap to two lines cleanly */
+  .rubric-row{
+    display:flex;
+    flex-wrap: wrap;
+    align-items: flex-start;      /* avoid vertical centering collisions */
+    gap: .5rem .6rem;             /* row/col gaps */
+    padding: .6rem .65rem;        /* a bit tighter padding */
+  }
+
+  /* Left block (badge + link + badges) sits on its own line */
+  .rubric-left{
+    flex: 1 0 100%;
+    min-width: 0;                 /* enables ellipsis */
+    gap: .5rem;
+  }
+
+  /* Make filename/link behave on tiny widths */
+  .rubric-link{
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .95rem;
+    vertical-align: middle;
+  }
+
+  /* Right block (filename pill + buttons) moves below and wraps */
+  .rubric-right{
+    flex: 1 0 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;              /* icons can wrap instead of overlapping */
+    align-items: center;
+    gap: .5rem;
+    padding-top: .1rem;
+  }
+
+  /* Hide the duplicate filename pill on phones to save space */
+  .rubric-filename-pill{
+    display: none;
+  }
+
+  /* Make action buttons tappable but compact */
+  .rubric-actions .btn{
+    padding: .4rem .55rem;
+    min-height: 36px;             /* touch target */
+    line-height: 1.1;
+  }
+  .rubric-actions label.btn{
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+  }
+}
+
+/* General hardening (all sizes) – clamp long names & prevent overflow */
+.rubric-left, .rubric-right { min-width: 0; }
+.rubric-link, .rubric-filename-pill{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Optional: keep the upload input & help text friendly on phones */
+@media (max-width: 480px){
+  #rubricInput{ width:100%; }
+  .drop-hint{ font-size: .9rem; }
+}
+/* ================================
+   Questions header: compact layout
+   ================================ */
+.q-item{
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.q-item .q-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.5rem;
+  margin-bottom:.5rem;
+}
+/* "Question 1" keeps on one line */
+.q-item .q-head .form-label{
+  margin:0;
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  line-height:1.2;
+}
+
+/* Chips row + delete button */
+.q-item .q-head > div:last-child{
+  display:flex;
+  align-items:center;
+  gap:.35rem;
+  flex-wrap:wrap;                 /* wrap chips when narrow */
+}
+
+/* Smaller, tighter chips */
+.q-item .q-chip{
+  padding:.22rem .5rem;
+  font-size:.85rem;
+  line-height:1;
+  margin:0;
+  border-radius:999px;
+}
+.q-item .q-chip.active{
+  background:#eff6ff;
+  border-color:#c7dbff;
+  color:#1d4ed8;
+}
+
+/* Compact icon-only delete button */
+.q-item .q-head [data-remove].btn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:32px;                     /* square = perfect centering */
+  height:32px;
+  padding:0 !important;
+  line-height:1 !important;
+  border-radius:8px;
+  margin:0 !important;            /* override global mobile margins */
+}
+.q-item .q-head [data-remove].btn i{
+  margin:0;
+  font-size:1rem;
+}
+
+.pill-row .btn-outline-danger { margin-left: auto; }
+
+
+/* ---------- Mobile (≤480px) overrides ---------- */
+@media (max-width:480px){
+  .q-item{ padding:10px; }
+  .q-item .q-head{
+    align-items:flex-start;       /* avoid vertical misalignment */
+    gap:.4rem;
+  }
+  .q-item .q-head > div:last-child{
+    width:100%;                   /* chips wrap under the label */
+    justify-content:flex-start;
+  }
+  /* Hard override the global "btn: width 100%" rule */
+  .q-item .q-head [data-remove].btn{
+    width:30px !important;
+    height:30px !important;
+    border-radius:7px;
+  }
+}
+/* Put "Question N" on the left, chips+delete on the right */
+.q-item .q-head{
+  display: grid;                        /* override previous flex */
+  grid-template-columns: auto 1fr;      /* label | actions */
+  column-gap: .75rem;
+  align-items: start;
+}
+
+/* Chips + delete area becomes a 2-col grid: chips flow left, delete fixed right */
+.q-item .q-head > div:last-child{
+  display: grid;                        /* override previous flex */
+  grid-template-columns: 1fr auto;      /* chips | delete */
+  grid-auto-flow: row dense;
+  column-gap: .35rem;
+  row-gap: .35rem;
+  align-items: center;
+  min-width: 0;                         /* allow ellipsis if needed */
+}
+
+/* Chips always in the left column; they can wrap into new rows */
+.q-item .q-head > div:last-child .q-chip{
+  grid-column: 1;
+  margin: 0;                            /* keep compact */
+}
+
+/* Delete button lives in the right column, aligned to the right */
+.q-item .q-head > div:last-child [data-remove].btn{
+  grid-column: 2;
+  justify-self: end;                    /* stick to the right edge */
+  align-self: start;                    /* align with first chips row */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  padding: 0 !important;
+  line-height: 1 !important;
+  border-radius: 8px;
+  margin: 0 !important;                 /* defeat any global mobile btn rules */
+}
+.q-item .q-head > div:last-child [data-remove].btn i{
+  margin: 0; font-size: 1rem;
+}
+
+/* Mobile tweaks (≤480px): keep it compact and touchable */
+@media (max-width:480px){
+  .q-item .q-head{ column-gap: .5rem; }
+  .q-item .q-head > div:last-child [data-remove].btn{
+    width: 30px; height: 30px; border-radius: 7px;
+  }
+}
+/* Rubric actions – make PREVIEW, REPLACE, and DELETE wide pills on mobile */
+@media (max-width: 480px) {
+  .rubric-row .rubric-actions{
+    display: grid !important;
+    grid-template-columns: 1fr;             /* single column */
+    grid-auto-rows: minmax(40px, auto);
+    gap: .5rem;
+    width: 100%;
+  }
+
+  /* PREVIEW + REPLACE (label.btn) -> full-width pill */
+  .rubric-row .rubric-actions .btn[data-act^="preview"],
+  .rubric-row .rubric-actions label.btn{
+    grid-column: 1 / -1;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    line-height: 1 !important;
+    background: #fff !important;
+    border: 2px solid var(--border, #e5e7eb) !important;
+  }
+  .rubric-row .rubric-actions .btn[data-act^="preview"] i,
+  .rubric-row .rubric-actions label.btn i{
+    display: block; line-height: 1; font-size: 1.05rem;
+  }
+
+  /* DELETE / UNSTAGE remains a full-width pill below */
+  .rubric-row .rubric-actions .btn.btn-stage-delete,
+  .rubric-row .rubric-actions .btn.btn-unstage{
+    grid-column: 1 / -1;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+    line-height: 1 !important;
+  }
+}
