@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher – Upload Quiz</title>
 
   <!-- Bootstrap & Icons -->
@@ -12,88 +13,8 @@
 
   <!-- Your quiz styles (keep if you have it) -->
   <link rel="stylesheet" href="quiz.css" />
-
-  <style>
-    :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --card-radius:14px; --ui-card-max: 1100px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
-    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
-
-    .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
-    .logo-header{height:45px}
-    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
-    .search-box input{border-radius:30px}
-    .profile-btn{color:#fff}
-
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--card-radius);box-shadow:0 10px 24px rgba(0,0,0,.08);overflow:hidden}
-    .ui-card-head{
-      display:flex;justify-content:space-between;align-items:center;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)
-    }
-    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
-    .ui-subtext{opacity:.95}
-    .ui-card-body{padding:16px}
-    .constrain{max-width:var(--ui-card-max);margin-inline:auto}
-
-    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
-    .btn-amber:hover{filter:brightness(1.05);color:#fff}
-    .btn-amber-outline{background:#fff;color:var(--brand-accent-2);border:1px solid var(--brand-accent-2)}
-    .btn-amber-outline:hover{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border-color:transparent}
-
-    .hint{color:var(--muted);font-size:.9rem}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-
-    .q-dots{display:flex;gap:6px;align-items:center}
-    .q-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
-    .q-dots .dot.active{background:#111827}
-
-    .question-block{display:none;border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
-    .question-block.active{display:block}
-    .q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .q-type .chip{display:inline-block;padding:.25rem .6rem;border:1px solid var(--border);border-radius:999px;margin-right:6px;cursor:pointer;background:#fff}
-    .q-type .chip.active{background:#eff6ff;border-color:#c7dbff;color:#1d4ed8}
-
-    .modal-header{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff;border-bottom:none}
-    .modal-header .btn-close{filter:brightness(0) invert(1);opacity:.9}
-    .modal-footer .btn{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));border:none;color:#fff;border-radius:999px}
-    .modal-body{color:#000}
-
-    .preview-table{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:10px}
-
-    /* Rubric row UI (like your screenshot) */
-    .badge-soft{background:#fff7ed;border:1px solid #fde68a;border-radius:999px;padding:.35rem .6rem;font-weight:600;color:#92400e}
-    .pill{display:inline-flex;align-items:center;gap:.4rem;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-size:.85rem;white-space:nowrap}
-    .rubric-row{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fff}
-    .rubric-disabled{opacity:.7}
-    .rubric-note{font-size:.9rem}
-    .rubric-note .on{color:#166534}
-    .rubric-note .off{color:#7a1f1f}
-
-    /* File preview modal */
-    #filePreviewModal .modal-dialog{ max-width:96vw }
-    #filePreviewModal .modal-content{ height:92vh; display:flex; flex-direction:column }
-    #filePreviewModal .modal-body{ flex:1 1 auto; padding:0; background:#f8fafc; position:relative }
-    .preview-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio{
-      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
-    }
-    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff }
-    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center }
-
-    @media (max-width: 480px){
-      .logo-header{display:none}
-      .header-top{padding:.6rem .8rem}
-      .search-box{margin:0;max-width:100%}
-      .ui-card-body{padding:12px}
-    }
-  </style>
 </head>
+
 <body>
   <div class="dashboard">
     <div id="sidebar-container"></div>
@@ -112,9 +33,7 @@
       </header>
 
       <div class="container-fluid my-4">
-        <h1 class="fw-bold text-center mb-3" style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));-webkit-background-clip:text;background-clip:text;color:transparent;">
-          Upload Quiz
-        </h1>
+        <h1 class="page-title brand">Quiz Upload</h1>
 
         <div class="ui-card constrain" style="--ui-card-max: 1100px;">
           <div class="ui-card-head">
@@ -144,11 +63,13 @@
               <div class="row g-3 mt-1">
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Quiz Title</label>
-                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
+                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz"
+                    required>
                 </div>
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
-                  <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
+                  <input type="text" id="quizDescInput" class="form-control"
+                    placeholder="Short description shown to students">
                 </div>
               </div>
 
@@ -166,49 +87,45 @@
                 </div>
               </div>
 
-              <!-- Rubric (full width + row UI) -->
+              <!-- Rubric -->
               <div class="row g-3 mt-2" id="rubricSection">
                 <div class="col-12">
                   <label class="form-label fw-bold d-flex align-items-center gap-2">
                     <i class="bi bi-clipboard2-check"></i>
                     Rubric File <span class="text-muted">(applies to Essay questions only)</span>
                   </label>
-
-                  <!-- Accept expanded to allow images too (for easy preview like your screenshot) -->
-                  <input
-                    type="file"
-                    id="rubricsFile"
-                    class="form-control"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*"
-                    aria-disabled="true" disabled
-                  />
-
+                  <input type="file" id="rubricsFile" class="form-control"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*" aria-disabled="true"
+                    disabled />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
                     <span id="rubricStateNote" class="off">Add an Essay question to enable rubric upload.</span>
                   </div>
 
-                  <!-- Staged rubric row -->
                   <div id="rubricRow" class="rubric-row mt-2 d-none">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                       <span class="badge-soft"><i class="bi bi-clipboard-check me-1"></i>Rubric</span>
-                      <button id="rubricNameBtn" type="button" class="btn btn-link p-0 align-baseline text-decoration-none"></button>
+                      <button id="rubricNameBtn" type="button"
+                        class="btn btn-link p-0 align-baseline text-decoration-none"></button>
                     </div>
                     <div class="d-flex align-items-center gap-2 mt-2">
                       <span id="rubricChip" class="pill text-truncate" style="max-width:220px;"></span>
-                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm" title="Preview"><i class="bi bi-eye"></i></button>
+                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm"
+                        title="Preview"><i class="bi bi-eye"></i></button>
                       <label class="btn btn-outline-secondary btn-sm mb-0" title="Replace">
                         <i class="bi bi-arrow-repeat"></i>
-                        <input id="rubricReplaceInput" type="file" class="d-none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
+                        <input id="rubricReplaceInput" type="file" class="d-none"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
                       </label>
-                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i class="bi bi-trash"></i></button>
+                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i
+                          class="bi bi-trash"></i></button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <hr class="my-4"/>
+              <hr class="my-4" />
 
               <!-- Timer -->
               <div class="row g-3 align-items-center">
@@ -224,17 +141,20 @@
                 </div>
                 <div class="col-12 col-md-4">
                   <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
-                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
+                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30"
+                    disabled>
                   <div class="hint mt-1">Whole minutes, minimum 1.</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
-                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
+                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span
+                      class="text-muted">(optional)</span></label>
+                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10"
+                    disabled>
                   <div class="hint mt-1">Extra seconds before auto-submit.</div>
                 </div>
               </div>
 
-              <hr class="my-4"/>
+              <hr class="my-4" />
 
               <!-- Order & Flow -->
               <div class="row g-3">
@@ -276,25 +196,32 @@
                 </div>
               </div>
 
-              <hr class="my-4"/>
+              <hr class="my-4" />
 
               <!-- Bulk import (CSV only) -->
               <div class="p-3 mb-4 border rounded-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                   <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
-                  <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkHelpModal">
+                  <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#bulkHelpModal">
                     <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
                   </button>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
-                  <button type="button" id="downloadCsvTplMcq"   class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: Multiple Choice</button>
-                  <button type="button" id="downloadCsvTplTf"    class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: True / False</button>
-                  <button type="button" id="downloadCsvTplEssay" class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: Essay</button>
-                  <button type="button" id="downloadCsvTplAll"   class="btn btn-amber-outline"><i class="bi bi-download me-1"></i> CSV: All Types</button>
+                  <button type="button" id="downloadCsvTplMcq" class="btn btn-amber-outline"><i
+                      class="bi bi-download me-1"></i> CSV: Multiple Choice</button>
+                  <button type="button" id="downloadCsvTplTf" class="btn btn-amber-outline"><i
+                      class="bi bi-download me-1"></i> CSV: True / False</button>
+                  <button type="button" id="downloadCsvTplEssay" class="btn btn-amber-outline"><i
+                      class="bi bi-download me-1"></i> CSV: Essay</button>
+                  <button type="button" id="downloadCsvTplAll" class="btn btn-amber-outline"><i
+                      class="bi bi-download me-1"></i> CSV: All Types</button>
                 </div>
                 <div class="hint mt-2">
-                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
-                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span class="mono">FALSE</span>.
+                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD,
+                    correct</span>.
+                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span
+                    class="mono">FALSE</span>.
                 </div>
 
                 <hr class="my-3">
@@ -323,7 +250,16 @@
                     <table class="table table-sm table-striped mb-0">
                       <thead>
                         <tr>
-                          <th>#</th><th>Type</th><th>Question</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Correct</th><th>Status</th><th>Action</th>
+                          <th>#</th>
+                          <th>Type</th>
+                          <th>Question</th>
+                          <th>A</th>
+                          <th>B</th>
+                          <th>C</th>
+                          <th>D</th>
+                          <th>Correct</th>
+                          <th>Status</th>
+                          <th>Action</th>
                         </tr>
                       </thead>
                       <tbody id="bulkTbody"></tbody>
@@ -365,63 +301,76 @@
       </div>
 
       <!-- Success Modal -->
-      <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel" aria-hidden="true">
-        <div class="modal-dialog"><div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p class="mb-2">Your quiz has been uploaded successfully.</p>
-            <div id="quizIdRow" class="mb-2 d-none">
-              <span class="text-muted">Quiz ID:</span>
-              <code id="createdQuizId" class="ms-2"></code>
+      <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="uploadSuccessLabel">Quiz Uploaded</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <div class="modal-body">
+              <p class="mb-2">Your quiz has been uploaded successfully.</p>
+              <div id="quizIdRow" class="mb-2 d-none">
+                <span class="text-muted">Quiz ID:</span>
+                <code id="createdQuizId" class="ms-2"></code>
+              </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-amber" data-bs-dismiss="modal">Done</button></div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn" data-bs-dismiss="modal">Done</button></div>
-        </div></div>
+        </div>
       </div>
 
       <!-- Bulking Help Modal -->
       <div class="modal fade" id="bulkHelpModal" tabindex="-1" aria-labelledby="bulkHelpLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="bulkHelpLabel">Quiz Bulking – Easy Step-by-Step Guide</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close help"></button>
-          </div>
-          <div class="modal-body">
-            <div class="fs-5 mb-3">
-              This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="bulkHelpLabel">Quiz Bulking – Easy Step-by-Step Guide</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                title="Close help"></button>
             </div>
-            <ol class="fs-6">
-              <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice, True/False, or Essay). You can also pick “All Types”.</li>
-              <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
-                <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
-                <ul>
-                  <li>For Multiple Choice, fill choices A–D and set <span class="mono">correct</span> to A, B, C, or D.</li>
-                  <li>For True/False, leave choices blank and set <span class="mono">correct</span> to TRUE or FALSE.</li>
-                  <li>For Essay, just write the question. Choices can be blank.</li>
-                </ul>
-              </li>
-              <li class="mb-2"><strong>Save your file as CSV</strong>. (In Excel: File → Save As → CSV.)</li>
-              <li class="mb-2"><strong>Upload the CSV</strong> using “Preview & Validate”. The system will check your rows.</li>
-              <li class="mb-2"><strong>Review the table</strong>:
-                <ul>
-                  <li>Rows marked <span class="badge bg-success">OK</span> are valid.</li>
-                  <li>Rows with <span class="badge bg-danger">Error</span> need fixing in your CSV (hover to see the reason).</li>
-                  <li>You can <strong>Remove</strong> any valid row you don’t want to add.</li>
-                </ul>
-              </li>
-              <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows will be added.</li>
-              <li class="mb-2">You may still edit the questions after adding them.</li>
-            </ol>
+            <div class="modal-body">
+              <div class="fs-5 mb-3">
+                This feature lets you add many questions at once using a <strong>CSV file</strong>. Follow these steps:
+              </div>
+              <ol class="fs-6">
+                <li class="mb-2"><strong>Download a template</strong> that matches your question type (Multiple Choice,
+                  True/False, or Essay). You can also pick “All Types”.</li>
+                <li class="mb-2"><strong>Open the CSV</strong> (Excel, Google Sheets, or similar). Keep the columns:
+                  <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+                  <ul>
+                    <li>For Multiple Choice, fill choices A–D and set <span class="mono">correct</span> to A, B, C, or
+                      D.</li>
+                    <li>For True/False, leave choices blank and set <span class="mono">correct</span> to TRUE or FALSE.
+                    </li>
+                    <li>For Essay, just write the question. Choices can be blank.</li>
+                  </ul>
+                </li>
+                <li class="mb-2"><strong>Save your file as CSV</strong>. (In Excel: File → Save As → CSV.)</li>
+                <li class="mb-2"><strong>Upload the CSV</strong> using “Preview & Validate”. The system will check your
+                  rows.</li>
+                <li class="mb-2"><strong>Review the table</strong>:
+                  <ul>
+                    <li>Rows marked <span class="badge bg-success">OK</span> are valid.</li>
+                    <li>Rows with <span class="badge bg-danger">Error</span> need fixing in your CSV (hover to see the
+                      reason).</li>
+                    <li>You can <strong>Remove</strong> any valid row you don’t want to add.</li>
+                  </ul>
+                </li>
+                <li class="mb-2"><strong>Click “Add valid questions to quiz”</strong>. Only valid and not-removed rows
+                  will be added.</li>
+                <li class="mb-2">You may still edit the questions after adding them.</li>
+              </ol>
+            </div>
+            <div class="modal-footer"><button class="btn btn-amber" data-bs-dismiss="modal">Got it</button></div>
           </div>
-          <div class="modal-footer"><button class="btn" data-bs-dismiss="modal">Got it</button></div>
-        </div></div>
+        </div>
       </div>
 
       <!-- File Preview Modal (pre-upload) -->
-      <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+      <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
@@ -440,13 +389,48 @@
             <div class="modal-footer">
               <div class="text-muted small" id="fileInfoText"></div>
               <div class="ms-auto d-flex gap-2">
-                <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+                <button id="stageFromPreviewBtn" class="btn btn-amber d-none">
                   <i class="bi bi-cloud-plus me-1"></i> Stage this file
                 </button>
-                <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+                <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-close-footer">
                   <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
                 </a>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reusable Brand Alert Modal -->
+      <div class="modal fade" id="brandAlertModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="brandAlertTitle">Notice</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
+            </div>
+            <div class="modal-body" id="brandAlertBody"></div>
+            <div class="modal-footer" id="brandAlertFooter">
+              <button type="button" class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dirty Guard (Unsaved Changes) Modal -->
+      <div class="modal fade" id="dirtyGuardModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i> Unsaved changes</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Stay"></button>
+            </div>
+            <div class="modal-body">
+              You have unsaved changes. If you leave this page, your edits will be lost.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Stay on page</button>
+              <button type="button" class="btn btn-amber" id="dirtyLeaveBtn">Leave without saving</button>
             </div>
           </div>
         </div>
@@ -464,6 +448,53 @@
     const API = "http://localhost:5000";
     const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
+
+    /* ========= Brand Alert / Confirm helpers + alert override ========= */
+    function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
+      const el = document.getElementById('brandAlertModal');
+      document.getElementById('brandAlertTitle').textContent = title;
+      document.getElementById('brandAlertBody').innerHTML = message;
+
+      const footer = document.getElementById('brandAlertFooter');
+      footer.innerHTML = '';
+      const okBtn = document.createElement('button');
+      okBtn.className = 'btn';
+      okBtn.textContent = okText;
+      okBtn.setAttribute('data-bs-dismiss', 'modal');
+      if (typeof onOk === 'function') okBtn.addEventListener('click', onOk);
+      footer.appendChild(okBtn);
+
+      new bootstrap.Modal(el).show();
+    }
+    function brandConfirm({ title = 'Please confirm', message = 'Are you sure?', confirmText = 'Confirm', cancelText = 'Cancel' }) {
+      return new Promise(resolve => {
+        const el = document.getElementById('brandAlertModal');
+        document.getElementById('brandAlertTitle').textContent = title;
+        document.getElementById('brandAlertBody').innerHTML = message;
+
+        const footer = document.getElementById('brandAlertFooter');
+        footer.innerHTML = '';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-amber-outline';
+        cancelBtn.textContent = cancelText;
+        cancelBtn.setAttribute('data-bs-dismiss', 'modal');
+        cancelBtn.addEventListener('click', () => resolve(false));
+
+        const okBtn = document.createElement('button');
+        okBtn.className = 'btn btn-amber';
+        okBtn.textContent = confirmText;
+        okBtn.addEventListener('click', () => {
+          resolve(true);
+          const inst = bootstrap.Modal.getInstance(el);
+          if (inst) inst.hide();
+        });
+
+        footer.append(cancelBtn, okBtn);
+        new bootstrap.Modal(el).show();
+      });
+    }
+    window.alert = (msg) => openBrandAlert({ title: 'Notice', message: String(msg || '') });
 
     /* ---------- Sidebar Loader ---------- */
     document.addEventListener("DOMContentLoaded", () => {
@@ -491,8 +522,8 @@
     });
 
     /* ---------- Auth Guard + initials-only header ---------- */
-    (function initHeaderInitials(){
-      try{
+    (function initHeaderInitials() {
+      try {
         const stored = JSON.parse(localStorage.getItem("user") || "{}");
         const u = stored.user || stored;
 
@@ -505,29 +536,29 @@
 
         const initials = getInitials(u);
         const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                        || u.username
-                        || u.email
-                        || 'Profile';
+          || u.username
+          || u.email
+          || 'Profile';
 
-        if (el){
+        if (el) {
           el.textContent = initials;
           el.setAttribute('title', fullLabel);
           el.setAttribute('aria-label', fullLabel);
         }
-      }catch(e){
+      } catch (e) {
         console.error('Auth/init error:', e);
         window.location.href = "/TEACHER/login/login.html";
       }
 
-      function getInitials(u){
+      function getInitials(u) {
         const fn = (u.firstName || '').trim();
         const mn = (u.middleName || '').trim();
-        const ln = (u.lastName  || '').trim();
+        const ln = (u.lastName || '').trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
         if (fn && mn) return (fn[0] + mn[0]).toUpperCase();
 
         const nameish = (u.username || u.displayName || u.name || '').trim();
-        if (nameish){
+        if (nameish) {
           const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
           return parts[0][0].toUpperCase();
@@ -543,68 +574,130 @@
     const sizeLimitText = document.getElementById('sizeLimitText');
     if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
 
-    function escapeHTML(str=''){
-      return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    function escapeHTML(str = '') {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
-    function toCSV(rows){
+    function toCSV(rows) {
       return rows.map(r => r.map(v => {
         const s = String(v ?? '');
-        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }).join(',')).join('\n');
     }
-    function bytesToKB(b){ return Math.round((b || 0)/102.4)/10; }
+    function bytesToKB(b) { return Math.round((b || 0) / 102.4) / 10; }
 
     /* ---------- File preview helpers (modal) ---------- */
-    function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
-    function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
-    function kindFrom({url='', name='', mime=''}) {
+    function extFromUrl(u = '') { const clean = String(u).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function kindFrom({ url = '', name = '', mime = '' }) {
       const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
-      if ((mime||'').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if ((mime || '').startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
       if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
-      if ((mime||'').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if ((mime||'').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
-      if ((mime||'').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
-      if (['doc','docx','ppt','pptx','xls','xlsx','csv'].includes(ext)) return 'office';
+      if ((mime || '').startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if ((mime || '').startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
+      if ((mime || '').startsWith('text/') || ['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(ext)) return 'office';
       return 'other';
     }
-    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
-    function setFileInfoUI(kind,url){
-      const info=document.getElementById('fileInfoText');
-      const hdr=document.getElementById('filePreviewModalLabel');
-      const labelMap={video:'Video',audio:'Audio',image:'Image',pdf:'PDF',text:'Text/CSV',office:'Office Doc',other:'File'};
-      let badge=document.getElementById('fileKindBadge'); if(!badge){badge=document.createElement('span');badge.id='fileKindBadge';badge.className='ms-2 badge rounded-pill';hdr.appendChild(badge);}
-      badge.className='ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
-      badge.textContent=labelMap[kind]||'File';
-      info.innerHTML=`<span class="text-muted">Type:</span> <strong>${labelMap[kind]||'File'}</strong>`;
-      document.getElementById('openInNewTabBtn').href=url||'#';
+    function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind, url) {
+      const info = document.getElementById('fileInfoText');
+      const hdr = document.getElementById('filePreviewModalLabel');
+      const labelMap = { video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
+      let badge = document.getElementById('fileKindBadge'); if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
+      badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent = labelMap[kind] || 'File';
+      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href = url || '#';
     }
-    function renderFilePreviewInto(container, {url, name='', mime=''}){
-      container.innerHTML=''; showSpinner(true);
-      const done=()=>showSpinner(false);
-      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+    function renderFilePreviewInto(container, { url, name = '', mime = '' }) {
+      container.innerHTML = ''; showSpinner(true);
+      const done = () => showSpinner(false);
+      const fallback = (msg) => { container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">${msg || 'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
 
-      const kind = kindFrom({url, name, mime});
-      if(kind==='image'){ const img=new Image(); img.onload=done; img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
-      if(kind==='pdf'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('PDF preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
-      if(kind==='video'){ const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=()=>fallback('Video preview failed.'); v.src=url; container.appendChild(v); return; }
-      if(kind==='audio'){ const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=()=>fallback('Audio preview failed.'); a.src=url; container.appendChild(a); return; }
-      if(kind==='text'){ const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
-      if(kind==='office' && url.startsWith('blob:')){ return fallback('Office documents cannot be previewed until they’re uploaded.'); }
-      if(kind==='office'){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.onload=done; iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked).'); iframe.src=gview; container.appendChild(iframe); return; }
+      const kind = kindFrom({ url, name, mime });
+      if (kind === 'image') { const img = new Image(); img.onload = done; img.onerror = () => fallback('Image preview failed.'); img.src = url; container.appendChild(img); return; }
+      if (kind === 'pdf') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('PDF preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
+      if (kind === 'video') { const v = document.createElement('video'); v.controls = true; v.onloadeddata = done; v.onerror = () => fallback('Video preview failed.'); v.src = url; container.appendChild(v); return; }
+      if (kind === 'audio') { const a = document.createElement('audio'); a.controls = true; a.onloadeddata = done; a.onerror = () => fallback('Audio preview failed.'); a.src = url; container.appendChild(a); return; }
+      if (kind === 'text') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Text preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
+      if (kind === 'office' && url.startsWith('blob:')) { return fallback('Office documents cannot be previewed until they’re uploaded.'); }
+      if (kind === 'office') { const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Office preview failed (Google Viewer blocked).'); iframe.src = gview; container.appendChild(iframe); return; }
 
-      const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
+      const obj = document.createElement('object'); obj.data = url; obj.type = mime || 'application/octet-stream'; obj.onload = done; obj.onerror = () => fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done, 1200);
     }
-    function openPreviewModalWithMeta({url, title='File', mime='', stageContext=null}){
+    function openPreviewModalWithMeta({ url, title = 'File', mime = '', stageContext = null }) {
       document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
-      const kind = kindFrom({url, name:title, mime});
+      const kind = kindFrom({ url, name: title, mime });
       setFileInfoUI(kind, url);
-      renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime});
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), { url, name: title, mime });
 
       previewStageCtx = stageContext || null;
       showStageBtn(!!previewStageCtx);
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
-    function showStageBtn(show){ document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
+    function showStageBtn(show) { document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
+
+    /* ========= Dirty Guard (unsaved changes) ========= */
+    let isDirty = false;
+    let suppressDirty = false;
+    let pendingNavigateTo = null;
+
+    const dirtyModalEl = document.getElementById('dirtyGuardModal');
+    const dirtyModal = new bootstrap.Modal(dirtyModalEl);
+    document.getElementById('dirtyLeaveBtn').addEventListener('click', () => {
+      isDirty = false;
+      dirtyModal.hide();
+      if (typeof pendingNavigateTo === 'function') {
+        const fn = pendingNavigateTo; pendingNavigateTo = null; fn();
+      } else if (typeof pendingNavigateTo === 'string' && pendingNavigateTo) {
+        const dest = pendingNavigateTo; pendingNavigateTo = null; window.location.href = dest;
+      }
+    });
+
+    function markDirty() { if (!suppressDirty) isDirty = true; }
+    function resetDirtySafely() {
+      suppressDirty = true;
+      try { isDirty = false; } finally { setTimeout(() => { suppressDirty = false; }, 0); }
+    }
+    function navigateWithGuard(toUrl) {
+      if (!isDirty) { window.location.href = toUrl; return; }
+      pendingNavigateTo = toUrl;
+      dirtyModal.show();
+    }
+
+    const quizFormEl = document.getElementById('quizForm');
+    quizFormEl.addEventListener('input', markDirty, true);
+    quizFormEl.addEventListener('change', markDirty, true);
+
+    document.getElementById('question-container').addEventListener('click', (e) => {
+      const act = e.target.closest('[data-action]');
+      if (act) markDirty();
+    });
+    document.getElementById('addQuestionBtn')?.addEventListener('click', markDirty);
+    document.getElementById('addQuestionBtnTop')?.addEventListener('click', markDirty);
+    document.getElementById('rubricsFile')?.addEventListener('change', markDirty);
+    document.getElementById('rubricReplaceInput')?.addEventListener('change', markDirty);
+    document.getElementById('bulkFile')?.addEventListener('change', markDirty);
+
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      const t = (a.getAttribute('target') || '').toLowerCase();
+      if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank') return;
+      if (isDirty) {
+        e.preventDefault();
+        pendingNavigateTo = href;
+        dirtyModal.show();
+      }
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     /* ---------- Course / Module ---------- */
     async function loadCourses() {
@@ -622,9 +715,9 @@
         if (courses.length && 'uploadedBy' in courses[0]) {
           courses = courses.filter(c => c.uploadedBy === TEACHER_ID);
         }
-        courses.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+        courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
-          courses.map(c => `<option value="${c.id}">${escapeHTML(c.title||'Untitled')}${c.courseNumber ? ' (#'+escapeHTML(c.courseNumber)+')' : ''}</option>`).join('');
+          courses.map(c => `<option value="${c.id}">${escapeHTML(c.title || 'Untitled')}${c.courseNumber ? ' (#' + escapeHTML(c.courseNumber) + ')' : ''}</option>`).join('');
 
         const params = new URLSearchParams(location.search);
         const preCourse = params.get('courseId');
@@ -655,7 +748,7 @@
         const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules`);
         const mods = await res.json();
         const modules = Array.isArray(mods) ? mods : (mods.modules || []);
-        modules.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+        modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
 
         moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>` +
           modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${escapeHTML(m.title || 'Untitled')}</option>`).join('');
@@ -665,7 +758,7 @@
         moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
       }
     }
-    document.getElementById("courseSelect").addEventListener("change", function(){
+    document.getElementById("courseSelect").addEventListener("change", function () {
       const cid = this.value;
       if (cid) loadModules(cid);
       else {
@@ -691,25 +784,25 @@
     const essayCountText = document.getElementById('essayCountText');
     const submitBtn = document.getElementById('submitBtn');
 
-    let __stagedRubricFile = null;     // <- the staged file
+    let __stagedRubricFile = null;
     let previewStageCtx = null;
-    let currentPreviewRevoke = null;   // revoke object URLs after modal close
+    let currentPreviewRevoke = null;
 
-    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', ()=>{
-      if (currentPreviewRevoke){ try{ currentPreviewRevoke(); }catch{} }
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', () => {
+      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch { } }
       currentPreviewRevoke = null;
       previewStageCtx = null;
       showStageBtn(false);
     });
 
-    function countEssayQuestions(){
+    function countEssayQuestions() {
       return document.querySelectorAll(".question-block[data-type='essay']").length;
     }
-    function updateEssayRubricState(){
+    function updateEssayRubricState() {
       const n = countEssayQuestions();
       essayCountText.textContent = String(n);
 
-      if (n > 0){
+      if (n > 0) {
         rubricsFileInput.removeAttribute('disabled');
         rubricsFileInput.setAttribute('aria-disabled', 'false');
         rubricsFileInput.classList.remove('rubric-disabled');
@@ -728,8 +821,8 @@
       }
     }
 
-    function renderRubricRow(){
-      if (!__stagedRubricFile){
+    function renderRubricRow() {
+      if (!__stagedRubricFile) {
         rubricRow.classList.add('d-none');
         rubricNameBtn.textContent = '';
         rubricChip.textContent = '';
@@ -741,17 +834,17 @@
     }
 
     // Pick rubric -> open pre-upload preview modal immediately
-    rubricsFileInput.addEventListener('change', ()=>{
+    rubricsFileInput.addEventListener('change', () => {
       const f = rubricsFileInput.files && rubricsFileInput.files[0];
       if (!f) return;
       const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
       submitBtn.disabled = tooBig;
-      if (tooBig){
+      if (tooBig) {
         alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`);
         return;
       }
       const blobUrl = URL.createObjectURL(f);
-      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
       openPreviewModalWithMeta({
         url: blobUrl, title: f.name, mime: f.type || '',
         stageContext: { file: f }
@@ -759,52 +852,54 @@
     });
 
     // Stage from preview (pre-upload)
-    document.getElementById('stageFromPreviewBtn').addEventListener('click', ()=>{
+    document.getElementById('stageFromPreviewBtn').addEventListener('click', () => {
       if (!previewStageCtx || !previewStageCtx.file) return;
       __stagedRubricFile = previewStageCtx.file;
       renderRubricRow();
       updateEssayRubricState();
       bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-      // clear input so re-choosing the same file re-triggers change
       rubricsFileInput.value = '';
+      markDirty();
     });
 
     // Click filename or eye -> preview staged
-    function openPreviewOfStaged(){
+    function openPreviewOfStaged() {
       if (!__stagedRubricFile) return;
       const blobUrl = URL.createObjectURL(__stagedRubricFile);
-      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
       openPreviewModalWithMeta({
         url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '',
-        stageContext: null   // already staged; hide button
+        stageContext: null
       });
     }
     rubricNameBtn.addEventListener('click', openPreviewOfStaged);
     rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
 
     // Replace -> file picker -> modal preview with stage button again
-    rubricReplaceInput.addEventListener('change', ()=>{
+    rubricReplaceInput.addEventListener('change', () => {
       const f = rubricReplaceInput.files && rubricReplaceInput.files[0];
       if (!f) return;
       const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
       submitBtn.disabled = tooBig;
-      if (tooBig){ alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
+      if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
       const blobUrl = URL.createObjectURL(f);
-      currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
       openPreviewModalWithMeta({
         url: blobUrl, title: f.name, mime: f.type || '',
         stageContext: { file: f }
       });
       rubricReplaceInput.value = '';
+      markDirty();
     });
 
     // Delete staged
-    rubricDeleteBtn.addEventListener('click', ()=>{
+    rubricDeleteBtn.addEventListener('click', () => {
       __stagedRubricFile = null;
       renderRubricRow();
       updateEssayRubricState();
       rubricsFileInput.value = '';
       submitBtn.disabled = false;
+      markDirty();
     });
 
     /* ---------- Render Questions & Pager ---------- */
@@ -867,9 +962,9 @@
       block.innerHTML = `
         <div class="q-head">
           <div class="q-type">
-            <span class="chip ${type==='mcq'?'active':''}" data-type="mcq">Multiple Choice</span>
-            <span class="chip ${type==='tf'?'active':''}" data-type="tf">True / False</span>
-            <span class="chip ${type==='essay'?'active':''}" data-type="essay">Essay</span>
+            <span class="chip ${type === 'mcq' ? 'active' : ''}" data-type="mcq">Multiple Choice</span>
+            <span class="chip ${type === 'tf' ? 'active' : ''}" data-type="tf">True / False</span>
+            <span class="chip ${type === 'essay' ? 'active' : ''}" data-type="essay">Essay</span>
           </div>
           <div class="q-actions">
             <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove"><i class="bi bi-trash"></i></button>
@@ -884,18 +979,19 @@
         <div class="q-body">${renderBody(type, idx)}</div>
       `;
 
-      block.querySelectorAll(".chip").forEach(chip=>{
-        chip.addEventListener("click", ()=>{
-          block.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+      block.querySelectorAll(".chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          block.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
           chip.classList.add("active");
           const t = chip.dataset.type;
           block.dataset.type = t;
           block.querySelector(".q-body").innerHTML = renderBody(t, idx);
           updateEssayRubricState();
+          markDirty();
         });
       });
 
-      block.querySelector("[data-action='remove']").addEventListener("click", ()=>{
+      block.querySelector("[data-action='remove']").addEventListener("click", () => {
         const blocks = [...document.querySelectorAll(".question-block")];
         const myIndex = blocks.indexOf(block);
         block.remove();
@@ -908,45 +1004,47 @@
         }
         renderQPager();
         updateEssayRubricState();
+        markDirty();
       });
 
       container.appendChild(block);
       qPager.cur = [...document.querySelectorAll(".question-block")].length - 1;
       renderQPager();
       updateEssayRubricState();
+      markDirty();
       return block;
     }
 
-    function renderQPager(){
+    function renderQPager() {
       const blocks = [...document.querySelectorAll(".question-block")];
-      blocks.forEach((b,i)=> b.classList.toggle("active", i===qPager.cur));
+      blocks.forEach((b, i) => b.classList.toggle("active", i === qPager.cur));
 
-      document.getElementById("qPageNow").textContent = blocks.length ? String(qPager.cur+1) : '0';
+      document.getElementById("qPageNow").textContent = blocks.length ? String(qPager.cur + 1) : '0';
       document.getElementById("qPageTotal").textContent = String(blocks.length);
 
       const dots = document.getElementById("qDots");
       dots.innerHTML = "";
-      for (let i=0;i<blocks.length;i++){
+      for (let i = 0; i < blocks.length; i++) {
         const d = document.createElement("span");
-        d.className = "dot" + (i===qPager.cur ? " active" : "");
-        d.title = "Go to question " + (i+1);
+        d.className = "dot" + (i === qPager.cur ? " active" : "");
+        d.title = "Go to question " + (i + 1);
         d.style.cursor = "pointer";
-        d.addEventListener("click", ()=>{ qPager.cur = i; renderQPager(); });
+        d.addEventListener("click", () => { qPager.cur = i; renderQPager(); });
         dots.appendChild(d);
       }
-      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur>0);
-      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur<blocks.length-1);
+      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur > 0);
+      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur < blocks.length - 1);
     }
 
-    document.getElementById("qPrevBtn").addEventListener("click", ()=>{ if (qPager.cur>0){ qPager.cur--; renderQPager(); }});
-    document.getElementById("qNextBtn").addEventListener("click", ()=>{ const total = document.querySelectorAll(".question-block").length; if (qPager.cur<total-1){ qPager.cur++; renderQPager(); }});
+    document.getElementById("qPrevBtn").addEventListener("click", () => { if (qPager.cur > 0) { qPager.cur--; renderQPager(); } });
+    document.getElementById("qNextBtn").addEventListener("click", () => { const total = document.querySelectorAll(".question-block").length; if (qPager.cur < total - 1) { qPager.cur++; renderQPager(); } });
     document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
     document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
 
     /* Timer / Pagination wiring */
     const enableTimerEl = document.getElementById("enableTimer");
     const timerMinutesEl = document.getElementById("timerMinutes");
-    const gracePeriodEl  = document.getElementById("gracePeriod");
+    const gracePeriodEl = document.getElementById("gracePeriod");
     const fixedOrderEl = document.getElementById("fixedOrderCheck");
     const enablePaginationEl = document.getElementById("enablePagination");
     const perPageEl = document.getElementById("perPageInput");
@@ -955,10 +1053,11 @@
     enableTimerEl.addEventListener("change", () => {
       const on = enableTimerEl.checked;
       timerMinutesEl.disabled = !on;
-      gracePeriodEl.disabled  = !on;
+      gracePeriodEl.disabled = !on;
       if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
+      markDirty();
     });
-    enablePaginationEl.addEventListener("change", ()=>{ perPageEl.disabled = !enablePaginationEl.checked; });
+    enablePaginationEl.addEventListener("change", () => { perPageEl.disabled = !enablePaginationEl.checked; markDirty(); });
 
     /* ---------- Bulk Import ---------- */
     const bulkFileEl = document.getElementById('bulkFile');
@@ -967,50 +1066,50 @@
     const bulkSummary = document.getElementById('bulkSummary');
     const addValidBtn = document.getElementById('addValidBtn');
 
-    const btnTplMcq   = document.getElementById('downloadCsvTplMcq');
-    const btnTplTf    = document.getElementById('downloadCsvTplTf');
+    const btnTplMcq = document.getElementById('downloadCsvTplMcq');
+    const btnTplTf = document.getElementById('downloadCsvTplTf');
     const btnTplEssay = document.getElementById('downloadCsvTplEssay');
-    const btnTplAll   = document.getElementById('downloadCsvTplAll');
+    const btnTplAll = document.getElementById('downloadCsvTplAll');
 
-    function normalizeHeader(s){ return String(s||'').trim().toLowerCase(); }
-    function normalizeType(t){
-      const x = String(t||'').trim().toLowerCase();
-      if (['mcq','multiple choice','multiple-choice','multiplechoice'].includes(x)) return 'mcq';
-      if (['tf','true/false','truefalse','true-false'].includes(x)) return 'tf';
-      if (['essay','open','long','long answer','long-answer'].includes(x)) return 'essay';
+    function normalizeHeader(s) { return String(s || '').trim().toLowerCase(); }
+    function normalizeType(t) {
+      const x = String(t || '').trim().toLowerCase();
+      if (['mcq', 'multiple choice', 'multiple-choice', 'multiplechoice'].includes(x)) return 'mcq';
+      if (['tf', 'true/false', 'truefalse', 'true-false'].includes(x)) return 'tf';
+      if (['essay', 'open', 'long', 'long answer', 'long-answer'].includes(x)) return 'essay';
       return '';
     }
-    function normalizeCorrectForTF(v){
-      const x = String(v||'').trim().toLowerCase();
-      if (['true','t','a','1','yes','y'].includes(x)) return 'A';
-      if (['false','f','b','0','no','n'].includes(x)) return 'B';
+    function normalizeCorrectForTF(v) {
+      const x = String(v || '').trim().toLowerCase();
+      if (['true', 't', 'a', '1', 'yes', 'y'].includes(x)) return 'A';
+      if (['false', 'f', 'b', '0', 'no', 'n'].includes(x)) return 'B';
       return '';
     }
-    function normalizeCorrectForMCQ(v){
-      const x = String(v||'').trim().toUpperCase();
-      return ['A','B','C','D'].includes(x) ? x : '';
+    function normalizeCorrectForMCQ(v) {
+      const x = String(v || '').trim().toUpperCase();
+      return ['A', 'B', 'C', 'D'].includes(x) ? x : '';
     }
 
-    function buildCsvTemplate(kind){
-      const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
+    function buildCsvTemplate(kind) {
+      const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
       let rows = [header];
-      if (kind === 'mcq'){
-        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
-        rows.push(['mcq','Which color is the sky?','Blue','Green','Red','Yellow','A']);
-      } else if (kind === 'tf'){
-        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
-        rows.push(['tf','The Earth is flat','','','','','FALSE']);
-      } else if (kind === 'essay'){
-        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
-        rows.push(['essay','Describe Newton’s three laws of motion.','','','','','']);
+      if (kind === 'mcq') {
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
+      } else if (kind === 'tf') {
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['tf', 'The Earth is flat', '', '', '', '', 'FALSE']);
+      } else if (kind === 'essay') {
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
+        rows.push(['essay', 'Describe Newton’s three laws of motion.', '', '', '', '', '']);
       } else {
-        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
-        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
-        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
       }
       return toCSV(rows);
     }
-    function downloadCSV(kind, filename){
+    function downloadCSV(kind, filename) {
       const csv = buildCsvTemplate(kind);
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -1020,28 +1119,28 @@
       URL.revokeObjectURL(url);
     }
 
-    btnTplMcq.addEventListener('click',  ()=>downloadCSV('mcq','quiz_template_mcq.csv'));
-    btnTplTf.addEventListener('click',   ()=>downloadCSV('tf','quiz_template_true_false.csv'));
-    btnTplEssay.addEventListener('click',()=>downloadCSV('essay','quiz_template_essay.csv'));
-    btnTplAll.addEventListener('click',  ()=>downloadCSV('all','quiz_template_all.csv'));
+    btnTplMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
+    btnTplTf.addEventListener('click', () => downloadCSV('tf', 'quiz_template_true_false.csv'));
+    btnTplEssay.addEventListener('click', () => downloadCSV('essay', 'quiz_template_essay.csv'));
+    btnTplAll.addEventListener('click', () => downloadCSV('all', 'quiz_template_all.csv'));
 
-    parseBulkBtn.addEventListener('click', async ()=>{
+    parseBulkBtn.addEventListener('click', async () => {
       const f = bulkFileEl.files && bulkFileEl.files[0];
-      if (!f){ alert('Please pick a CSV file first.'); return; }
+      if (!f) { alert('Please pick a CSV file first.'); return; }
       const ext = f.name.split('.').pop().toLowerCase();
-      if (ext !== 'csv'){ alert('Only .csv files are supported.'); return; }
+      if (ext !== 'csv') { alert('Only .csv files are supported.'); return; }
 
       let rows = [];
-      try{
-        rows = await new Promise((resolve, reject)=>{
+      try {
+        rows = await new Promise((resolve, reject) => {
           Papa.parse(f, {
             header: true,
             skipEmptyLines: 'greedy',
-            complete: (res)=> resolve(res.data || []),
+            complete: (res) => resolve(res.data || []),
             error: reject
           });
         });
-      }catch(err){
+      } catch (err) {
         console.error(err);
         alert('Failed to read the CSV. Please check your format.');
         return;
@@ -1049,39 +1148,40 @@
 
       const result = validateBulkRows(rows);
       renderBulkPreview(result);
+      markDirty();
     });
 
-    function validateBulkRows(rawRows){
-      const normed = rawRows.map(r=>{
+    function validateBulkRows(rawRows) {
+      const normed = rawRows.map(r => {
         const out = {};
-        Object.keys(r||{}).forEach(k=> out[normalizeHeader(k)] = r[k]);
+        Object.keys(r || {}).forEach(k => out[normalizeHeader(k)] = r[k]);
         return out;
       });
 
       const items = [];
       let validCount = 0, invalidCount = 0;
 
-      normed.forEach((r, i)=>{
+      normed.forEach((r, i) => {
         const type = normalizeType(r.type);
-        const question = String(r.question||'').trim();
-        const A = String(r.choicea||'').trim();
-        const B = String(r.choiceb||'').trim();
-        const C = String(r.choicec||'').trim();
-        const D = String(r.choiced||'').trim();
-        let correct = String(r.correct||'').trim();
+        const question = String(r.question || '').trim();
+        const A = String(r.choicea || '').trim();
+        const B = String(r.choiceb || '').trim();
+        const C = String(r.choicec || '').trim();
+        const D = String(r.choiced || '').trim();
+        let correct = String(r.correct || '').trim();
 
         const errors = [];
         if (!type) errors.push('Invalid type');
         if (!question) errors.push('Question required');
 
-        if (type === 'mcq'){
+        if (type === 'mcq') {
           if (!A || !B || !C || !D) errors.push('MCQ needs all choices A–D');
           correct = normalizeCorrectForMCQ(correct);
           if (!correct) errors.push('Correct must be A/B/C/D');
-        } else if (type === 'tf'){
+        } else if (type === 'tf') {
           correct = normalizeCorrectForTF(correct);
           if (!correct) errors.push('Correct must be TRUE/FALSE (or A/B)');
-        } else if (type === 'essay'){
+        } else if (type === 'essay') {
           correct = 'A';
         }
 
@@ -1094,9 +1194,9 @@
           excluded: false,
           payload: {
             type, question,
-            choices: type==='mcq' ? { A,B,C,D } :
-                     type==='tf'  ? { A:'True', B:'False' } :
-                                    { A:'(Essay response)' },
+            choices: type === 'mcq' ? { A, B, C, D } :
+              type === 'tf' ? { A: 'True', B: 'False' } :
+                { A: '(Essay response)' },
             correct
           }
         });
@@ -1105,7 +1205,7 @@
       return { items, validCount, invalidCount, missingHeaders: [] };
     }
 
-    function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }){
+    function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }) {
       const bulkResult = document.getElementById('bulkResult');
       const bulkTbody = document.getElementById('bulkTbody');
       const bulkSummary = document.getElementById('bulkSummary');
@@ -1116,10 +1216,10 @@
       addValidBtn.disabled = (validCount === 0);
 
       const maxRows = Math.min(items.length, 200);
-      for (let i=0;i<maxRows;i++){
+      for (let i = 0; i < maxRows; i++) {
         const it = items[i];
-        const st = it.ok ? '<span class="badge bg-success">OK</span>' :
-                           `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
+        const st = it.ok ? '<span class="badge bg-success btn-amber">OK</span>' :
+          `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
         const actionBtn = it.ok
           ? `<button type="button" class="btn btn-sm ${it.excluded ? 'btn-outline-secondary' : 'btn-outline-danger'} bulk-toggle"
                       data-idx="${i}" title="${it.excluded ? 'Restore this row' : 'Remove this row'}">
@@ -1130,7 +1230,7 @@
         const trClass = it.excluded ? 'row-excluded' : '';
         bulkTbody.innerHTML += `
           <tr class="${trClass}">
-            <td>${i+1}</td>
+            <td>${i + 1}</td>
             <td>${it.display.type || '—'}</td>
             <td>${escapeHTML(it.display.question || '')}</td>
             <td>${escapeHTML(it.display.A || '')}</td>
@@ -1145,39 +1245,40 @@
       }
       const excludedCount = items.filter(x => x.ok && x.excluded).length;
       const addableCount = items.filter(x => x.ok && !x.excluded).length;
-      const more = items.length > maxRows ? ` (+${items.length-maxRows} more…)` : '';
+      const more = items.length > maxRows ? ` (+${items.length - maxRows} more…)` : '';
       const miss = (missingHeaders && missingHeaders.length) ? ` Missing headers: ${missingHeaders.join(', ')}.` : '';
       bulkSummary.textContent = `Valid: ${validCount} • Invalid: ${invalidCount} • Excluded: ${excludedCount} • Will add: ${addableCount} • Total: ${items.length}${more}.${miss}`;
 
       addValidBtn.dataset.bulk = JSON.stringify(items);
     }
 
-    document.getElementById('bulkTbody').addEventListener('click', (e)=>{
+    document.getElementById('bulkTbody').addEventListener('click', (e) => {
       const btn = e.target.closest('.bulk-toggle');
       if (!btn) return;
       const idx = Number(btn.dataset.idx);
       const addValidBtn = document.getElementById('addValidBtn');
       const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
-      if (Number.isInteger(idx) && items[idx] && items[idx].ok){
+      if (Number.isInteger(idx) && items[idx] && items[idx].ok) {
         items[idx].excluded = !items[idx].excluded;
         renderBulkPreview({
           items,
-          validCount: items.filter(x=>x.ok).length,
-          invalidCount: items.filter(x=>!x.ok).length,
+          validCount: items.filter(x => x.ok).length,
+          invalidCount: items.filter(x => !x.ok).length,
           missingHeaders: []
         });
+        markDirty();
       }
     });
 
-    document.getElementById('addValidBtn').addEventListener('click', ()=>{
+    document.getElementById('addValidBtn').addEventListener('click', () => {
       const addValidBtn = document.getElementById('addValidBtn');
       const data = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
       const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
-      if (!validOnly.length){ alert('No valid (and not-removed) rows to add.'); return; }
+      if (!validOnly.length) { alert('No valid (and not-removed) rows to add.'); return; }
 
       const blocks = document.querySelectorAll(".question-block");
       const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
-      if (allPlaceholders){
+      if (allPlaceholders) {
         container.innerHTML = "";
         qIndex = 0;
         qPager.cur = 0;
@@ -1187,12 +1288,12 @@
       const LIMIT = 300;
       const slice = validOnly.slice(0, LIMIT);
 
-      slice.forEach(q=>{
+      slice.forEach(q => {
         const block = addQuestion(q.type || 'mcq');
         const qInput = block.querySelector("input[name='question']");
         if (qInput) qInput.value = q.question || '';
 
-        if (q.type === 'mcq'){
+        if (q.type === 'mcq') {
           block.querySelector("input[name='choiceA']").value = q.choices.A || '';
           block.querySelector("input[name='choiceB']").value = q.choices.B || '';
           block.querySelector("input[name='choiceC']").value = q.choices.C || '';
@@ -1200,7 +1301,7 @@
           const idx = block.dataset.index;
           const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
           if (rb) rb.checked = true;
-        } else if (q.type === 'tf'){
+        } else if (q.type === 'tf') {
           const idx = block.dataset.index;
           const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
           if (rb) rb.checked = true;
@@ -1210,9 +1311,10 @@
       renderQPager();
       updateEssayRubricState();
       alert(`Added ${slice.length} question(s) to the quiz.`);
+      markDirty();
     });
 
-    function isEmptyQuestionBlock(block){
+    function isEmptyQuestionBlock(block) {
       const type = block?.dataset?.type || 'mcq';
       const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
       if (!qText) return true;
@@ -1235,7 +1337,7 @@
     }
 
     /* ---------- SUBMIT ---------- */
-    document.getElementById("quizForm").addEventListener("submit", async (e)=>{
+    document.getElementById("quizForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const courseId = document.getElementById("courseSelect").value;
@@ -1245,14 +1347,15 @@
       const dueAtRaw = document.getElementById("dueAtInput").value;
       const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
 
-      if (!courseId || !moduleId) return alert("Please select a course and a module.");
-      if (!title) return alert("Please enter a quiz title.");
+      if (!courseId || !moduleId) { alert("Please select a course and a module."); return; }
+      if (!title) { alert("Please enter a quiz title."); return; }
       if (!Number.isInteger(attemptsAllowedVal) || attemptsAllowedVal < 0) {
-        return alert("Attempts Allowed must be 0 (unlimited) or a positive whole number.");
+        alert("Attempts Allowed must be 0 (unlimited) or a positive whole number.");
+        return;
       }
 
       const blocks = document.querySelectorAll(".question-block");
-      if (!blocks.length) return alert("Please add at least one question.");
+      if (!blocks.length) { alert("Please add at least one question."); return; }
 
       const quiz = [];
       for (const block of blocks) {
@@ -1268,25 +1371,26 @@
           const D = block.querySelector("input[name='choiceD']")?.value?.trim();
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
           if (!A || !B || !C || !D || !correct) {
-            return alert("Complete all MCQ fields and pick the correct answer.");
+            alert("Complete all MCQ fields and pick the correct answer.");
+            return;
           }
           quiz.push({ type, question: qText, choices: { A, B, C, D }, correct });
         } else if (type === "tf") {
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
-          if (!correct) return alert("Please select True or False.");
+          if (!correct) { alert("Please select True or False."); return; }
           quiz.push({ type, question: qText, choices: { A: "True", B: "False" }, correct });
         } else {
           quiz.push({ type, question: qText, choices: { A: "(Essay response)" }, correct: "A" });
         }
       }
-      if (!quiz.length) return alert("Please add at least one valid question.");
+      if (!quiz.length) { alert("Please add at least one valid question."); return; }
 
       let settings = {};
       if (enableTimerEl.checked) {
         const mins = parseInt(timerMinutesEl.value, 10);
         const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
-        if (!Number.isInteger(mins) || mins < 1) return alert("Time Limit must be at least 1 minute.");
-        if (!Number.isInteger(grace) || grace < 0) return alert("Grace Period must be 0 or more.");
+        if (!Number.isInteger(mins) || mins < 1) { alert("Time Limit must be at least 1 minute."); return; }
+        if (!Number.isInteger(grace) || grace < 0) { alert("Grace Period must be 0 or more."); return; }
         settings.timerEnabled = true;
         settings.durationMinutes = mins;
         settings.graceSeconds = grace;
@@ -1351,8 +1455,19 @@
             idRow.classList.add('d-none');
           }
 
-          new bootstrap.Modal(document.getElementById('uploadSuccessModal')).show();
+          // Show success modal, then redirect to quiz_list.html after closing
+          const successModal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
+          successModal.show();
+          const modalEl = document.getElementById('uploadSuccessModal');
+          const redirectHandler = function () {
+            modalEl.removeEventListener('hidden.bs.modal', redirectHandler);
+            resetDirtySafely();                     // ensure guard does not block
+            window.location.href = '/TEACHER/quizzes/quiz_list.html';
+          };
+          modalEl.addEventListener('hidden.bs.modal', redirectHandler);
 
+          // Reset form/UI without re-arming dirty
+          resetDirtySafely();
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
           qIndex = 0; qPager.cur = 0; renderQPager();
@@ -1372,6 +1487,8 @@
           document.getElementById('bulkResult').classList.add('d-none');
           document.getElementById('bulkTbody').innerHTML = '';
           document.getElementById('addValidBtn').disabled = true;
+
+          resetDirtySafely();
         } else {
           alert("Failed to upload quiz: " + (out.message || "Unknown error"));
         }
@@ -1382,7 +1499,7 @@
     });
 
     /* ---------- Boot ---------- */
-    (async function init(){
+    (async function init() {
       addQuestion();
       const sizeLimitText = document.getElementById('sizeLimitText');
       if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
@@ -1398,4 +1515,5 @@
     }
   </script>
 </body>
+
 </html>

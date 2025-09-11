@@ -1,76 +1,187 @@
- :root {
-   --bg: #f6f8fa;
-   --text: #1f2328;
-   --muted: #6a737d;
-   --card: #fff;
-   --border: #e5e7eb;
-   --brand-dark-1: #4A1A0C;
-   --brand-dark-2: #7A2810;
-   --brand-accent-1: #FF6A00;
-   --brand-accent-2: #B03C10;
-   --card-radius: 14px;
- }
+/* =========================================================
+   Variables
+========================================================= */
+:root {
+  --bg: #f6f8fa;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --card: #fff;
+  --border: #e5e7eb;
 
- html,
- body {
-   height: 100%;
-   margin: 0;
-   background: var(--bg);
-   color: var(--text)
- }
+  /* Brand */
+  --brand-dark-1: #4A1A0C;
+  --brand-dark-2: #7A2810;
+  --brand-accent-1: #FF6A00;
+  --brand-accent-2: #B03C10;
 
- .dashboard {
-   display: flex;
-   min-height: 100vh
- }
+  --card-radius: 14px;
+}
 
- .main {
-   margin-left: 70px;
-   width: calc(100% - 70px);
-   transition: margin-left .3s ease, width .3s ease;
-   display: flex;
-   flex-direction: column;
-   min-height: 100vh;
-   background: var(--bg)
- }
+/* =========================================================
+   Base & Layout
+========================================================= */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
 
- .sidebar:hover~.main {
-   margin-left: 220px;
-   width: calc(100% - 220px)
- }
-/* Modal header with gradient background */
+.text-light {
+  color: #FFD8A9 !important;
+}
+
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+  transition: margin-left .3s ease, width .3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.sidebar:hover~.main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+}
+
+.content {
+  padding: 24px;
+}
+
+.upload-container {
+  padding: 32px;
+}
+
+.form-card {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   Header
+========================================================= */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Light variant (your “ORIGINAL HEADER”) */
+.header-top--light {
+  background: #fff;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-header {
+  height: 45px;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 520px;
+  margin: 0 20px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 44px 12px 16px;
+  border: none;
+  border-radius: 999px;
+  outline: 0;
+  font-size: 1.05rem;
+}
+
+.header-top--light .search-box input {
+  border: 1px solid var(--border);
+}
+
+.search-box i {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #d7dadf;
+  font-size: 1.1rem;
+}
+
+.header-top--light .search-box i {
+  color: #9aa2a8;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.header-top--light .profile-btn {
+  color: #222;
+}
+
+.profile-btn .username {
+  font-size: 14px;
+}
+
+/* =========================================================
+   Modals (Bootstrap 5)
+========================================================= */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   border-bottom: none;
 }
 
-/* Title text inside modal header */
 .modal-header .modal-title {
   font-weight: 600;
   color: #fff;
 }
 
-/* Close button inside modal header */
 .modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
-  opacity: 0.9;
+  filter: brightness(0) invert(1);
+  opacity: .9;
 }
+
 .modal-header .btn-close:hover {
   opacity: 1;
 }
 
-/* Modal footer button with gradient */
+.modal-body {
+  color: #000;
+}
+
 .modal-footer .btn,
-#successOkBtn, 
+#successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
   border: none;
   color: #fff;
   border-radius: 999px;
-  padding: 0.5rem 1.2rem;
+  padding: .5rem 1.2rem;
   font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
+  transition: background .3s ease, transform .2s ease;
 }
 
 .modal-footer .btn:hover,
@@ -79,1186 +190,685 @@
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.05);
 }
-.modal-body {
-  color:black
-}
-.modal.show .modal-content {
-  border: none;                 /* remove default bootstrap border */
-  border-radius: 14px;          /* match your --radius vibe */
-  overflow: hidden;             /* ensures header corners look perfect */
-  box-shadow: 0 18px 40px rgba(0,0,0,.25);
-}
 
-
-
-/* ===== Center-center modals (Bootstrap 5) ===== */
-
-/* Use flexbox on the modal container to place the dialog dead-center */
+/* Centered modal layout */
 .modal.show {
   display: flex !important;
-  align-items: center;       /* vertical center */
-  justify-content: center;   /* horizontal center */
-  /* Remove Bootstrap’s default top margin gap */
+  align-items: center;
+  justify-content: center;
   --bs-modal-margin: 0;
-  padding: 0 !important;     /* avoid side/top padding shifting the visual center */
+  padding: 0 !important;
 }
 
-/* Remove default margins and ensure the dialog itself doesn't offset */
 .modal.show .modal-dialog {
   margin: 0 !important;
-  max-width: 640px;          /* tweak to your taste */
-  width: calc(100% - 2rem);  /* keep nice gutters on small screens */
+  max-width: 640px;
+  width: calc(100% - 2rem);
 }
 
-/* If the content is tall, scroll *inside* the modal, not the page */
 .modal.show .modal-content {
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
   max-height: min(90vh, 800px);
   overflow: auto;
-  border-radius: 12px;       /* matches your UI vibe */
 }
 
-/* Small screens: tighten the width a bit more */
-@media (max-width: 576px) {
-  .modal.show .modal-dialog {
-    width: calc(100% - 1.5rem);
-    max-width: 100%;
-  }
+/* =========================================================
+   Cards & UI Elements
+========================================================= */
+.page-title {
+  font-weight: 700;
+  font-size: 1.7rem;
+  text-align: center;
+  margin: 4px 0 18px;
 }
 
- .header-top {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   padding: 12px 20px;
-   background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
-   color: #fff;
-   border-bottom: 1px solid rgba(255, 255, 255, .08);
-   position: sticky;
-   top: 0;
-   z-index: 5
- }
+.page-title.brand {
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
- .logo-header {
-   height: 45px
- }
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  overflow: hidden;
+}
 
- .search-box {
-   position: relative;
-   flex: 1;
-   max-width: 520px;
-   margin: 0 20px
- }
+.ui-card.card-themed {
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
+}
 
- .search-box input {
-   width: 100%;
-   padding: 12px 44px 12px 16px;
-   border: none;
-   border-radius: 999px;
-   outline: 0;
-   font-size: 1.05rem
- }
+.ui-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
- .search-box i {
-   position: absolute;
-   right: 14px;
-   top: 50%;
-   transform: translateY(-50%);
-   color: #d7dadf;
-   font-size: 1.1rem
- }
+/* Branded head bar across cards */
+.ui-card>.ui-card-head,
+.ui-card.card-themed>.ui-card-head {
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+  color: #FFD8A9;
+}
 
- .profile-btn {
-   display: flex;
-   align-items: center;
-   gap: 8px;
-   background: none;
-   border: none;
-   color: #fff;
-   font-size: 20px;
-   cursor: pointer
- }
+.ui-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  display: inline-flex;
+  gap: .5rem;
+  align-items: center;
+  color: #FFE9CA;
+}
 
- .profile-btn .username {
-   font-size: 14px
- }
+.ui-subtext {
+  font-size: 1rem;
+  color: #ffe9ca;
+}
 
- .content {
-   padding: 24px
- }
+.btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border: none;
+  font-size: 1rem;
+  padding: .55rem .9rem;
+}
 
- .page-title {
-   font-weight: 700;
-   font-size: 1.7rem;
-   text-align: center;
-   margin: 4px 0 18px
- }
+.btn-amber:hover {
+  filter: brightness(1.05);
+  color: #fff;
+}
 
- .page-title.brand {
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-   -webkit-background-clip: text;
-   background-clip: text;
-   color: transparent
- }
+.logout-btn {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  border: none;
+  padding: .6rem 1.5rem;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .3s;
+}
 
- .ui-card {
-   background: var(--card);
-   border: 1px solid var(--border);
-   border-radius: 12px;
-   padding: 16px
- }
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
 
- .ui-card.card-themed {
-   border-radius: var(--card-radius);
-   border: 1px solid rgba(0, 0, 0, .06);
-   box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
-   overflow: hidden
- }
+/* Quiz / assignment cards */
+.quiz-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  height: 100%;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
+  position: relative;
+  transition: transform .08s ease, box-shadow .2s ease;
+}
 
- .ui-card-head {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   margin-bottom: 10px
- }
+.quiz-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, .12);
+}
 
- .ui-card.card-themed .ui-card-head {
-   margin: -16px -16px 12px -16px;
-   padding: 12px 16px;
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-   color: #FFD8A9;
-   border-bottom: 1px solid rgba(255, 255, 255, .1)
- }
+.quiz-card h5 {
+  font-size: 1.15rem;
+  margin: 0;
+}
 
- .ui-card-title {
-   font-size: 1.05rem;
-   font-weight: 700;
-   margin: 0;
-   display: flex;
-   gap: 8px;
-   align-items: center
- }
-
- .ui-subtext {
-   font-size: 1rem;
-   color: #ffe9ca
- }
-
- .btn-amber {
-   background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-   color: #fff;
-   border: none;
-   font-size: 1rem;
-   padding: .55rem .9rem
- }
-
- .btn-amber:hover {
-   filter: brightness(1.05);
-   color: #fff
- }
-
- .quiz-card {
-   background: #fff;
-   border: 1px solid var(--border);
-   border-radius: 14px;
-   padding: 16px;
-   height: 100%;
-   box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
-   position: relative;
-   transition: transform .08s ease, box-shadow .2s ease
- }
-
- .quiz-card:hover {
-   transform: translateY(-2px);
-   box-shadow: 0 12px 22px rgba(0, 0, 0, .12)
- }
-
- .quiz-card h5 {
-   font-size: 1.15rem;
-   margin: 0
- }
-
- .badge-soft {
-   display: inline-flex;
-   align-items: center;
-   gap: 6px;
-   border: 1px solid rgba(176, 60, 16, .25);
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem;
-   color: var(--brand-accent-2);
-   background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12))
- }
-
- .badge-course {
-   background: #f0f3f8;
-   border: 1px solid #d9e0ea;
-   color: #344054;
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem
- }
-
- .badge-module {
-   background: #eef9f0;
-   border: 1px solid #cfe8d4;
-   color: #255a2c;
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem
- }
-
- .badge-archived {
-   background: #fff3cd;
-   border: 1px solid #ffe69c;
-   color: #8a6d3b;
-   border-radius: 8px;
-   padding: 2px 8px;
-   font-size: .75rem
- }
-
- .small-muted {
-   color: #6a737d;
-   font-size: .95rem
- }
-
- .empty {
-   border: 2px dashed #e5e7eb;
-   border-radius: 12px;
-   padding: 24px;
-   color: #6b7280;
-   background: #fff
- }
-
- .logout-btn {
-   background: linear-gradient(to bottom, #FF6A00, #B03C10);
-   border: none;
-   padding: .6rem 1.5rem;
-   border-radius: 20px;
-   color: #fff;
-   font-weight: 700;
-   opacity: 0;
-   transition: opacity .3s
- }
-
- .sidebar:hover .logout-btn {
-   opacity: 1
- }
-
- /* Elder-friendly, “big & fat” action buttons inside cards */
 .assignment-card .btn.btn-sm,
 .quiz-card .btn.btn-sm {
-  /* size */
-  font-size: 14px;            /* bigger text */
-  padding: 10px 16px;         /* tall & wide */
-  min-height: 44px;           /* easy tap target */
+  font-size: 14px;
+  padding: 10px 16px;
+  min-height: 44px;
   line-height: 1.2;
-
-  /* alignment */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .5rem;
 }
 
-/* Keep Grade prominent */
 .assignment-card .btn-amber.btn-sm,
 .quiz-card .btn-amber.btn-sm {
   border: none;
   box-shadow: 0 4px 10px rgba(176, 60, 16, .25);
 }
- /* ===== Mobile header: search + icon + username (no overlap) ===== */
- @media (max-width: 480px) {
-   :root {
-     --m-header-gap: 12px;
-   }
 
-   /* Header = one row */
-   .header-top {
-     display: flex !important;
-     flex-direction: row !important;
-     align-items: center !important;
-     justify-content: space-between !important;
-     gap: var(--m-header-gap) !important;
-     padding: .6rem .8rem !important;
-     text-align: left !important;
-   }
-
-   /* Hide logo on mobile */
-   .logo-header {
-     display: none !important;
-   }
-
-   /* Search shrinks as needed; no overflow */
-   .search-box {
-     flex: 1 1 0 !important;
-     min-width: 0 !important;
-     /* allow flex item to shrink */
-     margin: 0 !important;
-   }
-
-   .search-box input {
-     height: 36px !important;
-     padding: 6px 34px 6px 12px !important;
-     font-size: .9rem !important;
-     border-radius: 28px !important;
-   }
-
-   .search-box i {
-     right: 10px !important;
-   }
-
-   /* Profile button shows icon + username, clamps width, no overlap */
-   .profile-btn {
-     flex: 0 0 auto !important;
-     width: auto !important;
-     height: 44px !important;
-     padding: 0 .75rem !important;
-     margin-left: var(--m-header-gap) !important;
-     border-radius: 999px !important;
-     display: inline-flex !important;
-     align-items: center !important;
-     justify-content: center !important;
-     gap: 8px !important;
-     max-width: 45vw !important;
-     /* never eat the whole row */
-   }
-
-   .profile-btn i {
-     font-size: 22px !important;
-     flex: 0 0 auto !important;
-     line-height: 1 !important;
-   }
-
-   .profile-btn .username {
-     display: inline-flex !important;
-     /* make it visible on mobile */
-     align-items: center !important;
-     white-space: nowrap !important;
-     overflow: hidden !important;
-     text-overflow: ellipsis !important;
-     max-width: calc(45vw - 28px - 16px) !important;
-     /* button max minus icon+gap */
-     font-size: .9rem !important;
-     line-height: 1.1 !important;
-   }
- }
-
- @media (max-width: 480px) {
-   .dashboard {
-     flex-direction: column;
-   }
-
-   .main {
-     margin-left: 0;
-     width: 100%;
-   }
-
-   .sidebar {
-     width: 100%;
-     position: relative;
-     z-index: 10;
-   }
-
-   .sidebar:hover~.main {
-     margin-left: 0;
-     width: 100%;
-   }
-
-   .header-top {
-     flex-direction: column;
-     align-items: stretch;
-     gap: 10px;
-     padding: 0.8rem;
-     text-align: center;
-   }
-
-   .search-box {
-     max-width: 100%;
-     margin: 0;
-   }
-
-   .search-box input {
-     padding: 8px 32px 8px 12px;
-     font-size: 0.9rem;
-   }
-
-   .ui-card {
-     padding: 10px;
-   }
-
-   .ui-card.card-themed .ui-card-head {
-     flex-direction: column;
-     align-items: flex-start;
-     gap: 4px;
-   }
- }
-
- @media (max-width: 480px) {
-
-   /* Make buttons easy to tap and nicely spaced */
-   .btn,
-   .back-btn,
-   .logout-btn,
-   .btn-amber,
-   .btn-amber-outline {
-     display: block;
-     /* stack cleanly */
-     width: 100%;
-     /* full-width buttons */
-     min-height: 44px;
-     /* Apple HIG tap target */
-     padding: 0.9rem 1rem;
-     /* comfy padding */
-     font-size: 1rem;
-     /* avoid iOS zoom */
-     line-height: 1.2;
-     border-radius: 14px;
-     /* softer corners on small screens */
-     margin: 10px 0;
-     /* vertical gap between buttons */
-     text-align: center;
-   }
-
-   /* Icon + text alignment inside buttons */
-   .btn i,
-   .back-btn i {
-     margin-right: 8px;
-   }
-
-   /* Button groups wrap nicely with spacing */
-   .btn-group,
-   .lesson-nav,
-   .content .d-flex,
-   .content .btn-toolbar {
-     flex-wrap: wrap !important;
-     gap: 10px;
-   }
-
-   /* Specific: lesson prev/next should stack under title if tight */
-   .lesson-nav .btn {
-     min-width: unset;
-     /* let full-width rule apply */
-   }
-
-   /* Specific: top action buttons (Back / Complete / Badge) wrap well */
-   .content .d-flex.gap-2 {
-     gap: 10px !important;
-   }
-
-   /* Prevent tiny outline/ghost borders on gradient buttons */
-   .btn-amber,
-   .btn-amber-outline,
-   .back-btn,
-   .logout-btn {
-     border-width: 1px;
-   }
- }
-
- /* Tablet: keep buttons inline but add breathing room */
- @media (min-width: 481px) and (max-width: 1280px) {
-
-   .btn,
-   .back-btn,
-   .btn-amber,
-   .btn-amber-outline {
-     padding: 0.75rem 1rem;
-     font-size: 0.95rem;
-     border-radius: 12px;
-     margin: 6px 6px 6px 0;
-     /* small gaps between inline buttons */
-   }
-
-   /* Lesson nav buttons keep reasonable width */
-   .lesson-nav .btn {
-     min-width: 120px;
-   }
- }
-
- /* --- Better container + card sizing across breakpoints --- */
- .upload-container {
-   padding: 32px;
- }
-
- .form-card {
-   width: 100%;
-   max-width: 860px;
-   /* center the sheet on desktop */
-   margin: 0 auto;
- }
-
- @media (max-width: 480px) {
-
-   /* Layout */
-   .upload-container {
-     padding: 12px !important;
-   }
-
-   .form-card {
-     padding: 14px !important;
-     border-radius: 12px !important;
-     max-width: 640px;
-   }
-
-   /* Stack all grid columns */
-   .row.g-3>[class*="col-"] {
-     flex: 0 0 100% !important;
-     max-width: 100% !important;
-   }
-
-   /* CSV step buttons stack nicely */
-   .import-card .d-flex.flex-wrap.gap-2>.btn {
-     width: 100% !important;
-   }
-
-   /* CSV "Preview & Validate" full width next to file picker */
-   .import-card .row.g-2 .col-12.col-md-4 .btn {
-     width: 100% !important;
-   }
-
-   /* Question toolbar: make pager & add button full width */
-   .q-toolbar {
-     width: 100%;
-     gap: 10px !important;
-     flex-direction: column;
-     align-items: stretch;
-   }
-
-   .q-toolbar .btn-group {
-     width: 100% !important;
-     display: flex;
-     gap: 10px;
-   }
-
-   #qPrevBtn,
-   #qNextBtn {
-     flex: 1 1 0;
-     min-height: 44px;
-     font-size: 1rem;
-   }
-
-   #addQuestionBtnTop {
-     width: 100% !important;
-   }
-
-   /* Bottom actions: stack Add Question + Upload Quiz */
-   .form-card .d-flex.justify-content-between {
-     flex-wrap: wrap !important;
-     gap: 10px !important;
-   }
-
-   #addQuestionBtn,
-   .form-card .btn.btn-upload {
-     width: 100% !important;
-   }
-
-   /* Inputs: larger tap targets */
-   .form-control,
-   .form-select {
-     font-size: 16px;
-     min-height: 44px;
-   }
-
-   .input-group-text {
-     min-width: 44px;
-   }
-
-   /* Question chips more tappable */
-   .chip {
-     padding: 6px 12px;
-     line-height: 1.2;
-   }
-
-   /* Table preview: safe scroll on small screens */
-   .preview-table {
-     max-height: 260px;
-     overflow: auto;
-     -webkit-overflow-scrolling: touch;
-   }
- }
-
- @media (min-width: 481px) and (max-width: 992px) {
-   .upload-container {
-     padding: 20px !important;
-   }
-
-   .form-card {
-     max-width: 740px;
-   }
-
-   .row.g-3>[class*="col-md-6"],
-   .row.g-3>[class*="col-lg-6"] {
-     flex: 0 0 100%;
-     max-width: 100%;
-   }
-
-   /* Make key actions wide without being full width */
-   .btn,
-   .btn-upload,
-   .btn-amber-outline {
-     min-height: 44px;
-   }
-
-   .q-toolbar .btn-group {
-     gap: 8px;
-   }
-
-   #qPrevBtn,
-   #qNextBtn {
-     min-width: 140px;
-   }
- }
-
- /* --- Optional: make datetime pickers nicer everywhere --- */
- input[type="date"],
- input[type="time"],
- input[type="datetime-local"] {
-   min-height: 44px;
-   font-size: 16px;
-   line-height: 1.2;
-   padding-right: 3rem;
- }
-
- input[type="date"]::-webkit-calendar-picker-indicator,
- input[type="time"]::-webkit-calendar-picker-indicator,
- input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-   width: 28px;
-   height: 28px;
-   cursor: pointer;
-   opacity: .9;
- }
-
- /* Pills beside the title */
- .pill {
-   display: inline-flex;
-   align-items: center;
-   gap: .35rem;
-   padding: .25rem .6rem;
-   border-radius: 999px;
-   font-size: .8rem;
-   font-weight: 600;
-   border: 1px solid transparent;
-   white-space: nowrap;
- }
-
- .pill i {
-   font-size: .9em;
- }
-
- /* Neutral Archived pill (same feel as Assignments) */
- .pill-archived {
-   color: #374151;
-   background: #f3f4f6;
-   border-color: #e5e7eb;
- }
-
- /* Segmented 3-button filter (Active / Archived / All) */
- .segmented {
-   display: flex;
-   gap: .5rem;
-   flex-wrap: wrap;
- }
-
- .segmented .seg-btn {
-   min-width: 110px;
-   padding: .6rem 1rem;
-   font-weight: 700;
-   border-radius: 10px;
-   border: 2px solid var(--border);
-   background: #fff;
-   color: #374151;
-   cursor: pointer;
-   text-align: center;
-   user-select: none;
-   box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
-   transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
- }
-
- .segmented .seg-btn:hover {
-   background: #f9fafb;
-   box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
- }
-
- .segmented .seg-btn.is-active {
-   background: #5f6b77;
-   color: #fff;
-   border-color: #5f6b77;
- }
-
- .segmented .seg-btn.is-archived {
-   background: #fef2f2;
-   color: #991b1b;
-   border-color: #fecaca;
- }
-
- .segmented .seg-btn.is-all {
-   background: #eef2ff;
-   color: #1e3a8a;
-   border-color: #c7d2fe;
- }
-
- /* Archived pill beside title */
- .pill {
-   display: inline-flex;
-   align-items: center;
-   gap: .35rem;
-   padding: .25rem .6rem;
-   border-radius: 999px;
-   font-size: .8rem;
-   font-weight: 600;
-   border: 1px solid transparent;
-   white-space: nowrap;
- }
-
- .pill i {
-   font-size: .9em;
- }
-
- .pill-archived {
-   color: #374151;
-   background: #f3f4f6;
-   border-color: #e5e7eb;
- }
-
- :root {
-   --bg: #f6f8fa;
-   --text: #1f2328;
-   --muted: #6a737d;
-   --card: #fff;
-   --border: #e5e7eb;
-   --brand-dark-1: #4A1A0C;
-   --brand-dark-2: #7A2810;
-   --brand-accent-1: #FF6A00;
-   --brand-accent-2: #B03C10;
-   --card-radius: 14px;
- }
-
- html,
- body {
-   height: 100%;
-   margin: 0;
-   background: var(--bg);
-   color: var(--text);
- }
-
- .dashboard {
-   display: flex;
-   min-height: 100vh;
- }
-
- .main {
-   margin-left: 70px;
-   width: calc(100% - 70px);
-   transition: margin-left .3s ease, width .3s ease;
-   display: flex;
-   flex-direction: column;
-   min-height: 100vh;
-   background: var(--bg);
- }
-
- .sidebar:hover~.main {
-   margin-left: 220px;
-   width: calc(100% - 220px);
- }
-
- .header-top {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   padding: 12px 20px;
-   background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
-   color: #fff;
-   border-bottom: 1px solid rgba(255, 255, 255, .08);
-   position: sticky;
-   top: 0;
-   z-index: 5;
- }
-
- .logo-header {
-   height: 45px;
- }
-
- .search-box {
-   position: relative;
-   flex: 1;
-   max-width: 520px;
-   margin: 0 20px;
- }
-
- .search-box input {
-   width: 100%;
-   padding: 12px 44px 12px 16px;
-   border: none;
-   border-radius: 999px;
-   outline: 0;
-   font-size: 1.05rem;
- }
-
- .search-box i {
-   position: absolute;
-   right: 14px;
-   top: 50%;
-   transform: translateY(-50%);
-   color: #d7dadf;
-   font-size: 1.1rem;
- }
-
- .profile-btn {
-   display: flex;
-   align-items: center;
-   gap: 8px;
-   background: none;
-   border: none;
-   color: #fff;
-   font-size: 20px;
-   cursor: pointer;
- }
-
- .profile-btn .username {
-   font-size: 14px;
- }
-
- .content {
-   padding: 24px;
- }
-
- .page-title {
-   font-weight: 700;
-   font-size: 1.7rem;
-   text-align: center;
-   margin: 4px 0 18px;
- }
-
- .page-title.brand {
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-   -webkit-background-clip: text;
-   background-clip: text;
-   color: transparent;
- }
-
- .ui-card {
-   background: var(--card);
-   border: 1px solid var(--border);
-   border-radius: 12px;
-   padding: 16px;
- }
-
- .ui-card.card-themed {
-   border-radius: var(--card-radius);
-   border: 1px solid rgba(0, 0, 0, .06);
-   box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
-   overflow: hidden;
- }
-
- .ui-card-head {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   margin-bottom: 10px;
- }
-
- .ui-card.card-themed .ui-card-head {
-   margin: -16px -16px 12px -16px;
-   padding: 12px 16px;
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-   color: #FFD8A9;
-   border-bottom: 1px solid rgba(255, 255, 255, .1);
- }
-
- .ui-card-title {
-   font-size: 1.05rem;
-   font-weight: 700;
-   margin: 0;
-   display: flex;
-   gap: 8px;
-   align-items: center;
- }
-
- .ui-subtext {
-   font-size: 1rem;
-   color: #ffe9ca;
- }
-
- .btn-amber {
-   background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-   color: #fff;
-   border: none;
-   font-size: 1rem;
-   padding: .55rem .9rem;
- }
-
- .btn-amber:hover {
-   filter: brightness(1.05);
-   color: #fff;
- }
-
- .quiz-card {
-   background: #fff;
-   border: 1px solid var(--border);
-   border-radius: 14px;
-   padding: 16px;
-   height: 100%;
-   box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
-   position: relative;
-   transition: transform .08s ease, box-shadow .2s ease;
- }
-
- .quiz-card:hover {
-   transform: translateY(-2px);
-   box-shadow: 0 12px 22px rgba(0, 0, 0, .12);
- }
-
- .quiz-card h5 {
-   font-size: 1.15rem;
-   margin: 0;
- }
-
- .badge-soft {
-   display: inline-flex;
-   align-items: center;
-   gap: 6px;
-   border: 1px solid rgba(176, 60, 16, .25);
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem;
-   color: var(--brand-accent-2);
-   background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
- }
-
- .badge-course {
-   background: #f0f3f8;
-   border: 1px solid #d9e0ea;
-   color: #344054;
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem;
- }
-
- .badge-module {
-   background: #eef9f0;
-   border: 1px solid #cfe8d4;
-   color: #255a2c;
-   border-radius: 999px;
-   padding: 3px 10px;
-   font-size: .8rem;
- }
-
- .small-muted {
-   color: #6a737d;
-   font-size: .95rem;
- }
-
- .empty {
-   border: 2px dashed #e5e7eb;
-   border-radius: 12px;
-   padding: 24px;
-   color: #6b7280;
-   background: #fff;
- }
-
- /* Segmented 3-button filter (Active / Archived / All) */
- .segmented {
-   display: flex;
-   gap: .5rem;
-   flex-wrap: wrap;
- }
-
- .segmented .seg-btn {
-   min-width: 110px;
-   padding: .6rem 1rem;
-   font-weight: 700;
-   border-radius: 10px;
-   border: 2px solid var(--border);
-   background: #fff;
-   color: #374151;
-   cursor: pointer;
-   text-align: center;
-   user-select: none;
-   box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
-   transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
- }
-
- .segmented .seg-btn:hover {
-   background: #f9fafb;
-   box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
- }
-
- .segmented .seg-btn.is-active {
-   background: #5f6b77;
-   color: #fff;
-   border-color: #5f6b77;
- }
-
- .segmented .seg-btn.is-archived {
-   background: #fef2f2;
-   color: #991b1b;
-   border-color: #fecaca;
- }
-
- .segmented .seg-btn.is-all {
-   background: #eef2ff;
-   color: #1e3a8a;
-   border-color: #c7d2fe;
- }
-
- /* Archived pill beside title */
- .pill {
-   display: inline-flex;
-   align-items: center;
-   gap: .35rem;
-   padding: .25rem .6rem;
-   border-radius: 999px;
-   font-size: .8rem;
-   font-weight: 600;
-   border: 1px solid transparent;
-   white-space: nowrap;
- }
-
- .pill i {
-   font-size: .9em;
- }
-
- .pill-archived {
-   color: #374151;
-   background: #f3f4f6;
-   border-color: #e5e7eb;
- }
-
- /* Mobile header tweaks */
- @media (max-width: 480px) {
-   :root {
-     --m-header-gap: 12px;
-   }
-
-   .header-top {
-     flex-direction: row !important;
-     align-items: center !important;
-     justify-content: space-between !important;
-     gap: var(--m-header-gap) !important;
-     padding: .6rem .8rem !important;
-     text-align: left !important;
-   }
-
-   .logo-header {
-     display: none !important;
-   }
-
-   .search-box {
-     flex: 1 1 0 !important;
-     min-width: 0 !important;
-     margin: 0 !important;
-   }
-
-   .search-box input {
-     height: 36px !important;
-     padding: 6px 34px 6px 12px !important;
-     font-size: .9rem !important;
-     border-radius: 28px !important;
-   }
-
-   .search-box i {
-     right: 10px !important;
-   }
-
-   .profile-btn {
-     flex: 0 0 auto !important;
-     height: 44px !important;
-     padding: 0 .75rem !important;
-     margin-left: var(--m-header-gap) !important;
-     border-radius: 999px !important;
-     gap: 8px !important;
-     max-width: 45vw !important;
-   }
-
-   .profile-btn i {
-     font-size: 22px !important;
-     line-height: 1 !important;
-   }
-
-   .profile-btn .username {
-     display: inline-flex !important;
-     white-space: nowrap !important;
-     overflow: hidden !important;
-     text-overflow: ellipsis !important;
-     max-width: calc(45vw - 28px - 16px) !important;
-     font-size: .9rem !important;
-     line-height: 1.1 !important;
-   }
-
-   .ui-card {
-     padding: 10px;
-   }
-
-   .ui-card.card-themed .ui-card-head {
-     flex-direction: column;
-     align-items: flex-start;
-     gap: 4px;
-   }
- }
- /* ---- ui-card head: brand bar across ALL cards ---- */
-.ui-card{
-  overflow: hidden;                       /* clip rounded corners */
-  border-radius: var(--card-radius,14px); /* ensure rounded top on bar */
+/* Pills / Badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1px solid var(--border, #e5e7eb);
+  background: #fff;
+  color: #374151;
+  white-space: nowrap;
 }
 
-/* Full-width bar (counter the card padding) */
-.ui-card > .ui-card-head{
-  display:flex; align-items:center; justify-content:space-between;
-  margin: -16px -16px 12px -16px;        /* reach card edges */
-  padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  border-bottom: 1px solid rgba(255,255,255,.12);
-  color:#FFD8A9;
+.pill .bi {
+  font-size: .9rem;
 }
 
-/* Title + icon color */
-.ui-card > .ui-card-head .ui-card-title{
-  margin:0; font-weight:700; font-size:1rem; color:#FFE9CA;
-  display:inline-flex; gap:.5rem; align-items:center;
-}
-.ui-card > .ui-card-head .ui-card-title i{ color:#FFE9CA; }
-
-/* Optional right-side helper text (if you add one) */
-.ui-card > .ui-card-head .ui-head-note{
-  color:#FFE9CA; opacity:.95; font-weight:500; font-size:.9rem;
+.pill-archived {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #374151;
 }
 
-/* Also apply the same to .card-themed to override older rules */
-.ui-card.card-themed > .ui-card-head{
-  margin: -16px -16px 12px -16px;
-  padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  border-bottom: 1px solid rgba(255,255,255,.12);
-  color:#FFD8A9;
+.badge-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(176, 60, 16, .25);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: .75rem;
+  color: var(--brand-accent-2, #B03C10);
+  background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
 }
 
-/* Let the head wrap on small screens */
-@media (max-width:576px){
-  .ui-card > .ui-card-head{ flex-wrap:wrap; row-gap:.25rem; }
-  .ui-card > .ui-card-head .ui-head-note{ flex:1 0 100%; order:99; font-size:.85rem; }
+.badge-course {
+  background: #f0f3f8;
+  border: 1px solid #d9e0ea;
+  color: #344054;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: .8rem;
 }
 
-/* =========================
-   Rubric row – mobile (≤480)
-   ========================= */
-@media (max-width: 480px) {
-  /* Let the row wrap to two lines cleanly */
-  .rubric-row{
-    display:flex;
-    flex-wrap: wrap;
-    align-items: flex-start;      /* avoid vertical centering collisions */
-    gap: .5rem .6rem;             /* row/col gaps */
-    padding: .6rem .65rem;        /* a bit tighter padding */
+.badge-module {
+  background: #eef9f0;
+  border: 1px solid #cfe8d4;
+  color: #255a2c;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: .8rem;
+}
+
+.badge-archived {
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  color: #8a6d3b;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: .75rem;
+}
+
+.small-muted {
+  color: #6b7280;
+  font-size: .9rem;
+}
+
+.form-text-muted {
+  color: #6b7280;
+}
+
+.qtype-badge {
+  font-size: .7rem;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: 10px 0 18px;
+}
+
+.quiz-card .pill-course {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+.quiz-card .pill-module {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.quiz-card .pill-archived {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.quiz-card .d-flex.flex-wrap {
+  flex-wrap: wrap;
+  gap: .4rem;
+  max-width: 100%;
+}
+
+.quiz-card .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.quiz-card .pill-text,
+.quiz-card .pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Empty state */
+.empty {
+  border: 2px dashed #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  color: #6b7280;
+  background: #fff;
+}
+
+/* =========================================================
+   Segmented control
+========================================================= */
+.segmented {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.segmented .seg-btn {
+  min-width: 110px;
+  padding: .6rem 1rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+
+.segmented .seg-btn:hover {
+  background: #f9fafb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
+}
+
+.segmented .seg-btn.is-active {
+  background: #5f6b77;
+  color: #fff;
+  border-color: #5f6b77;
+}
+
+.segmented .seg-btn.is-archived {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.segmented .seg-btn.is-all {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
+}
+
+/* =========================================================
+   Questions header (compact)
+========================================================= */
+.q-item {
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.q-item .q-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: .75rem;
+  align-items: start;
+  margin-bottom: .5rem;
+}
+
+.q-item .q-head .form-label {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  line-height: 1.2;
+}
+
+.q-item .q-head>div:last-child {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-auto-flow: row dense;
+  column-gap: .35rem;
+  row-gap: .35rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.q-item .q-chip {
+  padding: .22rem .5rem;
+  font-size: .85rem;
+  line-height: 1;
+  border-radius: 999px;
+  margin: 0;
+  border: 1px solid var(--border);
+}
+
+.q-item .q-chip.active {
+  background: #eff6ff;
+  border-color: #c7dbff;
+  color: #1d4ed8;
+}
+
+.q-item .q-head [data-remove].btn {
+  grid-column: 2;
+  justify-self: end;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  line-height: 1 !important;
+  border-radius: 8px;
+  margin: 0 !important;
+}
+
+.q-item .q-head [data-remove].btn i {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pill-row .btn-outline-danger {
+  margin-left: auto;
+}
+
+/* =========================================================
+   Rubric row
+========================================================= */
+.rubric-left,
+.rubric-right {
+  min-width: 0;
+}
+
+.rubric-link,
+.rubric-filename-pill {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   Forms & Inputs
+========================================================= */
+.form-control,
+.form-select {
+  /* base friendly sizes handled via media below */
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--brand-accent-2);
+  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18);
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-height: 44px;
+  font-size: 16px;
+  line-height: 1.2;
+  padding-right: 3rem;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  opacity: .9;
+}
+
+/* =========================================================
+   Responsive
+========================================================= */
+
+/* <=576px: modal width */
+@media (max-width:576px) {
+  .modal.show .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: 100%;
   }
 
-  /* Left block (badge + link + badges) sits on its own line */
-  .rubric-left{
+  .ui-card>.ui-card-head {
+    flex-wrap: wrap;
+    row-gap: .25rem;
+  }
+}
+
+/* <=480px: mobile-first tweaks */
+@media (max-width:480px) {
+
+  /* Layout */
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar:hover~.main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* Header compact */
+  :root {
+    --m-header-gap: 12px;
+  }
+
+  .header-top {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--m-header-gap) !important;
+    padding: .6rem .8rem !important;
+    text-align: left !important;
+  }
+
+  .logo-header {
+    display: none !important;
+  }
+
+  .search-box {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    max-width: 100%;
+  }
+
+  .search-box input {
+    height: 36px !important;
+    padding: 6px 34px 6px 12px !important;
+    font-size: .9rem !important;
+    border-radius: 28px !important;
+  }
+
+  .search-box i {
+    right: 10px !important;
+  }
+
+  .profile-btn {
+    flex: 0 0 auto !important;
+    height: 44px !important;
+    padding: 0 .75rem !important;
+    margin-left: var(--m-header-gap) !important;
+    border-radius: 999px !important;
+    gap: 8px !important;
+    max-width: 45vw !important;
+  }
+
+  .profile-btn i {
+    font-size: 22px !important;
+    line-height: 1 !important;
+  }
+
+  .profile-btn .username {
+    display: inline-flex !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: calc(45vw - 28px - 16px) !important;
+    font-size: .9rem !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Cards */
+  .ui-card {
+    padding: 10px;
+  }
+
+  .ui-card.card-themed .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  /* Tap targets & buttons */
+  .btn,
+  .back-btn,
+  .logout-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: .9rem 1rem;
+    font-size: 1rem;
+    line-height: 1.2;
+    border-radius: 14px;
+    margin: 10px 0;
+    text-align: center;
+    border-width: 1px;
+    /* avoid ghost borders on gradients */
+  }
+
+  .btn i,
+  .back-btn i {
+    margin-right: 8px;
+  }
+  
+  /* Forms */
+  .form-control,
+  .form-select {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .input-group-text {
+    min-width: 44px;
+  }
+
+  /* Form-card & grids */
+  .upload-container {
+    padding: 12px !important;
+  }
+
+  .form-card {
+    padding: 14px !important;
+    border-radius: 12px !important;
+    max-width: 640px;
+  }
+
+  .row.g-3>[class*="col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .import-card .d-flex.flex-wrap.gap-2>.btn {
+    width: 100% !important;
+  }
+
+  .import-card .row.g-2 .col-12.col-md-4 .btn {
+    width: 100% !important;
+  }
+
+  /* Questions toolbar / actions */
+  .q-toolbar {
+    width: 100%;
+    gap: 10px !important;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .q-toolbar .btn-group {
+    width: 100% !important;
+    display: flex;
+    gap: 10px;
+  }
+
+  #qPrevBtn,
+  #qNextBtn {
+    flex: 1 1 0;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  #addQuestionBtnTop {
+    width: 100% !important;
+  }
+
+  .form-card .d-flex.justify-content-between {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  #addQuestionBtn,
+  .form-card .btn.btn-upload {
+    width: 100% !important;
+  }
+
+  /* Rubric row mobile layout */
+  .rubric-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: .5rem .6rem;
+    padding: .6rem .65rem;
+  }
+
+  .rubric-left {
     flex: 1 0 100%;
-    min-width: 0;                 /* enables ellipsis */
+    min-width: 0;
     gap: .5rem;
   }
 
-  /* Make filename/link behave on tiny widths */
-  .rubric-link{
+  .rubric-link {
     display: inline-block;
     max-width: 100%;
     overflow: hidden;
@@ -1268,194 +878,43 @@
     vertical-align: middle;
   }
 
-  /* Right block (filename pill + buttons) moves below and wraps */
-  .rubric-right{
+  .rubric-right {
     flex: 1 0 100%;
     min-width: 0;
     display: flex;
-    flex-wrap: wrap;              /* icons can wrap instead of overlapping */
+    flex-wrap: wrap;
     align-items: center;
     gap: .5rem;
     padding-top: .1rem;
   }
 
-  /* Hide the duplicate filename pill on phones to save space */
-  .rubric-filename-pill{
+  .rubric-filename-pill {
     display: none;
   }
 
-  /* Make action buttons tappable but compact */
-  .rubric-actions .btn{
+  .rubric-actions .btn {
     padding: .4rem .55rem;
-    min-height: 36px;             /* touch target */
+    min-height: 36px;
     line-height: 1.1;
   }
-  .rubric-actions label.btn{
+
+  .rubric-actions label.btn {
     display: inline-flex;
     align-items: center;
     gap: .25rem;
   }
-}
 
-/* General hardening (all sizes) – clamp long names & prevent overflow */
-.rubric-left, .rubric-right { min-width: 0; }
-.rubric-link, .rubric-filename-pill{
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Optional: keep the upload input & help text friendly on phones */
-@media (max-width: 480px){
-  #rubricInput{ width:100%; }
-  .drop-hint{ font-size: .9rem; }
-}
-/* ================================
-   Questions header: compact layout
-   ================================ */
-.q-item{
-  padding: 12px;
-  margin-bottom: 10px;
-}
-.q-item .q-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:.5rem;
-  margin-bottom:.5rem;
-}
-/* "Question 1" keeps on one line */
-.q-item .q-head .form-label{
-  margin:0;
-  display:inline-flex;
-  align-items:center;
-  gap:.35rem;
-  line-height:1.2;
-}
-
-/* Chips row + delete button */
-.q-item .q-head > div:last-child{
-  display:flex;
-  align-items:center;
-  gap:.35rem;
-  flex-wrap:wrap;                 /* wrap chips when narrow */
-}
-
-/* Smaller, tighter chips */
-.q-item .q-chip{
-  padding:.22rem .5rem;
-  font-size:.85rem;
-  line-height:1;
-  margin:0;
-  border-radius:999px;
-}
-.q-item .q-chip.active{
-  background:#eff6ff;
-  border-color:#c7dbff;
-  color:#1d4ed8;
-}
-
-/* Compact icon-only delete button */
-.q-item .q-head [data-remove].btn{
-  display:inline-flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  width:32px;                     /* square = perfect centering */
-  height:32px;
-  padding:0 !important;
-  line-height:1 !important;
-  border-radius:8px;
-  margin:0 !important;            /* override global mobile margins */
-}
-.q-item .q-head [data-remove].btn i{
-  margin:0;
-  font-size:1rem;
-}
-
-.pill-row .btn-outline-danger { margin-left: auto; }
-
-
-/* ---------- Mobile (≤480px) overrides ---------- */
-@media (max-width:480px){
-  .q-item{ padding:10px; }
-  .q-item .q-head{
-    align-items:flex-start;       /* avoid vertical misalignment */
-    gap:.4rem;
-  }
-  .q-item .q-head > div:last-child{
-    width:100%;                   /* chips wrap under the label */
-    justify-content:flex-start;
-  }
-  /* Hard override the global "btn: width 100%" rule */
-  .q-item .q-head [data-remove].btn{
-    width:30px !important;
-    height:30px !important;
-    border-radius:7px;
-  }
-}
-/* Put "Question N" on the left, chips+delete on the right */
-.q-item .q-head{
-  display: grid;                        /* override previous flex */
-  grid-template-columns: auto 1fr;      /* label | actions */
-  column-gap: .75rem;
-  align-items: start;
-}
-
-/* Chips + delete area becomes a 2-col grid: chips flow left, delete fixed right */
-.q-item .q-head > div:last-child{
-  display: grid;                        /* override previous flex */
-  grid-template-columns: 1fr auto;      /* chips | delete */
-  grid-auto-flow: row dense;
-  column-gap: .35rem;
-  row-gap: .35rem;
-  align-items: center;
-  min-width: 0;                         /* allow ellipsis if needed */
-}
-
-/* Chips always in the left column; they can wrap into new rows */
-.q-item .q-head > div:last-child .q-chip{
-  grid-column: 1;
-  margin: 0;                            /* keep compact */
-}
-
-/* Delete button lives in the right column, aligned to the right */
-.q-item .q-head > div:last-child [data-remove].btn{
-  grid-column: 2;
-  justify-self: end;                    /* stick to the right edge */
-  align-self: start;                    /* align with first chips row */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px; height: 32px;
-  padding: 0 !important;
-  line-height: 1 !important;
-  border-radius: 8px;
-  margin: 0 !important;                 /* defeat any global mobile btn rules */
-}
-.q-item .q-head > div:last-child [data-remove].btn i{
-  margin: 0; font-size: 1rem;
-}
-
-/* Mobile tweaks (≤480px): keep it compact and touchable */
-@media (max-width:480px){
-  .q-item .q-head{ column-gap: .5rem; }
-  .q-item .q-head > div:last-child [data-remove].btn{
-    width: 30px; height: 30px; border-radius: 7px;
-  }
-}
-/* Rubric actions – make PREVIEW, REPLACE, and DELETE wide pills on mobile */
-@media (max-width: 480px) {
-  .rubric-row .rubric-actions{
+  /* Rubric actions: full-width pills */
+  .rubric-row .rubric-actions {
     display: grid !important;
-    grid-template-columns: 1fr;             /* single column */
+    grid-template-columns: 1fr;
     grid-auto-rows: minmax(40px, auto);
     gap: .5rem;
     width: 100%;
   }
 
-  /* PREVIEW + REPLACE (label.btn) -> full-width pill */
   .rubric-row .rubric-actions .btn[data-act^="preview"],
-  .rubric-row .rubric-actions label.btn{
+  .rubric-row .rubric-actions label.btn {
     grid-column: 1 / -1;
     display: inline-flex !important;
     align-items: center !important;
@@ -1468,14 +927,16 @@
     background: #fff !important;
     border: 2px solid var(--border, #e5e7eb) !important;
   }
+
   .rubric-row .rubric-actions .btn[data-act^="preview"] i,
-  .rubric-row .rubric-actions label.btn i{
-    display: block; line-height: 1; font-size: 1.05rem;
+  .rubric-row .rubric-actions label.btn i {
+    display: block;
+    line-height: 1;
+    font-size: 1.05rem;
   }
 
-  /* DELETE / UNSTAGE remains a full-width pill below */
   .rubric-row .rubric-actions .btn.btn-stage-delete,
-  .rubric-row .rubric-actions .btn.btn-unstage{
+  .rubric-row .rubric-actions .btn.btn-unstage {
     grid-column: 1 / -1;
     display: inline-flex !important;
     align-items: center !important;
@@ -1485,5 +946,75 @@
     padding: 0 !important;
     border-radius: 14px !important;
     line-height: 1 !important;
+  }
+
+  /* Questions compact tweaks */
+  .q-item {
+    padding: 10px;
+  }
+
+  .q-item .q-head {
+    column-gap: .5rem;
+  }
+
+  .q-item .q-head>div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .q-item .q-head [data-remove].btn {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 7px;
+  }
+}
+
+/* 481–992px: tablet tweaks */
+@media (min-width:481px) and (max-width:992px) {
+  .upload-container {
+    padding: 20px !important;
+  }
+
+  .form-card {
+    max-width: 740px;
+  }
+
+  .row.g-3>[class*="col-md-6"],
+  .row.g-3>[class*="col-lg-6"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .btn,
+  .btn-upload,
+  .btn-amber-outline {
+    min-height: 44px;
+  }
+
+  .q-toolbar .btn-group {
+    gap: 8px;
+  }
+
+  #qPrevBtn,
+  #qNextBtn {
+    min-width: 140px;
+  }
+}
+
+/* 481–1280px: comfy buttons inline */
+@media (min-width:481px) and (max-width:1280px) {
+
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: .75rem 1rem;
+    font-size: .95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;
+  }
+
+  .lesson-nav .btn {
+    min-width: 120px;
   }
 }
