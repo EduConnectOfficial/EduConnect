@@ -1,35 +1,122 @@
-/* analytics.css */
+/* =========================
+   EduConnect • analytics.css
+   ========================= */
 
-/* Page Title */
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+/* ========== 1) Theme & Base ========== */
+:root {
+  --bg: #f6f8fa;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --card: #fff;
+  --border: #e5e7eb;
+  --brand-dark-1: #4A1A0C;
+  --brand-dark-2: #7A2810;
+  --brand-accent-1: #FF6A00;
+  --brand-accent-2: #B03C10;
+  --radius: 14px;
 }
 
-/* Subsections */
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.muted {
+  color: #6c757d;
+}
+
+/* Layout */
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+  transition: margin-left .3s, width .3s;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.sidebar:hover~.main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+}
+
+/* Header */
+.logo-header {
+  height: 44px;
+}
+
+.search-box {
+  max-width: 520px;
+  width: 100%;
+  position: relative;
+}
+
+.search-box input {
+  border: none;
+  border-radius: 999px;
+  padding: .6rem 2.25rem .6rem 1rem;
+}
+
+.search-box i.fas.fa-search {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: .6;
+  font-size: .95rem;
+}
+
+.profile-btn {
+  color: #fff;
+}
+
+/* Content wrapper */
+.content {
+  padding: 24px;
+}
+
+/* ========== 2) Titles & Subsections ========== */
+.page-title {
+  margin: 24px 0 16px;
+  font-weight: 800;
+  font-size: 1.6rem;
+  text-align: center;
+  color: transparent;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
 .subsection {
   margin-bottom: 2.5rem;
 }
 
-.subsection h2 {
+.subsection>h2 {
+  margin: 24px 0 16px;
   font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  font-weight: 700;
 }
 
-/* Chart Cards */
+/* ========== 3) Chart Cards ========== */
 .chart-card {
-  padding: 1rem;
+  padding: 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .1);
   background: #fff;
 }
 
 .chart-title {
+  margin-bottom: 8px;
   font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
 }
 
 .chart-card canvas {
@@ -37,103 +124,285 @@
   height: 300px !important;
 }
 
-/* Summary Cards */
+/* ========== 4) Summary Cards ========== */
+.summary-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .summary-cards .summary-card {
   flex: 1 1 200px;
-  padding: 1rem;
+  min-width: 200px;
+  padding: 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .1);
   background: #fff;
   text-align: center;
 }
 
-.summary-card h6 {
-  font-size: 0.9rem;
+.summary-cards .summary-card h6 {
+  margin-bottom: 6px;
+  font-size: .9rem;
   font-weight: 500;
-  margin-bottom: 0.5rem;
+  color: #6c757d;
 }
 
-.summary-card p {
-  font-size: 1.5rem;
+.summary-cards .summary-card p {
+  font-size: 1.35rem;
   font-weight: 700;
   margin: 0;
 }
 
-/* At-Risk Table */
+/* ========== 5) Tables ========== */
 #atRiskTable th,
 #atRiskTable td {
   vertical-align: middle;
   white-space: nowrap;
 }
 
-/* Export Buttons */
+/* ========== 6) Buttons ========== */
 .btn-outline-primary,
 .btn-outline-secondary {
   min-width: 160px;
 }
 
-/* Small helpers, in case analytics.css is minimal */
-.page-title {
-  margin: 24px 0 16px;
-  font-weight: 700;
+.btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border: none;
 }
 
-.subsection>h2 {
-  margin: 24px 0 16px;
-  font-weight: 700;
+.btn-amber:hover {
+  filter: brightness(1.06);
+  color: #fff;
 }
 
-.chart-card {
+.logout-btn {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    border: none;
+    padding: .6rem 1.5rem;
+    border-radius: 20px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity .3s ease, color .3s ease;
+    user-select: none;
+    text-align: center;
+}
+
+.sidebar:hover .logout-btn {
+    opacity: 1;
+}
+
+.logout-btn:hover {
+    opacity: .85;
+    color: var(--brand-dark-1);
+}
+/* ========== 7) Themed Selects / Form Focus ========== */
+.toolbar-label {
+  font-weight: 700;
+  color: #374151;
+}
+
+.toolbar-select {
+  min-width: 260px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  padding: .55rem .9rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+
+.form-control:focus,
+.form-select:focus,
+.toolbar-select:focus {
+  border-color: var(--brand-accent-2) !important;
+  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
+}
+
+/* ========== 8) UI Cards & Segmented Controls ========== */
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   padding: 16px;
 }
 
-.chart-title {
-  margin-bottom: 8px;
-  font-weight: 600;
+.ui-card.card-themed {
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
+  overflow: hidden;
 }
 
-.summary-cards .summary-card {
-  padding: 16px;
-  min-width: 200px;
+.ui-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-.summary-cards .summary-card h6 {
-  margin-bottom: 6px;
-  color: #6c757d;
+.ui-card.card-themed .ui-card-head {
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #FFD8A9;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
 
-.summary-cards .summary-card p {
-  font-size: 1.35rem;
+.ui-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
   margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ui-subtext {
+  font-size: 1rem;
+  color: #ffe9ca;
+}
+
+.segmented {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.segmented .seg-btn {
+  min-width: 110px;
+  padding: .6rem 1rem;
   font-weight: 700;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  transition: background .15s, border-color .15s, box-shadow .15s, color .15s;
 }
 
-.muted {
-  color: #6c757d;
+.segmented .seg-btn:hover {
+  background: #f9fafb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .06);
 }
 
- /* --- Themed selects to match your design --- */
-  .toolbar-label{
-    font-weight:700;
-    color:#374151;
+.segmented .seg-btn.is-active {
+  background: #5f6b77;
+  color: #fff;
+  border-color: #5f6b77;
+}
+
+.segmented .seg-btn.is-archived {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.segmented .seg-btn.is-all {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
+}
+
+/* ========== 9) Modals (Bootstrap 5) ========== */
+.modal-header {
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  color: #fff;
+  border-bottom: none;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: .9;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  color: #000;
+}
+
+.modal-footer .btn-amber,
+#successOkBtn,
+#feedbackModal .btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: .5rem 1.2rem;
+  font-weight: 500;
+  transition: background .3s ease, transform .2s ease;
+}
+
+.modal-footer .btn-amber:hover,
+#successOkBtn:hover,
+#feedbackModal .btn-amber:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
+}
+
+/* Centered modal layout */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+
+.modal.show .modal-content {
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+  max-height: min(90vh, 800px);
+  overflow: auto;
+}
+
+/* ========== 10) Responsive ========== */
+
+/* Tablets / small desktops */
+@media (min-width:481px) and (max-width:1280px) {
+
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: .75rem 1rem;
+    font-size: .95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;
   }
-  .toolbar-select{
-    min-width:260px;
-    border:2px solid var(--border);
-    border-radius:12px;
-    background:#fff;
-    padding:.55rem .9rem;
-    box-shadow:0 1px 2px rgba(0,0,0,.03);
+
+  .lesson-nav .btn {
+    min-width: 120px;
   }
-  /* keep your brand focus ring + color */
-  .form-control:focus,
-  .form-select:focus,
-  .toolbar-select:focus{
-    border-color:var(--brand-accent-2) !important;
-    box-shadow:0 0 0 .2rem rgba(255,106,0,.18) !important;
-  }
-/* Responsive */
-@media (max-width: 768px) {
+}
+
+/* <= 768px tweaks */
+@media (max-width:768px) {
   .summary-cards {
     flex-direction: column;
     gap: 1rem;
@@ -143,14 +412,15 @@
     height: 250px !important;
   }
 }
-/* ===== Mobile header: search + icon + username (no overlap) ===== */
-@media (max-width: 480px) {
+
+/* <= 480px (Mobile) */
+@media (max-width:480px) {
   :root {
     --m-header-gap: 12px;
   }
 
-  /* Header = one row */
-  .header-top{
+  /* Keep header in one row on mobile */
+  .header-top {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -160,25 +430,28 @@
     text-align: left !important;
   }
 
-  /* Hide logo on mobile */
-  .logo-header{ display: none !important; }
+  .logo-header {
+    display: none !important;
+  }
 
-  /* Search shrinks as needed; no overflow */
-  .search-box{
+  .search-box {
     flex: 1 1 0 !important;
-    min-width: 0 !important;          /* allow flex item to shrink */
+    min-width: 0 !important;
     margin: 0 !important;
   }
-  .search-box input{
+
+  .search-box input {
     height: 36px !important;
     padding: 6px 34px 6px 12px !important;
     font-size: .9rem !important;
     border-radius: 28px !important;
   }
-  .search-box i{ right: 10px !important; }
 
-  /* Profile button shows icon + username, clamps width, no overlap */
-  .profile-btn{
+  .search-box i {
+    right: 10px !important;
+  }
+
+  .profile-btn {
     flex: 0 0 auto !important;
     width: auto !important;
     height: 44px !important;
@@ -189,25 +462,26 @@
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
-    max-width: 45vw !important;       /* never eat the whole row */
+    max-width: 45vw !important;
   }
-  .profile-btn i{
+
+  .profile-btn i {
     font-size: 22px !important;
     flex: 0 0 auto !important;
     line-height: 1 !important;
   }
-  .profile-btn .username{
-    display: inline-flex !important;  /* make it visible on mobile */
+
+  .profile-btn .username {
+    display: inline-flex !important;
     align-items: center !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    max-width: calc(45vw - 28px - 16px) !important;
     font-size: .9rem !important;
     line-height: 1.1 !important;
   }
-}
-@media (max-width: 480px) {
+
   .dashboard {
     flex-direction: column;
   }
@@ -223,27 +497,9 @@
     z-index: 10;
   }
 
-  .sidebar:hover ~ .main {
+  .sidebar:hover~.main {
     margin-left: 0;
     width: 100%;
-  }
-
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 0.8rem;
-    text-align: center;
-  }
-
-  .search-box {
-    max-width: 100%;
-    margin: 0;
-  }
-
-  .search-box input {
-    padding: 8px 32px 8px 12px;
-    font-size: 0.9rem;
   }
 
   .ui-card {
@@ -255,32 +511,29 @@
     align-items: flex-start;
     gap: 4px;
   }
-  }
-@media (max-width: 480px) {
-  /* Make buttons easy to tap and nicely spaced */
+
   .btn,
   .back-btn,
   .logout-btn,
   .btn-amber,
   .btn-amber-outline {
-    display: block;           /* stack cleanly */
-    width: 100%;              /* full-width buttons */
-    min-height: 44px;         /* Apple HIG tap target */
-    padding: 0.9rem 1rem;     /* comfy padding */
-    font-size: 1rem;          /* avoid iOS zoom */
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: .9rem 1rem;
+    font-size: 1rem;
     line-height: 1.2;
-    border-radius: 14px;      /* softer corners on small screens */
-    margin: 10px 0;           /* vertical gap between buttons */
+    border-radius: 14px;
+    margin: 10px 0;
     text-align: center;
+    border-width: 1px;
   }
 
-  /* Icon + text alignment inside buttons */
   .btn i,
   .back-btn i {
     margin-right: 8px;
   }
 
-  /* Button groups wrap nicely with spacing */
   .btn-group,
   .lesson-nav,
   .content .d-flex,
@@ -289,37 +542,11 @@
     gap: 10px;
   }
 
-  /* Specific: lesson prev/next should stack under title if tight */
   .lesson-nav .btn {
-    min-width: unset;         /* let full-width rule apply */
+    min-width: unset;
   }
 
-  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
   .content .d-flex.gap-2 {
     gap: 10px !important;
   }
-
-  /* Prevent tiny outline/ghost borders on gradient buttons */
-  .btn-amber,
-  .btn-amber-outline,
-  .back-btn,
-  .logout-btn {
-    border-width: 1px;
-  }
-}
-
-/* Tablet: keep buttons inline but add breathing room */
-@media (min-width: 481px) and (max-width: 1280px) {
-  .btn,
-  .back-btn,
-  .btn-amber,
-  .btn-amber-outline {
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    border-radius: 12px;
-    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
-  }
-
-  /* Lesson nav buttons keep reasonable width */
-  .lesson-nav .btn { min-width: 120px; }
 }

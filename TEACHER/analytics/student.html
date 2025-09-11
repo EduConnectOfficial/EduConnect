@@ -1,28 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Student Analytics</title>
 
   <!-- Icons & Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <!-- Global & Page CSS -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <style>
-    body { background:#f6f8fb; }
-    .card { border:none; box-shadow:0 1px 8px rgba(0,0,0,.06); border-radius:14px; }
-    .metric { font-size:1.25rem; font-weight:600; }
-    .table td, .table th { vertical-align:middle; }
+    body {
+      background: #f6f8fb;
+    }
+
+    .card {
+      border: none;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, .06);
+      border-radius: 14px;
+    }
+
+    .metric {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle;
+    }
+
     /* FIXED chart size */
-    .chart-wrapper { position: relative; width: 100%; height: 300px; }
-    .chart-wrapper canvas { max-height: 100% !important; }
-    .page-title { margin: 0; font-weight: 700; }
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 300px;
+    }
+
+    .chart-wrapper canvas {
+      max-height: 100% !important;
+    }
+
+    .page-title {
+      margin: 0;
+      font-weight: 700;
+    }
   </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -32,9 +61,9 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input type="text" class="form-control" placeholder="Search..."/>
+          <input type="text" class="form-control" placeholder="Search..." />
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -64,19 +93,29 @@
         <div class="card p-3 mb-3">
           <div class="row g-3">
             <div class="col-12 col-md-4">
-              <div><span class="text-muted">Student</span><div id="s_name" class="metric">—</div></div>
+              <div><span class="text-muted">Student</span>
+                <div id="s_name" class="metric">—</div>
+              </div>
             </div>
             <div class="col-6 col-md-2">
-              <div><span class="text-muted">Student ID</span><div id="s_id" class="metric">—</div></div>
+              <div><span class="text-muted">Student ID</span>
+                <div id="s_id" class="metric">—</div>
+              </div>
             </div>
             <div class="col-6 col-md-2">
-              <div><span class="text-muted">Avg Quiz</span><div id="s_avg_quiz" class="metric">—</div></div>
+              <div><span class="text-muted">Avg Quiz</span>
+                <div id="s_avg_quiz" class="metric">—</div>
+              </div>
             </div>
             <div class="col-6 col-md-2">
-              <div><span class="text-muted">Avg Assignment</span><div id="s_avg_asg" class="metric">—</div></div>
+              <div><span class="text-muted">Avg Assignment</span>
+                <div id="s_avg_asg" class="metric">—</div>
+              </div>
             </div>
             <div class="col-6 col-md-2">
-              <div><span class="text-muted">Modules Completed</span><div id="s_modules" class="metric">—</div></div>
+              <div><span class="text-muted">Modules Completed</span>
+                <div id="s_modules" class="metric">—</div>
+              </div>
             </div>
           </div>
         </div>
@@ -92,10 +131,17 @@
               <div class="table-responsive mt-3">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr><th>Quiz</th><th>Best %</th><th>Attempts</th><th>Last Attempt</th></tr>
+                    <tr>
+                      <th>Quiz</th>
+                      <th>Best %</th>
+                      <th>Attempts</th>
+                      <th>Last Attempt</th>
+                    </tr>
                   </thead>
                   <tbody id="quizTbody">
-                    <tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>
+                    <tr>
+                      <td colspan="4" class="text-muted text-center">Loading…</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -112,10 +158,16 @@
               <div class="table-responsive mt-3">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr><th>Assignment</th><th>Grade</th><th>Graded At</th></tr>
+                    <tr>
+                      <th>Assignment</th>
+                      <th>Grade</th>
+                      <th>Graded At</th>
+                    </tr>
                   </thead>
                   <tbody id="assignTbody">
-                    <tr><td colspan="3" class="text-muted text-center">Loading…</td></tr>
+                    <tr>
+                      <td colspan="3" class="text-muted text-center">Loading…</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -129,10 +181,18 @@
               <div class="table-responsive">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr><th>Quiz</th><th>Question #</th><th>Status</th><th>Score</th><th>Submitted</th></tr>
+                    <tr>
+                      <th>Quiz</th>
+                      <th>Question #</th>
+                      <th>Status</th>
+                      <th>Score</th>
+                      <th>Submitted</th>
+                    </tr>
                   </thead>
                   <tbody id="essayTbody">
-                    <tr><td colspan="5" class="text-muted text-center">Loading…</td></tr>
+                    <tr>
+                      <td colspan="5" class="text-muted text-center">Loading…</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -146,10 +206,17 @@
               <div class="table-responsive">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr><th>Course</th><th>Module</th><th>Percent</th><th>Completed At</th></tr>
+                    <tr>
+                      <th>Course</th>
+                      <th>Module</th>
+                      <th>Percent</th>
+                      <th>Completed At</th>
+                    </tr>
                   </thead>
                   <tbody id="modTbody">
-                    <tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>
+                    <tr>
+                      <td colspan="4" class="text-muted text-center">Loading…</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -160,66 +227,117 @@
       </section>
     </div>
   </div>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
+  <!-- App Alert Modal -->
+  <div class="modal fade" id="appAlertModal" tabindex="-1" aria-labelledby="appAlertTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div id="appAlertHeader" class="modal-header">
+          <h5 class="modal-title" id="appAlertTitle">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div id="appAlertBody" class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert helper (closes any open modal before showing alert) -->
+  <script>
+    function showAppAlert(message, { title = "Notice", variant = "primary", closeOtherModals = true } = {}) {
+      const header = document.getElementById("appAlertHeader");
+      const titleEl = document.getElementById("appAlertTitle");
+      const bodyEl = document.getElementById("appAlertBody");
+      const alertEl = document.getElementById("appAlertModal");
+
+      // Variant styling
+      header.className = "modal-header";
+      const bg = {
+        primary: "bg-primary text-white", success: "bg-success text-white",
+        danger: "bg-danger text-white", warning: "bg-warning",
+        info: "bg-info", secondary: "bg-secondary text-white",
+        dark: "bg-dark text-white", light: "bg-light"
+      }[variant] || "bg-primary text-white";
+      header.classList.add(...bg.split(" "));
+
+      titleEl.textContent = title;
+      bodyEl.textContent = message;
+
+      // Close any other open modals before showing the alert
+      if (closeOtherModals) {
+        document.querySelectorAll(".modal.show").forEach(m => {
+          if (m.id !== "appAlertModal") {
+            const inst = bootstrap.Modal.getInstance(m);
+            if (inst) inst.hide();
+          }
+        });
+      }
+
+      bootstrap.Modal.getOrCreateInstance(alertEl).show();
     }
-    window.currentUser = u;
+  </script>
+  <script>
+    // ---- Auth guard + header initials (robust) ----
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        // support both shapes: {user:{...}} or {...}
+        const u = stored.user || stored;
 
-    const initials = getInitials(u);
+        // teacher gate
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
+        const initials = getInitials(u);
 
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+          el.textContent = initials;                           // 👈 initials only
+          // Helpful tooltip/aria label with full name/username
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username
+            || u.email
+            || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
 
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
+      // --- Helpers ---
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
+        // fall back to username-like fields
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          // split on space, dot, underscore, or hyphen
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
 
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+
+        // last resort: first letter of email
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+  </script>
 
   <!-- Sidebar Logic -->
   <script>
@@ -251,7 +369,7 @@
       csv.push('Essay Submissions');
       csv.push('Quiz,Question #,Status,Score,Submitted');
       (data.essays?.submissions || []).forEach(e => {
-        csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
+        csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex + 1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
       });
 
       // Modules
@@ -279,7 +397,7 @@
         a.remove();
       } catch (e) {
         console.error(e);
-        alert('CSV export failed.');
+        showAppAlert('CSV export failed.');
       }
     }
 
@@ -296,7 +414,7 @@
           });
         }
         if (typeof window.jspdf?.jsPDF === 'undefined') {
-          alert('Failed to load jsPDF.');
+          showAppAlert('Failed to load jsPDF.');
           return;
         }
         if (typeof window.jspdf?.autoTable === 'undefined') {
@@ -345,7 +463,7 @@
           body: (data.quizzes?.perQuiz || []).map(r => [r.title, pct(r.bestPercent), r.attemptsUsed, dt(r.lastSubmittedAt)]),
           theme: 'grid',
           styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
         });
         y = doc.lastAutoTable.finalY + 8;
 
@@ -360,7 +478,7 @@
           body: (data.assignments?.grades || []).map(a => [a.assignmentTitle, pct(a.grade), dt(a.gradedAt)]),
           theme: 'grid',
           styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
         });
         y = doc.lastAutoTable.finalY + 8;
 
@@ -372,10 +490,10 @@
         doc.autoTable({
           startY: y,
           head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
-          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex+1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
+          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex + 1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
           theme: 'grid',
           styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
         });
         y = doc.lastAutoTable.finalY + 8;
 
@@ -390,19 +508,19 @@
           body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, pct(m.percent), dt(m.completedAt)]),
           theme: 'grid',
           styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
         });
 
         // Download
         doc.save(`student_analytics_${data.profile?.studentId || 'student'}.pdf`);
       } catch (e) {
         console.error(e);
-        alert('PDF download failed.');
+        showAppAlert('PDF download failed.');
       }
     }
 
-    document.getElementById('exportCsvBtn').addEventListener('click',()=>exportCsv());
-    document.getElementById('downloadPdfBtn').addEventListener('click',()=>downloadPdf());
+    document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv());
+    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf());
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(r => r.text())
@@ -515,7 +633,7 @@
 
     async function loadStudentAnalytics() {
       if (!teacherId || !studentKey) {
-        alert('Missing teacherId or student id in URL.'); return;
+        showAppAlert('Missing teacherId or student id in URL.'); return;
       }
 
       const url = `${API_BASE}/api/teacher/student-analytics?teacherId=${encodeURIComponent(teacherId)}&student=${encodeURIComponent(studentKey)}`;
@@ -523,13 +641,13 @@
 
       // Header metrics
       el('s_name').textContent = data.profile?.name || 'Student';
-      el('s_id').textContent   = data.profile?.studentId || '—';
+      el('s_id').textContent = data.profile?.studentId || '—';
       el('s_avg_quiz').textContent = pct(data.summary?.averageQuizScore);
-      el('s_avg_asg').textContent  = pct(data.summary?.averageAssignmentGrade);
-      el('s_modules').textContent  =
+      el('s_avg_asg').textContent = pct(data.summary?.averageAssignmentGrade);
+      el('s_modules').textContent =
         (data.summary?.modulesCompleted != null && data.summary?.totalModules != null)
-        ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
-        : (data.summary?.modulesCompleted ?? '—');
+          ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
+          : (data.summary?.modulesCompleted ?? '—');
 
       // Quizzes table + chart
       const qrows = data.quizzes?.perQuiz || [];
@@ -546,8 +664,8 @@
           </tr>
         `).join('');
         renderBar('quiz', 'quizChart',
-          qrows.map(r=>r.title || r.quizId),
-          qrows.map(r=>Number(r.bestPercent)||0),
+          qrows.map(r => r.title || r.quizId),
+          qrows.map(r => Number(r.bestPercent) || 0),
           'Best %'
         );
       }
@@ -566,8 +684,8 @@
           </tr>
         `).join('');
         renderBar('assign', 'assignChart',
-          arows.map(a=>a.assignmentTitle || a.assignmentId),
-          arows.map(a=>Number(a.grade)||0),
+          arows.map(a => a.assignmentTitle || a.assignmentId),
+          arows.map(a => Number(a.grade) || 0),
           'Grade %'
         );
       }
@@ -603,7 +721,7 @@
     // Initial load
     loadStudentAnalytics().catch(err => {
       console.error(err);
-      alert('Failed to load student analytics.');
+      showAppAlert('Failed to load student analytics.');
     });
 
     // Make sure charts don’t multiply on nav/resize
@@ -618,4 +736,5 @@
     }
   </script>
 </body>
+
 </html>
