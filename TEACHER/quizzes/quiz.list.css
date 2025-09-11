@@ -306,6 +306,60 @@ body {
   opacity: 1;
 }
 
+.btn-archive {
+  color: #6c757d;
+  background-color: transparent;
+  border-color: #6c757d;
+  box-shadow: none;
+}
+
+.btn-archive:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-unarchive {
+  color: #255a2c;
+  background-color: transparent;
+  border-color: #255a2c;
+  box-shadow: none;
+}
+
+.btn-unarchive:hover {
+  color: #fff;
+  background-color: #255a2c;
+  border-color: #255a2c;
+}
+
+.btn-edit {
+  color: #ffc107;
+  background-color: transparent;
+  border-color: #ffc107;
+  box-shadow: none;
+}
+
+.btn-edit:hover {
+  color: #fff;
+  background-color: #ffc107;
+  border-color: #ffc107;
+}
+
+.btn-delete {
+  color: #dc3545;
+  background-color: transparent;
+  border-color: #dc3545;
+  box-shadow: none;
+  border-radius: 0px;
+}
+
+.btn-delete:hover {
+  color: #fff;
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+
 /* Quiz / assignment cards */
 .quiz-card {
   background: #fff;
@@ -617,10 +671,6 @@ body {
 /* =========================================================
    Forms & Inputs
 ========================================================= */
-.form-control,
-.form-select {
-  /* base friendly sizes handled via media below */
-}
 
 .form-control:focus,
 .form-select:focus {

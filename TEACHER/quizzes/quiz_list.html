@@ -540,18 +540,18 @@
 
               <div class="d-flex justify-content-end gap-2 mt-3">
                 ${qz._archived
-                  ? `<button class="btn btn-sm btn-outline-success"   style="color:#6c757d; background-color:transparent; border-color:#6c757d; box-shadow:none;"
+                  ? `<button class="btn btn-sm btn-unarchive" 
                              onclick="setArchive('${qz.id}', false, this)">
                        <i class="bi bi-arrow-counterclockwise"></i> Unarchive
                      </button>`
-                  : `<button class="btn btn-outline-secondary"   style="color:#6c757d; background-color:transparent; border-color:#6c757d; box-shadow:none;"
+                  : `<button class="btn btn-archive" 
                              onclick="setArchive('${qz.id}', true, this)">
                        <i class="bi bi-archive"></i> Archive
                      </button>`}
-                <button class="btn btn-sm btn-outline-warning" onclick="openEdit('${qz.id}')">
+                <button class="btn btn-sm btn-edit" onclick="openEdit('${qz.id}')">
                   <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-sm btn-danger" title="Also removes student scores/attempts"
+                <button class="btn btn-sm btn-outline-danger" title="Also removes student scores/attempts"
                         onclick="deleteQuiz('${qz.id}', this)">
                   <i class="fas fa-trash"></i> Delete
                 </button>
