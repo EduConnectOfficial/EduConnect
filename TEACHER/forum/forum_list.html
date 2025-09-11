@@ -11,81 +11,8 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 
   <!-- Sidebar / shared styles -->
-  <link rel="stylesheet" href="../forum/forum.css" />
+  <link rel="stylesheet" href="forum_list.css" />
 
-  <!-- THEME -->
-  <style>
-    :root {
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#fff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
-
-    .header-top{background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
-    .logo-header{height:44px}
-    .search-box{max-width:520px;width:100%;position:relative}
-    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem;padding-right:36px}
-    .search-box i.fas.fa-search{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6;font-size:.95rem}
-    .profile-btn{color:#fff}
-
-    .content{padding:24px}
-    .page-title{
-      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2)); -webkit-background-clip:text;background-clip:text;
-    }
-
-    /* ui-card themed controls */
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .ui-card.card-themed .ui-card-head{
-      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
-    }
-    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-    .ui-subtext{font-size:1rem;color:#ffe9ca}
-
-    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
-    .btn-amber:hover{filter:brightness(1.06);color:#fff}
-
-    /* Threads */
-    .thread.thread-themed{
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      background:var(--card);
-      box-shadow:0 10px 24px rgba(0,0,0,.08);
-      padding:14px;
-      margin-bottom:12px;
-      transition:transform .07s ease, box-shadow .2s ease;
-    }
-    .thread.thread-themed:hover{ transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.12) }
-    .thread-title{margin:0 0 4px;font-weight:700}
-    .thread-meta{color:var(--muted);font-size:.9rem}
-
-    /* Neutral Cancel + Close buttons (consistent across modals) */
-    .btn-cancel{
-      background-color:#adb5bd !important; color:#fff !important; border:none !important;
-      border-radius:999px !important; padding:.5rem 1.2rem !important; font-weight:500;
-      transition:background .2s ease, transform .2s ease;
-    }
-    .btn-cancel:hover,.btn-cancel:focus{ background-color:#6a737d !important; transform:scale(1.04); }
-
-    .btn-close-footer{
-      background-color:#6a737d !important; color:#343a40 !important; border:none !important;
-      border-radius:999px !important; padding:.5rem 1.2rem !important; font-weight:500;
-      transition:background .2s ease, transform .2s ease;
-    }
-    .btn-close-footer:hover,.btn-close-footer:focus{ background-color:#dee2e6 !important; color:#212529 !important; transform:scale(1.04); }
-
-    /* Center modals nicely */
-    .modal.show{display:flex !important;align-items:center;justify-content:center;--bs-modal-margin:0;padding:0 !important;}
-    .modal.show .modal-dialog{margin:0 !important;max-width:640px;width:calc(100% - 2rem);}
-    .modal.show .modal-content{max-height:min(90vh,800px);overflow:auto;border-radius:12px}
-  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -137,7 +64,7 @@
         <div class="ui-card card-themed">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-chat-dots"></i> Recent Threads</h2>
-            <div class="ui-subtext" id="threadCount"></div>
+            <div class="ui-card-title fw-normal" id="threadCount"></div>
           </div>
           <div id="forumThreads"></div>
         </div>
@@ -157,7 +84,7 @@
         </div>
         <div class="modal-body" id="confirmModalBody">Are you sure?</div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-close-footer" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-amber" id="confirmOkBtn">Yes, continue</button>
         </div>
       </div>
