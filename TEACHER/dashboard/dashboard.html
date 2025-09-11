@@ -13,29 +13,6 @@
   <!-- Shared theme -->
   <link rel="stylesheet" href="dashboard.css"/>
 
-  <style>
-    :root{
-      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
-      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
-    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
-
-    .card h6{opacity:.85}
-    .skeleton{background:linear-gradient(90deg,#eee,#f5f5f5,#eee);background-size:200% 100%;animation:sh 1.2s infinite}
-    @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-    /* Chart holders */
-    .chart-card{min-height:260px}
-    .chart-holder{position:relative;height:240px}
-    .chart-holder canvas{position:absolute;inset:0;width:100% !important;height:100% !important}
-    /* dedicated holder so we can cap dynamic height for quiz chart */
-    #quizPerfHolder{position:relative; height:280px; max-height:420px; min-height:220px;}
-    #quizPerfHolder canvas{position:absolute; inset:0; width:100% !important; height:100% !important;}
-  </style>
 </head>
 
 <body>
@@ -59,7 +36,7 @@
       </header>
 
       <section class="content px-4">
-        <h1 class="mt-4 mb-3 fw-bold">Teacher Dashboard</h1>
+        <h1 class="mt-4 mb-3 fw-bold page-title brand">Teacher Dashboard</h1>
 
         <!-- Summary Cards -->
         <div id="summaryRow" class="d-flex flex-wrap gap-3 mb-4">

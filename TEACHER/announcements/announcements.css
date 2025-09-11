@@ -1,46 +1,79 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
 
-/* RESET */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* =========================
+   EduConnect • layout.css
+   ========================= */
 
-/* ROOT */
-html, body {
-  width: 100%; height: 100%;
+/* ========== 1) Reset & Theme ========== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #f6f8fa;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --brand-dark-1: #4A1A0C;
+  --brand-dark-2: #7A2810;
+  --brand-accent-1: #FF6A00;
+  --brand-accent-2: #B03C10;
+  --radius: 14px;
+  --m-header-gap: 12px;
+  /* mobile header spacing */
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Raleway', sans-serif;
-  background: #e6ebeb; color: #222;
   overflow-x: hidden;
 }
 
+/* ========== 2) Shell Layout ========== */
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
 
+#sidebar-container {
+  flex-shrink: 0;
+}
 
-/* DASHBOARD LAYOUT */
-.dashboard { display: flex; }
+/* wrapper controlling hover-expand */
 
-/* SIDEBAR WRAPPER */
-#sidebar-container { flex-shrink: 0; }
-
-/* SIDEBAR */
+/* Sidebar */
 .sidebar {
   position: fixed;
-  top: 0; left: 0;
-  width: 70px; height: 100vh;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  top: 0;
+  left: 0;
+  width: 70px;
+  height: 100vh;
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   padding: 2rem 1rem;
-  box-shadow: 4px 0 15px rgba(0,0,0,0.4);
-  display: flex; flex-direction: column;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, .4);
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   transition: width .3s ease;
   z-index: 10;
 }
-/* expand on hover of its container */
+
+/* Expand on container hover */
 #sidebar-container:hover .sidebar {
   width: 280px;
 }
 
-/* LOGO */
+/* Logo (reveals when expanded) */
 .sidebar-logo {
   font-size: 1.8rem;
-  font-weight: bold;
+  font-weight: 700;
   color: #f8e7d0;
   text-align: center;
   margin-bottom: 2rem;
@@ -49,18 +82,21 @@ html, body {
   transition: opacity .3s ease;
   user-select: none;
 }
+
 #sidebar-container:hover .sidebar-logo {
   opacity: 1;
 }
 
-/* NAV LINKS */
+/* Nav links */
 .sidebar-links {
   list-style: none;
   flex-grow: 1;
 }
+
 .sidebar-links li {
   margin: 1rem 0;
 }
+
 .sidebar-links a {
   display: flex;
   align-items: center;
@@ -70,67 +106,75 @@ html, body {
   font-size: 1rem;
   font-weight: 500;
   white-space: nowrap;
-  padding: 0.4rem 0.6rem;
+  padding: .4rem .6rem;
   border-radius: 10px;
   transition: background .3s, color .3s;
   cursor: pointer;
 }
+
 .sidebar-links a i {
   font-size: 1.2rem;
   min-width: 24px;
   text-align: center;
 }
+
 .sidebar-links a span {
   opacity: 0;
   transition: opacity .3s ease;
 }
-/* reveal text on expand */
+
 #sidebar-container:hover .sidebar-links a span {
   opacity: 1;
 }
+
 .sidebar-links a:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, .1);
   color: #FFD580;
 }
 
-/* SUBMENU */
-.has-submenu > a {
+/* Submenu */
+.has-submenu>a {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .submenu {
   list-style: none;
   padding-left: 1.5rem;
-  margin-top: 0.3rem;
+  margin-top: .3rem;
   max-height: 0;
   overflow: hidden;
   transition: max-height .4s ease;
 }
+
 .has-submenu.open .submenu {
-  max-height: 500px; /* big enough */
+  max-height: 500px;
 }
+
 .submenu-arrow {
   transition: transform .3s ease;
 }
-.has-submenu.open > a .submenu-arrow {
+
+.has-submenu.open>a .submenu-arrow {
   transform: rotate(180deg);
 }
 
-/* LOGOUT BUTTON */
+/* Sidebar footer / logout */
 .sidebar-footer {
   margin-top: auto;
   display: flex;
   justify-content: center;
 }
+
 .logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
   border: none;
-  padding: 0.6rem 1.5rem;
+  padding: .6rem 1.5rem;
   border-radius: 20px;
-  color: white;
+  color: #fff;
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
   opacity: 0;
@@ -138,47 +182,58 @@ html, body {
   user-select: none;
   cursor: pointer;
 }
+
 #sidebar-container:hover .logout-btn {
   opacity: 1;
 }
+
 .logout-btn:hover {
   opacity: .85;
-  color: #4A1A0C;
+  color: var(--brand-dark-1);
 }
 
-/* MAIN CONTENT */
-/* MAIN CONTENT */
+/* Main content shifts with sidebar */
 .main {
   margin-left: 70px;
   width: calc(100% - 70px);
   transition: margin-left .3s ease, width .3s ease;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
 }
 
-/* shift main over when sidebar expands */
-#sidebar-container:hover + .main {
+/* Shift main when container expands */
+#sidebar-container:hover+.main {
   margin-left: 280px;
   width: calc(100% - 280px);
 }
 
-/* HEADER */
-/* Header */
+/* ========== 3) Header ========== */
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-.logo-header { height: 45px; }
+
+.logo-header {
+  height: 45px;
+}
+
 .search-box {
   position: relative;
   flex: 1;
   max-width: 500px;
   margin: 0 20px;
 }
+
 .search-box input {
   width: 100%;
   padding: 10px 14px;
@@ -186,6 +241,7 @@ html, body {
   border: none;
   outline: none;
 }
+
 .search-box i {
   position: absolute;
   top: 50%;
@@ -193,6 +249,7 @@ html, body {
   transform: translateY(-50%);
   color: #999;
 }
+
 .profile-btn {
   display: flex;
   align-items: center;
@@ -203,45 +260,348 @@ html, body {
   font-size: 20px;
   cursor: pointer;
 }
+
 .profile-btn .username {
   font-size: 14px;
 }
- .btn-close-footer {
-  background-color: #6a737d !important;   /* light gray */
-  color: #fff !important;             
+
+/* Secondary neutral footer button (used in modals) */
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff !important;
   border: none !important;
   border-radius: 999px !important;
-  padding: 0.5rem 1.2rem !important;
+  padding: .5rem 1.2rem !important;
   font-weight: 500;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background .2s ease, transform .2s ease;
 }
 
 .btn-close-footer:hover,
 .btn-close-footer:focus {
-  background-color: #6a737d !important;   /* darker hover */
+  background-color: #6a737d !important;
   color: #fff !important;
   transform: scale(1.04);
 }
-/* CONTENT AREA */
+
+/* Content wrapper */
 .content {
   padding: 2rem 3rem;
 }
+
 .content h1 {
   font-size: 2rem;
   margin-bottom: 2rem;
-  font-weight: bold;
+  font-weight: 700;
   text-align: center;
 }
 
-/* --- your existing table, cards and chart styles go below here --- */
-/* ===== Mobile header: search + icon + username (no overlap) ===== */
-@media (max-width: 480px) {
-  :root {
-    --m-header-gap: 12px;
+/* ========== 4) Cards / Tables / Badges / Forms ========== */
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ui-card.card-themed {
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
+  overflow: hidden;
+}
+
+.ui-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ui-card.card-themed .ui-card-head {
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #FFD8A9;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+
+.ui-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ui-subtext {
+  font-size: 1rem;
+  color: #ffe9ca;
+}
+
+.card-shell {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+}
+
+.card-shell .card-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, .06);
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #FFD8A9;
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.card-shell .card-body {
+  padding: 16px;
+}
+
+/* Buttons */
+.btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border: none;
+}
+
+.btn-amber:hover {
+  filter: brightness(1.06);
+  color: #fff;
+}
+
+.help-btn {
+  color: var(--brand-accent-1) !important;
+}
+
+.help-btn:hover {
+  color: var(--brand-accent-2) !important;
+}
+
+/* Form focus theme */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--brand-accent-2);
+  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18);
+}
+
+/* Filter bar / multi-select heights */
+.filter-bar {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+#filterClasses[multiple],
+#announcementClasses[multiple],
+#editClasses[multiple] {
+  min-height: 110px;
+}
+
+.form-label {
+  font-weight: 600;
+}
+
+/* Table */
+.table-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
+  overflow: hidden;
+}
+
+.table-card thead th {
+  background: linear-gradient(90deg, rgba(74, 26, 12, .06), rgba(122, 40, 16, .06));
+  font-weight: 700;
+  color: #3b3b3b;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+  background-color: #fafbfc;
+}
+
+.table tbody tr:hover td {
+  background: #fffaf6;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+/* Table actions responsiveness */
+.actions-cell {
+  white-space: nowrap;
+}
+
+.actions-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.table .btn-outline-primary,
+.table .btn-outline-success,
+.table .btn-outline-danger {
+  background-color: transparent;
+}
+
+@media (min-width:769px) {
+
+  #announcementTable th:last-child,
+  #announcementTable td:last-child {
+    width: 220px;
+  }
+}
+
+@media (max-width:768px) {
+  .actions-cell {
+    white-space: normal;
   }
 
-  /* Header = one row */
-  .header-top{
+  .actions-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem;
+    width: 100%;
+  }
+
+  .actions-wrap .btn {
+    width: 100%;
+  }
+}
+
+/* ========== 5) Date/Time Split UI (mobile-friendly) ========== */
+/* Hard-hide original date-time */
+.dt-hidden {
+  display: none !important;
+}
+
+/* Split layout */
+.dt-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+  margin-top: .25rem;
+}
+
+.dt-split .form-control {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+@media (max-width:576px) {
+  .dt-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== 6) Modals (Bootstrap 5) ========== */
+.modal-header {
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  color: #fff;
+  border-bottom: none;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: .9;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  color: #000;
+}
+
+/* Brand gradient for primary modal actions */
+.modal-footer .btn,
+#successOkBtn,
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: .5rem 1.2rem;
+  font-weight: 500;
+  transition: background .3s ease, transform .2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  transform: scale(1.05);
+}
+
+/* Center-center layout for all modals */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  width: calc(100% - 2rem);
+  max-width: 560px;
+}
+
+.modal.show .modal-content {
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+  max-height: min(90vh, 800px);
+  overflow: auto;
+}
+
+@media (max-width:576px) {
+  .modal.show .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: 100%;
+  }
+}
+
+/* ========== 7) Responsive ========== */
+
+/* Tablets / small desktops */
+@media (min-width:481px) and (max-width:1280px) {
+
+  .btn,
+  .back-btn,
+  .btn-amber,
+  .btn-amber-outline {
+    padding: .75rem 1rem;
+    font-size: .95rem;
+    border-radius: 12px;
+    margin: 6px 6px 6px 0;
+  }
+
+  .lesson-nav .btn {
+    min-width: 120px;
+  }
+}
+
+/* Mobile header (keep in ONE ROW) + mobile ergonomics */
+@media (max-width:480px) {
+
+  /* Header in one row */
+  .header-top {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -251,25 +611,31 @@ html, body {
     text-align: left !important;
   }
 
-  /* Hide logo on mobile */
-  .logo-header{ display: none !important; }
+  /* Hide desktop logo on mobile */
+  .logo-header {
+    display: none !important;
+  }
 
   /* Search shrinks as needed; no overflow */
-  .search-box{
+  .search-box {
     flex: 1 1 0 !important;
-    min-width: 0 !important;          /* allow flex item to shrink */
+    min-width: 0 !important;
     margin: 0 !important;
   }
-  .search-box input{
+
+  .search-box input {
     height: 36px !important;
     padding: 6px 34px 6px 12px !important;
     font-size: .9rem !important;
     border-radius: 28px !important;
   }
-  .search-box i{ right: 10px !important; }
 
-  /* Profile button shows icon + username, clamps width, no overlap */
-  .profile-btn{
+  .search-box i {
+    right: 10px !important;
+  }
+
+  /* Profile pill with truncated username */
+  .profile-btn {
     flex: 0 0 auto !important;
     width: auto !important;
     height: 44px !important;
@@ -280,25 +646,27 @@ html, body {
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
-    max-width: 45vw !important;       /* never eat the whole row */
+    max-width: 45vw !important;
   }
-  .profile-btn i{
+
+  .profile-btn i {
     font-size: 22px !important;
     flex: 0 0 auto !important;
     line-height: 1 !important;
   }
-  .profile-btn .username{
-    display: inline-flex !important;  /* make it visible on mobile */
+
+  .profile-btn .username {
+    display: inline-flex !important;
     align-items: center !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    max-width: calc(45vw - 28px - 16px) !important;
     font-size: .9rem !important;
     line-height: 1.1 !important;
   }
-}
-@media (max-width: 480px) {
+
+  /* Stack layout on small screens */
   .dashboard {
     flex-direction: column;
   }
@@ -314,29 +682,12 @@ html, body {
     z-index: 10;
   }
 
-  .sidebar:hover ~ .main {
+  .sidebar:hover~.main {
     margin-left: 0;
     width: 100%;
   }
 
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 0.8rem;
-    text-align: center;
-  }
-
-  .search-box {
-    max-width: 100%;
-    margin: 0;
-  }
-
-  .search-box input {
-    padding: 8px 32px 8px 12px;
-    font-size: 0.9rem;
-  }
-
+  /* Card padding & themed card header layout */
   .ui-card {
     padding: 10px;
   }
@@ -346,32 +697,46 @@ html, body {
     align-items: flex-start;
     gap: 4px;
   }
+
+  .page-title {
+    font-weight: 700;
+    font-size: 1.7rem;
+    text-align: center;
+    margin: 4px 0 18px;
   }
-@media (max-width: 480px) {
-  /* Make buttons easy to tap and nicely spaced */
+
+  .page-title.brand {
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+
+  /* Buttons: full-width, big tap targets */
   .btn,
   .back-btn,
   .logout-btn,
   .btn-amber,
   .btn-amber-outline {
-    display: block;           /* stack cleanly */
-    width: 100%;              /* full-width buttons */
-    min-height: 44px;         /* Apple HIG tap target */
-    padding: 0.9rem 1rem;     /* comfy padding */
-    font-size: 1rem;          /* avoid iOS zoom */
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: .9rem 1rem;
+    font-size: 1rem;
     line-height: 1.2;
-    border-radius: 14px;      /* softer corners on small screens */
-    margin: 10px 0;           /* vertical gap between buttons */
+    border-radius: 14px;
+    margin: 10px 0;
     text-align: center;
+    border-width: 1px;
   }
 
-  /* Icon + text alignment inside buttons */
   .btn i,
   .back-btn i {
     margin-right: 8px;
   }
 
-  /* Button groups wrap nicely with spacing */
+  /* Button groups wrap nicely */
   .btn-group,
   .lesson-nav,
   .content .d-flex,
@@ -380,191 +745,22 @@ html, body {
     gap: 10px;
   }
 
-  /* Specific: lesson prev/next should stack under title if tight */
   .lesson-nav .btn {
-    min-width: unset;         /* let full-width rule apply */
+    min-width: unset;
   }
 
-  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
   .content .d-flex.gap-2 {
     gap: 10px !important;
   }
-
-  /* Prevent tiny outline/ghost borders on gradient buttons */
-  .btn-amber,
-  .btn-amber-outline,
-  .back-btn,
-  .logout-btn {
-    border-width: 1px;
-  }
 }
 
-/* Tablet: keep buttons inline but add breathing room */
-@media (min-width: 481px) and (max-width: 1280px) {
-  .btn,
-  .back-btn,
-  .btn-amber,
-  .btn-amber-outline {
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    border-radius: 12px;
-    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
-  }
-
-  /* Lesson nav buttons keep reasonable width */
-  .lesson-nav .btn { min-width: 120px; }
-  /* Mobile datetime split UI */
-.dt-hidden{
-  position:absolute !important;
-  width:1px; height:1px; margin:0; padding:0;
-  opacity:0; pointer-events:none;
-}
-.dt-split{
-  display:grid; grid-template-columns:1fr 1fr; gap:.5rem;
-  margin-top:.25rem;
-}
-.dt-split .form-control{ min-height:44px; font-size:16px; }
-
-/* Stack date/time on very small screens */
-@media (max-width:576px){ .dt-split{ grid-template-columns:1fr; } }
-
-}
-/* Hard-hide the original datetime fields */
-.dt-hidden{ display:none !important; }
-
-/* Split UI layout */
-.dt-split{
-  display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-top:.25rem;
-}
-@media (max-width:576px){ .dt-split{ grid-template-columns:1fr; } }
-.dt-split .form-control{ min-height:44px; font-size:16px; }
-
-/* Modal header with gradient background */
-.modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
-  border-bottom: none;
+/* Helpers used by the Mobile-friendly datetime enhancer */
+.dt-hidden {
+  display: none !important;
 }
 
-/* Title text inside modal header */
-.modal-header .modal-title {
-  font-weight: 600;
-  color: #fff;
-}
-
-/* Close button inside modal header */
-.modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
-  opacity: 0.9;
-}
-.modal-header .btn-close:hover {
-  opacity: 1;
-}
-
-/* Modal footer button with gradient */
-.modal-footer .btn,
-#successOkBtn, 
-#feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.5rem 1.2rem;
-  font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
-}
-
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
-  transform: scale(1.05);
-}
-.modal-body {
-  color:black
-}
-.modal.show .modal-content {
-  border: none;                 /* remove default bootstrap border */
-  border-radius: 14px;          /* match your --radius vibe */
-  overflow: hidden;             /* ensures header corners look perfect */
-  box-shadow: 0 18px 40px rgba(0,0,0,.25);
-}
-
-
-
-/* ===== Center-center modals (Bootstrap 5) ===== */
-
-/* Use flexbox on the modal container to place the dialog dead-center */
-.modal.show {
-  display: flex !important;
-  align-items: center;       /* vertical center */
-  justify-content: center;   /* horizontal center */
-  /* Remove Bootstrap’s default top margin gap */
-  --bs-modal-margin: 0;
-  padding: 0 !important;     /* avoid side/top padding shifting the visual center */
-}
-
-/* Remove default margins and ensure the dialog itself doesn't offset */
-.modal.show .modal-dialog {
-  margin: 0 !important;
-          /* tweak to your taste */
-  width: calc(100% - 2rem);  /* keep nice gutters on small screens */
-}
-
-/* If the content is tall, scroll *inside* the modal, not the page */
-.modal.show .modal-content {
-  max-height: min(90vh, 800px);
-  overflow: auto;
-  border-radius: 12px;       /* matches your UI vibe */
-}
-
-/* Small screens: tighten the width a bit more */
-@media (max-width: 576px) {
-  .modal.show .modal-dialog {
-    width: calc(100% - 1.5rem);
-    max-width: 100%;
-  }
-}
-/* Table cell alignment */
-.table td, .table th { vertical-align: middle; }
-
-/* Actions column: desktop keeps them in one line; mobile stacks gracefully */
-.actions-cell { /* on wide screens keep them from wrapping weirdly */
-  white-space: nowrap;
-}
-
-.actions-wrap{
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;           /* space between buttons */
-  flex-wrap: wrap;      /* allows wrap if space is tight */
-}
-
-/* Keep outline buttons transparent inside table (prevents the “white box” look) */
-.table .btn-outline-primary,
-.table .btn-outline-success,
-.table .btn-outline-danger {
-  background-color: transparent;
-}
-
-/* Make the last column wide enough on desktop so buttons don’t squeeze */
-@media (min-width: 769px){
-  #announcementTable th:last-child,
-  #announcementTable td:last-child {
-    width: 220px;       /* tune as you like */
-  }
-}
-
-/* Mobile: stack buttons, full width for easy tapping */
-@media (max-width: 768px){
-  .actions-cell { white-space: normal; }
-  .actions-wrap{
-    display: grid;
-    grid-template-columns: 1fr 1fr;  /* 2 per row */
-    gap: .5rem;
-    width: 100%;
-  }
-  .actions-wrap .btn{
-    width: 100%;
-  }
+.dt-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
 }
