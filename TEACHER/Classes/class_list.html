@@ -2,78 +2,22 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Class List</title>
 
   <!-- Icons & Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <!-- Your page/theme css -->
-  <link rel="stylesheet" href="class_list.css"/>
+  <link rel="stylesheet" href="class_list.css" />
 
-  <!-- Minimal helpers in case ui-card / segmented aren't in class_list.css yet -->
-  <style>
-    :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810;
-      --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
-    
-    .logo-header{height:44px}
-    .search-box{max-width:520px;width:100%;position:relative}
-    .search-box input{border:none;border-radius:999px;padding:.6rem .9rem .6rem 1rem}
-    .search-box i{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#d7dadf}
-    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px}
-    .content{padding:24px}
-    .page-title{
-      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      -webkit-background-clip:text;background-clip:text;
-    }
-
-    /* ui-card themed */
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-    .ui-card.card-themed{
-      border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);
-      box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden;
-    }
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .ui-card.card-themed .ui-card-head{
-      margin:-16px -16px 12px -16px;padding:12px 16px;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
-    }
-    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-    .ui-subtext{font-size:1rem;color:#ffe9ca}
-
-    .btn-amber{
-      background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
-      color:#fff;border:none;font-size:1rem;padding:.55rem .9rem
-    }
-    .btn-amber:hover{filter:brightness(1.05);color:#fff}
-
-    /* Segmented buttons */
-    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
-    .segmented .seg-btn{
-      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
-      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
-      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
-    }
-    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
-    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
-    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
-  </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -85,7 +29,7 @@
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input id="tableSearch" type="text" class="form-control" placeholder="Search classes..."/>
+          <input id="tableSearch" type="text" class="form-control" placeholder="Search classes..." />
           <i class="fas fa-search position-absolute" style="top:50%; right:15px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -102,7 +46,8 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-people"></i> Your Classes</h2>
-            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.</div>
+            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.
+            </div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -129,15 +74,16 @@
             <div class="col-12 col-md-5 col-xl-3">
               <label class="form-label">Show</label>
               <div class="segmented" role="tablist" aria-label="Class visibility">
-                <button id="btnActive"   class="seg-btn is-active"   role="tab" aria-selected="true">Active</button>
+                <button id="btnActive" class="seg-btn is-active" role="tab" aria-selected="true">Active</button>
                 <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
-                <button id="btnAll"      class="seg-btn is-all"      role="tab" aria-selected="false">All</button>
+                <button id="btnAll" class="seg-btn is-all" role="tab" aria-selected="false">All</button>
               </div>
             </div>
 
             <!-- Create Class -->
             <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
-              <button class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" data-bs-toggle="modal" data-bs-target="#createClassModal">
+              <button class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" data-bs-toggle="modal"
+                data-bs-target="#createClassModal">
                 <i class="bi bi-plus-lg me-1"></i> Add Class
               </button>
             </div>
@@ -181,7 +127,8 @@
   </div>
 
   <!-- Create Class Modal -->
-  <div class="modal fade" id="createClassModal" tabindex="-1" aria-labelledby="createClassModalLabel" aria-hidden="true">
+  <div class="modal fade" id="createClassModal" tabindex="-1" aria-labelledby="createClassModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <form id="createClassForm">
@@ -327,66 +274,66 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
+  <script>
+    // ---- Auth guard + header initials (robust) ----
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        // support both shapes: {user:{...}} or {...}
+        const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
+        // teacher gate
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
 
-    const initials = getInitials(u);
+        const initials = getInitials(u);
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+          el.textContent = initials;                           // 👈 initials only
+          // Helpful tooltip/aria label with full name/username
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username
+            || u.email
+            || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
 
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+      // --- Helpers ---
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
+        // fall back to username-like fields
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          // split on space, dot, underscore, or hyphen
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
 
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
 
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
+        // last resort: first letter of email
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+  </script>
 
   <script>
     const API_BASE = 'http://localhost:5000';
@@ -395,7 +342,7 @@
     const infoModalEl = document.getElementById('infoModal');
     const infoModal = new bootstrap.Modal(infoModalEl);
     const infoTitleEl = document.getElementById('infoModalLabel');
-    const infoBodyEl  = document.getElementById('infoModalBody');
+    const infoBodyEl = document.getElementById('infoModalBody');
 
     function showInfo(title = 'Notice', html = '') {
       infoTitleEl.textContent = title;
@@ -403,11 +350,11 @@
       infoModal.show();
     }
 
-    const confirmModalEl   = document.getElementById('confirmModal');
-    const confirmModal     = new bootstrap.Modal(confirmModalEl);
-    const confirmTitleEl   = document.getElementById('confirmModalLabel');
-    const confirmBodyEl    = document.getElementById('confirmModalBody');
-    const confirmOkBtn     = document.getElementById('confirmOkBtn');
+    const confirmModalEl = document.getElementById('confirmModal');
+    const confirmModal = new bootstrap.Modal(confirmModalEl);
+    const confirmTitleEl = document.getElementById('confirmModalLabel');
+    const confirmBodyEl = document.getElementById('confirmModalBody');
+    const confirmOkBtn = document.getElementById('confirmOkBtn');
     const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 
     function showConfirm(title = 'Confirm Action', html = 'Are you sure?') {
@@ -444,12 +391,12 @@
     function getDefaultSemester() {
       const m = new Date().getMonth();
       if (m >= 7 && m <= 11) return '1st Semester';
-      if (m >= 0 && m <= 4)  return '2nd Semester';
+      if (m >= 0 && m <= 4) return '2nd Semester';
       return '1st Semester';
     }
     function buildSchoolYearOptions(selectEl, years) {
       const unique = Array.from(new Set(years.filter(Boolean)));
-      unique.sort((a,b) => parseInt(b) - parseInt(a)); // sort by starting year desc
+      unique.sort((a, b) => parseInt(b) - parseInt(a)); // sort by starting year desc
       selectEl.innerHTML = '<option value="">All years</option>' +
         unique.map(sy => `<option value="${sy}">${sy}</option>`).join('');
     }
@@ -500,21 +447,21 @@
     }
 
     /* ================= Pills refresher (always include archived) ================= */
-    async function refreshClassPills(teacherId){
+    async function refreshClassPills(teacherId) {
       try {
         const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}&archived=include`;
         const res = await fetch(url);
         const data = await res.json();
         const classes = Array.isArray(data.classes) ? data.classes : [];
 
-        const activeCount   = classes.filter(c => !c.archived).length;
-        const archivedCount = classes.filter(c =>  c.archived).length;
+        const activeCount = classes.filter(c => !c.archived).length;
+        const archivedCount = classes.filter(c => c.archived).length;
 
-        document.getElementById('activeCount').textContent   = String(activeCount);
+        document.getElementById('activeCount').textContent = String(activeCount);
         document.getElementById('archivedCount').textContent = String(archivedCount);
       } catch (err) {
         console.error('refreshClassPills failed:', err);
-        document.getElementById('activeCount').textContent   = '0';
+        document.getElementById('activeCount').textContent = '0';
         document.getElementById('archivedCount').textContent = '0';
       }
     }
@@ -524,7 +471,7 @@
       try {
         const archivedParam =
           statusFilter === 'archived' ? 'only' :
-          statusFilter === 'all'      ? 'include' : 'exclude';
+            statusFilter === 'all' ? 'include' : 'exclude';
 
         const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}&archived=${archivedParam}`;
         const res = await fetch(url);
@@ -563,20 +510,20 @@
       // 3) search filter
       if (q) {
         list = list.filter(c => {
-          const txt = `${c.name||''} ${c.gradeLevel||''} ${c.section||''} ${c.schoolYear||''} ${c.semester||''}`.toLowerCase();
+          const txt = `${c.name || ''} ${c.gradeLevel || ''} ${c.section || ''} ${c.schoolYear || ''} ${c.semester || ''}`.toLowerCase();
           return txt.includes(q);
         });
       }
 
       // 4) sort
       if (currentSort === 'sy_new') {
-        list.sort((a,b) => (syStart(b.schoolYear) || -Infinity) - (syStart(a.schoolYear) || -Infinity));
+        list.sort((a, b) => (syStart(b.schoolYear) || -Infinity) - (syStart(a.schoolYear) || -Infinity));
       } else if (currentSort === 'sy_old') {
-        list.sort((a,b) => (syStart(a.schoolYear) || Infinity) - (syStart(b.schoolYear) || Infinity));
+        list.sort((a, b) => (syStart(a.schoolYear) || Infinity) - (syStart(b.schoolYear) || Infinity));
       } else if (currentSort === 'sem_1_2') {
-        list.sort((a,b) => semesterRank(a.semester) - semesterRank(b.semester));
+        list.sort((a, b) => semesterRank(a.semester) - semesterRank(b.semester));
       } else if (currentSort === 'sem_2_1') {
-        list.sort((a,b) => semesterRank(b.semester) - semesterRank(a.semester));
+        list.sort((a, b) => semesterRank(b.semester) - semesterRank(a.semester));
       }
 
       renderTable(list);
@@ -612,8 +559,8 @@
             <button class="btn btn-sm btn-amber roster-btn"><i class="bi bi-people me-1"></i>Roster</button>
             <button class="btn btn-sm btn-outline-secondary manage-btn" ${c.archived ? 'disabled' : ''}><i class="bi bi-tools me-1"></i>Manage</button>
             ${c.archived
-              ? '<button class="btn btn-sm btn-outline-success unarchive-btn"><i class="bi bi-arrow-counterclockwise me-1"></i>Unarchive</button>'
-              : '<button class="btn btn-sm btn-outline-warning archive-btn"><i class="bi bi-archive me-1"></i>Archive</button>'}
+          ? '<button class="btn btn-sm btn-outline-success unarchive-btn"><i class="bi bi-arrow-counterclockwise me-1"></i>Unarchive</button>'
+          : '<button class="btn btn-sm btn-outline-warning archive-btn"><i class="bi bi-archive me-1"></i>Archive</button>'}
             <button class="btn btn-sm btn-outline-danger delete-btn"><i class="bi bi-trash3 me-1"></i>Delete</button>
           </div>
         </td>`;
@@ -630,8 +577,8 @@
 
         const sySel = document.getElementById('editSchoolYearInput');
         const around = [];
-        for (let i=-3;i<=3;i++){
-          const [a,b] = currentSchoolYearRange(i);
+        for (let i = -3; i <= 3; i++) {
+          const [a, b] = currentSchoolYearRange(i);
           around.push(`${a}-${b}`);
         }
         buildSchoolYearOptions(sySel, around);
@@ -800,10 +747,10 @@
       const btnActive = document.getElementById('btnActive');
       const btnArchived = document.getElementById('btnArchived');
       const btnAll = document.getElementById('btnAll');
-      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
-      if (which === 'active')   { btnActive.classList.add('is-active');   btnActive.setAttribute('aria-selected','true'); }
-      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
-      if (which === 'all')      { btnAll.classList.add('is-active');      btnAll.setAttribute('aria-selected','true'); }
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
 
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (user.userId) loadClasses(user.userId);
@@ -829,16 +776,16 @@
       const createModalEl = document.getElementById('createClassModal');
       createModalEl.addEventListener('show.bs.modal', () => {
         const around = [];
-        for (let i=-3;i<=3;i++){
-          const [a,b] = currentSchoolYearRange(i);
+        for (let i = -3; i <= 3; i++) {
+          const [a, b] = currentSchoolYearRange(i);
           around.push(`${a}-${b}`);
         }
         const sySel = document.getElementById('schoolYearInput');
         // build options for Create modal (no "All years" here)
         sySel.innerHTML = around
           .filter(Boolean)
-          .filter((v,i,arr) => arr.indexOf(v) === i)
-          .sort((a,b) => parseInt(b) - parseInt(a))
+          .filter((v, i, arr) => arr.indexOf(v) === i)
+          .sort((a, b) => parseInt(b) - parseInt(a))
           .map(sy => `<option value="${sy}">${sy}</option>`).join('');
         sySel.value = getDefaultSchoolYear();
 
@@ -857,4 +804,5 @@
     }
   </script>
 </body>
+
 </html>

@@ -1,61 +1,66 @@
- :root {
-     --bg: #f6f8fa;
-     --text: #1f2328;
-     --muted: #6a737d;
-     --card: #fff;
-     --border: #e5e7eb;
-     --brand-dark-1: #4A1A0C;
-     --brand-dark-2: #7A2810;
-     --brand-accent-1: #FF6A00;
-     --brand-accent-2: #B03C10;
-     --card-radius: 14px;
- }
+/* =========================
+   EduConnect • dashboard.css
+   ========================= */
 
- html,
- body {
-     height: 100%;
-     margin: 0;
-     background: var(--bg);
-     color: var(--text)
- }
+/* ========== 1) Theme & Base ========== */
+:root {
+  --bg: #f6f8fa;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --card: #fff;
+  --border: #e5e7eb;
+  --brand-dark-1: #4A1A0C;
+  --brand-dark-2: #7A2810;
+  --brand-accent-1: #FF6A00;
+  --brand-accent-2: #B03C10;
+  --card-radius: 14px;
+}
 
- /* HEADER */
- .header-top {
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
-     padding: 1rem 2rem;
-     background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-     color: #fff;
-     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
- }
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
 
- .logo-header {
-     height: 45px;
- }
+/* ========== 2) Header ========== */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+}
 
- .search-box {
-     position: relative;
-     flex: 1;
-     max-width: 500px;
-     margin: 0 20px;
- }
+.logo-header {
+  height: 45px;
+}
 
- .search-box input {
-     width: 100%;
-     padding: 10px 14px;
-     border-radius: 30px;
-     border: none;
-     outline: none;
- }
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 20px;
+}
 
- .search-box i {
-     position: absolute;
-     top: 50%;
-     right: 15px;
-     transform: translateY(-50%);
-     color: #999;
- }
+.search-box input {
+  width: 100%;
+  padding: 10px 42px 10px 14px;
+  border: none;
+  outline: none;
+  border-radius: 30px;
+}
+
+.search-box i {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: #cdd3d8;
+}
 
 .profile-btn {
   display: flex;
@@ -67,296 +72,18 @@
   font-size: 20px;
   cursor: pointer;
 }
+
 .profile-btn .username {
   font-size: 14px;
 }
- .dashboard {
-     display: flex;
-     min-height: 100vh
- }
 
- .main {
-     margin-left: 70px;
-     width: calc(100% - 70px);
-     transition: margin-left .3s ease, width .3s ease;
-     display: flex;
-     flex-direction: column;
-     min-height: 100vh;
-     background: var(--bg)
- }
-
- .sidebar:hover~.main {
-     margin-left: 220px;
-     width: calc(100% - 220px)
- }
-
- .content {
-     padding: 24px
- }
-
- .search-box {
-     position: relative;
-     max-width: 480px;
-     width: 100%
- }
-
- .search-box input {
-     border: none;
-     border-radius: 999px;
-     padding: 10px 42px 10px 14px;
-     outline: 0
- }
-
- .search-box i {
-     position: absolute;
-     right: 14px;
-     top: 50%;
-     transform: translateY(-50%);
-     color: #cdd3d8
- }
-
-
-
- .page-title {
-     font-weight: 800;
-     margin: 0;
-     font-size: 1.5rem
- }
-
- .page-title.brand {
-     background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-     -webkit-background-clip: text;
-     background-clip: text;
-     color: transparent
- }
-
- .ui-card {
-     background: var(--card);
-     border: 1px solid var(--border);
-     border-radius: var(--card-radius);
-     box-shadow: 0 10px 24px rgba(0, 0, 0, .08)
- }
-
- .ui-card.section {
-     padding: 16px
- }
-
- .meta-card {
-     border: 1px solid var(--border);
-     border-radius: var(--card-radius);
-     background: var(--card);
-     box-shadow: 0 6px 18px rgba(0, 0, 0, .06)
- }
-
- .meta-grid {
-     gap: 12px
- }
-
- .meta-item {
-     border: 1px dashed var(--border);
-     border-radius: 12px;
-     padding: 10px 12px;
-     background: #fff
- }
-
- .meta-item .label {
-     color: var(--muted);
-     font-size: .9rem
- }
-
- .meta-item .value {
-     font-weight: 700;
-     white-space: nowrap
- }
-.btn-close-footer {
-  background-color: #6a737d !important;   /* light gray */
-  color: #fff !important;             
-  border: none !important;
-  border-radius: 999px !important;
-  padding: 0.5rem 1.2rem !important;
-  font-weight: 500;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.btn-close-footer:hover,
-.btn-close-footer:focus {
-  background-color: #6a737d !important;   /* darker hover */
-  color: #fff !important;
-  transform: scale(1.04);
-}
- .btn-amber {
-     background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-     border: none;
-     color: #fff
- }
-
- .btn-amber:hover {
-     filter: brightness(1.05);
-     color: #fff
- }
-
- .btn-amber-outline {
-     background: #fff;
-     color: var(--brand-accent-2);
-     border: 1px solid var(--brand-accent-2)
- }
-
- .btn-amber-outline:hover {
-     background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-     color: #fff;
-     border-color: transparent
- }
-
- .table thead th {
-     white-space: nowrap
- }
-
- .table-striped>tbody>tr:nth-of-type(odd)>* {
-     --bs-table-accent-bg: #fafbfc
- }
-
- .table-hover tbody tr:hover {
-     background: #fff6f0
- }
-
- #rosterTable .form-check-input:checked {
-     background-color: var(--brand-accent-2);
-     border-color: var(--brand-accent-2)
- }
-
- .search-result {
-     border: 1px solid var(--border);
-     border-radius: 12px;
-     padding: .6rem .8rem;
-     background: #fff
- }
-
- .form-control:focus,
- .form-select:focus {
-     border-color: var(--brand-accent-2);
-     box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
- }
-
- .actions-wrap {
-     gap: .5rem
- }
-
- /* TABLE — clean, no overlap */
- #rosterTable thead th {
-     position: sticky;
-     /* stick only inside the table container */
-     top: 0;
-     /* no magic offsets */
-     background: #fff;
-     z-index: 2;
-     border-bottom: 1px solid var(--border);
- }
-
- #rosterTable td,
- #rosterTable th {
-     vertical-align: middle;
- }
-
- .table-striped>tbody>tr:nth-of-type(odd)>* {
-     --bs-table-accent-bg: #fafbfc;
- }
-
- .table-hover tbody tr:hover {
-     background: #fff6f0;
- }
-
- /* keep first checkbox column narrow, actions tidy */
- #rosterTable th:first-child,
- #rosterTable td:first-child {
-     width: 38px;
- }
-
- #rosterTable td .btn {
-     padding: .25rem .5rem;
- }
-
- /* make email column behave and truncate nicely on smaller screens */
- #rosterTable .cell-email {
-     max-width: 380px;
-     /* tweak to taste */
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
- }
-
- @media (max-width: 992px) {
-     #rosterTable .cell-email {
-         max-width: 260px;
-     }
- }
-
- /* replace your old .meta-grid styles with this */
- .meta-strip {
-     display: flex;
-     flex-wrap: wrap;
-     /* one line only */
-     gap: 12px;
-     overflow-x: auto;
-     /* allow sideways scroll on small screens */
-     padding-bottom: 4px;
-   
- }
-
- .meta-item {
-     flex: 1 1 auto;
-     /* don’t shrink; sit in one row */
-     min-width: 340px;
-     /* tweak as you like */
-     background: #fff;
-     border: 1px dashed var(--border);
-     border-radius: 12px;
-     padding: 10px 12px;
- }
-
- .meta-item .label {
-     color: var(--muted);
-     font-size: 1rem;
- }
-
- .meta-item .value {
-     font-weight: 700;
-     white-space: nowrap;
-     font-size: 1rem;
- }
-
- .logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  color: white;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.3s ease;
-  white-space: nowrap;
-  opacity: 0;
-   text-decoration: none; /* ✅ add this line */
-  display: inline-block;
-}
-
-
-.sidebar:hover .logout-btn {
-  opacity: 1;
-}
-
-.logout-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C; /* New text color on hover */
-}
-/* ===== Mobile header: search + icon + username (no overlap) ===== */
-@media (max-width: 480px) {
+/* Mobile header: keep one row, no overlap */
+@media (max-width:480px) {
   :root {
     --m-header-gap: 12px;
   }
 
-  /* Header = one row */
-  .header-top{
+  .header-top {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -366,54 +93,78 @@
     text-align: left !important;
   }
 
-  /* Hide logo on mobile */
-  .logo-header{ display: none !important; }
+  .logo-header {
+    display: none !important;
+  }
 
-  /* Search shrinks as needed; no overflow */
-  .search-box{
+  .search-box {
     flex: 1 1 0 !important;
-    min-width: 0 !important;          /* allow flex item to shrink */
+    min-width: 0 !important;
     margin: 0 !important;
   }
-  .search-box input{
+
+  .search-box input {
     height: 36px !important;
     padding: 6px 34px 6px 12px !important;
     font-size: .9rem !important;
     border-radius: 28px !important;
   }
-  .search-box i{ right: 10px !important; }
 
-  /* Profile button shows icon + username, clamps width, no overlap */
-  .profile-btn{
+  .search-box i {
+    right: 10px !important;
+  }
+
+  .profile-btn {
     flex: 0 0 auto !important;
-    width: auto !important;
     height: 44px !important;
     padding: 0 .75rem !important;
-    margin-left: var(--m-header-gap) !important;
     border-radius: 999px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    max-width: 45vw !important;       /* never eat the whole row */
+    max-width: 45vw !important;
   }
-  .profile-btn i{
+
+  .profile-btn i {
     font-size: 22px !important;
-    flex: 0 0 auto !important;
     line-height: 1 !important;
   }
-  .profile-btn .username{
-    display: inline-flex !important;  /* make it visible on mobile */
-    align-items: center !important;
+
+  .profile-btn .username {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
+    max-width: calc(45vw - 28px - 16px) !important;
     font-size: .9rem !important;
     line-height: 1.1 !important;
   }
 }
-@media (max-width: 480px) {
+
+/* ========== 3) Layout ========== */
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+  transition: margin-left .3s ease, width .3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* When sidebar expands (sibling selector pattern) */
+.sidebar:hover~.main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+}
+
+.content {
+  padding: 24px;
+}
+
+/* Mobile: prevent off-canvas shift */
+@media (max-width:480px) {
   .dashboard {
     flex-direction: column;
   }
@@ -429,64 +180,166 @@
     z-index: 10;
   }
 
-  .sidebar:hover ~ .main {
+  .sidebar:hover~.main {
     margin-left: 0;
     width: 100%;
-  }
-
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 0.8rem;
-    text-align: center;
-  }
-
-  .search-box {
-    max-width: 100%;
-    margin: 0;
-  }
-
-  .search-box input {
-    padding: 8px 32px 8px 12px;
-    font-size: 0.9rem;
   }
 
   .ui-card {
     padding: 10px;
   }
+}
 
-  .ui-card.card-themed .ui-card-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  }
-@media (max-width: 480px) {
-  /* Make buttons easy to tap and nicely spaced */
+/* ========== 4) Titles ========== */
+.page-title {
+  font-weight: 800;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.page-title.brand {
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ========== 5) Cards & Meta ========== */
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+}
+
+.ui-card.section {
+  padding: 16px;
+}
+
+.meta-card {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--card);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+}
+
+/* Horizontal, scrollable metadata strip (replaces old meta-grid) */
+.meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.meta-item {
+  flex: 1 1 auto;
+  min-width: 340px;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.meta-item .label {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.meta-item .value {
+  font-weight: 700;
+  white-space: nowrap;
+  font-size: 1rem;
+}
+
+/* Keep simple grid spacing if .meta-grid is still used somewhere */
+.meta-grid {
+  gap: 12px;
+}
+
+/* ========== 6) Buttons ========== */
+.btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  border: none;
+  color: #fff;
+}
+
+.btn-amber:hover {
+  filter: brightness(1.05);
+  color: #fff;
+}
+
+.btn-amber-outline {
+  background: #fff;
+  color: var(--brand-accent-2);
+  border: 1px solid var(--brand-accent-2);
+}
+
+.btn-amber-outline:hover {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border-color: transparent;
+}
+
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: .5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background .2s ease, transform .2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  transform: scale(1.04);
+}
+
+.btn-danger {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: .5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background .2s ease, transform .2s ease;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  transform: scale(1.04);
+}
+
+/* Mobile button ergonomics */
+@media (max-width:480px) {
+
   .btn,
   .back-btn,
   .logout-btn,
   .btn-amber,
   .btn-amber-outline {
-    display: block;           /* stack cleanly */
-    width: 100%;              /* full-width buttons */
-    min-height: 44px;         /* Apple HIG tap target */
-    padding: 0.9rem 1rem;     /* comfy padding */
-    font-size: 1rem;          /* avoid iOS zoom */
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: .9rem 1rem;
+    font-size: 1rem;
     line-height: 1.2;
-    border-radius: 14px;      /* softer corners on small screens */
-    margin: 10px 0;           /* vertical gap between buttons */
+    border-radius: 14px;
+    margin: 10px 0;
     text-align: center;
+    border-width: 1px;
   }
 
-  /* Icon + text alignment inside buttons */
   .btn i,
   .back-btn i {
     margin-right: 8px;
   }
 
-  /* Button groups wrap nicely with spacing */
   .btn-group,
   .lesson-nav,
   .content .d-flex,
@@ -495,73 +348,133 @@
     gap: 10px;
   }
 
-  /* Specific: lesson prev/next should stack under title if tight */
   .lesson-nav .btn {
-    min-width: unset;         /* let full-width rule apply */
+    min-width: unset;
   }
 
-  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
   .content .d-flex.gap-2 {
     gap: 10px !important;
   }
-
-  /* Prevent tiny outline/ghost borders on gradient buttons */
-  .btn-amber,
-  .btn-amber-outline,
-  .back-btn,
-  .logout-btn {
-    border-width: 1px;
-  }
 }
 
-/* Tablet: keep buttons inline but add breathing room */
-@media (min-width: 481px) and (max-width: 1280px) {
+/* Tablet button tuning */
+@media (min-width:481px) and (max-width:1280px) {
+
   .btn,
   .back-btn,
   .btn-amber,
   .btn-amber-outline {
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
+    padding: .75rem 1rem;
+    font-size: .95rem;
     border-radius: 12px;
-    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+    margin: 6px 6px 6px 0;
   }
 
-  /* Lesson nav buttons keep reasonable width */
-  .lesson-nav .btn { min-width: 120px; }
+  .lesson-nav .btn {
+    min-width: 120px;
+  }
 }
-/* Modal header with gradient background */
+
+/* ========== 7) Tables ========== */
+.table thead th {
+  white-space: nowrap;
+}
+
+/* Bootstrap striped + hover tweaks */
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+  --bs-table-accent-bg: #fafbfc;
+}
+
+.table-hover tbody tr:hover {
+  background: #fff6f0;
+}
+
+/* Roster table specifics */
+#rosterTable thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  border-bottom: 1px solid var(--border);
+}
+
+#rosterTable td,
+#rosterTable th {
+  vertical-align: middle;
+}
+
+#rosterTable th:first-child,
+#rosterTable td:first-child {
+  width: 38px;
+}
+
+#rosterTable td .btn {
+  padding: .25rem .5rem;
+}
+
+#rosterTable .cell-email {
+  max-width: 380px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width:992px) {
+  #rosterTable .cell-email {
+    max-width: 260px;
+  }
+}
+
+#rosterTable .form-check-input:checked {
+  background-color: var(--brand-accent-2);
+  border-color: var(--brand-accent-2);
+}
+
+/* Search result chip */
+.search-result {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .6rem .8rem;
+  background: #fff;
+}
+
+/* Action cluster spacing */
+.actions-wrap {
+  gap: .5rem;
+}
+
+/* ========== 8) Modals (Bootstrap 5 theme) ========== */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   border-bottom: none;
 }
 
-/* Title text inside modal header */
 .modal-header .modal-title {
   font-weight: 600;
   color: #fff;
 }
 
-/* Close button inside modal header */
 .modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
-  opacity: 0.9;
+  filter: brightness(0) invert(1);
+  opacity: .9;
 }
+
 .modal-header .btn-close:hover {
   opacity: 1;
 }
 
-/* Modal footer button with gradient */
+/* Gradient primary actions */
 .modal-footer .btn,
-#successOkBtn, 
+#successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
   border: none;
   color: #fff;
   border-radius: 999px;
-  padding: 0.5rem 1.2rem;
+  padding: .5rem 1.2rem;
   font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
+  transition: background .3s ease, transform .2s ease;
 }
 
 .modal-footer .btn:hover,
@@ -570,34 +483,30 @@
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.05);
 }
-/* ===== Center-center modals (Bootstrap 5) ===== */
 
-/* Use flexbox on the modal container to place the dialog dead-center */
+/* Center-center modal layout */
 .modal.show {
   display: flex !important;
-  align-items: center;       /* vertical center */
-  justify-content: center;   /* horizontal center */
-  /* Remove Bootstrap’s default top margin gap */
+  align-items: center;
+  justify-content: center;
   --bs-modal-margin: 0;
-  padding: 0 !important;     /* avoid side/top padding shifting the visual center */
+  padding: 0 !important;
 }
 
-/* Remove default margins and ensure the dialog itself doesn't offset */
 .modal.show .modal-dialog {
   margin: 0 !important;
-  max-width: 640px;          /* tweak to your taste */
-  width: calc(100% - 2rem);  /* keep nice gutters on small screens */
+  max-width: 640px;
+  width: calc(100% - 2rem);
 }
 
-/* If the content is tall, scroll *inside* the modal, not the page */
 .modal.show .modal-content {
   max-height: min(90vh, 800px);
   overflow: auto;
-  border-radius: 12px;       /* matches your UI vibe */
+  border-radius: 12px;
 }
 
-/* Small screens: tighten the width a bit more */
-@media (max-width: 576px) {
+/* Small screens: narrower modal gutters */
+@media (max-width:576px) {
   .modal.show .modal-dialog {
     width: calc(100% - 1.5rem);
     max-width: 100%;

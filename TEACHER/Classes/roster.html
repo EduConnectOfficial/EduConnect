@@ -20,10 +20,10 @@
     <div id="sidebar-container"></div>
 
     <div class="main">
-       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         <div class="search-box position-relative">
-          <input id="tableSearch" type="text" class="form-control" placeholder="Search classes..."/>
+          <input id="tableSearch" type="text" class="form-control" placeholder="Search roster..." />
           <i class="fas fa-search position-absolute" style="top:50%; right:15px; transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none">
@@ -31,7 +31,6 @@
           <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
-
 
       <section class="content">
         <div class="ui-card section mb-3 d-flex flex-wrap justify-content-between align-items-center">
@@ -83,6 +82,7 @@
                   <th>Name</th>
                   <th>Student ID</th>
                   <th>Email</th>
+                  <th>Last Active</th> <!-- NEW COLUMN -->
                   <th>Status</th>
                   <th class="text-center">Actions</th>
                 </tr>
@@ -197,7 +197,8 @@
         <div class="modal-body" id="confirmModalBody">Are you sure?</div>
         <div class="modal-footer">
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal" id="confirmCancelBtn">Cancel</button>
-          <button type="button" class="btn btn-danger" id="confirmOkBtn">Yes, continue</button>
+          <!-- This text is fine; class will be enforced to btn-danger in JS every time -->
+          <button type="button" class="btn btn-danger" id="confirmOkBtn">Yes, remove</button>
         </div>
       </div>
     </div>
@@ -205,69 +206,55 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
+  <!-- ---- Auth guard + header initials (robust) ---- -->
+  <script>
+  (function initHeaderInitials(){
+    try{
+      const raw = localStorage.getItem("user");
+      const stored = raw ? JSON.parse(raw) : {};
+      const u = stored.user || stored;
+
+      if (!u?.userId || !u?.isTeacher) {
+        window.location.href = "/TEACHER/login/login.html";
+        return;
+      }
+      window.currentUser = u;
+
+      const initials = getInitials(u);
+
+      window.addEventListener("DOMContentLoaded", () => {
+        const el = document.getElementById("Username");
+        if (!el) return;
+        el.textContent = initials;
+        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+                        || u.username || u.email || 'Profile';
+        el.setAttribute('title', fullLabel);
+        el.setAttribute('aria-label', fullLabel);
+      });
+    }catch(e){
+      console.error('initHeaderInitials failed:', e);
       window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
-
-    const initials = getInitials(u);
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
-
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
-
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
     }
 
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
+    function getInitials(u){
+      const fn = (u.firstName || '').trim();
+      const ln = (u.lastName  || '').trim();
+      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+      const nameish = (u.username || u.displayName || u.name || '').trim();
+      if (nameish){
+        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0][0].toUpperCase();
+      }
+      const em = (u.email || '').trim();
+      return em ? em[0].toUpperCase() : 'U';
+    }
+  })();
+  </script>
 
   <script>
-    const API_BASE = 'http://localhost:5000'; // match the rest of your app
+    const API_BASE = 'http://localhost:5000';
     let classId;
     let _lookupTimer = null;
     let _selectedStudentId = null;
@@ -279,6 +266,28 @@
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", "&#39;");
+    }
+
+    // --- datetime helpers (handles millis, Firestore Timestamp, ISO) ---
+    function toMillis(v){
+      if (v == null) return null;
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') {
+        const t = Date.parse(v); return isNaN(t) ? null : t;
+      }
+      if (v && typeof v === 'object'){
+        if (typeof v.toMillis === 'function') return v.toMillis();
+        if (v._seconds != null) return v._seconds * 1000;
+        if (v.seconds != null)  return v.seconds  * 1000;
+      }
+      return null;
+    }
+    function fmtLocal(millis){
+      return millis ? new Date(millis).toLocaleString() : '—';
+    }
+    function getLastActiveMillis(s){
+      const cand = s.lastActiveAt ?? s.lastSeenAt ?? s.lastLoginAt ?? s.lastActivityAt ?? s.lastUsedAt ?? s.lastOnlineAt ?? (s.meta && s.meta.lastActiveAt);
+      return toMillis(cand);
     }
 
     // ---------- Modal Helpers ----------
@@ -300,33 +309,29 @@
     const confirmCancelBtn = document.getElementById('confirmCancelBtn');
     const confirmModal = new bootstrap.Modal(confirmModalEl);
 
-   function showConfirm(title = 'Confirm Action', message = 'Are you sure?') {
-  confirmTitleEl.textContent = title;
-  confirmBodyEl.innerHTML = message;
-  return new Promise((resolve) => {
-    const onOk = () => { 
-      cleanup(); 
-      confirmModal.hide();   // 👈 closes the modal automatically
-      resolve(true); 
-    };
-    const onCancel = () => { 
-      cleanup(); 
-      resolve(false); 
-    };
-
-    function cleanup() {
-      confirmOkBtn.removeEventListener('click', onOk);
-      confirmCancelBtn.removeEventListener('click', onCancel);
-      confirmModalEl.removeEventListener('hidden.bs.modal', onCancel);
+    // Force the OK button to btn-danger every time (prevents theme overrides)
+    function forceDangerOk(){
+      confirmOkBtn.className = 'btn btn-danger';
     }
 
-    confirmOkBtn.addEventListener('click', onOk, { once: true });
-    confirmCancelBtn.addEventListener('click', onCancel, { once: true });
-    confirmModalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
-
-    confirmModal.show();
-  });
-}
+    function showConfirm(title = 'Confirm Action', message = 'Are you sure?') {
+      confirmTitleEl.textContent = title;
+      confirmBodyEl.innerHTML = message;
+      forceDangerOk(); // 👈 ensure red button
+      return new Promise((resolve) => {
+        const onOk = () => { cleanup(); confirmModal.hide(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+        function cleanup() {
+          confirmOkBtn.removeEventListener('click', onOk);
+          confirmCancelBtn.removeEventListener('click', onCancel);
+          confirmModalEl.removeEventListener('hidden.bs.modal', onCancel);
+        }
+        confirmOkBtn.addEventListener('click', onOk, { once: true });
+        confirmCancelBtn.addEventListener('click', onCancel, { once: true });
+        confirmModalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        confirmModal.show();
+      });
+    }
 
     // Sidebar
     async function loadSidebar() {
@@ -391,12 +396,15 @@
           const statusCell = s.active
             ? '<span class="badge bg-success">Active</span>'
             : '<span class="badge bg-warning text-dark">Inactive</span>';
+          const lastMs = getLastActiveMillis(s);
+          const lastCell = lastMs ? `<span title="${new Date(lastMs).toISOString()}">${fmtLocal(lastMs)}</span>` : '—';
 
           tr.innerHTML = `
             <td><input type="checkbox" class="row-select form-check-input" data-student-id="${sid}"></td>
             <td>${fullName || '—'}</td>
             <td>${sid || '—'}</td>
             <td>${emailCell}</td>
+            <td>${lastCell}</td>            <!-- NEW CELL -->
             <td>${statusCell}</td>
             <td class="text-center">
               <button class="btn btn-sm btn-outline-danger remove-btn" data-student-id="${sid}">Remove</button>
@@ -510,7 +518,6 @@
         const res = await fetch(`${API_BASE}/api/students/search?query=${encodeURIComponent(q)}`);
         const data = await safeJson(res) || {};
 
-        // STRICT FRONTEND GUARD: only keep entries with a non-empty studentId
         const studentsOnly = Array.isArray(data.students)
           ? data.students.filter(stu => typeof stu.studentId === 'string' && stu.studentId.trim() !== '')
           : [];
@@ -661,7 +668,8 @@
       await loadSidebar();
       await loadRoster();
 
-      document.getElementById('searchStudent').addEventListener('input', e => {
+      // Fixed: wire search to the actual #tableSearch input
+      document.getElementById('tableSearch').addEventListener('input', e => {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('#rosterBody tr').forEach(tr => {
           tr.style.display = tr.textContent.toLowerCase().includes(term) ? '' : 'none';
