@@ -11,8 +11,17 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <!-- Your quiz styles (keep if you have it) -->
+  <!-- Your quiz styles -->
   <link rel="stylesheet" href="quiz.css" />
+
+  <!-- Assign-to-Classes lightweight styles -->
+  <style>
+    .assign-card { border: 1px solid rgba(0,0,0,.08); border-radius:.75rem; cursor: pointer; transition: .15s ease; }
+    .assign-card:hover { box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.06); }
+    .assign-card.selected { border-color: var(--bs-warning); box-shadow: 0 0.5rem 1rem rgba(255,193,7,.15); }
+    .assign-card .card-body { padding: 0.9rem 1rem; }
+    .small-muted { color: #6c757d; font-size: .875rem; }
+  </style>
 </head>
 
 <body>
@@ -59,17 +68,33 @@
                 </div>
               </div>
 
+              <!-- NEW: Assign to Classes -->
+              <div class="mt-3 p-3 border rounded-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                  <div>
+                    <h5 class="mb-1"><i class="bi bi-people me-1"></i> Assign to Classes</h5>
+                    <div class="small-muted">
+                      Select which of your classes should receive this quiz.
+                      <span class="d-block">Tip: click a card to toggle selection. Use Space/Enter for keyboard.</span>
+                    </div>
+                  </div>
+                  <div id="assigned-status" class="small-muted">Loading your classes…</div>
+                </div>
+                <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
+                  No classes found for your account.
+                </div>
+                <div id="assignedClassesContainer" class="row g-3"></div>
+              </div>
+
               <!-- Title / Description -->
               <div class="row g-3 mt-1">
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Quiz Title</label>
-                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz"
-                    required>
+                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
                 </div>
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
-                  <input type="text" id="quizDescInput" class="form-control"
-                    placeholder="Short description shown to students">
+                  <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
                 </div>
               </div>
 
@@ -95,8 +120,8 @@
                     Rubric File <span class="text-muted">(applies to Essay questions only)</span>
                   </label>
                   <input type="file" id="rubricsFile" class="form-control"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*" aria-disabled="true"
-                    disabled />
+                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*"
+                         aria-disabled="true" disabled />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
@@ -106,20 +131,17 @@
                   <div id="rubricRow" class="rubric-row mt-2 d-none">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                       <span class="badge-soft"><i class="bi bi-clipboard-check me-1"></i>Rubric</span>
-                      <button id="rubricNameBtn" type="button"
-                        class="btn btn-link p-0 align-baseline text-decoration-none"></button>
+                      <button id="rubricNameBtn" type="button" class="btn btn-link p-0 align-baseline text-decoration-none"></button>
                     </div>
                     <div class="d-flex align-items-center gap-2 mt-2">
                       <span id="rubricChip" class="pill text-truncate" style="max-width:220px;"></span>
-                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm"
-                        title="Preview"><i class="bi bi-eye"></i></button>
+                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm" title="Preview"><i class="bi bi-eye"></i></button>
                       <label class="btn btn-outline-secondary btn-sm mb-0" title="Replace">
                         <i class="bi bi-arrow-repeat"></i>
                         <input id="rubricReplaceInput" type="file" class="d-none"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
                       </label>
-                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i
-                          class="bi bi-trash"></i></button>
+                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i class="bi bi-trash"></i></button>
                     </div>
                   </div>
                 </div>
@@ -141,15 +163,12 @@
                 </div>
                 <div class="col-12 col-md-4">
                   <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
-                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30"
-                    disabled>
+                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
                   <div class="hint mt-1">Whole minutes, minimum 1.</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span
-                      class="text-muted">(optional)</span></label>
-                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10"
-                    disabled>
+                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
+                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
                   <div class="hint mt-1">Extra seconds before auto-submit.</div>
                 </div>
               </div>
@@ -203,7 +222,7 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                   <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
                   <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#bulkHelpModal">
+                          data-bs-target="#bulkHelpModal">
                     <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
                   </button>
                 </div>
@@ -218,10 +237,8 @@
                       class="bi bi-download me-1"></i> CSV: All Types</button>
                 </div>
                 <div class="hint mt-2">
-                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD,
-                    correct</span>.
-                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span
-                    class="mono">FALSE</span>.
+                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
+                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span class="mono">FALSE</span>.
                 </div>
 
                 <hr class="my-3">
@@ -768,6 +785,97 @@
       }
     });
 
+    /* ---------- Assign-to-Classes (NEW) ---------- */
+    const assignedContainer = document.getElementById("assignedClassesContainer");
+    const assignedStatus = document.getElementById("assigned-status");
+    const assignedEmpty = document.getElementById("assigned-empty");
+    let selectedClassIds = new Set();
+
+    function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function renderClassCards(classes) {
+      assignedContainer.innerHTML = "";
+      if (!classes.length) {
+        assignedStatus.style.display = "none";
+        assignedEmpty.style.display = "block";
+        return;
+      }
+      classes.forEach(c => {
+        const id = c.id || c._id || c.classId || "";
+        const name = c.name || c.className || "Untitled Class";
+        const grade = c.gradeLevel ?? c.grade ?? "—";
+        const section = c.section ?? c.sectionName ?? "—";
+
+        const col = document.createElement("div");
+        col.className = "col-12 col-sm-6 col-lg-4";
+
+        const card = document.createElement("div");
+        card.className = "card assign-card";
+        card.tabIndex = 0;
+
+        if (selectedClassIds.has(id)) card.classList.add("selected");
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+        body.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title mb-1">${esc(name)}</h5>
+            <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+          </div>
+          <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
+        `;
+        card.appendChild(body);
+
+        function toggle() {
+          const on = !card.classList.contains('selected');
+          card.classList.toggle("selected", on);
+          if (on) selectedClassIds.add(id); else selectedClassIds.delete(id);
+          markDirty();
+        }
+        card.addEventListener("click", e => {
+          if (window.getSelection && String(window.getSelection()).length) return;
+          toggle();
+        });
+        card.addEventListener("keydown", e => {
+          if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+        });
+
+        col.appendChild(card);
+        assignedContainer.appendChild(col);
+      });
+      assignedStatus.style.display = "none";
+      assignedEmpty.style.display = "none";
+    }
+
+    async function loadTeacherClassesAndRender() {
+      try {
+        if (!TEACHER_ID) {
+          assignedStatus.textContent = "Missing teacher ID in your session.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+        const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`, {
+          headers: { "Accept": "application/json" }
+        });
+        const json = await res.json().catch(()=>({success:false, classes:[]}));
+        const classes = json?.classes || [];
+        if (json.success === false) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+        renderClassCards(classes);
+      } catch (e) {
+        console.error("Could not load classes:", e);
+        assignedStatus.textContent = "Could not load your classes. Please refresh.";
+        assignedStatus.classList.remove('small-muted');
+        assignedStatus.classList.add('text-danger');
+        openBrandAlert({ title:'Network Error', message:'Could not load your classes. Please refresh and try again.' });
+      }
+    }
+
     /* ---------- Question Builder + Pager ---------- */
     let qIndex = 0;
     const container = document.getElementById("question-container");
@@ -902,7 +1010,6 @@
       markDirty();
     });
 
-    /* ---------- Render Questions & Pager ---------- */
     function renderBody(type, idx) {
       if (type === "mcq") {
         return `
@@ -1409,16 +1516,19 @@
 
       const essayCount = countEssayQuestions();
       const rubricFile = __stagedRubricFile || null;
-
       if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
         alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`);
         return;
       }
 
+      /* NEW: collect selected classes */
+      const assignedClasses = Array.from(selectedClassIds);
+
       const payload = {
         courseId, moduleId, title, description, dueAt,
         attemptsAllowed: attemptsAllowedVal,
-        quiz, settings
+        quiz, settings,
+        assignedClasses   // <— NEW: include targeting in payload
       };
 
       try {
@@ -1461,7 +1571,7 @@
           const modalEl = document.getElementById('uploadSuccessModal');
           const redirectHandler = function () {
             modalEl.removeEventListener('hidden.bs.modal', redirectHandler);
-            resetDirtySafely();                     // ensure guard does not block
+            resetDirtySafely();
             window.location.href = '/TEACHER/quizzes/quiz_list.html';
           };
           modalEl.addEventListener('hidden.bs.modal', redirectHandler);
@@ -1488,6 +1598,9 @@
           document.getElementById('bulkTbody').innerHTML = '';
           document.getElementById('addValidBtn').disabled = true;
 
+          selectedClassIds = new Set(); // clear selection
+          await loadTeacherClassesAndRender();
+
           resetDirtySafely();
         } else {
           alert("Failed to upload quiz: " + (out.message || "Unknown error"));
@@ -1501,11 +1614,12 @@
     /* ---------- Boot ---------- */
     (async function init() {
       addQuestion();
-      const sizeLimitText = document.getElementById('sizeLimitText');
-      if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+      const sizeLimitTextEl = document.getElementById('sizeLimitText');
+      if (sizeLimitTextEl) sizeLimitTextEl.textContent = TEACHER_FILE_LIMIT_MB + " MB";
       updateEssayRubricState();
       document.getElementById("perPageInput").disabled = true;
       await loadCourses();
+      await loadTeacherClassesAndRender(); // NEW
     })();
 
     function logoutUser() {
