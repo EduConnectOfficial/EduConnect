@@ -111,7 +111,7 @@
                     <div class="col-md-8">
                       <label class="form-label">Upload file(s)</label>
                       <input id="fileInput" type="file" multiple class="form-control" />
-                      <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>. Select multiple; preview before staging.</div>
+                      <div class="small-muted mt-1">Per-file limit: <strong>300 MB</strong>. Select multiple; preview before staging.</div>
                     </div>
                     <div class="col-md-4 d-grid d-sm-flex gap-2">
                       <button id="btnPreviewSelectedFiles" class="btn btn-outline-secondary w-100 w-sm-auto">
@@ -284,7 +284,7 @@
   <!-- Page Logic -->
   <script>
     const API_BASE = "http://localhost:5000";
-    const TEACHER_MAX_MB = 500;
+    const TEACHER_MAX_MB = 300;
     const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
     /* ===== Utilities ===== */

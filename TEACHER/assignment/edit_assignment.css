@@ -79,61 +79,87 @@ body {
     font-size: .9rem;
 }
 
-/* ========== 3) Header ========== */
+.form-help {
+    font-size: .85rem;
+    color: #6b7280;
+}
+
+/* =======================
+   3) Header
+======================= */
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.header-top--light {
+    background: #fff;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
 }
 
 .logo-header {
-  height: 45px;
+    height: 45px;
 }
 
 .search-box {
-  position: relative;
-  flex: 1;
-  max-width: 500px;
-  margin: 0 20px;
+    position: relative;
+    flex: 1;
+    max-width: 520px;
+    margin: 0 20px;
 }
 
 .search-box input {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 30px;
-  border: none;
-  outline: none;
+    width: 100%;
+    padding: 12px 44px 12px 16px;
+    border: none;
+    border-radius: 999px;
+    outline: 0;
+    font-size: 1.05rem;
+}
+
+.header-top--light .search-box input {
+    border: 1px solid var(--border);
 }
 
 .search-box i {
-  position: absolute;
-  top: 50%;
-  right: 15px;
-  transform: translateY(-50%);
-  color: #999;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #d7dadf;
+}
+
+.header-top--light .search-box i {
+    color: #9aa2a8;
 }
 
 .profile-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.header-top--light .profile-btn {
+    color: #222;
 }
 
 .profile-btn .username {
-  font-size: 14px;
+    font-size: 14px;
 }
 
 /* =======================
@@ -144,7 +170,7 @@ body {
     border: 1px solid #e5e7eb;
     border-radius: var(--radius);
     box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
-    overflow: hidden
+    overflow: hidden;
 }
 
 .ui-card-head {
@@ -153,7 +179,8 @@ body {
     align-items: center;
     background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
     color: #FFD8A9;
-    padding: 12px 16px
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
 
 .ui-card-title {
@@ -163,9 +190,8 @@ body {
     display: flex;
     gap: .5rem;
     align-items: center;
-    color: #ffe9ca
+    color: #ffe9ca;
 }
-
 
 .page-title {
     font-weight: 700;
@@ -214,7 +240,7 @@ body {
     border-radius: 999px;
     padding: .45rem 1.1rem;
     font-weight: 500;
-    transition: background .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
+    transition: background .2s, color .2s, transform .2s, border-color .2s;
 }
 
 .btn-amber-outline:hover {
@@ -276,7 +302,7 @@ body {
     border-color: #dc3545;
 }
 
-/* Neutral secondary button used in modal footers for non-brand actions */
+/* Neutral secondary (modal footer) */
 .btn-close-footer {
     background-color: #6a737d !important;
     color: #fff !important;
@@ -288,25 +314,27 @@ body {
 
 .btn-close-footer:hover,
 .btn-close-footer:focus {
-    background-color: #6a737d !important;
-    color: #fff !important;
     transform: scale(1.04);
 }
 
+/* Logout button reveal on sidebar hover (container variant) */
 .logout-btn {
-    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-    border: none;
-    padding: .6rem 1.5rem;
-    border-radius: 20px;
-    color: #fff;
-    font-weight: 700;
-    opacity: 0;
-    transition: opacity .3s;
+  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 20px;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .3s ease, color .3s;
+  user-select: none;
+  cursor: pointer;
 }
-
-.sidebar:hover .logout-btn {
-    opacity: 1;
-}
+#sidebar-container:hover .logout-btn { opacity: 1; }
+.logout-btn:hover { opacity: .85; color: #4A1A0C; }
 
 /* =======================
    6) Pills, Badges & Labels
@@ -407,7 +435,6 @@ body {
 /* =======================
    8) Questions UI
 ======================= */
-/* Chips */
 .q-chip {
     display: inline-block;
     padding: .25rem .6rem;
@@ -424,7 +451,6 @@ body {
     color: #1d4ed8;
 }
 
-/* Item container */
 .q-item {
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -505,62 +531,45 @@ body {
 }
 
 /* =======================
-   9) File Preview Modal (wide)
-   (Scoped so other modals remain standard)
+   9) File list (badges, chips)
 ======================= */
-#filePreviewModal .modal-dialog {
-    max-width: 96vw;
+.file-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
 }
 
-#filePreviewModal .modal-content {
-    height: 92vh;
+.file-item {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
 }
 
-#filePreviewModal .modal-body {
+.file-item+.file-item {
+    margin-top: .5rem;
+}
+
+.file-name {
     flex: 1 1 auto;
-    padding: 0;
-    background: #f8fafc;
-    position: relative;
+    min-width: 0;
 }
 
-.preview-wrap {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.file-name span,
+.file-name a,
+.file-name button {
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
 }
 
-.preview-wrap iframe,
-.preview-wrap embed,
-.preview-wrap object,
-.preview-wrap img,
-.preview-wrap video,
-.preview-wrap audio {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    object-fit: contain;
-    background: #fff;
-}
-
-.preview-fallback {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 2rem;
-    text-align: center;
-}
-
-.spinner-wrap {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
+.btn-icon {
+    padding: .375rem .5rem;
 }
 
 /* =======================
@@ -664,7 +673,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     color: #000;
 }
 
-/* IMPORTANT: Only brand buttons get the amber styling in footers */
+/* Brand buttons only */
 .modal-footer .btn-amber,
 #successOkBtn,
 #feedbackModal .btn-amber {
@@ -684,7 +693,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     transform: scale(1.05);
 }
 
-/* Centered modal layout (default size for non-preview modals) */
+/* Centered modal layout */
 .modal.show {
     display: flex !important;
     align-items: center;
@@ -708,113 +717,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     overflow: auto;
 }
 
-/* File list (badges, chips) */
-.file-list {
-    list-style: none;
-    padding-left: 0;
-    margin: 0
-}
-
-.file-item {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .5rem .75rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #fff
-}
-
-.file-item+.file-item {
-    margin-top: .5rem
-}
-
-.file-name {
-    flex: 1 1 auto;
-    min-width: 0
-}
-
-.file-name a,
-.file-name button {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-    max-width: 100%
-}
-
-.btn-icon {
-    padding: .375rem .5rem
-}
-
-.badge-soft {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    padding: .2rem .5rem;
-    font-size: .75rem
-}
-
-.badge-file {
-    background: #eef2ff;
-    border-color: #c7d2fe
-}
-
-.badge-link {
-    background: #ecfeff;
-    border-color: #a5f3fc
-}
-
-.badge-stage {
-    background: #dcfce7;
-    border-color: #86efac
-}
-
-.badge-removal {
-    background: #fee2e2;
-    border-color: #fecaca
-}
-
-.name-removed {
-    text-decoration: line-through;
-    color: #94a3b8;
-}
-
-/* Lesson page card */
-.lesson-page.card {
-    border: 1px solid var(--border)
-}
-
-.step-dots {
-    display: flex;
-    gap: 6px;
-    align-items: center
-}
-
-.step-dots .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: #e5e7eb
-}
-
-.step-dots .dot.active {
-    background: #111827
-}
-
-.pager-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .2rem .6rem;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    font-size: .8rem;
-    background: #fff;
-    color: #374151
-}
-
-/* Preview modal */
+/* =======================
+   13) File Preview Modal (wide)
+======================= */
 #filePreviewModal .modal-dialog {
     max-width: 96vw;
 }
@@ -870,7 +775,41 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     background: #fff;
 }
 
-/* tiny helpers reused from course page */
+/* Lesson page card & pager */
+.lesson-page.card {
+    border: 1px solid var(--border);
+}
+
+.step-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.step-dots .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.step-dots .dot.active {
+    background: #111827;
+}
+
+.pager-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: .8rem;
+    background: #fff;
+    color: #374151;
+}
+
+/* Tiny helpers (course page) */
 .assign-card {
     cursor: pointer;
     border: 1px solid var(--border, #e5e7eb);
@@ -880,75 +819,67 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .assign-card.selected {
     outline: 2px solid var(--brand-accent-1, #FF6A00);
-    box-shadow: 0 0 0 3px rgba(255, 106, 0, .15)
+    box-shadow: 0 0 0 3px rgba(255, 106, 0, .15);
 }
 
 .assign-card .card-title {
-    font-weight: 600
+    font-weight: 600;
 }
 
-.small-muted {
-    font-size: .9rem;
-    color: var(--muted, #6a737d)
+/* Attachments & Rubric rows — fix button alignment */
+.row.g-2.align-items-end.mb-3{
+  align-items: flex-start !important;             /* top-align columns */
 }
 
-.badge-soft {
-    background: #f6f8fa;
-    border: 1px solid #e5e7eb;
-    border-radius: 999px;
-    padding: .15rem .5rem
+/* LEFT column: input + help stacked */
+.row.g-2.align-items-end.mb-3 > [class*="col-"]:first-child{
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.row.g-2.align-items-end.mb-3 .form-help{
+  order: 2;
+  margin-top: .15rem;
 }
 
-.badge-stage {
-    background: rgba(255, 106, 0, .1);
-    border-color: rgba(255, 106, 0, .25);
-    color: #b03c10
+/* RIGHT column: two buttons side-by-side (horizontal) */
+.row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child{
+  align-self: center;                          /* line up with input top */
+  display: grid !important;
+  grid-template-columns: auto auto;                /* Preview | Stage */
+  gap: .5rem;
+  justify-content: start;
+  align-items: stretch;
+  margin-top: 20px;
 }
 
-.badge-link {
-    background: rgba(25, 118, 210, .08);
-    border-color: rgba(25, 118, 210, .2);
-    color: #1769aa
+/* If an inner wrapper (e.g., .d-sm-flex) exists, let buttons join the grid */
+.row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child .d-sm-flex{
+  display: contents !important;
 }
 
-.badge-file {
-    background: rgba(76, 175, 80, .08);
-    border-color: rgba(76, 175, 80, .2);
-    color: #2e7d32
+/* Normalize button size to match inputs */
+.row.g-2.align-items-end.mb-3 .btn{
+  height: 40px;                                    /* close to file input height */
+  padding: 0 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
 }
 
-.btn-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px
+/* Mobile: stack buttons */
+@media (max-width: 576px){
+  .row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child{
+    grid-template-columns: 1fr;
+  }
 }
 
-.ui-card.constrain {
-    max-width: 1120px;
-    margin-left: auto;
-    margin-right: auto
-}
-
-.step-dots .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    background: #d0d7de;
-    margin-inline: 3px
-}
-
-.step-dots .dot.active {
-    background: #FF6A00
-}
 
 /* =======================
-   13) Responsive Tweaks
+   14) Responsive Tweaks
 ======================= */
-/* ≤576px: modal gutter, card heads, etc. */
+/* ≤576px: modal gutter, card heads */
 @media (max-width:576px) {
     .ui-card {
         padding: 10px;
@@ -1102,11 +1033,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         max-width: 100% !important;
     }
 
-    .import-card .d-flex.flex-wrap.gap-2>.btn,
-    .import-card .row.g-2 .col-12.col-md-4 .btn {
-        width: 100% !important;
-    }
-
     /* Questions toolbar / actions */
     .q-toolbar {
         width: 100%;
@@ -1142,9 +1068,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         width: 100% !important;
     }
 
-    /* Rubric row mobile layout */
+    /* Rubric row mobile */
     .rubric-row {
-        display: flex;
         flex-wrap: wrap;
         align-items: flex-start;
         gap: .5rem .6rem;
@@ -1193,7 +1118,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         gap: .25rem;
     }
 
-    /* Rubric actions full-width */
     .rubric-row .rubric-actions {
         display: grid !important;
         grid-template-columns: 1fr;

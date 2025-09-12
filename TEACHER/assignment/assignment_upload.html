@@ -9,46 +9,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
-  <link href="./ass_upload.css" rel="stylesheet"/>
+  <link href="ass_upload.css" rel="stylesheet"/>
 
-  <style>
-    :root{ --radius:14px; }
-    html,body{ background:#f6f8fa; }
-    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1, #2a3f5f),var(--brand-dark-2, #20334b));color:#FFD8A9;padding:12px 16px}
-    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
-    .ui-subtext{font-size:.9rem;opacity:.9}
-    .brand{color:#20334b}
-    .small-muted { color:#6b7280; font-size:.9rem; }
-    .file-too-large{ color:#b91c1c; font-weight:600; }
-    .hint{color:#6b7280;font-size:.85rem}
-
-    /* Attachments list */
-    .file-list{list-style:none;padding-left:0;margin:0}
-    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-    .file-item + .file-item{margin-top:.5rem}
-    .file-name{flex:1 1 auto;min-width:0}
-    .file-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
-    .btn-icon{padding:.375rem .5rem}
-
-    /* badges (match edit page) */
-    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
-    .badge-rubric{background:#fff3cd;border-color:#ffe69c}
-    .badge-file{background:#eef2ff;border-color:#c7d2fe}
-    .badge-link{background:#ecfeff;border-color:#a5f3fc}
-    .badge-stage{background:#dcfce7;border-color:#86efac}
-
-    /* modal preview (match edit page) */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
-    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
-    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
-    }
-    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
-    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
-  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -77,7 +39,7 @@
         <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1080px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-clipboard-plus"></i> Create Assignment</h2>
-            <div class="ui-subtext">Pick a course & module, add details, then stage files/links/rubric and create.</div>
+            <div class="ui-subtext">Pick a course & module, assign to classes, add details, then stage files/links/rubric and create.</div>
           </div>
 
           <form id="assignmentForm" class="px-3 py-3" enctype="multipart/form-data" novalidate>
@@ -96,6 +58,22 @@
                   <option value="">Select a course first…</option>
                 </select>
                 <div id="moduleHelp" class="hint mt-1"></div>
+              </div>
+            </div>
+
+            <!-- NEW: Assign to Classes -->
+            <div class="ui-card mt-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
+                <div class="ui-subtext">Select which of your classes should receive this assignment.</div>
+              </div>
+              <div class="p-3">
+                <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
+                <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
+                  No classes found for your account.
+                </div>
+                <div id="assignedClassesContainer" class="row g-3"></div>
+                <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
               </div>
             </div>
 
@@ -141,7 +119,7 @@
                   <div class="col-md-8">
                     <label class="form-label">Upload file(s)</label>
                     <input id="fileInput" type="file" multiple class="form-control" />
-                    <div class="small-muted mt-1">Per-file limit: <strong>500 MB</strong>. You can select multiple; preview before staging.</div>
+                    <div class="small-muted mt-1">Per-file limit: <strong>300 MB</strong>. You can select multiple; preview before staging.</div>
                   </div>
                   <div class="col-md-4 d-grid d-sm-flex gap-2">
                     <button id="btnPreviewSelectedFiles" class="btn btn-outline-secondary w-100 w-sm-auto">
@@ -183,7 +161,7 @@
                     <button id="btnPreviewLink" class="btn btn-outline-secondary w-100 w-sm-auto">
                       <i class="bi bi-eye"></i> Preview
                     </button>
-                    <button id="btnStageLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                    <button id="btnStageLink" class="btn btn-outline-info w-100 w-sm-auto">
                       <i class="bi bi-link-45deg"></i> Stage Link
                     </button>
                   </div>
@@ -236,10 +214,10 @@
         <div class="modal-footer">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto d-flex gap-2">
-            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+            <button id="stageFromPreviewBtn" class="btn btn-amber d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage this file
             </button>
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>
@@ -330,10 +308,10 @@
   <!-- Page Logic (MATCHES EDIT PAGE BEHAVIOR) -->
   <script>
     const API_BASE = "http://localhost:5000";
-    const TEACHER_MAX_MB = 500;
+    const TEACHER_MAX_MB = 300;
     const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
-    /* ===== Utilities (copied/trimmed from edit page for parity) ===== */
+    /* ===== Utilities ===== */
     const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const toMillis = v => v ? new Date(v).getTime() : null;
 
@@ -460,7 +438,7 @@
     const btnStageLink   = document.getElementById('btnStageLink');
     const filesList      = document.getElementById('filesList');
 
-    /* ===== Staging (like edit page, but no currentAttachments) ===== */
+    /* ===== Staging ===== */
     let staged = {
       addFiles: [],      // File[]
       addLinks: [],      // string[]
@@ -510,7 +488,6 @@
             <i class="bi bi-x-lg"></i>
           </button>
         `;
-        // Optional: allow quick replace for staged rubric
         if (att.type === 'rubrics') {
           controls = `
             <label class="btn btn-outline-secondary btn-sm btn-icon mb-0" title="Replace rubric">
@@ -530,7 +507,6 @@
       }).join('');
     }
 
-    /* Delegated actions (fixes gray-eye issue) */
     filesList.addEventListener('click', (e)=>{
       const li = e.target.closest('.file-item'); if (!li) return;
       const id = li.getAttribute('data-id');
@@ -539,7 +515,6 @@
       if (!item) return;
 
       if (e.target.closest('[data-act="preview"]')) {
-        // Preview staged
         if (type === 'link') {
           openPreviewModalWithMeta({ url: item.__stagedName, title: item.__stagedName, mime:'', isStaged:true });
           return;
@@ -679,6 +654,104 @@
       }
     });
 
+    /* ===== Assign-to-Classes (NEW) ===== */
+    const assignedContainer = document.getElementById("assignedClassesContainer");
+    const assignedStatus = document.getElementById("assigned-status");
+    const assignedEmpty = document.getElementById("assigned-empty");
+    let selectedClassIds = new Set();   // working selection
+
+    function renderClassCards(classes) {
+      assignedContainer.innerHTML = "";
+      if (!classes.length) {
+        assignedStatus.style.display = "none";
+        assignedEmpty.style.display = "block";
+        return;
+      }
+      classes.forEach(c => {
+        const id = c.id || c._id || c.classId || "";
+        const name = c.name || c.className || "Untitled Class";
+        const grade = c.gradeLevel ?? c.grade ?? "—";
+        const section = c.section ?? c.sectionName ?? "—";
+
+        const col = document.createElement("div");
+        col.className = "col-12 col-sm-6 col-lg-4";
+
+        const card = document.createElement("div");
+        card.className = "card assign-card";
+        card.tabIndex = 0;
+
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.value = id;
+        chk.className = "d-none";
+        if (selectedClassIds.has(id)) {
+          chk.checked = true;
+          card.classList.add("selected");
+        }
+        card.appendChild(chk);
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+        body.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title mb-1">${esc(name)}</h5>
+            <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+          </div>
+          <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
+        `;
+        card.appendChild(body);
+
+        function toggle() {
+          const isChecked = !chk.checked;
+          chk.checked = isChecked;
+          card.classList.toggle("selected", isChecked);
+          if (isChecked) selectedClassIds.add(id);
+          else selectedClassIds.delete(id);
+        }
+        card.addEventListener("click", e => {
+          if (window.getSelection && String(window.getSelection()).length) return;
+          toggle();
+        });
+        card.addEventListener("keydown", e => {
+          if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+        });
+
+        col.appendChild(card);
+        assignedContainer.appendChild(col);
+      });
+      assignedStatus.style.display = "none";
+      assignedEmpty.style.display = "none";
+    }
+
+    async function loadTeacherClassesAndRender() {
+      try {
+        const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
+        if (!teacherId) {
+          assignedStatus.textContent = "Missing teacher ID in your session.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        const json = await res.json().catch(()=>({success:false, classes:[]}));
+        const classes = json?.classes || [];
+        if (!json.success && json.success !== undefined) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+        renderClassCards(classes);
+      } catch (e) {
+        console.error("Could not load classes:", e);
+        assignedStatus.textContent = "Could not load your classes. Please refresh.";
+        assignedStatus.classList.remove('small-muted');
+        assignedStatus.classList.add('text-danger');
+        showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
+      }
+    }
+
     /* ===== Load courses & modules ===== */
     async function fetchFirst(urls, opts) {
       for (const u of urls) {
@@ -699,7 +772,7 @@
         ]);
         const data = await res.json();
         const courses = Array.isArray(data) ? data : Array.isArray(data.courses) ? data.courses : [];
-        courses.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+        courses.sort((a,b)=> (a.title||'').localeCompare(b.title||'')); 
         if (!courses.length) {
           courseSelect.innerHTML = `<option value="" selected disabled>No courses yet — create one first</option>`;
           return;
@@ -748,7 +821,7 @@
 
     courseSelect.addEventListener("change", (e)=> loadModules(e.target.value));
 
-    /* ===== Submit (create) – sends staged items ===== */
+    /* ===== Submit (create) – sends staged items & assignedClasses ===== */
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       formError.textContent = "";
@@ -765,7 +838,7 @@
         return;
       }
 
-      // size checks (500MB/file)
+      // size checks (300MB/file)
       const allFiles = [...staged.addFiles, ...(staged.addRubric ? [staged.addRubric] : [])];
       const tooLarge = allFiles.find(f => f.size > TEACHER_MAX_BYTES);
       if (tooLarge) {
@@ -785,6 +858,9 @@
       if (points !== null && !Number.isNaN(points)) fd.append("points", String(points));
       if (publishAtVal) fd.append("publishAt", String(toMillis(publishAtVal)));
       if (dueAtVal)     fd.append("dueAt", String(toMillis(dueAtVal)));
+
+      // NEW: assigned classes
+      Array.from(selectedClassIds).forEach(id => fd.append("assignedClasses", id));
 
       // staged files
       staged.addFiles.forEach(f => fd.append("files", f));
@@ -819,7 +895,11 @@
     });
 
     // Boot
-    (async function init(){ await loadCourses(); renderAttachments(); })();
+    (async function init(){
+      await loadCourses();
+      await loadTeacherClassesAndRender();
+      renderAttachments();
+    })();
   </script>
 
   <!-- Mobile-friendly datetime helper (unchanged) -->

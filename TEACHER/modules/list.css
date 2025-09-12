@@ -116,81 +116,61 @@ body {
   width: calc(100% - 220px);
 }
 
-/* =========================================================
-   Header
-========================================================= */
+/* ========== 3) Header ========== */
 .header-top {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, var(--color-primary), var(--color-secondary));
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .logo-header {
-  height: 44px;
+  height: 45px;
 }
 
 .search-box {
   position: relative;
-  flex: 1 1 auto;
-  max-width: 520px;
-  width: 100%;
+  flex: 1;
+  max-width: 500px;
   margin: 0 20px;
 }
 
 .search-box input {
   width: 100%;
+  padding: 10px 14px;
+  border-radius: 30px;
   border: none;
-  border-radius: 999px;
   outline: none;
-  background: #fff;
-  padding: .6rem .9rem .6rem 1rem;
-  padding-right: 36px;
 }
 
 .search-box i {
   position: absolute;
-  right: 12px;
   top: 50%;
+  right: 15px;
   transform: translateY(-50%);
-  color: #d7dadf;
-  opacity: .6;
-  font-size: .95rem;
-  pointer-events: none;
+  color: #999;
 }
 
 .profile-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   background: none;
   border: none;
   color: #fff;
-  cursor: pointer;
   font-size: 20px;
-  height: 44px;
-  padding: 0 .75rem;
-  border-radius: 999px;
-  max-width: 45vw;
-}
-
-.profile-btn i {
-  font-size: 22px;
-  line-height: 1;
+  cursor: pointer;
 }
 
 .profile-btn .username {
   font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.1;
 }
 
 /* =========================================================
@@ -321,6 +301,30 @@ body {
   box-shadow: 0 0 0 .15rem rgba(255, 106, 0, .25);
 }
 
+.btn-del {
+  background: #dc3545;
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: .55rem .9rem;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background .3s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.btn-del:hover {
+  background: #ca3140;
+  transform: scale(1.05);
+  color: #fff;
+}
+
+.btn-del:focus-visible {
+  outline: 2px solid #ffc299;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 .15rem rgba(255, 106, 0, .25);
+}
+
+
 .btn-amber-outline {
   background: transparent;
   color: var(--brand-accent-1);
@@ -350,14 +354,14 @@ body {
   border-color: #6c757d;
 }
 
-.btn-unarchive {
+.unarchive-module-btn {
   color: #255a2c;
   background: transparent;
   border: 1px solid #255a2c;
   box-shadow: none;
 }
 
-.btn-unarchive:hover {
+.unarchive-module-btn:hover {
   color: #fff;
   background: #255a2c;
   border-color: #255a2c;
@@ -366,7 +370,8 @@ body {
 /* Elder-friendly sizing + contrast for action buttons */
 .archive-module-btn,
 .btn-delete,
-.btn-edit {
+.btn-edit,
+.unarchive-module-btn {
   /* Bigger text + stronger weight */
   font-size: 15px !important;
   /* ~19px */

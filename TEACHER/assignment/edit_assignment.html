@@ -8,45 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
-  <link rel="stylesheet" href="list.css" />
-
-  <style>
-    :root{ --radius:14px; }
-    html,body{ background:#f6f8fa; }
-    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#FFD8A9;padding:12px 16px}
-    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
-    .muted{color:#6b7280}
-    .file-list{list-style:none;padding-left:0}
-    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-    .file-item + .file-item{margin-top:.5rem}
-    .file-name{flex:1 1 auto;min-width:0}
-    .file-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
-    .btn-icon{padding:.375rem .5rem}
-    .form-help{font-size:.85rem;color:#6b7280}
-
-    /* badges */
-    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
-    .badge-rubric{background:#fff3cd;border-color:#ffe69c}
-    .badge-file{background:#eef2ff;border-color:#c7d2fe}
-    .badge-link{background:#ecfeff;border-color:#a5f3fc}
-    .badge-stage{background:#dcfce7;border-color:#86efac}
-    .badge-removal{background:#fee2e2;border-color:#fecaca}
-
-    .name-removed{ text-decoration: line-through; color:#94a3b8; }
-
-    /* modal */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
-    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
-    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
-    }
-    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
-    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
-  </style>
+  <link rel="stylesheet" href="edit_assignment.css" />
 </head>
 <body>
   <div class="dashboard">
@@ -130,6 +92,22 @@
               </div>
             </div>
 
+            <!-- Assign to Classes (inserted here, right after Details) -->
+            <div class="ui-card mb-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
+                <div class="ui-card-title fw-normal">Selected classes will have access to this assignment.</div>
+              </div>
+              <div class="p-3">
+                <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
+                <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
+                  No classes found for your account.
+                </div>
+                <div id="assignedClassesContainer" class="row g-3"></div>
+                <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
+              </div>
+            </div>
+
             <!-- Files & Rubric (staged) -->
             <div class="ui-card mb-3">
               <div class="ui-card-head">
@@ -184,7 +162,7 @@
                     <button id="btnPreviewLink" class="btn btn-outline-secondary w-100 w-sm-auto">
                       <i class="bi bi-eye"></i> Preview
                     </button>
-                    <button id="btnStageLink" class="btn btn-outline-secondary w-100 w-sm-auto">
+                    <button id="btnStageLink" class="btn btn-outline-info w-100 w-sm-auto">
                       <i class="bi bi-link-45deg"></i> Stage Link
                     </button>
                   </div>
@@ -257,10 +235,10 @@
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto d-flex gap-2">
             <!-- NEW: Stage button (shown only for pre-upload blob previews) -->
-            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+            <button id="stageFromPreviewBtn" class="btn btn-amber d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage this file
             </button>
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>
@@ -289,6 +267,7 @@
       </div>
     </div></div>
   </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -374,7 +353,7 @@
       return '';
     }
 
-    /* --- Preview helpers (support blob previews for staged) --- */
+    /* --- Preview helpers --- */
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
@@ -408,7 +387,7 @@
     function renderFilePreviewInto(container, {url, name='', mime='', isStaged=false}){
       container.innerHTML=''; showSpinner(true);
       const done=()=>showSpinner(false);
-      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+      const fallback=(msg)=>{ container.innerHTML=`<div class="preview-fallback"><div class="text-muted mb-2">${msg||'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right btn-close-footer me-1"></i> Open in New Tab</a></div>`; done(); };
 
       const kind = kindFrom({url, name, mime});
 
@@ -426,7 +405,7 @@
 
     let currentPreviewRevoke = null;
 
-    /* === NEW: preview stage context + Stage button control === */
+    /* === Preview stage context + Stage button control === */
     let previewStageCtx = null; // { mode:'file'|'rubric', files?:File[], file?:File }
     const stageFromPreviewBtn = document.getElementById('stageFromPreviewBtn');
     function showStageBtn(show, label){
@@ -443,44 +422,37 @@
     });
 
     stageFromPreviewBtn.addEventListener('click', ()=>{
-  if (!previewStageCtx) return;
+      if (!previewStageCtx) return;
 
-  if (previewStageCtx.mode === 'file' && Array.isArray(previewStageCtx.files)) {
-    previewStageCtx.files.forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
-    fileInput.value = '';
-    markDirty(); renderAttachments();
+      if (previewStageCtx.mode === 'file' && Array.isArray(previewStageCtx.files)) {
+        previewStageCtx.files.forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); staged.addFiles.push(f); });
+        fileInput.value = '';
+        markDirty(); renderAttachments();
+        bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+        showInfo('Staged','File(s) are staged and will be uploaded on Save.');
+      }
 
-    // Close preview modal before showing info
-    bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-    showInfo('Staged','File(s) are staged and will be uploaded on Save.');
-  }
+      if (previewStageCtx.mode === 'rubric' && previewStageCtx.file) {
+        const f = previewStageCtx.file;
+        f.__uid = Math.random().toString(36).slice(2,10);
+        staged.addRubric = f;
+        const hasExisting = (currentAttachments || []).some(a => a.type === 'rubrics');
+        staged.removeRubric = hasExisting;
+        rubricInput.value = '';
+        markDirty(); renderAttachments();
+        bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+        showInfo('Staged','Rubric is staged and will be uploaded on Save.');
+      }
 
-  if (previewStageCtx.mode === 'rubric' && previewStageCtx.file) {
-    const f = previewStageCtx.file;
-    f.__uid = Math.random().toString(36).slice(2,10);
-    staged.addRubric = f;
-    const hasExisting = (currentAttachments || []).some(a => a.type === 'rubrics');
-    staged.removeRubric = hasExisting;
-    rubricInput.value = '';
-    markDirty(); renderAttachments();
-
-    // Close preview modal before showing info
-    bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-    showInfo('Staged','Rubric is staged and will be uploaded on Save.');
-  }
-
-  previewStageCtx = null;
-  showStageBtn(false);
-});
-
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
 
     function openPreviewModalWithMeta({url, title='File', mime='', isStaged=false, stageContext=null}){
       document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
       const kind = kindFrom({url, name:title, mime});
       setFileInfoUI(kind, url);
       renderFilePreviewInto(document.getElementById("filePreviewContent"), {url, name:title, mime, isStaged});
-
-      // Show Stage button only for pre-upload (blob) previews where context is provided
       previewStageCtx = stageContext || null;
       if (previewStageCtx) {
         const label = (previewStageCtx.mode === 'rubric') ? 'Stage this rubric' : 'Stage this file';
@@ -488,7 +460,6 @@
       } else {
         showStageBtn(false);
       }
-
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
 
@@ -529,7 +500,6 @@
     }
 
     function openPreviewFromItem(item){
-      // Always preview staged rubric if present
       if (item.type === 'rubrics' && item.__hasStagedReplacement && staged.addRubric) {
         return openPreviewStaged({ type: 'rubrics' });
       }
@@ -555,9 +525,9 @@
 
     const btnBack   = document.getElementById('btnBack');
     const btnSave   = document.getElementById('btnSave');
-    const btnArc    = document.getElementById('btnArchive');
-    const btnUnarc  = document.getElementById('btnUnarchive');
-    const btnDel    = document.getElementById('btnDelete');
+    const btnArchive = document.getElementById('btnArchive');
+    const btnUnarchive  = document.getElementById('btnUnarchive');
+    const btnDelete    = document.getElementById('btnDelete');
     const saveSpinner = btnSave.querySelector('.spinner-border');
     const saveText    = btnSave.querySelector('.save-text');
 
@@ -624,6 +594,10 @@
       if (!initialAssignment) return false;
       if (window.__dirty) return true;
       if (staged.addFiles.length || staged.addLinks.length || staged.addRubric || staged.removeIds.size || staged.removeRubric) return true;
+      // also consider class selection changes
+      const now = [...selectedClassIds].sort().join(',');
+      const was = [...initialAssigned].sort().join(',');
+      if (now !== was) return true;
       return false;
     }
 
@@ -634,10 +608,10 @@
     });
     function dirtyGuard(){
       if (!isDirty()) return false;
-      return !confirm('You have unsaved changes (including staged files/links/rubric). Leave without saving?');
+      return !confirm('You have unsaved changes (including staged files/links/rubric or class assignments). Leave without saving?');
     }
 
-    /* Merge current + staged */
+    /* Merge current + staged for list */
     function getMergedAttachmentView() {
       const keep = [];
 
@@ -654,7 +628,7 @@
       if (staged.addRubric && existingRubric) {
         existingRubric.__hasStagedReplacement = true;
         existingRubric.__replacementName = staged.addRubric.name;
-        existingRubric.__pendingRemoval = false;  // hide red chip & line
+        existingRubric.__pendingRemoval = false;
       }
       if (staged.addRubric && !existingRubric) {
         keep.push({
@@ -716,12 +690,11 @@
         let showRightNameChip = (!att.__staged && att.originalName && att.type !== 'link' && !(isRubric && att.__hasStagedReplacement));
         let rightNameChip = showRightNameChip ? chip(att.originalName) : '';
 
-        // Rubric replacement UX: show only the staged name + green "Staged" (no extra filename pill)
         if (isRubric && att.__hasStagedReplacement) {
           nameHtml = `<span>${escapeHTML(att.__replacementName || 'Staged Rubric')}</span>`;
           stagedChip = chip('Staged','badge-stage');
           rightNameChip = '';
-          replacementChip = '';  // <-- remove the extra filename pill
+          replacementChip = '';
         }
 
         const left = `
@@ -781,7 +754,7 @@
       }).join('');
     }
 
-    /* Delegated actions on the list (fixes preview icon reliability) */
+    /* Delegated actions on the list */
     function attachListDelegates(){
       filesList.addEventListener('click', (e)=>{
         const li = e.target.closest('.file-item');
@@ -793,7 +766,6 @@
 
         if (e.target.closest('[data-act="preview"]')) {
           if (!item) return;
-          // Always preview staged rubric if present
           if (item.type === 'rubrics' && item.__hasStagedReplacement && staged.addRubric) {
             openPreviewStaged({ type: 'rubrics' });
           } else if (item.__staged) {
@@ -858,7 +830,6 @@
         renderAttachments();
         e.target.value = '';
 
-        // Instant preview of replacement before upload
         const blobUrl = URL.createObjectURL(file);
         currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
         openPreviewModalWithMeta({url: blobUrl, title: file.name, mime: file.type||'', isStaged:true});
@@ -915,9 +886,9 @@
       const f = rubricInput.files && rubricInput.files[0];
       if (!f) { showInfo('No Rubric Selected','Please choose a rubric file.'); return; }
       f.__uid = Math.random().toString(36).slice(2,10);
-      staged.addRubric = f;                         // keep only latest
+      staged.addRubric = f;
       const hasExisting = (currentAttachments || []).some(a => a.type === 'rubrics');
-      staged.removeRubric = hasExisting;            // replacement path
+      staged.removeRubric = hasExisting;
       rubricInput.value = '';
       markDirty(); renderAttachments();
       showInfo('Staged','Rubric is staged and will be uploaded on Save.');
@@ -933,7 +904,6 @@
       showInfo('Staged','Link will be staged and added on Save.');
     });
 
-    /* Auto preview on file selection (pre-upload check) */
     fileInput.addEventListener('change', ()=>{
       const fs = fileInput.files;
       if (fs && fs.length === 1) {
@@ -962,8 +932,104 @@
     function updateStatusBadge(archived){
       metaStatus.textContent = archived ? 'Archived' : 'Active';
       metaStatus.className = `badge ${archived?'text-bg-secondary':'text-bg-success'}`;
-      btnArc.classList.toggle('d-none', archived);
-      btnUnarc.classList.toggle('d-none', !archived);
+      btnArchive.classList.toggle('d-none', archived);
+      btnUnarchive.classList.toggle('d-none', !archived);
+    }
+
+    /* ===========================
+       Assign-to-Classes (NEW)
+       =========================== */
+    const assignedContainer = document.getElementById("assignedClassesContainer");
+    const assignedStatus    = document.getElementById("assigned-status");
+    const assignedEmpty     = document.getElementById("assigned-empty");
+    let selectedClassIds = new Set(); // working selection
+    let initialAssigned  = new Set(); // snapshot from load (for dirty tracking)
+
+    function renderClassCards(classes) {
+      assignedContainer.innerHTML = "";
+      if (!classes.length) {
+        assignedStatus.style.display = "none";
+        assignedEmpty.style.display = "block";
+        return;
+      }
+      classes.forEach(c => {
+        const id = c.id || c._id || c.classId || "";
+        const name = c.name || c.className || "Untitled Class";
+        const grade = c.gradeLevel ?? c.grade ?? "—";
+        const section = c.section ?? c.sectionName ?? "—";
+
+        const col = document.createElement("div");
+        col.className = "col-12 col-sm-6 col-lg-4";
+
+        const card = document.createElement("div");
+        card.className = "card assign-card";
+        card.tabIndex = 0;
+
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.value = id;
+        chk.className = "d-none";
+        if (selectedClassIds.has(id)) { chk.checked = true; card.classList.add("selected"); }
+        card.appendChild(chk);
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+        body.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title mb-1">${escapeHTML(name)}</h5>
+            <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+          </div>
+          <div class="small-muted">Grade ${escapeHTML(grade)} • Section ${escapeHTML(section)}</div>
+        `;
+        card.appendChild(body);
+
+        function toggle() {
+          const isChecked = !chk.checked;
+          chk.checked = isChecked;
+          card.classList.toggle("selected", isChecked);
+          if (isChecked) selectedClassIds.add(id); else selectedClassIds.delete(id);
+          const now = [...selectedClassIds].sort().join(',');
+          const was = [...initialAssigned].sort().join(',');
+          if (now !== was) markDirty();
+        }
+        card.addEventListener("click", e => {
+          if (window.getSelection && String(window.getSelection()).length) return;
+          toggle();
+        });
+        card.addEventListener("keydown", e => {
+          if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+        });
+
+        col.appendChild(card);
+        assignedContainer.appendChild(col);
+      });
+      assignedStatus.style.display = "none";
+      assignedEmpty.style.display = "none";
+    }
+
+    async function loadTeacherClassesAndRender() {
+      try {
+        const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
+        if (!teacherId) {
+          assignedStatus.textContent = "Missing teacher ID in your session.";
+          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+          return;
+        }
+        const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`, { headers: { "Accept": "application/json" } });
+        const json = await res.json().catch(()=>({success:false, classes:[]}));
+        const classes = json?.classes || [];
+        if (!json.success && json.success !== undefined) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+          return;
+        }
+        renderClassCards(classes);
+      } catch (e) {
+        console.error("Could not load classes:", e);
+        assignedStatus.textContent = "Could not load your classes. Please refresh.";
+        assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+        showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
+      }
     }
 
     /* --- Load + Save assignment --- */
@@ -993,6 +1059,11 @@
         clearDirty();
         renderAttachments();
 
+        // Preselect classes from assignment.classIds
+        selectedClassIds = new Set(Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : []);
+        initialAssigned  = new Set(selectedClassIds);
+        await loadTeacherClassesAndRender();
+
         const useCourseId = courseId || a.courseId || '';
         await loadModulesForCourse(useCourseId, a.moduleId || '');
       }catch(e){
@@ -1012,6 +1083,10 @@
       if (!title || !content){ formError.textContent='Title and Content are required.'; return; }
 
       const payload = { title, content };
+
+      // include assigned classes
+      payload.assignedClasses = Array.from(selectedClassIds);
+
       if (pointsInput.value !== '') payload.points = Number(pointsInput.value);
       if (publishInput.value) payload.publishAt = String(new Date(publishInput.value).getTime());
       if (dueInput.value) payload.dueAt = String(new Date(dueInput.value).getTime());
@@ -1063,8 +1138,18 @@
         currentAttachments = delJs.files || currentAttachments;
       }
 
+      // Optional: surface backend warnings about archived/missing class IDs
+      const warnings = (patchJs && patchJs.warnings) || {};
+      let warnMsg = '';
+      if (warnings.archivedClassIds?.length) {
+        warnMsg += `<div class="mt-2">⚠️ Archived classes ignored: <code>${warnings.archivedClassIds.join(', ')}</code></div>`;
+      }
+      if (warnings.missingClassIds?.length) {
+        warnMsg += `<div class="mt-1">⚠️ Missing classes ignored: <code>${warnings.missingClassIds.join(', ')}</code></div>`;
+      }
+
       await loadAssignment();
-      showInfo('Saved','Your changes (including staged files/links/rubric) have been saved.');
+      showInfo('Saved','Your changes (including staged files/links/rubric and class assignments) have been saved.' + warnMsg);
     }
 
     btnSave.addEventListener('click', async ()=>{

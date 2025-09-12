@@ -11,69 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
   <!-- Global teacher styles -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
-
-  <style>
-    :root{
-      --bg:#f6f8fa;--text:#1f2328;--muted:#6a737d;--card:#fff;--border:#e5e7eb;
-      --brand-dark-1:#4A1A0C;--brand-dark-2:#7A2810;--accent-1:#FF6A00;--accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s ease,width .3s ease;display:flex;flex-direction:column}
-    .sidebar:hover ~ .main{margin-left:220px;width:calc(100% - 220px)}
-
-    .header-top{background:linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));color:#fff}
-    .logo-header{height:45px}
-    .search-box{position:relative;flex:1;max-width:520px;margin:0 20px}
-    .search-box input{border-radius:30px}
-
-    /* Table + status */
-    .table thead th{background:#fafbfc;border-bottom:1px solid var(--border)}
-    .status-pill{padding:3px 10px;border-radius:999px;font-size:.75rem;display:inline-block;border:1px solid transparent}
-    .status-ontime{background:#e6f4ea;color:#1e7e34;border-color:#c6e6cf}
-    .status-late{background:#fff2f0;color:#b42318;border-color:#ffd1cc}
-    .status-graded{background:#eff6ff;color:#1d4ed8;border-color:#c7dbff}
-
-    .whitespace-prewrap{white-space:pre-wrap}
-
-    /* UI Card (meta + actions + controls) */
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.08);overflow:hidden}
-    .ui-card-head{
-      display:flex;justify-content:space-between;align-items:center;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)
-    }
-    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
-    .ui-card-body{padding:12px 16px}
-    .brand-grad{font-size:.95rem;color:#5b2a18}
-    .ui-actions{display:flex;gap:.5rem;flex-wrap:wrap}
-    .btn-outline-light{
-      --bs-btn-color:#fff;--bs-btn-border-color:rgba(255,255,255,.65);
-      --bs-btn-hover-bg:rgba(255,255,255,.12);--bs-btn-hover-color:#fff;--bs-btn-hover-border-color:#fff
-    }
-    .meta-pill{
-      background:#fff;border:1px solid var(--border);
-      border-radius:999px;padding:.2rem .6rem;font-size:.75rem;color:#374151
-    }
-
-    /* Control polish */
-    .form-label{margin-bottom:.25rem;font-weight:600}
-    .ui-controls .form-select, .ui-controls .form-control{height:40px}
-
-    /* ===== File Preview Modal ===== */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
-    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
-    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
-    }
-    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
-    #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
-  </style>
+  <link rel="stylesheet" href="grade.css"/>
 </head>
 <body>
   <div class="dashboard">
@@ -97,7 +35,7 @@
 
       <!-- Page -->
       <section class="content container-fluid p-4 mt-4">
-        <h1 class="fw-bold page-title mb-3">Assignment Submission Inbox</h1>
+        <h1 class="fw-bold page-title brand mb-3">Assignment Submission Inbox</h1>
 
         <!-- UI-CARD: actions + controls + meta -->
         <div class="ui-card mb-3">
@@ -211,7 +149,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn-delete" id="vmDeleteBtn"><i class="bi bi-trash me-1"></i> Delete</button>
-          <button class="btn btn-primary" id="vmGradeBtn"><i class="bi bi-check2-square me-1"></i> Grade</button>
+          <button class="btn btn-amber" id="vmGradeBtn"><i class="bi bi-check2-square me-1"></i> Grade</button>
           <button class="btn-close-footer" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
@@ -242,7 +180,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Grade</button>
+          <button type="submit" class="btn btn-amber">Save Grade</button>
         </div>
       </form>
     </div>
@@ -301,7 +239,7 @@
         <div class="modal-footer" id="filePreviewFooter">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto">
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>
