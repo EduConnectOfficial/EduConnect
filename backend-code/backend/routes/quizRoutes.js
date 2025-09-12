@@ -36,6 +36,24 @@ function rubricFileOk(file) {
   return okMime || okExt;
 }
 
+// ------- assignedClasses helpers -------
+/**
+ * Ensure assignedClasses is a deduped array of string IDs.
+ * Limits to 500 IDs and trims falsy values.
+ */
+function sanitizeAssignedClasses(input) {
+  if (!input) return [];
+  let arr = Array.isArray(input) ? input : [];
+  arr = arr
+    .map(v => (typeof v === 'string' ? v.trim() : ''))
+    .filter(Boolean);
+  // dedupe
+  const set = new Set(arr);
+  const out = Array.from(set);
+  // simple clamp to avoid huge writes
+  return out.slice(0, 500);
+}
+
 // Conditionally run multer when multipart (memory storage)
 const uploadRubricMaybe = (req, res, next) => {
   const ct = String(req.headers['content-type'] || '');
@@ -125,6 +143,7 @@ async function deleteAllAttemptsForQuiz(quizId) {
 /* ===========================================================
    QUIZ: UPLOAD (rubric to Cloud Storage)
    Accepts JSON OR multipart with: (rubrics file) + (payload JSON)
+   NEW: supports assignedClasses: string[]
 =========================================================== */
 router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => {
   let body = req.body || {};
@@ -134,7 +153,8 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
   }
 
   const {
-    courseId, moduleId, quiz, settings, title, description, dueAt, attemptsAllowed
+    courseId, moduleId, quiz, settings, title, description, dueAt, attemptsAllowed,
+    assignedClasses: assignedClassesRaw
   } = body || {};
 
   if (!courseId || !moduleId || !Array.isArray(quiz) || quiz.length === 0) {
@@ -181,6 +201,9 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
     }));
   if (!validQuestions.length) return res.status(400).json({ success:false, message:'No valid quiz questions provided.' });
 
+  // NEW: sanitize assigned classes
+  const assignedClasses = sanitizeAssignedClasses(assignedClassesRaw);
+
   const quizRef = firestore.collection('quizzes').doc();
   const batch = firestore.batch();
 
@@ -216,6 +239,7 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
     dueAt: dueAtTs,
     archived: false,
     rubricFile: rubricFile || null,
+    assignedClasses,                  // <-- NEW persisted field
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
@@ -253,11 +277,12 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
       courseId: data.courseId,
       moduleId: data.moduleId,
       createdAt: data.createdAt,
-      updatedAt: data.updatedAt || null, // <-- include this
+      updatedAt: data.updatedAt || null,
       archived: data.archived === true,
       totalQuestions: data.totalQuestions ?? qs.size,
       settings: data.settings || { timerEnabled:false, shuffleQuestions:true, pagination:{enabled:false, perPage:1}, backtrackingAllowed:true },
       rubricFile: data.rubricFile || null,
+      assignedClasses: Array.isArray(data.assignedClasses) ? data.assignedClasses : [],   // <-- NEW
       questions: qs.docs.map(d=>d.data())
     });
   }
@@ -287,11 +312,12 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
       courseId: d.courseId,
       moduleId: d.moduleId,
       createdAt: d.createdAt,
-      updatedAt: d.updatedAt || null,     // <-- include this
+      updatedAt: d.updatedAt || null,
       archived: d.archived === true,
       totalQuestions: d.totalQuestions ?? qs.size,
       settings: d.settings || { timerEnabled:false, shuffleQuestions:true, pagination:{enabled:false, perPage:1}, backtrackingAllowed:true },
       rubricFile: d.rubricFile || null,
+      assignedClasses: Array.isArray(d.assignedClasses) ? d.assignedClasses : [],        // <-- NEW
       questions: qs.docs.map(dd => ({ id: dd.id, ...dd.data() })),
       isArchived: d.isArchived === true
     }
@@ -300,9 +326,10 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    QUIZ: UPDATE (replace questions)
+   NEW: allows updating assignedClasses
 =========================================================== */
 router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
-  const { questions, settings, title, description, dueAt, attemptsAllowed } = req.body || {};
+  const { questions, settings, title, description, dueAt, attemptsAllowed, assignedClasses: assignedClassesRaw } = req.body || {};
   if (!Array.isArray(questions) || !questions.length) {
     return res.status(400).json({ success:false, message:'Invalid or empty question list.' });
   }
@@ -324,6 +351,9 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
   if (attemptsAllowed !== undefined) {
     try { updates.attemptsAllowed = normalizeAttemptsAllowed(attemptsAllowed); }
     catch (e) { return res.status(400).json({ success:false, message:e.message }); }
+  }
+  if (assignedClassesRaw !== undefined) {
+    updates.assignedClasses = sanitizeAssignedClasses(assignedClassesRaw);               // <-- NEW
   }
 
   const existing = await quizRef.collection('questions').get();
@@ -719,6 +749,47 @@ router.get('/storage/token-url', asyncHandler(async (req, res) => {
       message: notFound ? 'Object not found' : (e?.message || 'Failed to ensure token URL')
     });
   }
+}));
+
+/* ===========================================================
+   Convenience endpoint to support the front-end:
+   GET /api/classes?teacherId=<id>
+   - Filters classes where uploadedBy == teacherId OR teacherId in teachers[]
+   - Adjust field names if your schema differs
+=========================================================== */
+router.get('/api/classes', asyncHandler(async (req, res) => {
+  const teacherId = String(req.query.teacherId || '').trim();
+  if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
+
+  const classesCol = firestore.collection('classes'); // adjust collection name if needed
+
+  // Try both common patterns: uploadedBy and array field teachers
+  const results = new Map();
+
+  // uploadedBy == teacherId
+  try {
+    const q1 = await classesCol.where('uploadedBy', '==', teacherId).get();
+    q1.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
+  } catch {}
+
+  // teachers array contains teacherId
+  try {
+    const q2 = await classesCol.where('teachers', 'array-contains', teacherId).get();
+    q2.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
+  } catch {}
+
+  const classes = Array.from(results.values())
+    .map(c => ({
+      id: c.id,
+      name: c.name || c.className || 'Untitled Class',
+      gradeLevel: c.gradeLevel ?? c.grade ?? null,
+      section: c.section ?? c.sectionName ?? null,
+      uploadedBy: c.uploadedBy ?? null,
+      teachers: Array.isArray(c.teachers) ? c.teachers : []
+    }))
+    .sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
+
+  res.json({ success:true, classes });
 }));
 
 module.exports = router;
