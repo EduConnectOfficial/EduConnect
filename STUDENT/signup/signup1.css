@@ -387,3 +387,12 @@ html, body {
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.05);
 }
+    .otp-container{display:flex;justify-content:center;gap:10px;margin-bottom:1rem}
+    .otp-input{width:42px;height:52px;text-align:center;font-size:1.4rem;border:1px solid #ced4da;border-radius:8px}
+    .otp-input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.25)}
+    .disabled-link{pointer-events:none;opacity:.6;text-decoration:none}
+    .muted{opacity:.85}
+    /* optional: red border when invalid */
+    .is-invalid{border-color:#dc3545}
+    /* ensure modal text is black */
+    #feedbackModal .modal-body{color:#000 !important}
