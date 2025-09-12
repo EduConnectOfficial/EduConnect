@@ -1,5 +1,4 @@
 /* Base styling */
-
 html, body {
   height: 100%;
   margin: 0;
@@ -10,13 +9,14 @@ html, body {
   color: white;
 }
 
-
 .main-container {
   min-height: 100vh;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
 }
+
+/* Panels */
 .left-panel, .right-panel {
   flex: 1;
   min-height: 100vh;
@@ -28,14 +28,9 @@ html, body {
   box-sizing: border-box;
 }
 
-
+/* Left panel overrides */
 .left-panel {
-  flex: 1;
-  background: url('your-image-path.jpg') center center/cover no-repeat;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: start;
   padding: 60px;
 }
@@ -50,19 +45,8 @@ html, body {
   margin-top: 20px;
 }
 
-.right-panel {
-  flex: 1;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-}
-
 /* Logo */
-.logo {
-  width: 140px;
-}
+.logo { width: 140px; }
 
 /* Logo position */
 .top-logo {
@@ -92,9 +76,7 @@ html, body {
 }
 
 /* Input fields */
-.form-control {
-  border-radius: 20px;
-}
+.form-control { border-radius: 20px; }
 
 /* Submit button */
 .login-btn {
@@ -104,7 +86,6 @@ html, body {
   border-radius: 999px;
   transition: background 0.3s ease, transform 0.2s ease;
 }
-
 .login-btn:hover {
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.02);
@@ -118,15 +99,16 @@ html, body {
   text-align: left;
 }
 
+/* Requirement note (merged) */
 .requirement-note {
-  font-size: 13px;
-  color: #ffddaa;
-  /* changed to white */
+  color: #ffd580;
+  font-size: 0.85rem;
   margin-top: 5px;
   margin-left: 8px;
   display: block;
 }
 
+/* Links */
 .options a {
   color: #fff6dd;
   text-decoration: none;
@@ -134,7 +116,6 @@ html, body {
   position: relative;
   transition: color 0.3s ease;
 }
-
 .options a::after {
   content: '';
   position: absolute;
@@ -145,27 +126,37 @@ html, body {
   background-color: #FFD580;
   transition: width 0.3s ease;
 }
-
 .options a:hover {
   color: #FFD580;
 }
-
 .options a:hover::after {
   width: 100%;
 }
 
-/* Style labels for visibility */
+/* Labels */
 .form-label {
   color: #fff6dd;
   font-weight: 500;
   margin-bottom: 0.3rem;
 }
+ .otp-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
 
-/* Style requirement note under password field */
-.requirement-note {
-  color: #ffd580;
-  font-size: 0.85rem;
-  margin-top: 5px;
-  display: block;
-}
+    .otp-input {
+      width: 40px;
+      height: 50px;
+      text-align: center;
+      font-size: 1.5rem;
+      border: 1px solid #ced4da;
+      border-radius: 5px;
+    }
 
+    .otp-input:focus {
+      outline: none;
+      border-color: #86b7fe;
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }

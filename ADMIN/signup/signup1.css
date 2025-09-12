@@ -9,10 +9,8 @@ html, body {
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   color: white;
 }
-.modal-body {
-  color:black
-}
-/* Signup container aligned like login */
+
+/* ========== Containers ========== */
 .signup-container,
 .login-container {
   height: auto;
@@ -22,7 +20,8 @@ html, body {
   align-items: center;
   padding: 2rem 1rem;
 }
-
+.login-row { margin-top: 10px; }            /* nudge content up */
+.logo-container { margin-bottom: 10px; padding-top: 10px; }
 /* Signup box aligned with login box */
 .signup-box,
 .login-box {
@@ -32,7 +31,6 @@ html, body {
   box-shadow: 0 0 20px rgba(0,0,0,0.3);
   width: 100%;
   max-width: 300px;   /* tighter width so it doesn’t stretch too wide */
-
   margin: auto;
   text-align: center;
 }
@@ -61,7 +59,6 @@ html, body {
   box-sizing: border-box;
 }
 
-
 .left-panel {
   flex: 1;
   background: url('your-image-path.jpg') center center/cover no-repeat;
@@ -83,15 +80,6 @@ html, body {
   margin-top: 20px;
 }
 
-.right-panel {
-  flex: 1;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-}
-
 /* Logo */
 .logo {
   width: 140px;
@@ -103,8 +91,6 @@ html, body {
   top: 20px;
   left: 30px;
 }
-
-
 
 /* Card-style form box */
 .login-box {
@@ -196,7 +182,6 @@ html, body {
   display: block;
 }
 
-
 /* Tablet and below */
 @media (max-width: 992px) {
   .main-container {
@@ -259,18 +244,18 @@ html, body {
     padding: 0.5rem;
   }
 
-
-
   .options {
     font-size: 0.85rem;
   }
 }
+
 /* Hide create account / options links on mobile */
 @media (max-width: 576px) {
   .left-panel {
     display: none;
   }
 }
+
 /* Medium screens */
 @media (max-width: 1280px) {
   .logo {
@@ -302,17 +287,18 @@ html, body {
     padding: 0.5rem;
   }
 
-
   .options {
     font-size: 0.85rem;
   }
 }
+
 /* Hide create account / options links on mobile */
 @media (max-width: 1280px) {
   .left-panel {
     display: none;
   }
 }
+
 /* ===== Modal Customization ===== */
 
 /* Modal header with gradient background */
@@ -356,3 +342,12 @@ html, body {
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.05);
 }
+
+.otp-container{display:flex;justify-content:center;gap:10px;margin-bottom:1rem}
+.otp-input{width:42px;height:52px;text-align:center;font-size:1.4rem;border:1px solid #ced4da;border-radius:8px}
+.otp-input:focus{outline:none;border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.25)}
+.disabled-link{pointer-events:none;opacity:.6;text-decoration:none}
+.muted{opacity:.85}
+
+/* ensure modal text is black */
+.modal-body{color:#000 !important}

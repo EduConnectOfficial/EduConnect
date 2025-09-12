@@ -52,6 +52,13 @@ body {
   font-size: 1.8rem;
   color: #fff;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-btn .username {
+  font-size: 14px;
 }
 
 /* ===== Content ===== */
@@ -237,8 +244,6 @@ body {
 .dropdown.open > a .dropdown-icon { transform: rotate(180deg); }
 
 /* ===== Profile button helpers ===== */
-.profile-btn { display: flex; align-items: center; gap: 8px; border: none; background: none; cursor: pointer; }
-.profile-btn .username { display: flex; align-items: center; }
 
 /* =========================================================
    Theming & dashboard variant (CSS variables + components)
@@ -274,8 +279,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100%; }
 .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf; }
 
-.profile-btn { display: flex; align-items: center; gap: 8px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
-.profile-btn .username { font-size: 14px; }
+
 
 .content { padding: 24px; }
 .ui-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 10px 22px rgba(0,0,0,.08); }

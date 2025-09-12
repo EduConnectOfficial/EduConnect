@@ -58,11 +58,20 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}
 }
 
 /* Profile button (header) */
-.profile-btn{
-  display:flex;align-items:center;gap:8px;
-  background:none;border:none;color:#fff;font-size:20px;cursor:pointer
+.profile-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.profile-btn .username{font-size:14px}
+
+.profile-btn .username {
+  font-size: 14px;
+}
 
 /* ------------------------------ */
 /* Headings                       */
