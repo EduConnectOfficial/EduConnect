@@ -10,7 +10,7 @@ const { saveBufferToStorage, safeName } = require('../services/storageService');
 const { getUserRefByAnyId } = require('../utils/idUtils');
 
 /* ---------------- Config: per-file limits (MB) ---------------- */
-const TEACHER_FILE_LIMIT_MB = parseInt(process.env.TEACHER_FILE_LIMIT_MB || '500', 10);
+const TEACHER_FILE_LIMIT_MB = parseInt(process.env.TEACHER_FILE_LIMIT_MB || '300', 10);
 const STUDENT_FILE_LIMIT_MB = parseInt(process.env.STUDENT_FILE_LIMIT_MB || '100', 10);
 
 /* ---------------- Helpers ---------------- */
@@ -32,12 +32,27 @@ function toTimestampOrNull(v) {
   return null;
 }
 
+/** Gather assigned classes from body (supports multiple shapes) */
+function parseAssignedClassesFromBody(body = {}) {
+  // Accept: assignedClasses (string|array), assignedClasses[], classIds, classId
+  const raw = []
+    .concat(body.assignedClasses ?? [])
+    .concat(body['assignedClasses[]'] ?? [])
+    .concat(body.classIds ?? [])
+    .concat(body.classId ?? []);
+  const arr = Array.isArray(raw) ? raw : [raw];
+  return Array.from(new Set(arr
+    .map(x => (x == null ? '' : String(x)).trim())
+    .filter(Boolean)));
+}
+
 /** Given classIds, returns { activeIds, archivedIds, missingIds } */
 async function splitClassIdsByArchived(classIds) {
   const activeIds = [], archivedIds = [], missingIds = [];
   const chunk = (arr, size = 10) => { const out = []; for (let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size)); return out; };
   const classesCol = firestore.collection('classes');
   for (const ids of chunk(classIds, 10)) {
+    if (!ids.length) continue;
     const snap = await classesCol.where('__name__', 'in', ids).get();
     const found = new Set();
     snap.forEach(doc => {
@@ -96,6 +111,7 @@ async function getClassLabelsById(ids) {
   const todo = Array.from(new Set((ids || []).filter(Boolean)));
   while (todo.length) {
     const chunk = todo.splice(0, 10);
+    if (!chunk.length) break;
     const snap = await firestore.collection('classes').where('__name__', 'in', chunk).get();
     const found = new Set();
     snap.forEach(d => {
@@ -189,7 +205,7 @@ async function ensurePreviewableUrls(attArr = []) {
 }
 
 /* ===========================================================
-   CREATE ASSIGNMENT
+   CREATE ASSIGNMENT (now supports assigned classes)
 =========================================================== */
 const memAssignUpload = uploadMemory.fields([
   { name: 'files',   maxCount: 30 },
@@ -225,6 +241,17 @@ router.post(
     let links = req.body.links || req.body['links[]'] || [];
     if (typeof links === 'string') links = [links];
 
+    // NEW: assigned classes -> classIds (filter archived/missing)
+    const requestedClassIds = parseAssignedClassesFromBody(req.body);
+    let classIds = [];
+    const warnings = {};
+    if (requestedClassIds.length) {
+      const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(requestedClassIds);
+      classIds = activeIds;
+      if (archivedIds.length) warnings.archivedClassIds = archivedIds;
+      if (missingIds.length) warnings.missingClassIds = missingIds;
+    }
+
     const payloadBase = {
       title: String(title).trim(),
       content: String(content).trim(),
@@ -240,7 +267,9 @@ router.post(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
-      archived: false
+      archived: false,
+      // NEW:
+      classIds: classIds.length ? classIds : []
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
 
@@ -322,7 +351,8 @@ router.post(
     return res.status(201).json({
       success:true,
       id: ref.id,
-      assignment: { id: ref.id, ...saved.data() }
+      assignment: { id: ref.id, ...saved.data() },
+      ...(Object.keys(warnings).length ? { warnings } : {})
     });
   })
 );
@@ -341,7 +371,7 @@ router.get('/assignments/:id', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   UPDATE (PATCH) ASSIGNMENT
+   UPDATE (PATCH) ASSIGNMENT  (now supports changing classIds)
 =========================================================== */
 router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -379,13 +409,30 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
     updates.moduleNumber = moduleNumber;
   }
 
+  // NEW: update assigned classes if provided
+  let warnings = {};
+  const requestedClassIds = parseAssignedClassesFromBody(req.body);
+  if (requestedClassIds.length) {
+    const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(requestedClassIds);
+    updates.classIds = activeIds;
+    if (archivedIds.length) warnings.archivedClassIds = archivedIds;
+    if (missingIds.length) warnings.missingClassIds = missingIds;
+  } else if (req.body.classIds === null || req.body.assignedClasses === null) {
+    // explicit clear
+    updates.classIds = [];
+  }
+
   const ref = firestore.collection('assignments').doc(id);
   const exists = await ref.get();
   if (!exists.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
 
   await ref.set(updates, { merge: true });
   const fresh = await ref.get();
-  res.json({ success:true, assignment: { id: fresh.id, ...fresh.data() } });
+  res.json({
+    success:true,
+    assignment: { id: fresh.id, ...fresh.data() },
+    ...(Object.keys(warnings).length ? { warnings } : {})
+  });
 }));
 
 /* ===========================================================
@@ -447,10 +494,6 @@ router.get('/modules/:moduleId/assignments', asyncHandler(async (req, res) => {
 
   if (modStatus.archived && !includeArchived) return res.json({ success:true, assignments: [] });
 
-  const courseStatus = await checkCourseArchived(modStatus.courseId);
-  if (!courseStatus.ok) return res.status(courseStatus.code).json({ success:false, message:courseStatus.message });
-  if (courseStatus.archived && !includeArchived) return res.json({ success:true, assignments: [] });
-
   const snap = await firestore
     .collection('assignments')
     .where('moduleId', '==', moduleId)
@@ -489,6 +532,7 @@ router.get('/courses/:courseId/assignments', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    CONSOLIDATED STUDENT ASSIGNMENTS
+   (now hides assignments targeted at other classes)
 =========================================================== */
 router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -499,6 +543,7 @@ router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
 
   const { activeIds } = await splitClassIdsByArchived(classIds);
   if (!activeIds.length) return res.json({ success: true, assignments: [] });
+  const myActiveClassSet = new Set(activeIds);
 
   const classChunks = [];
   for (let i = 0; i < activeIds.length; i += 10) classChunks.push(activeIds.slice(i, i + 10));
@@ -528,6 +573,13 @@ router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
   }
 
   let filtered = results.filter(a => a.archived !== true);
+
+  // NEW: respect assignment.classIds targeting (empty/absent = visible to course)
+  filtered = filtered.filter(a => {
+    const arr = Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : [];
+    if (!arr.length) return true; // no targeting -> show
+    return arr.some(cid => myActiveClassSet.has(cid));
+  });
 
   const moduleIds = Array.from(new Set(filtered.map(a => a.moduleId).filter(Boolean)));
   const modState = new Map();
