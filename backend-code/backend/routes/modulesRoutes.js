@@ -42,6 +42,105 @@ function genId() {
 }
 
 /* -----------------------------------------------------------
+   GENERAL HELPERS (assigned classes)
+----------------------------------------------------------- */
+
+function normalizeToArray(v) {
+  if (v == null) return [];
+  if (Array.isArray(v)) return v;
+  return [v];
+}
+
+// Read assignedClasses from either repeated fields or a JSON field.
+function readAssignedClasses(req) {
+  // From FormData: repeated fields
+  let list = normalizeToArray(req.body.assignedClasses)
+    .map(s => String(s || '').trim())
+    .filter(Boolean);
+
+  // Or JSON string
+  if (!list.length && req.body.assignedClassesJson) {
+    try {
+      const as = JSON.parse(String(req.body.assignedClassesJson));
+      if (Array.isArray(as)) {
+        list = as.map(s => String(s || '').trim()).filter(Boolean);
+      }
+    } catch {
+      /* ignore JSON parse error; will be validated later */
+    }
+  }
+
+  // Unique
+  return Array.from(new Set(list));
+}
+
+async function validateClassIds(classIds) {
+  if (!classIds.length) return { ok: true, validIds: [] };
+
+  // Firestore 'in' supports up to 10. Batch by 10.
+  const chunks = [];
+  for (let i = 0; i < classIds.length; i += 10) {
+    chunks.push(classIds.slice(i, i + 10));
+  }
+
+  const found = new Set();
+  for (const chunk of chunks) {
+    const snap = await firestore.collection('classes')
+      .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+      .get();
+    snap.forEach(d => {
+      const data = d.data() || {};
+      if (data.archived === true) return; // exclude archived from assignment
+      found.add(d.id);
+    });
+  }
+
+  const validIds = classIds.filter(id => found.has(id));
+  return { ok: true, validIds };
+}
+
+async function createClassIndexDocs({ moduleId, title, courseId, moduleNumber, archived, classIds }) {
+  if (!classIds || !classIds.length) return;
+  const batch = firestore.batch();
+  classIds.forEach(cid => {
+    const ref = firestore.collection('classes').doc(cid).collection('modules').doc(moduleId);
+    batch.set(ref, {
+      moduleId,
+      courseId,
+      title: title || '',
+      moduleNumber: moduleNumber || 0,
+      archived: !!archived,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+  await batch.commit();
+}
+
+async function updateClassIndexArchive({ moduleId, classIds, archived }) {
+  if (!classIds || !classIds.length) return;
+  const batch = firestore.batch();
+  classIds.forEach(cid => {
+    const ref = firestore.collection('classes').doc(cid).collection('modules').doc(moduleId);
+    batch.set(ref, {
+      archived: !!archived,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+  await batch.commit();
+}
+
+async function deleteClassIndexDocs({ moduleId, classIds }) {
+  if (!classIds || !classIds.length) return;
+  const batch = firestore.batch();
+  classIds.forEach(cid => {
+    const ref = firestore.collection('classes').doc(cid).collection('modules').doc(moduleId);
+    batch.delete(ref);
+  });
+  await batch.commit();
+}
+
+/* -----------------------------------------------------------
    STORAGE HELPERS (delete)
 ----------------------------------------------------------- */
 
@@ -107,7 +206,7 @@ async function deleteStorageObjectFromAttachment(att) {
 ----------------------------------------------------------- */
 
 /** Update archive flag on related collections that reference the moduleId. */
-async function cascadeArchiveToRelated({ moduleId, archived }) {
+async function cascadeArchiveToRelated({ moduleId, archived, assignedClasses }) {
   const batch = firestore.batch();
 
   // Assignments referencing this module
@@ -131,6 +230,11 @@ async function cascadeArchiveToRelated({ moduleId, archived }) {
   }));
 
   await batch.commit();
+
+  // Also propagate to class index docs
+  if (Array.isArray(assignedClasses) && assignedClasses.length) {
+    await updateClassIndexArchive({ moduleId, classIds: assignedClasses, archived });
+  }
 }
 
 /** Sets archived flag on a module and cascades to related docs. */
@@ -139,12 +243,17 @@ async function setArchiveStateForModule(moduleId, archived) {
   const snap = await moduleRef.get();
   if (!snap.exists) return { ok: false, code: 404, message: 'Module not found.' };
 
+  const data = snap.data() || {};
   await moduleRef.update({
     archived,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
-  await cascadeArchiveToRelated({ moduleId, archived });
+  await cascadeArchiveToRelated({
+    moduleId,
+    archived,
+    assignedClasses: data.assignedClasses || []
+  });
   return { ok: true };
 }
 
@@ -157,9 +266,13 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   const startTime = Date.now();
 
   const { moduleTitle, moduleType, courseId } = req.body;
+
   // Accept videoUrls as array for text modules
   let videoUrls = req.body.videoUrls;
   if (videoUrls && !Array.isArray(videoUrls)) videoUrls = [videoUrls];
+
+  // Assigned classes (from repeated fields or JSON)
+  const assignedClassesRaw = readAssignedClasses(req);
 
   // Always use req.files for attachments, fallback to req.file for legacy single upload
   let files = req.files;
@@ -195,6 +308,16 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     }
   }
 
+  // Validate assigned classes (optional)
+  let assignedClasses = [];
+  if (assignedClassesRaw.length) {
+    const { validIds } = await validateClassIds(assignedClassesRaw);
+    if (!validIds.length) {
+      return res.status(400).json({ success: false, message: 'Selected classes are invalid or archived.' });
+    }
+    assignedClasses = validIds;
+  }
+
   // Determine next module number for this course
   const moduleSnapshot = await firestore.collection('modules')
     .where('courseId', '==', courseId)
@@ -214,6 +337,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   if (typeof moduleSubTitles === 'string') moduleSubTitles = [moduleSubTitles];
   if (typeof moduleSubDescs === 'string') moduleSubDescs = [moduleSubDescs];
 
+  // Create module shell (with assigned classes)
   const moduleDocRef = await firestore.collection('modules').add({
     title: moduleTitle,
     type: moduleType,
@@ -222,10 +346,24 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     moduleSubTitles,
     moduleSubDescs,
-    archived: false
+    archived: false,
+    assignedClasses,
+    assignedClassCount: assignedClasses.length
   });
 
   const moduleId = moduleDocRef.id;
+
+  // Create per-class index docs (fast reverse lookups)
+  if (assignedClasses.length) {
+    await createClassIndexDocs({
+      moduleId,
+      title: moduleTitle,
+      courseId,
+      moduleNumber: nextModuleNumber,
+      archived: false,
+      classIds: assignedClasses
+    });
+  }
 
   // Attachments for file type (save to Cloud Storage with inline disposition)
   if (moduleType === 'file' && files && files.length > 0) {
@@ -233,8 +371,9 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     if (lessonIdxs && !Array.isArray(lessonIdxs)) lessonIdxs = [lessonIdxs];
 
     if (!lessonIdxs || lessonIdxs.length !== files.length) {
-      // Rollback module shell
+      // Rollback module shell & indexes
       await moduleDocRef.delete().catch(() => {});
+      await deleteClassIndexDocs({ moduleId, classIds: assignedClasses }).catch(()=>{});
       return res.status(400).json({
         success: false,
         message: 'Lesson index missing or mismatched for attachments.'
@@ -276,6 +415,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
 
     if (!flatAttachments.length) {
       await moduleDocRef.delete().catch(() => {});
+      await deleteClassIndexDocs({ moduleId, classIds: assignedClasses }).catch(()=>{});
       return res.status(400).json({ success: false, message: 'File upload failed. Please try again.' });
     }
 
@@ -317,6 +457,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
 
     if (!urlAttachments.length) {
       await moduleDocRef.delete().catch(() => {});
+      await deleteClassIndexDocs({ moduleId, classIds: assignedClasses }).catch(()=>{});
       return res.status(400).json({
         success: false,
         message: 'URL upload failed. Please provide at least one valid video URL.'
@@ -332,6 +473,8 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
     message: 'Module uploaded successfully.',
     moduleId,
     moduleNumber: nextModuleNumber,
+    assignedClasses,
+    assignedClassCount: assignedClasses.length,
     processingTime
   });
 }));
@@ -370,6 +513,7 @@ router.get('/modules/:id', asyncHandler(async (req, res) => {
 /* -----------------------------------------------------------
    MODULES: LIST FOR COURSE
    Default: hide archived. Use ?includeArchived=true to show all.
+   Optional: filter by classId => only modules assigned to that class.
    (Sorted by moduleNumber DESC)
 ----------------------------------------------------------- */
 
@@ -377,6 +521,7 @@ router.get('/modules/:id', asyncHandler(async (req, res) => {
 router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const includeArchived = String(req.query.includeArchived).toLowerCase() === 'true';
+  const classFilter = String(req.query.classId || '').trim();
 
   const snapshot = await firestore
     .collection('modules')
@@ -390,15 +535,19 @@ router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
     list = list.filter(m => m.archived !== true);
   }
 
+  if (classFilter) {
+    list = list.filter(m => Array.isArray(m.assignedClasses) && m.assignedClasses.includes(classFilter));
+  }
+
   res.json(list);
 }));
 
 /* -----------------------------------------------------------
-   MODULE: UPDATE
+   MODULE: UPDATE (supports assignedClasses update)
 ----------------------------------------------------------- */
 
-// PUT /modules/:id  body: { title, description, moduleSubTitles?, moduleSubDescs? }
-// PATCH /modules/:id  body: { title?, description?, moduleSubTitles?, moduleSubDescs?, lessonCount? }
+// PATCH /modules/:id
+// body: { title?, description?, moduleSubTitles?, moduleSubDescs?, lessonCount?, assignedClasses?, assignedClassesJson? }
 router.patch('/modules/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { title, description, moduleSubTitles, moduleSubDescs, lessonCount } = req.body;
@@ -409,7 +558,7 @@ router.patch('/modules/:id', asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Module not found.' });
   }
 
-  // Only update provided fields
+  const current = moduleDoc.data() || {};
   const updateObj = {
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   };
@@ -419,8 +568,48 @@ router.patch('/modules/:id', asyncHandler(async (req, res) => {
   if (Array.isArray(moduleSubDescs)) updateObj.moduleSubDescs = moduleSubDescs;
   if (typeof lessonCount === 'number') updateObj.lessonCount = lessonCount;
 
+  // Assigned classes update (optional)
+  const incomingAssigned = readAssignedClasses(req);
+  let changedAssigned = false;
+  let finalAssigned = Array.isArray(current.assignedClasses) ? current.assignedClasses.slice() : [];
+
+  if (incomingAssigned.length) {
+    const { validIds } = await validateClassIds(incomingAssigned);
+    // Compute diffs
+    const prevSet = new Set(finalAssigned);
+    const newSet = new Set(validIds);
+    const toAdd = validIds.filter(x => !prevSet.has(x));
+    const toRemove = finalAssigned.filter(x => !newSet.has(x));
+
+    if (toAdd.length || toRemove.length) {
+      changedAssigned = true;
+      finalAssigned = Array.from(newSet);
+      updateObj.assignedClasses = finalAssigned;
+      updateObj.assignedClassCount = finalAssigned.length;
+
+      // update class index docs
+      if (toAdd.length) {
+        await createClassIndexDocs({
+          moduleId: id,
+          title: updateObj.title ?? current.title ?? '',
+          courseId: current.courseId,
+          moduleNumber: current.moduleNumber || 0,
+          archived: current.archived === true,
+          classIds: toAdd
+        });
+      }
+      if (toRemove.length) {
+        await deleteClassIndexDocs({ moduleId: id, classIds: toRemove });
+      }
+    }
+  }
+
   await moduleRef.update(updateObj);
-  res.json({ success: true, message: 'Module updated successfully.' });
+  res.json({
+    success: true,
+    message: 'Module updated successfully.',
+    ...(changedAssigned ? { assignedClasses: finalAssigned, assignedClassCount: finalAssigned.length } : {})
+  });
 }));
 
 // POST /modules/:id/files
@@ -619,7 +808,7 @@ router.put('/modules/:id/archive', asyncHandler(async (req, res) => {
   if (!result.ok) {
     return res.status(result.code || 500).json({ success: false, message: result.message || 'Failed to archive.' });
   }
-  res.json({ success: true, message: 'Module archived. Related assignments and quizzes hidden.' });
+  res.json({ success: true, message: 'Module archived. Related assignments, quizzes, and class indexes updated.' });
 }));
 
 // PUT /modules/:id/unarchive
@@ -629,18 +818,18 @@ router.put('/modules/:id/unarchive', asyncHandler(async (req, res) => {
   if (!result.ok) {
     return res.status(result.code || 500).json({ success: false, message: result.message || 'Failed to unarchive.' });
   }
-  res.json({ success: true, message: 'Module unarchived. Related assignments and quizzes restored.' });
+  res.json({ success: true, message: 'Module unarchived. Related assignments, quizzes, and class indexes updated.' });
 }));
 
 /* -----------------------------------------------------------
-   MODULE: DELETE & RENUMBER (also delete stored files)
+   MODULE: DELETE & RENUMBER (also delete stored files, class index docs)
 ----------------------------------------------------------- */
 
 // DELETE /modules/:id
 router.delete('/modules/:id', asyncHandler(async (req, res) => {
   const moduleId = req.params.id;
 
-  // Get the module to find its courseId and attachments
+  // Get the module to find its courseId, attachments, and assigned classes
   const moduleRef = firestore.collection('modules').doc(moduleId);
   const moduleDoc = await moduleRef.get();
 
@@ -648,11 +837,16 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Module not found.' });
   }
 
-  const { courseId, attachments } = moduleDoc.data();
+  const { courseId, attachments, assignedClasses } = moduleDoc.data();
 
   // Best-effort delete of stored objects
   if (Array.isArray(attachments)) {
     await Promise.all(attachments.map(a => deleteStorageObjectFromAttachment(a)));
+  }
+
+  // Delete class index docs
+  if (Array.isArray(assignedClasses) && assignedClasses.length) {
+    await deleteClassIndexDocs({ moduleId, classIds: assignedClasses });
   }
 
   // Delete module doc
@@ -673,7 +867,7 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
   });
   await batch.commit();
 
-  res.json({ success: true, message: 'Module deleted (files cleaned) and modules renumbered.' });
+  res.json({ success: true, message: 'Module deleted (files & class indexes cleaned) and modules renumbered.' });
 }));
 
 /* -----------------------------------------------------------

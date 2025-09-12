@@ -1,297 +1,125 @@
+/* -----------------------------------------------------------
+   Fonts & Design Tokens
+----------------------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
 
-html,
-body {
+
+:root {
+  /* Brand & Theme */
+  --color-primary: #4A1A0C;
+  --color-secondary: #7A2810;
+  --brand-dark-1: #4A1A0C;
+  --brand-dark-2: #7A2810;
+  --brand-accent-1: #FF6A00;
+  --brand-accent-2: #B03C10;
+
+  /* UI */
+  --bg: #f6f8fa;
+  --card: #fff;
+  --border: #e5e7eb;
+  --radius: 14px;
+
+  /* Text */
+  --text: #1f2328;
+  --muted: #6a737d;
+
+  /* Legacy (kept for specific elements) */
+  --color-bg: #f8fafc;
+  --color-border: #e0e7ef;
+  --color-text: #7c2c0c;
+}
+
+/* -----------------------------------------------------------
+   Base
+----------------------------------------------------------- */
+html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   font-family: 'Raleway', sans-serif;
-  background: #e6ebeb;
-  color: #222;
+  background: var(--bg);
+  color: var(--text);
   overflow-x: hidden;
 }
 
-/* Sidebar */
+/* --- One scrollbar only: let BODY handle scrolling --- */
+html, body {
+  overflow-y: auto;          /* page scroll */
+  height: auto;
+  min-height: 100%;
+}
+
+/* disable inner scroll on common wrappers */
+.main,
+.content,
+.container,
+.page-wrapper,
+.card-body {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+
+/* -----------------------------------------------------------
+   Layout: Dashboard, Sidebar, Main
+----------------------------------------------------------- */
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+}
+
 .sidebar {
   width: 70px;
   height: 100vh;
   position: fixed;
   top: 0;
   left: 0;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   padding: 2rem 1rem;
+  background: linear-gradient(to bottom, var(--color-primary), var(--color-secondary));
   box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  z-index: 10;
+  justify-content: flex-start;
   transition: width 0.3s ease;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 999;
 }
-
 .sidebar:hover {
   width: 220px;
+  pointer-events: auto;
 }
 
-.sidebar .logo {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #f8e7d0;
-  margin-bottom: 2rem;
-  text-align: center;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.sidebar:hover .logo {
-  opacity: 1;
-}
-
-.sidebar .nav-links {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar .nav-links li {
-  margin: 20px 0;
-}
-
-.sidebar .nav-links a {
-  color: #fff6dd;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  transition: 0.3s;
-  padding: 0.4rem 0.6rem;
-  border-radius: 10px;
-}
-
-.sidebar .nav-links a i {
-  min-width: 24px;
-  text-align: center;
-}
-
-.sidebar .nav-links a span {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.sidebar:hover .nav-links a span {
-  opacity: 1;
-}
-
-.sidebar .nav-links a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFD580;
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  margin-top: auto;
-}
-
-.sidebar:hover .sidebar-footer {
-  align-items: center;
-}
-
-/* Remove Button */
-.btn-remove {
-  background: linear-gradient(to bottom, #FF3B3B, #B02A2A);
-  /* Gradient from red shades */
-  color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.5rem;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  /* Smooth transition for hover effects */
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-remove:hover {
-  opacity: 0.85;
-  /* Slight opacity change on hover */
-  color: #4A1A0C;
-  /* Text color change on hover */
-}
-
-.btn-remove i {
-  font-size: 1.2rem;
-  /* Icon size for better visibility */
-}
-
-.logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  color: white;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: opacity 0.3s ease;
-  white-space: nowrap;
-  opacity: 0;
-  text-decoration: none;
-  /* ✅ add this line */
-  display: inline-block;
-}
-
-
-.sidebar:hover .logout-btn {
-  opacity: 1;
-}
-
-.logout-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C;
-  /* New text color on hover */
-}
-
-/* Modal header with gradient background */
-.modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
-  border-bottom: none;
-}
-
-/* Title text inside modal header */
-.modal-header .modal-title {
-  font-weight: 600;
-  color: #fff;
-}
-
-/* Close button inside modal header */
-.modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
-  opacity: 0.9;
-}
-.modal-header .btn-close:hover {
-  opacity: 1;
-}
-
-/* Modal footer button with gradient */
-.modal-footer .btn,
-#successOkBtn, 
-#feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.5rem 1.2rem;
-  font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
-}
-
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
-  transform: scale(1.05);
-}
-.modal-body {
-  color:black
-}
-.modal.show .modal-content {
-  border: none;                 /* remove default bootstrap border */
-  border-radius: 14px;          /* match your --radius vibe */
-  overflow: hidden;             /* ensures header corners look perfect */
-  box-shadow: 0 18px 40px rgba(0,0,0,.25);
-}
-
-
-
-/* ===== Center-center modals (Bootstrap 5) ===== */
-
-/* Use flexbox on the modal container to place the dialog dead-center */
-.modal.show {
-  display: flex !important;
-  align-items: center;       /* vertical center */
-  justify-content: center;   /* horizontal center */
-  /* Remove Bootstrap’s default top margin gap */
-  --bs-modal-margin: 0;
-  padding: 0 !important;     /* avoid side/top padding shifting the visual center */
-}
-
-/* Remove default margins and ensure the dialog itself doesn't offset */
-.modal.show .modal-dialog {
-  margin: 0 !important;
-  max-width: 640px;          /* tweak to your taste */
-  width: calc(100% - 2rem);  /* keep nice gutters on small screens */
-}
-
-/* If the content is tall, scroll *inside* the modal, not the page */
-.modal.show .modal-content {
-  max-height: min(90vh, 800px);
-  overflow: auto;
-  border-radius: 12px;       /* matches your UI vibe */
-}
-
-/* Small screens: tighten the width a bit more */
-@media (max-width: 576px) {
-  .modal.show .modal-dialog {
-    width: calc(100% - 1.5rem);
-    max-width: 100%;
-  }
-}
-.btn-close-footer {
-  background-color: #6a737d !important;   /* light gray */
-  color: #fff !important;             
-  border: none !important;
-  border-radius: 999px !important;
-  padding: 0.5rem 1.2rem !important;
-  font-weight: 500;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.btn-close-footer:hover,
-.btn-close-footer:focus {
-  background-color: #6a737d !important;   /* darker hover */
-  color: #fff !important;
-  transform: scale(1.04);
-}
-/* Main Content */
 .main {
   margin-left: 70px;
-  transition: margin-left 0.3s ease;
   width: calc(100% - 70px);
   min-height: 100vh;
-  background: #e6ebeb;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  transition: margin-left 0.3s ease, width 0.3s ease;
 }
-
-.sidebar:hover~.main {
+.sidebar:hover ~ .main {
   margin-left: 220px;
   width: calc(100% - 220px);
 }
 
-/* Header */
+/* -----------------------------------------------------------
+   Header
+----------------------------------------------------------- */
 .header-top {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .logo-header {
@@ -315,723 +143,535 @@ body {
 
 .search-box i {
   position: absolute;
-  right: 15px;
   top: 50%;
+  right: 15px;
   transform: translateY(-50%);
   color: #999;
 }
 
 .profile-btn {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  color: #fff;
-  cursor: pointer;
-}
-
-/* Content Area */
-.content {
-  flex: 1;
-  padding: 2rem 3rem;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-.content h1 {
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  font-weight: bold;
-  text-align: center;
-}
-
-/* Widgets Section */
-.widgets {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 30px;
-  width: 100%;
-  max-width: 1400px;
-}
-
-.title-name h2 {
-  font-family: 'Raleway', sans-serif;
-  font-weight: 700;
-  color: #4A1A0C;
-}
-
-/* Card Design */
-.card {
-  flex: 1 1 45%;
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810) !important;
-}
-
-.card-title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #FFD8A9;
-}
-
-.card-text {
-  font-size: 1rem;
-  color: #FFD8A9;
-}
-
-/* Accent color reused for glow */
-:root {
-  --glow-accent: #ff5a27;
-}
-
-/* Base state (keeps your border & light bg) */
-.border-primary.bg-light {
-  border: 2px solid var(--glow-accent) !important;
-  background-color: #f8f9fa !important;
-  box-shadow:
-    0 0 0 3px rgba(255, 90, 39, 0.18),
-    /* outer halo */
-    0 10px 24px rgba(255, 90, 39, 0.20),
-    /* colored soft shadow */
-    0 4px 12px rgba(0, 0, 0, 0.06);
-  /* natural depth */
-  transition: transform .15s ease, box-shadow .2s ease;
-}
-
-/* Hover: slightly brighter + lift */
-.border-primary.bg-light:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 0 0 4px rgba(255, 90, 39, 0.22),
-    0 14px 30px rgba(255, 90, 39, 0.28),
-    0 8px 18px rgba(0, 0, 0, 0.08);
-}
-
-/* Optional: pulsing glow (add .glow to the card if you want animation) */
-@keyframes glowPulse {
-
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 4px rgba(255, 90, 39, 0.20),
-      0 14px 30px rgba(255, 90, 39, 0.26),
-      0 8px 18px rgba(0, 0, 0, 0.08);
-  }
-
-  50% {
-    box-shadow:
-      0 0 0 8px rgba(255, 90, 39, 0.12),
-      0 16px 36px rgba(255, 90, 39, 0.30),
-      0 8px 18px rgba(0, 0, 0, 0.08);
-  }
-}
-
-.class-card.border-primary.bg-light.glow {
-  animation: glowPulse 1.8s ease-in-out infinite;
-}
-
-
-.dark-card {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #FFD8A9;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-}
-
-.dark-card h3,
-.dark-card p {
-  color: #FFD8A9;
-}
-
-/* upload */
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  font-family: 'Raleway', sans-serif;
-  background: #e6ebeb;
-  color: #222;
-  overflow-x: hidden;
-}
-
-.main {
-  margin-left: 70px;
-  transition: margin-left 0.3s ease;
-  width: calc(100% - 70px);
-  min-height: 100vh;
-  background: #e6ebeb;
-  display: flex;
-  flex-direction: column;
-}
-
-.upload-header {
-  width: 100%;
-  padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.upload-header .logo-header {
-  height: 45px;
-}
-
-.upload-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 3rem;
-}
-
-.form-card {
-  background: white;
-  border-radius: 16px;
-  padding: 2.5rem 3rem;
-  max-width: 1200px;
-  /* increased from 600px */
-  width: 100%;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-}
-
-.form-control,
-.form-label {
-  font-size: 1.05rem;
-}
-
-textarea.form-control {
-  min-height: 130px;
-}
-
-.form-card h2 {
-  font-weight: bold;
-  color: #4A1A0C;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.form-control,
-.form-label {
-  font-size: 1rem;
-  color: #333 !important;
-}
-
-.btn-upload {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.5rem;
-}
-
-.btn-upload:hover {
-  opacity: 0.85;
-}
-
-.back-link {
-  display: inline-block;
-  margin-top: 1rem;
-  text-align: center;
-  text-decoration: none;
-  color: #4A1A0C;
-  font-weight: 500;
-}
-
-.back-link i {
-  margin-right: 6px;
-}
-
-.back-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  color: white;
-  font-weight: bold;
-  padding: 0.5rem 1.2rem;
-  border-radius: 20px;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
-}
-
-.back-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C;
-  /* New text color on hover */
-}
-
-.form-label {
-  color: #f8e7d0;
-}
-
-.form-select {
-  font-size: 1rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-.btn-secondary {
-  background: linear-gradient(to bottom, #C95C2D, #A34723);
-
-  color: white;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.5rem;
-}
-
-.btn-secondary:hover {
-  opacity: 0.85;
-  color: #ffd580;
-}
-
-.custom-card {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 5px 6px rgba(0, 0, 0, 0.212);
-}
-
-.profile-btn {
-  display: flex;
-  align-items: center;
-  /* ✅ Vertically center icon and text */
-  gap: 8px;
-  /* ✅ Optional: space between icon and username */
-  border: none;
   background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
   cursor: pointer;
 }
 
 .profile-btn .username {
-  display: flex;
-  align-items: center;
-  /* ✅ Ensures the span content is vertically centered */
+  font-size: 14px;
 }
 
-.remove-attachment {
-  background: linear-gradient(to bottom, #FF3B3B, #B02A2A);
-  /* Gradient from red shades */
-  color: white;
+/* -----------------------------------------------------------
+   Sidebar Contents
+----------------------------------------------------------- */
+.sidebar .logo {
+  font-size: 1.8rem;
   font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.5rem;
+  color: #f8e7d0;
+  margin-bottom: 2rem;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.sidebar:hover .logo { opacity: 1; }
+
+.nav-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+.nav-links li { margin: 20px 0; }
+
+.nav-links a,
+.dropdown-toggle {
+  color: #fff6dd;
+  text-decoration: none;
   font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: 0.3s;
   cursor: pointer;
-  transition: all 0.3s ease;
-  /* Smooth transition for hover effects */
+}
+.nav-links a i,
+.dropdown-toggle i {
+  min-width: 24px;
+  text-align: center;
+}
+.nav-links a span,
+.dropdown-toggle span {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  max-width: 140px;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.2;
+}
+.sidebar:hover .nav-links a span,
+.sidebar:hover .dropdown-toggle span { opacity: 1; }
+
+.nav-links a:hover,
+.dropdown-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFD580;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* Dropdown */
+.nav-links .dropdown { display: flex; flex-direction: column; width: 100%; }
+.nav-links .dropdown-menu {
+  list-style: none;
+  margin: 0;
+  padding-left: 2rem;
+  background: transparent;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease;
+}
+.nav-links .dropdown.open .dropdown-menu { max-height: 300px; }
+.nav-links .dropdown-menu li { margin: 10px 0; }
+.nav-links .dropdown-menu li a {
+  color: #f0e6c6;
+  font-size: 0.95rem;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-decoration: none;
+}
+.nav-links .dropdown-menu li a:hover { color: #FFD580; }
+
+/* -----------------------------------------------------------
+   Buttons & Badges
+----------------------------------------------------------- */
+.btn-amber {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+}
+
+.btn-amber:hover {
+  filter: brightness(1.06);
+  color: #fff
+}
+
+.btn-amber-outline {
+  background: #fff;
+  color: var(--brand-accent-2);
+  border: 1px solid var(--brand-accent-2)
+}
+
+.btn-amber-outline:hover {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  color: #fff;
+  border-color: transparent
+}
+
+.btn-close-footer {
+  background-color: #6a737d !important;
+  /* light gray */
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;
+  /* darker hover */
+  color: #fff !important;
+  transform: scale(1.04);
+}
+
+.logout-btn {
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  border: none;
+  padding: .6rem 1.5rem;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .3s;
+}
+
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
+
+.badge-soft {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  border: 1px solid rgba(176, 60, 16, .25);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: .75rem;
+  color: var(--brand-accent-2);
+  background: linear-gradient(90deg, rgba(255, 106, 0, .12), rgba(176, 60, 16, .12));
+}
+.module-card .archived-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed rgba(176, 60, 16, .35);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: .75rem;
+  color: #B03C10;
+  background: rgba(255, 106, 0, .10);
 }
 
-/* Hover effect */
-.remove-attachment:hover {
-  opacity: 0.85;
-  /* Slight opacity change on hover */
-  color: #4A1A0C;
-  /* Text color change on hover */
-}
+/* -----------------------------------------------------------
+   Cards & Content
+----------------------------------------------------------- */
+.content { padding: 24px; }
 
-:root {
-  --bg: #f6f8fa;
-  --text: #1f2328;
-  --muted: #6a737d;
-  --card: #fff;
-  --border: #e5e7eb;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
-  --card-radius: 14px;
-}
-
-html,
-body {
-  height: 100%;
-  margin: 0;
-  background: var(--bg);
-  color: var(--text)
-}
-
-.dashboard {
-  display: flex;
-  min-height: 100vh
-}
-
-/* Sidebar hover behavior to match first page */
-.main {
-  margin-left: 70px;
-  width: calc(100% - 70px);
-  transition: margin-left .3s ease, width .3s ease;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: var(--bg)
-}
-
-.sidebar:hover~.main {
-  margin-left: 220px;
-  width: calc(100% - 220px)
-}
-
-/* Header */
-.upload-header {
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2)) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  padding: 12px 20px !important;
-}
-
-.upload-header .logo-header {
-  height: 45px
-}
-
-/* Card shell */
-.upload-container {
-  padding: 60px
-}
-
-.form-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--card-radius);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
-  padding: 18px;
-}
-
-.form-card h2 {
-  margin: 0 0 12px;
+.page-title {
   font-weight: 800;
+  font-size: 1.6rem;
+  margin: 4px 0 18px;
+  text-align: center !important;
+  color: transparent;
   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent
 }
 
-/* Buttons */
-.btn-upload {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-  border: none;
-  color: #fff
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
+  overflow: hidden;
 }
-
-.btn-upload:hover {
-  filter: brightness(1.05);
-  color: #fff
+.ui-card.constrain { max-width: 1120px; margin-left: auto; margin-right: auto; }
+.ui-card.card-themed {
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
 }
-
-.btn-outline-secondary {
-  border-color: var(--border);
-  color: var(--text);
-  background: #fff
-}
-
-.btn-outline-secondary:hover {
-  border-color: var(--brand-accent-2);
-  color: #fff;
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2))
-}
-
-/* Inputs */
-.form-control:focus,
-.form-select:focus {
-  border-color: var(--brand-accent-2);
-  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18)
-}
-
-.form-label {
-  font-weight: 700
-}
-
-.hint,
-.text-muted {
-  color: var(--muted) !important
-}
-
-/* Toolbar above pager */
-.lesson-toolbar {
+.ui-card-head {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #FFD8A9;
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
-
-.pager-chip {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: .25rem .75rem;
-  background: #fff;
-  color: var(--text)
-}
-
-.step-dots {
+.ui-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
   display: flex;
-  gap: 6px;
-  align-items: center
+  gap: .5rem;
+  align-items: center;
+  color: #ffe9ca;
 }
+.ui-subtext { font-size: .9rem; color: #ffe9ca; }
 
-.step-dots .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #d7dadf;
-  opacity: .8
+.card,
+.module-content-card,
+.list-group-item,
+.dropdown-menu { border-color: var(--color-border) !important; }
+
+.card-title,
+.fw-bold.text-dark { color: var(--color-secondary) !important; }
+
+.attachment-item {
+  background: #f3e7e1 !important;
+  border-radius: 0.75rem;
+  padding: 1rem 1.5rem;
+  margin: .35rem 0 1rem;
 }
+.attachment-title,
+.fw-bold.text-info,
+.btn-link.text-info { color: var(--color-primary) !important; }
 
-.step-dots .dot.active {
-  background: var(--brand-accent-1);
-  opacity: 1
-}
-
-/* >>> Requested change: remove dark card per-lesson, fill whole pager <<< */
-#lessonPager {
-  width: 100%;
-  background: #fff;
+/* Course & Module cards */
+.course-card,
+.module-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .05);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  height: 100%;
+  transition: transform .07s ease, box-shadow .2s ease;
 }
-
-.lesson-page {
-  display: none;
-  width: 100%
+.course-card:hover,
+.module-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, .12);
 }
+.module-card.archived { opacity: .85; }
+.course-title { margin: 0 0 4px; font-weight: 700; }
+.course-meta { color: var(--muted); font-size: .9rem; }
+.course-actions .btn { min-width: 90px; }
 
-/* no extra borders/backgrounds */
-.lesson-page.active {
-  display: flex
+/* Segmented control */
+.segmented {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  background: transparent;
+  border: 0;
+  outline: none !important;
+  box-shadow: none !important;
 }
-
-/* Attachments/Video UI */
-.file-pill {
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: .5rem;
-  background: #fafafa
-}
-
-.file-attachment-group input[type="file"] {
-  background: #fff
-}
-
-.video-field .form-control {
-  background: #fff
-}
-
-/* === Make the Lessons section fill the entire form card === */
-
-/* The pager is the single white container */
-#lessonPager {
-  width: 100%;
+.segmented .seg-btn {
+  min-width: 110px;
+  padding: .6rem 1rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 2px solid var(--border);
   background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .05);
+  color: #374151;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  transition: background .15s, border-color .15s, box-shadow .15s, color .15s;
+}
+.segmented .seg-btn:hover { background: #f9fafb; box-shadow: 0 2px 6px rgba(0, 0, 0, .06); }
+.segmented .seg-btn.is-active {
+  background: #5f6b77;
+  color: #fff;
+  border-color: #5f6b77;
+}
+.segmented .seg-btn.is-archived {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+.segmented .seg-btn.is-all {
+  background: #fff;
+  color: #374151;
+  border-color: var(--border);
 }
 
-/* Kill any fixed/max widths applied by upload.css/Bootstrap inside the pager */
-#lessonPager .lesson-page,
-#lessonPager .card,
-#lessonPager .card-body {
-  max-width: none !important;
-  width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  /* keep the pager's padding only */
-  background: transparent !important;
-  border: 0 !important;
+/* Kill focus halos in segmented */
+.segmented .seg-btn,
+.segmented .seg-btn:focus,
+.segmented .seg-btn:focus-visible,
+.segmented .seg-btn:active {
+  outline: none !important;
   box-shadow: none !important;
 }
 
-/* Show only the active lesson, but let it occupy full width */
-#lessonPager .lesson-page {
-  display: none
+/* -----------------------------------------------------------
+   Dropdown/Menu theme overrides
+----------------------------------------------------------- */
+.dropdown-menu { background: #fff8f5 !important; }
+.dropdown-item.active,
+.dropdown-item:active { background-color: var(--color-primary) !important; color: #fff !important; }
+
+/* -----------------------------------------------------------
+   Bootstrap-like color helpers
+----------------------------------------------------------- */
+.bg-primary,
+.btn-primary,
+.badge.bg-primary,
+.dropdown-menu .dropdown-item.active,
+.dropdown-menu .dropdown-item:active {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+.text-primary,
+.fw-bold.text-primary { color: var(--color-primary) !important; }
+.text-secondary,
+.fw-semibold.text-secondary { color: var(--color-secondary) !important; }
+.badge.bg-primary { background-color: var(--color-primary) !important; }
+
+/* -----------------------------------------------------------
+   Modals
+----------------------------------------------------------- */
+.modal-header {
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #FFD8A9;
+  border-bottom: none;
+}
+.modal-header .modal-title { font-weight: 600; color: #fff; }
+.modal-header .btn-close { filter: brightness(0) invert(1); opacity: 0.9; }
+.modal-header .btn-close:hover { opacity: 1; }
+
+.modal-content {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.modal-footer { border-top: 1px solid var(--border); }
+
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
 }
 
-#lessonPager .lesson-page.active {
-  display: block
+/* Close button (footer variant) */
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  transform: scale(1.04);
 }
 
-/* Ensure controls inside stretch edge-to-edge */
-#lessonPager .form-control,
-#lessonPager textarea,
-#lessonPager .attach-list,
-#lessonPager .video-field,
-#lessonPager .file-attachment-group {
-  width: 100%
+/* Inputs focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--brand-accent-2) !important;
+  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18) !important;
 }
 
-/* Keep attachment pill light and full-width feel */
-#lessonPager .file-pill {
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: .5rem;
-  background: #fafafa;
+/* -----------------------------------------------------------
+   File List / Preview (from staged list + modal preview)
+----------------------------------------------------------- */
+.file-list { list-style: none; padding-left: 0; margin: 0; }
+.file-item {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem .75rem; border: 1px solid var(--border);
+  border-radius: 10px; background: #fff;
 }
+.file-item + .file-item { margin-top: .5rem; }
+.file-name { flex: 1 1 auto; min-width: 0; }
+.file-name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%; }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; }
 
-/* Optional: reduce inner spacing a bit for tighter sheet look */
-#lessonPager .mb-2 {
-  margin-bottom: .75rem !important;
-}
+.badge-file { background: rgba(76,175,80,.08); border: 1px solid rgba(76,175,80,.2); color: #2e7d32; }
+.badge-link { background: rgba(25,118,210,.08); border: 1px solid rgba(25,118,210,.2); color: #1769aa; }
+.badge-stage { background: rgba(255,106,0,.1); border: 1px solid rgba(255,106,0,.25); color: #b03c10; }
 
-#lessonPager .mt-2 {
-  margin-top: .75rem !important;
+#filePreviewModal .modal-dialog { max-width: 96vw; }
+#filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
+#filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
+.preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.preview-wrap iframe,
+.preview-wrap embed,
+.preview-wrap object,
+.preview-wrap img,
+.preview-wrap video,
+.preview-wrap audio {
+  width:100%; height:100%; border:0; object-fit:contain; background:#fff;
 }
-/* ===== Mobile header: search + icon + username (no overlap) ===== */
+.preview-fallback { max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
+.spinner-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
+
+/* -----------------------------------------------------------
+   Utilities / Misc
+----------------------------------------------------------- */
+.page-title.brand {
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lesson-toolbar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.pager-chip {
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.2rem .6rem; border-radius:999px; border:1px solid var(--border);
+  font-size:.8rem; background:#fff; color:#374151;
+}
+.step-dots { display:flex; gap:6px; align-items:center; }
+.step-dots .dot { width:8px; height:8px; border-radius:50%; background:#d0d7de; }
+.step-dots .dot.active { background:#FF6A00; }
+.lesson-page.card { border:1px solid var(--border); }
+
+.assign-card { cursor:pointer; border:1px solid var(--border); border-radius:12px; transition:.2s; }
+.assign-card.selected { outline:2px solid var(--brand-accent-1); box-shadow:0 0 0 3px rgba(255,106,0,.15); }
+.assign-card .card-title { font-weight:600; }
+.small-muted { font-size:.9rem; color: var(--muted); }
+
+/* -----------------------------------------------------------
+   Responsive
+----------------------------------------------------------- */
+/* Phones */
 @media (max-width: 480px) {
-  :root {
-    --m-header-gap: 12px;
-  }
-
-  /* Header = one row */
-  .header-top{
-    display: flex !important;
+  /* Header */
+  .logo-header { display: none !important; }
+  .header-top {
     flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: var(--m-header-gap) !important;
+    gap: 12px !important;
     padding: .6rem .8rem !important;
     text-align: left !important;
   }
 
-  /* Hide logo on mobile */
-  .logo-header{ display: none !important; }
-
-  /* Search shrinks as needed; no overflow */
-  .search-box{
-    flex: 1 1 0 !important;
-    min-width: 0 !important;          /* allow flex item to shrink */
-    margin: 0 !important;
-  }
-  .search-box input{
+  .search-box { flex: 1 1 0 !important; min-width: 0 !important; margin: 0 !important; }
+  .search-box input {
     height: 36px !important;
     padding: 6px 34px 6px 12px !important;
     font-size: .9rem !important;
     border-radius: 28px !important;
   }
-  .search-box i{ right: 10px !important; }
+  .search-box i { right: 10px !important; }
 
-  /* Profile button shows icon + username, clamps width, no overlap */
-  .profile-btn{
-    flex: 0 0 auto !important;
-    width: auto !important;
-    height: 44px !important;
-    padding: 0 .75rem !important;
-    margin-left: var(--m-header-gap) !important;
-    border-radius: 999px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    max-width: 45vw !important;       /* never eat the whole row */
-  }
-  .profile-btn i{
-    font-size: 22px !important;
-    flex: 0 0 auto !important;
-    line-height: 1 !important;
-  }
-  .profile-btn .username{
-    display: inline-flex !important;  /* make it visible on mobile */
-    align-items: center !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: calc(45vw - 28px - 16px) !important; /* button max minus icon+gap */
-    font-size: .9rem !important;
-    line-height: 1.1 !important;
-  }
-}
-@media (max-width: 480px) {
-  .dashboard {
-    flex-direction: column;
-  }
+  /* Layout becomes stacked */
+  .dashboard { flex-direction: column; }
+  .main { margin-left: 0; width: 100%; }
+  .sidebar { width: 100%; position: relative; z-index: 10; }
+  .sidebar:hover ~ .main { margin-left: 0; width: 100%; }
 
-  .main {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .sidebar {
-    width: 100%;
-    position: relative;
-    z-index: 10;
-  }
-
-  .sidebar:hover ~ .main {
-    margin-left: 0;
-    width: 100%;
-  }
-
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 0.8rem;
-    text-align: center;
-  }
-
-  .search-box {
-    max-width: 100%;
-    margin: 0;
-  }
-
-  .search-box input {
-    padding: 8px 32px 8px 12px;
-    font-size: 0.9rem;
-  }
-
-  .ui-card {
-    padding: 10px;
-  }
-
-  .ui-card.card-themed .ui-card-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  }
-@media (max-width: 480px) {
-  /* Make buttons easy to tap and nicely spaced */
+  /* Buttons: full-width tap targets */
   .btn,
   .back-btn,
   .logout-btn,
   .btn-amber,
   .btn-amber-outline {
-    display: block;           /* stack cleanly */
-    width: 100%;              /* full-width buttons */
-    min-height: 44px;         /* Apple HIG tap target */
-    padding: 0.9rem 1rem;     /* comfy padding */
-    font-size: 1rem;          /* avoid iOS zoom */
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.9rem 1rem;
+    font-size: 1rem;
     line-height: 1.2;
-    border-radius: 14px;      /* softer corners on small screens */
-    margin: 10px 0;           /* vertical gap between buttons */
+    border-radius: 14px;
+    margin: 10px 0;
     text-align: center;
   }
+  .btn i, .back-btn i { margin-right: 8px; }
 
-  /* Icon + text alignment inside buttons */
-  .btn i,
-  .back-btn i {
-    margin-right: 8px;
-  }
-
-  /* Button groups wrap nicely with spacing */
   .btn-group,
   .lesson-nav,
   .content .d-flex,
@@ -1039,27 +679,21 @@ body {
     flex-wrap: wrap !important;
     gap: 10px;
   }
+  .lesson-nav .btn { min-width: unset; }
 
-  /* Specific: lesson prev/next should stack under title if tight */
-  .lesson-nav .btn {
-    min-width: unset;         /* let full-width rule apply */
-  }
+  .content .d-flex.gap-2 { gap: 10px !important; }
 
-  /* Specific: top action buttons (Back / Complete / Badge) wrap well */
-  .content .d-flex.gap-2 {
-    gap: 10px !important;
-  }
-
-  /* Prevent tiny outline/ghost borders on gradient buttons */
-  .btn-amber,
-  .btn-amber-outline,
-  .back-btn,
-  .logout-btn {
-    border-width: 1px;
+  .ui-card { padding: 10px; }
+  .ui-card .ui-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin: -10px -10px 10px -10px;
+    padding: 10px;
   }
 }
 
-/* Tablet: keep buttons inline but add breathing room */
+/* Tablets / small desktops */
 @media (min-width: 481px) and (max-width: 1280px) {
   .btn,
   .back-btn,
@@ -1068,75 +702,7 @@ body {
     padding: 0.75rem 1rem;
     font-size: 0.95rem;
     border-radius: 12px;
-    margin: 6px 6px 6px 0;   /* small gaps between inline buttons */
+    margin: 6px 6px 6px 0;
   }
-
-  /* Lesson nav buttons keep reasonable width */
   .lesson-nav .btn { min-width: 120px; }
-}/* === MOBILE LAYOUT FIXES (≤480px) === */
-@media (max-width: 480px) {
-  /* (optional) if you want the sidebar on top instead of left, uncomment:
-  .dashboard { flex-direction: column; }
-  .main { margin-left: 0; width: 100%; }
-  .sidebar { width: 100%; height: auto; position: sticky; top: 0; z-index: 10; }
-  */
-
-  /* header + container */
-  .upload-header { padding: .75rem .9rem !important; }
-  .upload-header .logo-header { height: 34px; }
-  .upload-container { padding: 12px !important; margin-top: 8px !important; }
-  .form-card { padding: 16px !important; border-radius: 12px; }
-
-  /* form controls */
-  .form-label { font-size: .95rem; margin-bottom: .25rem; }
-  .form-control, .form-select, textarea.form-control { font-size: 1rem; }
-  textarea.form-control { min-height: 120px; }
-
-  /* toolbar: clean stacking + big tap targets */
-  .lesson-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .lesson-toolbar .pager-chip { order: 1; padding: .25rem .5rem; }
-  #stepDots { order: 2; display: flex; gap: 6px; align-items: center; flex: 1 1 auto; justify-content: flex-end; }
-  #stepDots .dot { width: 8px; height: 8px; border-radius: 50%; background: #d7dadf; border: 0; }
-  #stepDots .dot.active { background: var(--brand-accent-1, #FF6A00); }
-  .lesson-toolbar .btn-group { order: 3; width: 100%; display: flex; gap: 8px; }
-  #prevBtn, #nextBtn { flex: 1 1 0; min-height: 44px; font-size: 1rem; }
-  #addLessonBtn, #removeLessonBtn { order: 4; width: 100%; min-height: 44px; font-size: 1rem; }
-
-  /* pager box padding */
-  #lessonPager { padding: 12px !important; }
-
-  /* attachment header row: stack nicely */
-  .lesson-attachments > .d-flex { flex-wrap: wrap; gap: 8px; }
-  .lesson-attachments > .d-flex strong { flex: 1 0 100%; }
-  .lesson-attachments .add-attachment { width: 100%; min-height: 44px; }
-
-  /* each attachment row becomes full width */
-  .file-attachment-group .col-5,
-  .file-attachment-group .col-7 { flex: 0 0 100%; max-width: 100%; }
-  .file-attachment-group .file-pill { width: 100%; }
-  .file-attachment-group .attachment-file { height: 44px; }
-  .file-attachment-group .attachment-desc { height: 44px; }
-  .file-attachment-group .remove-attachment { width: 100%; min-height: 44px; }
-/* Center "Remove" text on both buttons */
-.btn-remove,
-.remove-attachment {
-  display: inline-flex !important;
-  align-items: center;          /* vertical center */
-  justify-content: center;      /* horizontal center */
-  text-align: center;
-  line-height: 1;
-  min-height: 44px;             /* nice tap target */
-  white-space: nowrap;
-}
-
-/* If Bootstrap's .btn-sm shrinks padding too much on the attachment remove */
-.remove-attachment.btn-sm {
-  padding: 0.6rem 1.2rem;       /* balance left/right */
-  border-radius: 8px;
-}
-
-  /* big, comfy action buttons everywhere */
-  .btn, .btn-upload, .btn-secondary, .btn-outline-secondary, .btn-remove, .back-btn {
-    width: 100%; border-radius: 12px; min-height: 44px; font-size: 1rem;
-  }
 }

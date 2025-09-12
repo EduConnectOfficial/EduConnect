@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,26 +14,8 @@
   <!-- (Optional) your page css -->
   <link rel="stylesheet" href="list.css" />
 
-  <style>
-    /* Make the preview modal feel “full screen” and let content breathe */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
-    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
-
-    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .preview-wrap iframe,
-    .preview-wrap embed,
-    .preview-wrap object,
-    .preview-wrap img,
-    .preview-wrap video,
-    .preview-wrap audio {
-      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
-    }
-    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
-    #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
-  </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar Container -->
@@ -90,7 +73,8 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Course Modules</h2>
-            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.</div>
+            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.
+            </div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -113,7 +97,7 @@
             </div>
 
             <div class="col-12 col-md-3 d-flex justify-content-md-end">
-              <a id="uploadModuleBtn" class="btn btn-amber w-100 w-md-auto mt-2 mt-md-0" href="#">
+              <a id="uploadModuleBtn" class="btn btn-amber text-center w-100 w-md-auto mt-2 mt-md-0" href="#">
                 <i class="bi bi-plus-circle me-1"></i>Upload Module
               </a>
             </div>
@@ -126,7 +110,8 @@
   </div>
 
   <!-- File Preview Modal -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -158,31 +143,35 @@
 
   <!-- Generic INFO Modal -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="infoModalLabel">Notice</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="infoModalBody">—</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
+        </div>
       </div>
-      <div class="modal-body" id="infoModalBody">—</div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-amber" data-bs-dismiss="modal" id="infoModalOkBtn">OK</button>
-      </div>
-    </div></div>
+    </div>
   </div>
 
   <!-- Generic CONFIRM Modal -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmModalLabel">Confirm</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn-close-footer" data-bs-dismiss="modal" id="confirmCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-amber" id="confirmOkBtn">Yes, proceed</button>
+        </div>
       </div>
-      <div class="modal-body" id="confirmModalBody">Are you sure?</div>
-      <div class="modal-footer">
-        <button type="button" class="btn-close-footer" data-bs-dismiss="modal" id="confirmCancelBtn">Cancel</button>
-        <button type="button" class="btn btn-amber" id="confirmOkBtn">Yes, proceed</button>
-      </div>
-    </div></div>
+    </div>
   </div>
 
   <!-- JS -->
@@ -255,7 +244,7 @@
     const confirmBodyEl = document.getElementById('confirmModalBody');
     const confirmOkBtn = document.getElementById('confirmOkBtn');
     const confirmCancelBtn = document.getElementById('confirmCancelBtn');
-    function showConfirm({ title='Confirm', html='Are you sure?', confirmText='Yes, proceed', confirmBtnClass='btn btn-amber' } = {}) {
+    function showConfirm({ title = 'Confirm', html = 'Are you sure?', confirmText = 'Yes, proceed', confirmBtnClass = 'btn btn-amber' } = {}) {
       return new Promise((resolve) => {
         confirmTitleEl.textContent = title;
         confirmBodyEl.innerHTML = html;
@@ -347,11 +336,11 @@
       const info = document.getElementById('fileInfoText');
       const hdr = document.getElementById('filePreviewModalLabel');
       const badgeId = 'fileKindBadge';
-      const labelMap = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File' };
+      const labelMap = { youtube: 'YouTube', video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
       const colorMap = {
-        youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger', audio:'bg-secondary-subtle text-secondary',
-        image:'bg-success-subtle text-success', pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
-        office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
+        youtube: 'bg-danger-subtle text-danger', video: 'bg-danger-subtle text-danger', audio: 'bg-secondary-subtle text-secondary',
+        image: 'bg-success-subtle text-success', pdf: 'bg-primary-subtle text-primary', text: 'bg-info-subtle text-info',
+        office: 'bg-warning-subtle text-warning', other: 'bg-dark-subtle text-dark'
       };
       let badge = document.getElementById(badgeId);
       if (!badge) { badge = document.createElement('span'); badge.id = badgeId; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
@@ -360,55 +349,60 @@
       info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
       document.getElementById('openInNewTabBtn').href = url;
     }
-    function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;}}
-    function toYouTubeEmbed(url=''){ try{
-      const u=new URL(url); const h=u.hostname.replace(/^www\./,'').toLowerCase();
-      let id=''; let start=u.searchParams.get('start')||u.searchParams.get('t')||''; if(start&&/^\d+s$/.test(start)) start=parseInt(start,10); if(start&&/^\d+$/.test(start)) start=parseInt(start,10); if(!Number.isFinite(start)) start='';
-      if(h==='youtu.be'){ id=(u.pathname||'').replace(/^\//,'').split('/')[0]; } else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; }
-      if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start) qs.set('start',String(start)); return `${base}?${qs.toString()}`;
-    }catch{return null;}}
-    function getExtFromUrl(url=''){ const clean=String(url).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
-    function kindFromUrl(url){ if(isYouTubeUrl(url)) return 'youtube'; const ext=getExtFromUrl(url);
-      if(['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if(['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
-      if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
-      if(ext==='pdf') return 'pdf';
-      if(['txt','csv','log'].includes(ext)) return 'text';
-      if(['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+    function isYouTubeUrl(url = '') { try { const u = new URL(url); const h = u.hostname.replace(/^www\./, '').toLowerCase(); return ['youtu.be', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(h); } catch { return false; } }
+    function toYouTubeEmbed(url = '') {
+      try {
+        const u = new URL(url); const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        let id = ''; let start = u.searchParams.get('start') || u.searchParams.get('t') || ''; if (start && /^\d+s$/.test(start)) start = parseInt(start, 10); if (start && /^\d+$/.test(start)) start = parseInt(start, 10); if (!Number.isFinite(start)) start = '';
+        if (h === 'youtu.be') { id = (u.pathname || '').replace(/^\//, '').split('/')[0]; } else { if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || ''; if (!id) id = u.searchParams.get('v') || ''; }
+        if (!id) return null; const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start)); return `${base}?${qs.toString()}`;
+      } catch { return null; }
+    }
+    function getExtFromUrl(url = '') { const clean = String(url).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function kindFromUrl(url) {
+      if (isYouTubeUrl(url)) return 'youtube'; const ext = getExtFromUrl(url);
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
       return 'other';
     }
     function renderFilePreviewInto(container, url) {
       container.innerHTML = '';
       const ext = getExtFromUrl(url);
-      const isImg = ["jpg","jpeg","png","gif","bmp","webp","svg"].includes(ext);
+      const isImg = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"].includes(ext);
       const isPdf = ext === "pdf";
-      const isVideo = ["mp4","webm","ogg","ogv","mov"].includes(ext);
-      const isAudio = ["mp3","wav","ogg","m4a","aac","flac"].includes(ext);
-      const isText = ["txt","csv","log"].includes(ext);
-      const isOffice = ["doc","docx","ppt","pptx","xls","xlsx"].includes(ext);
+      const isVideo = ["mp4", "webm", "ogg", "ogv", "mov"].includes(ext);
+      const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext);
+      const isText = ["txt", "csv", "log"].includes(ext);
+      const isOffice = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext);
       const fallback = (note) => {
-        const wrap = document.createElement('div'); wrap.className='preview-fallback';
+        const wrap = document.createElement('div'); wrap.className = 'preview-fallback';
         wrap.innerHTML = `<div class="text-muted mb-2">${note || 'Preview failed or is blocked by the browser.'}</div>
           <a href="${url}" target="_blank" rel="noopener" class="btn btn-amber"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a>`;
         container.innerHTML = ''; container.appendChild(wrap); showSpinner(false);
       };
       showSpinner(true);
-      if(isYouTubeUrl(url)){ const embed = toYouTubeEmbed(url); if(embed){
-        container.innerHTML = `<div class="ratio ratio-16x9"><iframe src="${embed}" title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="border:0"></iframe></div>`;
-        showSpinner(false); return;
-      } fallback('Couldn’t embed this YouTube link.'); return; }
-      if(isImg){ const img=new Image(); img.onload=()=>showSpinner(false); img.onerror=()=>fallback('Image preview failed.'); img.src=url; container.appendChild(img); return; }
-      if(isPdf){ const iframe=document.createElement('iframe'); iframe.title='PDF preview'; iframe.allow='encrypted-media'; iframe.referrerPolicy='no-referrer'; iframe.onload=()=>showSpinner(false); iframe.onerror=()=>fallback('PDF preview failed (CORS or viewer blocked).'); iframe.src=url; container.appendChild(iframe); return; }
-      if(isVideo){ const video=document.createElement('video'); video.controls=true; video.onloadeddata=()=>showSpinner(false); video.onerror=()=>fallback('Video preview failed.'); video.src=url; container.appendChild(video); return; }
-      if(isAudio){ const audio=document.createElement('audio'); audio.controls=true; audio.onloadeddata=()=>showSpinner(false); audio.onerror=()=>fallback('Audio preview failed.'); audio.src=url; container.appendChild(audio); return; }
-      if(isText){ const iframe=document.createElement('iframe'); iframe.onload=()=>showSpinner(false); iframe.onerror=()=>fallback('Text preview failed.'); iframe.src=url; container.appendChild(iframe); return; }
-      if(isOffice){ const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe=document.createElement('iframe'); iframe.title='Document preview'; iframe.onload=()=>showSpinner(false); iframe.onerror=()=>fallback('Office preview failed (Google Viewer blocked or CORS).'); iframe.src=gview; container.appendChild(iframe); return; }
-      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=()=>showSpinner(false); obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj);
-      setTimeout(()=>{ if(!obj.contentDocument) fallback(); },1500);
+      if (isYouTubeUrl(url)) {
+        const embed = toYouTubeEmbed(url); if (embed) {
+          container.innerHTML = `<div class="ratio ratio-16x9"><iframe src="${embed}" title="YouTube video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="border:0"></iframe></div>`;
+          showSpinner(false); return;
+        } fallback('Couldn’t embed this YouTube link.'); return;
+      }
+      if (isImg) { const img = new Image(); img.onload = () => showSpinner(false); img.onerror = () => fallback('Image preview failed.'); img.src = url; container.appendChild(img); return; }
+      if (isPdf) { const iframe = document.createElement('iframe'); iframe.title = 'PDF preview'; iframe.allow = 'encrypted-media'; iframe.referrerPolicy = 'no-referrer'; iframe.onload = () => showSpinner(false); iframe.onerror = () => fallback('PDF preview failed (CORS or viewer blocked).'); iframe.src = url; container.appendChild(iframe); return; }
+      if (isVideo) { const video = document.createElement('video'); video.controls = true; video.onloadeddata = () => showSpinner(false); video.onerror = () => fallback('Video preview failed.'); video.src = url; container.appendChild(video); return; }
+      if (isAudio) { const audio = document.createElement('audio'); audio.controls = true; audio.onloadeddata = () => showSpinner(false); audio.onerror = () => fallback('Audio preview failed.'); audio.src = url; container.appendChild(audio); return; }
+      if (isText) { const iframe = document.createElement('iframe'); iframe.onload = () => showSpinner(false); iframe.onerror = () => fallback('Text preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
+      if (isOffice) { const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe = document.createElement('iframe'); iframe.title = 'Document preview'; iframe.onload = () => showSpinner(false); iframe.onerror = () => fallback('Office preview failed (Google Viewer blocked or CORS).'); iframe.src = gview; container.appendChild(iframe); return; }
+      const obj = document.createElement('object'); obj.data = url; obj.type = 'application/octet-stream'; obj.onload = () => showSpinner(false); obj.onerror = () => fallback('This file type cannot be previewed here.'); container.appendChild(obj);
+      setTimeout(() => { if (!obj.contentDocument) fallback(); }, 1500);
     }
 
     async function loadModules() {
-      if (!courseId) { showInfo('Missing Course','No <strong>courseId</strong> provided.'); return; }
+      if (!courseId) { showInfo('Missing Course', 'No <strong>courseId</strong> provided.'); return; }
       try {
         const res = await fetch(`http://localhost:5000/courses/${courseId}/modules?includeArchived=true`);
         const data = await res.json();
@@ -496,9 +490,8 @@
                     <i class="fas fa-list me-1"></i> Sub Titles
                   </button>
                   <ul class="dropdown-menu w-100 shadow-sm" style="max-height: 260px; overflow-y: auto;">
-                    ${
-                      Array.isArray(module.moduleSubTitles) && module.moduleSubTitles.length
-                        ? module.moduleSubTitles.map((sub, idx) => `
+                    ${Array.isArray(module.moduleSubTitles) && module.moduleSubTitles.length
+            ? module.moduleSubTitles.map((sub, idx) => `
                             <li>
                               <a class="dropdown-item d-flex justify-content-between align-items-center sub-lesson-link"
                                  data-module-id="${module.id}"
@@ -507,8 +500,8 @@
                                 <i class="fas fa-arrow-up-right-from-square ms-2 text-primary"></i>
                               </a>
                             </li>`).join('')
-                        : '<li><span class="dropdown-item text-muted">(No Sub Titles)</span></li>'
-                    }
+            : '<li><span class="dropdown-item text-muted">(No Sub Titles)</span></li>'
+          }
                   </ul>
                 </div>
 
@@ -517,20 +510,20 @@
 
               <div class="d-flex flex-column justify-content-between align-items-end ms-md-4 mt-3 mt-md-0">
                 <div class="d-flex flex-column gap-2">
-                  <a class="btn btn-amber-outline btn-sm" href="/TEACHER/Modules/edit_module.html?moduleId=${encodeURIComponent(module.id)}">
+                  <a class="btn btn-edit btn-sm" href="/TEACHER/Modules/edit_module.html?moduleId=${encodeURIComponent(module.id)}">
                     <i class="fas fa-edit me-1"></i> Edit
                   </a>
 
                   ${archivedFlag
-                    ? `<button class="btn btn-success btn-sm unarchive-module-btn" data-id="${module.id}">
+            ? `<button class="btn btn-success btn-sm unarchive-module-btn" data-id="${module.id}">
                          <i class="fa-solid fa-rotate-left me-1"></i> Unarchive
                        </button>`
-                    : `<button class="btn btn-warning btn-sm archive-module-btn" data-id="${module.id}">
+            : `<button class="btn btn-warning btn-sm archive-module-btn" data-id="${module.id}">
                          <i class="fa-solid fa-box-archive me-1"></i> Archive
                        </button>`
-                  }
+          }
 
-                  <button class="btn btn-outline-danger btn-sm delete-module-btn" data-id="${module.id}">
+                  <button class="btn btn-delete btn-sm delete-module-btn" data-id="${module.id}">
                     <i class="fas fa-trash"></i> Delete
                   </button>
                 </div>
@@ -668,4 +661,5 @@
     }
   </script>
 </body>
+
 </html>

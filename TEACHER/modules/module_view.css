@@ -1,0 +1,503 @@
+/* =======================
+   1) Variables
+======================= */
+:root {
+    --radius: 14px;
+
+    /* Base palette */
+    --bg: #f6f8fa;
+    --text: #1f2328;
+    --muted: #6a737d;
+    --card: #fff;
+    --border: #e5e7eb;
+
+    /* Brand */
+    --brand-dark-1: #4A1A0C;
+    --brand-dark-2: #7A2810;
+    --brand-accent-1: #FF6A00;
+    --brand-accent-2: #B03C10;
+
+    --card-radius: 14px;
+}
+
+/* =======================
+   2) Base & Layout
+======================= */
+html,
+body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.dashboard {
+    display: flex;
+    min-height: 100vh;
+}
+
+.main {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+    transition: margin-left .3s ease, width .3s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg);
+}
+
+.sidebar:hover~.main {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+}
+
+.content {
+    padding: 24px;
+}
+
+.upload-container {
+    padding: 32px;
+}
+
+.form-card {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+/* Utilities */
+.text-light {
+    color: #FFD8A9 !important;
+}
+
+.muted,
+.small-muted {
+    color: #6b7280;
+}
+
+.small-muted {
+    font-size: .9rem;
+}
+
+/* =======================
+   3) Header
+======================= */
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+    color: #fff;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.header-top--light {
+    background: #fff;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+
+.logo-header {
+    height: 45px;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 520px;
+    margin: 0 20px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 12px 44px 12px 16px;
+    border: none;
+    border-radius: 999px;
+    outline: 0;
+    font-size: 1.05rem;
+}
+
+.header-top--light .search-box input {
+    border: 1px solid var(--border);
+}
+
+.search-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #d7dadf;
+}
+
+.header-top--light .search-box i {
+    color: #9aa2a8;
+}
+
+.profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.header-top--light .profile-btn {
+    color: #222;
+}
+
+.profile-btn .username {
+    font-size: 14px;
+}
+
+/* =======================
+   4) Cards & UI blocks
+======================= */
+.ui-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .06);
+    overflow: hidden;
+}
+
+.ui-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    color: #FFD8A9;
+    padding: 12px 16px;
+}
+
+.ui-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    color: #ffe9ca;
+}
+
+.page-title {
+    font-weight: 700;
+    font-size: 1.7rem;
+    text-align: center;
+    margin: 4px 0 18px;
+}
+
+.page-title.brand {
+    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* =======================
+   5) Buttons
+======================= */
+.btn-amber {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    border: none;
+    color: #fff;
+    border-radius: 999px;
+    padding: .55rem .9rem;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background .3s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.btn-amber:hover {
+    background: linear-gradient(to bottom, #ff8533, #cc3300);
+    transform: scale(1.05);
+    color: #fff;
+}
+
+.btn-amber:focus-visible {
+    outline: 2px solid #ffc299;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 .15rem rgba(255, 106, 0, .25);
+}
+
+.btn-amber-outline {
+    background: transparent;
+    color: var(--brand-accent-1);
+    border: 1px solid var(--brand-accent-1);
+    border-radius: 999px;
+    padding: .45rem 1.1rem;
+    font-weight: 500;
+    transition: background .2s ease, color .2s ease, transform .2s ease, border-color .2s ease;
+}
+
+.btn-amber-outline:hover {
+    background: var(--brand-accent-1);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-archive {
+    color: #6c757d;
+    background: transparent;
+    border: 1px solid #6c757d;
+    box-shadow: none;
+}
+
+.btn-archive:hover {
+    color: #fff;
+    background: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-unarchive {
+    color: #255a2c;
+    background: transparent;
+    border: 1px solid #255a2c;
+    box-shadow: none;
+}
+
+.btn-unarchive:hover {
+    color: #fff;
+    background: #255a2c;
+    border-color: #255a2c;
+}
+
+.btn-edit {
+    color: #ffc107;
+    background: transparent;
+    border: 1px solid #ffc107;
+    box-shadow: none;
+}
+
+.btn-edit:hover {
+    color: #fff;
+    background: #ffc107;
+    border-color: #ffc107;
+}
+
+.btn-delete {
+    color: #dc3545;
+    background: transparent;
+    border: 1px solid #dc3545;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.btn-delete:hover {
+    color: #fff;
+    background: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Neutral secondary button used in modal footers for non-brand actions */
+.btn-close-footer {
+    background-color: #6a737d !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: .5rem 1.2rem !important;
+    font-weight: 500;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+    background-color: #6a737d !important;
+    color: #fff !important;
+    transform: scale(1.04);
+}
+
+.logout-btn {
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+    border: none;
+    padding: .6rem 1.5rem;
+    border-radius: 20px;
+    color: #fff;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity .3s;
+}
+
+.sidebar:hover .logout-btn {
+    opacity: 1;
+}
+
+/* =======================
+   6) Lessons / Misc Blocks
+======================= */
+.lesson-nav .btn {
+    min-width: 110px;
+}
+
+.attachment-item+.attachment-item {
+    margin-top: .5rem;
+}
+
+.video-embed {
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    border: 0;
+}
+
+.viewer-card {
+    background: #f8fafc;
+}
+
+.lesson-pill {
+    background: #eef2ff;
+    color: #374151;
+}
+
+.lesson-pill.active {
+    background: #dbeafe;
+    font-weight: 600;
+}
+
+.attachment-badge {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.safe-pre {
+    white-space: pre-wrap;
+}
+
+.btn-link {
+    text-align: start;
+}
+
+/* Header strip look */
+.ui-card.card-themed {
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.ui-card.card-themed .ui-card-head {
+    background: #5e2211;
+    color: #ffd9be;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ui-card.card-themed .ui-card-title {
+    margin: 0;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    font-weight: 700;
+    color: #ffe9ca;
+}
+
+.text-name {
+    color: #ffe9ca;
+    opacity: .9;
+}
+
+/* =======================
+   7) Preview Modal (YouTube-style)
+======================= */
+#filePreviewModal .modal-dialog {
+    max-width: 96vw;
+}
+
+#filePreviewModal .modal-content {
+    height: 92vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#filePreviewModal .modal-body {
+    flex: 1 1 auto;
+    padding: 0;
+    background: #111;
+    position: relative;
+}
+
+.preview-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.preview-wrap iframe,
+.preview-wrap embed,
+.preview-wrap object,
+.preview-wrap img,
+.preview-wrap video,
+.preview-wrap audio {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: contain;
+    background: #000;
+}
+
+.spinner-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+#filePreviewFooter {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+#fileInfoText {
+    color: #6b7280;
+}
+
+/* =======================
+   8) Overrides (keep cascade)
+   (These repeat earlier selectors intentionally)
+======================= */
+.btn-amber {
+    background: linear-gradient(to bottom, #FF6A00, #B03C10);
+    color: #fff;
+    border: none;
+}
+
+.btn-amber:hover {
+    filter: brightness(1.05);
+    color: #fff;
+}
+
+.btn-amber-outline {
+    color: #B03C10;
+    border: 1px solid #B03C10;
+    background: #fff;
+}
+
+.btn-amber-outline:hover {
+    background: #fff1ea;
+    color: #7A2810;
+}
+
+.page-title.brand {
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+/* Ensure dashboard still fills the viewport */
+.dashboard {
+    min-height: 100vh;
+}

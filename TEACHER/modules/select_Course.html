@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -12,88 +13,6 @@
 
   <!-- (Optional) your page-specific css -->
   <link rel="stylesheet" href="../modules/select_Course.css" />
-
-  <style>
-    /* ------- Shared theme tokens ------- */
-    :root{
-      --bg:#f6f8fa; --text:#1f2328; --muted:#6a737d; --card:#ffffff; --border:#e5e7eb;
-      --brand-dark-1:#4A1A0C; --brand-dark-2:#7A2810; --brand-accent-1:#FF6A00; --brand-accent-2:#B03C10;
-      --radius:14px;
-    }
-    html,body{height:100%;background:var(--bg);color:var(--text)}
-    .dashboard{display:flex;min-height:100vh}
-    .main{margin-left:70px;width:calc(100% - 70px);transition:margin-left .3s,width .3s;display:flex;flex-direction:column;background:var(--bg)}
-    .sidebar:hover~.main{margin-left:220px;width:calc(100% - 220px)}
-
-    .logo-header{height:44px}
-    .search-box{max-width:520px;width:100%;position:relative}
-    .search-box input{border:none;border-radius:999px;padding:.6rem 2.1rem .6rem 1rem}
-    .search-box i{position:absolute;right:12px;top:50%;transform:translateY(-50%);opacity:.6}
-    .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
-    .profile-btn .username{font-size:14px}
-
-    /* Page */
-    .content{padding:24px}
-    .page-title{
-      font-weight:800;font-size:1.6rem;margin:4px 0 18px;text-align:center;color:transparent;
-      background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      -webkit-background-clip:text;background-clip:text
-    }
-
-    /* ui-card themed controls */
-    .ui-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
-    .ui-card.card-themed{border-radius:var(--radius);border:1px solid rgba(0,0,0,.06);box-shadow:0 10px 24px rgba(0,0,0,.1);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .ui-card.card-themed .ui-card-head{
-      margin:-16px -16px 12px -16px;padding:12px 16px;background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-      color:#FFD8A9;border-bottom:1px solid rgba(255,255,255,.1)
-    }
-    .ui-card-title{font-size:1.05rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-    .ui-subtext{font-size:1rem;color:#ffe9ca}
-    .btn-amber{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border:none}
-    .btn-amber:hover{filter:brightness(1.06);color:#fff}
-
-    /* Segmented control */
-    .segmented{display:flex;gap:.5rem;flex-wrap:wrap}
-    .segmented .seg-btn{
-      min-width:110px;padding:.6rem 1rem;font-weight:700;border-radius:10px;border:2px solid var(--border);
-      background:#fff;color:#374151;cursor:pointer;text-align:center;user-select:none;
-      box-shadow:0 1px 2px rgba(0,0,0,.03);transition:background .15s,border-color .15s,box-shadow .15s,color .15s;
-    }
-    .segmented .seg-btn:hover{background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-    .segmented .seg-btn.is-active{background:#5f6b77;color:#fff;border-color:#5f6b77}
-    .segmented .seg-btn.is-archived{background:#fef2f2;color:#991b1b;border-color:#fecaca}
-    .segmented .seg-btn.is-all{background:#eef2ff;color:#1e3a8a;border-color:#c7d2fe}
-
-    /* Cards / pills */
-    .course-card{
-      border:1px solid var(--border);border-radius:var(--radius);background:var(--card);
-      box-shadow:0 10px 24px rgba(0,0,0,.08);display:flex;flex-direction:column;padding:14px;height:100%;
-      transition:transform .07s ease, box-shadow .2s ease;
-    }
-    .course-card:hover{transform:translateY(-2px);box-shadow:0 14px 26px rgba(0,0,0,.12)}
-    .course-title{margin:0 0 4px;font-weight:700}
-    .badge-soft{
-      display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(176,60,16,.25);border-radius:999px;
-      padding:2px 10px;font-size:.75rem;color:var(--brand-accent-2);
-      background:linear-gradient(90deg,rgba(255,106,0,.12),rgba(176,60,16,.12));
-    }
-    .pill-archived{
-      display:inline-flex;align-items:center;gap:6px;border:1px dashed rgba(0,0,0,.25);border-radius:999px;
-      padding:2px 10px;font-size:.75rem;color:#555;background:linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.06));
-    }
-    .course-meta{color:var(--muted);font-size:.9rem}
-    .course-actions .btn{min-width:130px}
-    .btn-amber-outline{background:#fff;color:var(--brand-accent-2);border:1px solid var(--brand-accent-2)}
-    .btn-amber-outline:hover{background:linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));color:#fff;border-color:transparent}
-    .link-disabled{pointer-events:none;opacity:.6}
-
-    /* Empty state */
-    .empty-card{background:#fff;border:1px solid var(--border);border-radius:14px}
-
-    /* Pills row spacing */
-    .pill-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
-  </style>
 </head>
 
 <body>
@@ -170,9 +89,9 @@
             <div class="col-12 col-md-6 col-xl-5">
               <label class="form-label">Show</label>
               <div class="segmented" role="tablist" aria-label="Course visibility">
-                <button id="btnActive"   class="seg-btn is-active"   role="tab" aria-selected="true">Active</button>
+                <button id="btnActive" class="seg-btn is-active" role="tab" aria-selected="true">Active</button>
                 <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
-                <button id="btnAll"      class="seg-btn is-all"      role="tab" aria-selected="false">All</button>
+                <button id="btnAll" class="seg-btn is-all" role="tab" aria-selected="false">All</button>
               </div>
             </div>
 
@@ -201,13 +120,13 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  
+
   <script>
     const API = 'http://127.0.0.1:5000';
 
     // ---- Auth guard + header initials (robust, initials-only) ----
     const userData = (() => {
-      try{
+      try {
         const raw = localStorage.getItem("user") || "{}";
         const stored = JSON.parse(raw);
         const u = stored.user || stored;
@@ -222,24 +141,24 @@
           const initials = getInitials(u);
           el.textContent = initials; // 👈 initials only
           const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                          || u.username || u.email || 'Profile';
+            || u.username || u.email || 'Profile';
           el.setAttribute('title', fullLabel);
           el.setAttribute('aria-label', fullLabel);
         }
         return u;
-      }catch(e){
+      } catch (e) {
         console.error('auth/initHeaderInitials failed:', e);
         window.location.href = "/TEACHER/login/login.html";
         return null;
       }
 
-      function getInitials(u){
+      function getInitials(u) {
         const fn = (u.firstName || '').trim();
-        const ln = (u.lastName  || '').trim();
+        const ln = (u.lastName || '').trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
         const nameish = (u.username || u.displayName || u.name || '').trim();
-        if (nameish){
+        if (nameish) {
           const parts = nameish
             .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
             .split(/[\s._-]+/)
@@ -253,19 +172,19 @@
     })();
 
     // helpers
-    function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-    async function safeJson(res){
-      const ct=(res.headers.get('content-type')||'').toLowerCase();
-      if(ct.includes('application/json')){ try{return await res.json();}catch{} }
-      const txt=await res.text().catch(()=>'' );
-      throw new Error(`Expected JSON, got ${ct||'unknown'}: ${txt.slice(0,200)}`);
+    function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    async function safeJson(res) {
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('application/json')) { try { return await res.json(); } catch { } }
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Expected JSON, got ${ct || 'unknown'}: ${txt.slice(0, 200)}`);
     }
-    function tsToMs(ts){
-      if(!ts) return null;
-      const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0;
-      if(typeof s==='number') return s*1000+Math.floor(ns/1e6);
-      if(typeof ts==='number') return ts;
-      const d=new Date(ts); return isNaN(d)?null:d.getTime();
+    function tsToMs(ts) {
+      if (!ts) return null;
+      const s = ts._seconds ?? ts.seconds; const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return s * 1000 + Math.floor(ns / 1e6);
+      if (typeof ts === 'number') return ts;
+      const d = new Date(ts); return isNaN(d) ? null : d.getTime();
     }
 
     // State
@@ -281,8 +200,8 @@
         const r = await fetch(url);
         const payload = await r.json();
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
-        const activeCount   = courses.filter(c => !c.archived).length;
-        const archivedCount = courses.filter(c =>  c.archived).length;
+        const activeCount = courses.filter(c => !c.archived).length;
+        const archivedCount = courses.filter(c => c.archived).length;
         const activeEl = document.getElementById('activeCount');
         const archEl = document.getElementById('archivedCount');
         if (activeEl) activeEl.textContent = String(activeCount);
@@ -320,15 +239,15 @@
       }
     }
 
-    function applyFiltersAndRender(){
+    function applyFiltersAndRender() {
       const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
 
       let list = allCourses.filter(c => {
         const matchesSearch =
           !q ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.category||'').toLowerCase().includes(q) ||
-          String(c.courseNumber||'').toLowerCase().includes(q);
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q) ||
+          String(c.courseNumber || '').toLowerCase().includes(q);
 
         const isArchived = !!c.archived;
         const matchesArchive =
@@ -341,19 +260,19 @@
 
       // Sort
       if (currentSort === 'num_asc') {
-        list.sort((a,b)=>(Number(a.courseNumber)||0)-(Number(b.courseNumber)||0));
+        list.sort((a, b) => (Number(a.courseNumber) || 0) - (Number(b.courseNumber) || 0));
       } else if (currentSort === 'num_desc') {
-        list.sort((a,b)=>(Number(b.courseNumber)||0)-(Number(a.courseNumber)||0));
+        list.sort((a, b) => (Number(b.courseNumber) || 0) - (Number(a.courseNumber) || 0));
       } else if (currentSort === 'az') {
-        list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+        list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       } else if (currentSort === 'new') {
-        list.sort((a,b)=> (tsToMs(b.createdAt) ?? (Number(b.courseNumber)||0)) - (tsToMs(a.createdAt) ?? (Number(a.courseNumber)||0)));
+        list.sort((a, b) => (tsToMs(b.createdAt) ?? (Number(b.courseNumber) || 0)) - (tsToMs(a.createdAt) ?? (Number(a.courseNumber) || 0)));
       }
 
       renderCourses(list);
     }
 
-    function renderCourses(courses){
+    function renderCourses(courses) {
       const courseList = document.getElementById("courseList");
       courseList.innerHTML = "";
 
@@ -424,16 +343,16 @@
       const btnActive = document.getElementById('btnActive');
       const btnArchived = document.getElementById('btnArchived');
       const btnAll = document.getElementById('btnAll');
-      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
-      if (which === 'active')   { btnActive.classList.add('is-active');   btnActive.setAttribute('aria-selected','true'); }
-      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
-      if (which === 'all')      { btnAll.classList.add('is-active');      btnAll.setAttribute('aria-selected','true'); }
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
       applyFiltersAndRender();
     }
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('btnActive').addEventListener('click',   () => setSegmentedActive('active'));
+      document.getElementById('btnActive').addEventListener('click', () => setSegmentedActive('active'));
       document.getElementById('btnArchived').addEventListener('click', () => setSegmentedActive('archived'));
-      document.getElementById('btnAll').addEventListener('click',      () => setSegmentedActive('all'));
+      document.getElementById('btnAll').addEventListener('click', () => setSegmentedActive('all'));
     });
 
     // Init
@@ -446,4 +365,5 @@
     }
   </script>
 </body>
+
 </html>

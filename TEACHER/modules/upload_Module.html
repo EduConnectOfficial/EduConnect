@@ -9,53 +9,9 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
-
-   <link rel="stylesheet" href="../dashboard/dashboard.css" />
-    <link rel="stylesheet" href="list.css" />
+  <link rel="stylesheet" href="upload.css" />
   <style>
-    :root{ --radius:14px; }
-    html,body{ background:#f6f8fa; }
-    .ui-card{background:#fff;border:1px solid #e5e7eb;border-radius:var(--radius);box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden}
-    .ui-card-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,var(--brand-dark-1, #2a3f5f),var(--brand-dark-2, #20334b));color:#FFD8A9;padding:12px 16px}
-    .ui-card-title{margin:0;font-size:1.05rem;font-weight:700;display:flex;gap:.5rem;align-items:center;color:#ffe9ca}
-    .ui-subtext{font-size:.9rem;opacity:.9}
-    .brand{color:#20334b}
-    .small-muted { color:#6b7280; font-size:.9rem; }
-    .hint{color:#6b7280;font-size:.85rem}
 
-    /* Staged list */
-    .file-list{list-style:none;padding-left:0;margin:0}
-    .file-item{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff}
-    .file-item + .file-item{margin-top:.5rem}
-    .file-name{flex:1 1 auto;min-width:0}
-    .file-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%}
-    .btn-icon{padding:.375rem .5rem}
-
-    .badge-soft{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:.2rem .5rem;font-size:.75rem}
-    .badge-file{background:#eef2ff;border-color:#c7d2fe}
-    .badge-link{background:#ecfeff;border-color:#a5f3fc}
-    .badge-stage{background:#dcfce7;border-color:#86efac}
-
-    /* modal preview */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display:flex; flex-direction:column; }
-    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#f8fafc; position:relative; }
-    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width:100%; height:100%; border:0; object-fit:contain; background:#fff;
-    }
-    .preview-fallback{ max-width:720px; margin:0 auto; padding:2rem; text-align:center; }
-    .spinner-wrap{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#fff; }
-
-    /* Page niceties */
-    .page-title{ font-weight:700; font-size:1.6rem; text-align:center; margin:4px 0 18px; }
-    .page-title.brand{background:linear-gradient(90deg, var(--brand-dark-1, #2a3f5f), var(--brand-dark-2, #20334b));-webkit-background-clip:text;background-clip:text;color:transparent;}
-    .lesson-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
-    .pager-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid #e5e7eb;font-size:.8rem;background:#fff;color:#374151}
-    .step-dots{display:flex;gap:6px;align-items:center}
-    .step-dots .dot{width:8px;height:8px;border-radius:999px;background:#e5e7eb}
-    .step-dots .dot.active{background:#111827}
-    .lesson-page.card{border:1px solid #e5e7eb}
   </style>
 </head>
 <body>
@@ -85,7 +41,7 @@
         <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1080px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-folder-plus"></i> Upload Module</h2>
-            <div class="ui-subtext">Create a module with lessons, then stage files/links (if needed) and upload.</div>
+            <div class="ui-subtext">Create a module with lessons, choose which classes will get it, then stage files/links (if needed) and upload.</div>
           </div>
 
           <form id="moduleUploadForm" class="px-3 py-3" enctype="multipart/form-data" novalidate>
@@ -105,8 +61,19 @@
               </div>
             </div>
 
+            <!-- Assign-to-Classes (NEW) -->
+            <div class="mt-3">
+              <label class="form-label fw-semibold">Assign to Classes</label>
+              <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
+              <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
+                No classes found for your account.
+              </div>
+              <div id="assignedClassesContainer" class="row g-3"></div>
+              <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
+            </div>
+
             <!-- Lessons header / pager controls -->
-            <div class="mt-3 d-flex justify-content-between align-items-center">
+            <div class="mt-4 d-flex justify-content-between align-items-center">
               <label class="form-label mb-0 fw-semibold">Lessons (Sub Title, Content)</label>
               <div class="lesson-toolbar">
                 <span class="pager-chip"><span id="pageNow">1</span>/<span id="pageTotal">1</span></span>
@@ -191,7 +158,7 @@
 
             <!-- Actions -->
             <div class="d-flex justify-content-end gap-2 mt-4">
-              <a href="/TEACHER/modules/select_Course.html" class="btn btn-amber-outline">← Back</a>
+              <a href="/TEACHER/modules/select_Course.html" class="btn btn-close-footer">← Back</a>
               <button id="submitBtn" type="submit" class="btn btn-amber">
                 <span class="submit-text">Upload Module</span>
                 <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
@@ -203,7 +170,7 @@
     </div>
   </div>
 
-  <!-- File Preview Modal (same as Assignment page) -->
+  <!-- File Preview Modal -->
   <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
@@ -223,10 +190,10 @@
         <div class="modal-footer">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto d-flex gap-2">
-            <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
+            <button id="stageFromPreviewBtn" class="btn btn-amber text-white d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage this item
             </button>
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>
@@ -320,7 +287,7 @@
     const TEACHER_MAX_MB = 500;
     const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
-    /* ===== Utilities (parity with Assignment page) ===== */
+    /* ===== Utilities ===== */
     const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
@@ -442,6 +409,100 @@
     const btnStageLink   = document.getElementById('btnStageLink');
     const filesList      = document.getElementById('filesList');
     const targetLessonSelect = document.getElementById('targetLessonSelect');
+
+    /* ===== Assign-to-Classes (fetch + render) ===== */
+    const assignedContainer = document.getElementById("assignedClassesContainer");
+    const assignedStatus = document.getElementById("assigned-status");
+    const assignedEmpty = document.getElementById("assigned-empty");
+
+    async function loadClasses() {
+      try {
+        const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
+        if (!teacherId) {
+          assignedStatus.textContent = "Missing teacher ID in your session.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+
+        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const classes = json?.classes || [];
+        const success = json?.success === undefined ? true : !!json.success;
+
+        assignedContainer.innerHTML = "";
+        assignedEmpty.style.display = "none";
+
+        if (!success) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+        if (!Array.isArray(classes) || classes.length === 0) {
+          assignedStatus.style.display = "none";
+          assignedEmpty.style.display = "block";
+          return;
+        }
+
+        classes.forEach(c => {
+          const id = c.id || c._id || c.classId || "";
+          const name = c.name || c.className || "Untitled Class";
+          const grade = c.gradeLevel ?? c.grade ?? "—";
+          const section = c.section ?? c.sectionName ?? "—";
+
+          const col = document.createElement("div");
+          col.className = "col-12 col-sm-6 col-lg-4";
+
+          const card = document.createElement("div");
+          card.className = "card assign-card";
+          card.tabIndex = 0;
+
+          const chk = document.createElement("input");
+          chk.type = "checkbox";
+          chk.value = id;
+          chk.className = "d-none";
+          card.appendChild(chk);
+
+          const body = document.createElement("div");
+          body.className = "card-body";
+          body.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+              <h5 class="card-title mb-1">${esc(name)}</h5>
+              <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+            </div>
+            <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
+          `;
+          card.appendChild(body);
+
+          function toggle() {
+            const isChecked = !chk.checked;
+            chk.checked = isChecked;
+            card.classList.toggle("selected", isChecked);
+          }
+          card.addEventListener("click", e => {
+            if (window.getSelection && String(window.getSelection()).length) return;
+            toggle();
+          });
+          card.addEventListener("keydown", e => {
+            if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
+          });
+
+          col.appendChild(card);
+          assignedContainer.appendChild(col);
+        });
+
+        assignedStatus.style.display = "none";
+      } catch (e) {
+        console.error("Could not load classes:", e);
+        assignedStatus.textContent = "Could not load your classes. Please refresh.";
+        assignedStatus.classList.remove('small-muted');
+        assignedStatus.classList.add('text-danger');
+        showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
+      }
+    }
 
     /* ===== Lessons pager ===== */
     const qs = s => document.querySelector(s);
@@ -742,6 +803,11 @@
         subDescs.push(p.querySelector('.lesson-content').value || '');
       });
 
+      // Gather assigned classes
+      const assigned = Array.from(document.querySelectorAll("#assignedClassesContainer input[type='checkbox']:checked")).map(i => i.value);
+      // Optional: enforce at least one selection. Comment this out if not required.
+      if (!assigned.length) { formError.textContent = "Please select at least one class to assign this module."; return; }
+
       // Validate based on mode
       if (mode === 'file') {
         const tooLarge = staged.addFiles.find(f => f.size > TEACHER_MAX_BYTES);
@@ -750,7 +816,7 @@
       } else if (mode === 'text') {
         if (!staged.addLinks.length) { formError.textContent = "Please stage at least one link."; return; }
       } else {
-        // textonly — nothing to validate in staging
+        // textonly — no staging required
       }
 
       const fd = new FormData();
@@ -759,6 +825,8 @@
       fd.append('courseId', courseId);
       subTitles.forEach(v => fd.append('moduleSubTitles', v));
       subDescs.forEach(v => fd.append('moduleSubDescs', v));
+      // include assigned classes
+      assigned.forEach(id => fd.append('assignedClasses', id));
 
       if (mode === 'file' && staged.addFiles.length) {
         staged.addFiles.forEach(f => fd.append('attachmentFiles', f));
@@ -796,9 +864,10 @@
       }
     });
 
-    // First-time visibility
+    // First-time visibility and data
     syncStagingVisibility();
     renderAttachments();
+    loadClasses(); // <-- fetch & render class cards
   </script>
 
   <!-- Bootstrap JS -->

@@ -12,6 +12,14 @@
 
   <!-- Reuse your student theme -->
   <link rel="stylesheet" href="../courses/courses.css" />
+  <style>
+    /* Tiny progress pill + bar */
+    .progress-wrap{min-width:140px}
+    .progress-label{font-size:.75rem}
+    .progress-xs{height:6px}
+    .badge-soft{background:#eef2ff;color:#475569;border-radius:999px;padding:.25rem .5rem;display:inline-flex;align-items:center;gap:.35rem}
+    .badge-soft i{opacity:.8}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -27,7 +35,7 @@
           <input type="text" id="moduleSearch" placeholder="Search modules..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -53,7 +61,7 @@
               <div class="small text-light" id="metaDesc">—</div>
             </div>
             <div class="col-6 col-md-2">
-              <span class="badge-soft"><i class="bi bi-bookmark"></i><span id="metaCategory">—</span></span>
+              <span class="badge-soft"><i class="bi bi-bookmark"></i><span id="metaCategory" class="ms-1">—</span></span>
             </div>
             <div class="col-6 col-md-2 text-md-end">
               <span class="text-light small" id="metaCreated">Added: —</span>
@@ -154,6 +162,7 @@
     }
 
     let modules = [];
+    let studentClassIds = [];
 
     function escapeHTML(str='') {
       return String(str)
@@ -164,14 +173,26 @@
         .replaceAll("'",'&#039;');
     }
 
-    // Fetch course details + decrypted teacher name (from student courses endpoint)
+    // ---------- NEW: find all classIds this student is enrolled in ----------
+    async function fetchStudentClassIds() {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/students/${encodeURIComponent(user.userId)}/enrollments?includeTeacher=true`
+        );
+        const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
+        if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
+        return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    // Fetch course details + decrypted teacher name
     async function fetchCourse() {
-      // (A) Base course info
       const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
       if (!res.ok) throw new Error('Failed to load course');
       const c = await res.json();
 
-      // Fill base meta first
       document.getElementById('courseTitle').textContent = c.title || 'Course Modules';
       document.getElementById('metaTitle').textContent = c.title || '—';
       document.getElementById('metaCategory').textContent = c.category || '—';
@@ -179,7 +200,7 @@
       document.getElementById('metaCreated').textContent =
         c.createdAt && c.createdAt._seconds ? new Date(c.createdAt._seconds*1000).toLocaleDateString() : '—';
 
-      // (B) Decrypted teacher name: call student courses API which hydrates teacherName
+      // Decrypted teacher name via student courses API
       try {
         const tcRes = await fetch(
           `${API_BASE}/api/students/${encodeURIComponent(user.userId)}/courses?includeTeacher=true&courseArchived=include`
@@ -198,13 +219,34 @@
       document.getElementById('courseMeta').style.display = '';
     }
 
+    // ---------- UPDATED: fetch only modules assigned to the student's classIds ----------
     async function fetchModules() {
-      const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
-      if (!res.ok) throw new Error('Failed to load modules');
-      const list = await res.json();
+      if (!studentClassIds.length) {
+        studentClassIds = await fetchStudentClassIds();
+      }
 
-      // Check completion per module
+      if (!studentClassIds.length) {
+        modules = [];
+        renderModules();
+        return;
+      }
+
+      const perClassFetches = studentClassIds.map(async cid => {
+        const res = await fetch(
+          `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`
+        );
+        if (!res.ok) return [];
+        return res.json();
+      });
+
+      const results = await Promise.all(perClassFetches);
+      // Flatten + de-dupe by module id
+      const byId = new Map();
+      results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
+
+      // Compute completion (0%/100% for now)
       const email = user.email;
+      const list = Array.from(byId.values());
       const checks = list.map(async m => {
         try {
           const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/isCompleted`);
@@ -214,8 +256,30 @@
           return { ...m, completed: false };
         }
       });
+
       modules = await Promise.all(checks);
       renderModules();
+    }
+
+    // Progress utility: returns 0 or 100 using completed flag.
+    // Later: replace with fine-grained per-lesson %
+    function moduleProgress(m) {
+      return m.completed ? 100 : 0;
+    }
+
+    function renderProgressPill(m) {
+      const pct = moduleProgress(m);
+      const label = (pct === 100) ? 'Completed' : 'In progress';
+      const stateClass = (pct === 100) ? 'text-bg-success' : 'text-bg-secondary';
+
+      return `
+        <div class="progress-wrap text-end">
+          <div class="progress progress-xs mb-1" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" style="height:6px;">
+            <div class="progress-bar ${pct===100?'bg-success':''}" style="width:${pct}%"></div>
+          </div>
+          <div class="progress-label text-muted">${pct}% • <span class="badge ${stateClass}">${label}</span></div>
+        </div>
+      `;
     }
 
     function renderModules() {
@@ -240,7 +304,7 @@
 
       list.forEach(m => {
         const col = document.createElement('div');
-        col.className = 'col-12 col-lg-20';
+        col.className = 'col-12';
         col.innerHTML = `
           <div class="card h-100 shadow border-0 rounded-4" style="background:#f8fafc;">
             <div class="card-body d-flex flex-column flex-md-row align-items-stretch p-4">
@@ -255,10 +319,8 @@
                 }
               </div>
               <div class="d-flex flex-column justify-content-between align-items-end ms-md-4 mt-3 mt-md-0">
-                <span class="badge ${m.completed ? 'text-bg-success' : 'text-bg-secondary'} mb-2">
-                  ${m.completed ? 'Completed' : 'Not completed'}
-                </span>
-                <a class="btn btn-amber btn-sm" href="/STUDENT/modules/view.html?moduleId=${encodeURIComponent(m.id)}">
+                ${renderProgressPill(m)}
+                <a class="btn btn-amber btn-sm mt-2" href="/STUDENT/modules/view.html?moduleId=${encodeURIComponent(m.id)}">
                   <i class="bi bi-play-circle me-1"></i> ${m.completed ? 'Review' : 'Start'}
                 </a>
               </div>
@@ -271,15 +333,15 @@
 
     // Wiring
     document.addEventListener('DOMContentLoaded', async () => {
-      // search inputs sync
       const topSearch = document.getElementById('moduleSearch');
       const bodySearch = document.getElementById('searchInput');
-      topSearch.addEventListener('input', () => renderModules());
-      bodySearch.addEventListener('input', () => renderModules());
+      topSearch.addEventListener('input', renderModules);
+      bodySearch.addEventListener('input', renderModules);
       document.getElementById('sortBy').addEventListener('change', renderModules);
 
       try {
         await fetchCourse();
+        studentClassIds = await fetchStudentClassIds();
         await fetchModules();
       } catch (e) {
         console.error(e);

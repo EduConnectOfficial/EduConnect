@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>EduConnect Teacher – Module Viewer</title>
@@ -11,51 +12,13 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 
   <!-- Optional: re-use your teacher theme -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="module_view.css" />
 
   <style>
-    /* ——— Layout + look (copied to match the screenshot/student view) ——— */
-    .lesson-nav .btn { min-width: 110px; }
-    .attachment-item + .attachment-item { margin-top:.5rem; }
-    .video-embed { aspect-ratio: 16 / 9; width:100%; border:0; }
-    .viewer-card { background:#f8fafc; }
-    .lesson-pill { background:#eef2ff; color:#374151; }
-    .lesson-pill.active { background:#dbeafe; font-weight:600; }
-    .attachment-badge { background:#f1f5f9; color:#0f172a; }
-    .safe-pre { white-space:pre-wrap; }
-    .btn-link { text-align:start; }
 
-    /* Header strip look */
-    .ui-card.card-themed { border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
-    .ui-card.card-themed .ui-card-head {
-      background:#5e2211; color:#ffd9be; padding:10px 14px;
-      display:flex; align-items:center; justify-content:space-between;
-    }
-    .ui-card.card-themed .ui-card-title { margin:0; display:flex; gap:.5rem; align-items:center; font-weight:700; color:#ffe9ca; }
-    .text-name { color:#ffe9ca; opacity:.9; }
-
-    .btn-amber { background:linear-gradient(to bottom,#FF6A00,#B03C10); color:#fff; border:none; }
-    .btn-amber:hover { filter:brightness(1.05); color:#fff; }
-    .btn-amber-outline { color:#B03C10; border:1px solid #B03C10; background:#fff; }
-    .btn-amber-outline:hover { background:#fff1ea; color:#7A2810; }
-
-    .page-title.brand { font-weight:700; font-size:1.25rem; margin:0; }
-
-    /* Preview modal (YouTube-style) */
-    #filePreviewModal .modal-dialog { max-width:96vw; }
-    #filePreviewModal .modal-content { height:92vh; display:flex; flex-direction:column; }
-    #filePreviewModal .modal-body { flex:1 1 auto; padding:0; background:#111; position:relative; }
-    .preview-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width:100%; height:100%; border:0; object-fit:contain; background:#000;
-    }
-    .spinner-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }
-    #filePreviewFooter { display:flex; gap:.5rem; align-items:center; justify-content:space-between; flex-wrap:wrap; }
-    #fileInfoText { color:#6b7280; }
-
-    .dashboard { min-height:100vh; }
   </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -115,8 +78,10 @@
                   <span class="badge lesson-pill" id="lessonIndexBadge">Lesson —</span>
                 </div>
                 <div class="lesson-nav">
-                  <button id="prevLesson" class="btn btn-sm btn-amber-outline"><i class="bi bi-arrow-left"></i> Prev</button>
-                  <button id="nextLesson" class="btn btn-sm btn-amber-outline">Next <i class="bi bi-arrow-right"></i></button>
+                  <button id="prevLesson" class="btn btn-sm btn-amber-outline"><i class="bi bi-arrow-left"></i>
+                    Prev</button>
+                  <button id="nextLesson" class="btn btn-sm btn-amber-outline">Next <i
+                      class="bi bi-arrow-right"></i></button>
                 </div>
               </div>
 
@@ -134,7 +99,8 @@
   </div>
 
   <!-- File Preview Modal (YouTube style) -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header" style="background:#5e2211; color:#ffd9be;">
@@ -187,7 +153,7 @@
             });
           });
         })
-        .catch(()=>{});
+        .catch(() => { });
     });
   </script>
 
@@ -196,8 +162,8 @@
     const API_BASE = 'http://localhost:5000';
 
     // Guard + initials for teacher header
-    (function setUserHeader(){
-      try{
+    (function setUserHeader() {
+      try {
         const raw = localStorage.getItem("user") || "{}";
         const uObj = JSON.parse(raw);
         const u = uObj.user || uObj;
@@ -205,75 +171,75 @@
           window.location.replace("/TEACHER/login/login.html");
           return;
         }
-        const initials = (function(us){
-          const fn=(us.firstName||'').trim(), ln=(us.lastName||'').trim();
-          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
-          const em=(us.email||'').trim(); return em?em[0].toUpperCase():'U';
+        const initials = (function (us) {
+          const fn = (us.firstName || '').trim(), ln = (us.lastName || '').trim();
+          if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+          const em = (us.email || '').trim(); return em ? em[0].toUpperCase() : 'U';
         })(u);
         const el = document.getElementById("Username");
         el.textContent = initials;
-        const full=[u.firstName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Teacher';
+        const full = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Teacher';
         el.title = full; el.setAttribute('aria-label', full);
-      }catch{ window.location.replace("/TEACHER/login/login.html"); }
+      } catch { window.location.replace("/TEACHER/login/login.html"); }
     })();
 
     // Helpers
-    function escapeHTML(str='') {
+    function escapeHTML(str = '') {
       return String(str)
-        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     }
-    function isYouTube(url='') {
+    function isYouTube(url = '') {
       try {
         const u = new URL(url);
-        const h = u.hostname.replace(/^www\./,'').toLowerCase();
-        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        return ['youtu.be', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(h);
       } catch { return false; }
     }
-    function ytEmbed(url='') {
+    function ytEmbed(url = '') {
       try {
         const u = new URL(url);
-        const host = u.hostname.replace(/^www\./,'').toLowerCase();
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
         let id = '';
         let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
         if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
         if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
         if (!Number.isFinite(start)) start = '';
-        if (host === 'youtu.be') id = u.pathname.replace(/^\//,'').split('/')[0];
+        if (host === 'youtu.be') id = u.pathname.replace(/^\//, '').split('/')[0];
         else {
           if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
           if (!id) id = u.searchParams.get('v') || '';
         }
         if (!id) return null;
         const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
-        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start));
         return `${base}?${qs.toString()}`;
       } catch { return null; }
     }
-    function extFromUrl(u=''){ const c=String(u).split('?')[0].split('#')[0]; const p=c.split('.'); return p.length>1?p.pop().toLowerCase():''; }
-    function kindFromUrl(url=''){
+    function extFromUrl(u = '') { const c = String(u).split('?')[0].split('#')[0]; const p = c.split('.'); return p.length > 1 ? p.pop().toLowerCase() : ''; }
+    function kindFromUrl(url = '') {
       if (isYouTube(url)) return 'youtube';
       const ext = extFromUrl(url);
-      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
-      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
-      if (ext==='pdf') return 'pdf';
-      if (['txt','csv','log'].includes(ext)) return 'text';
-      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if (['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
       return 'other';
     }
 
     // Preview modal rendering
-    function setFileInfoUI(kind, url){
-      const map = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text', office:'Office Doc', other:'Link' };
+    function setFileInfoUI(kind, url) {
+      const map = { youtube: 'YouTube', video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text', office: 'Office Doc', other: 'Link' };
       document.getElementById('fileTypeText').textContent = map[kind] || 'Link';
       document.getElementById('openInNewTabBtn').href = url || '#';
     }
-    function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
 
-    function renderFilePreviewInto(container, url){
-      container.innerHTML=''; showSpinner(true);
-      const done = ()=>showSpinner(false);
+    function renderFilePreviewInto(container, url) {
+      container.innerHTML = ''; showSpinner(true);
+      const done = () => showSpinner(false);
       const kind = kindFromUrl(url);
 
       if (kind === 'youtube') {
@@ -298,24 +264,24 @@
         img.onload = done; img.onerror = done; img.src = url; container.appendChild(img); return;
       }
       if (kind === 'pdf') {
-        const iframe = document.createElement('iframe'); iframe.onload=done; iframe.onerror=done; iframe.src=url; container.appendChild(iframe); return;
+        const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = done; iframe.src = url; container.appendChild(iframe); return;
       }
       if (kind === 'video') {
-        const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=done; v.src=url; container.appendChild(v); return;
+        const v = document.createElement('video'); v.controls = true; v.onloadeddata = done; v.onerror = done; v.src = url; container.appendChild(v); return;
       }
       if (kind === 'audio') {
-        const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=done; a.src=url; container.appendChild(a); return;
+        const a = document.createElement('audio'); a.controls = true; a.onloadeddata = done; a.onerror = done; a.src = url; container.appendChild(a); return;
       }
       if (kind === 'text') {
-        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return;
+        const i = document.createElement('iframe'); i.onload = done; i.onerror = done; i.src = url; container.appendChild(i); return;
       }
       if (kind === 'office') {
-        const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
-        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=gview; container.appendChild(i); return;
+        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const i = document.createElement('iframe'); i.onload = done; i.onerror = done; i.src = gview; container.appendChild(i); return;
       }
 
       // Fallback
-      const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=done; container.appendChild(obj);
+      const obj = document.createElement('object'); obj.data = url; obj.type = 'application/octet-stream'; obj.onload = done; obj.onerror = done; container.appendChild(obj);
       setTimeout(done, 1000);
     }
 
@@ -323,7 +289,7 @@
     const params = new URLSearchParams(window.location.search);
     const moduleId = params.get('moduleId');
     const startIdx = parseInt(params.get('subIdx') || '0', 10) || 0;
-    let moduleDoc=null, currentIdx=0, lessonCount=0, courseId=null;
+    let moduleDoc = null, currentIdx = 0, lessonCount = 0, courseId = null;
 
     // Fetch + render
     async function fetchModule() {
@@ -333,7 +299,7 @@
         return;
       }
 
-      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache:'no-store' });
+      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load module');
       moduleDoc = await res.json();
       courseId = moduleDoc.courseId || null;
@@ -346,7 +312,7 @@
       const back = document.getElementById('backToCourseBtn');
       if (courseId) back.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
       else {
-        back.addEventListener('click', (e)=>{
+        back.addEventListener('click', (e) => {
           e.preventDefault();
           if (document.referrer) history.back();
           else location.href = '/TEACHER/Modules/module_list.html';
@@ -362,7 +328,7 @@
             document.getElementById('metaCourse').textContent = `Course: ${c.title || '—'}`;
           }
         }
-      } catch {}
+      } catch { }
 
       // Lesson arrays
       const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
@@ -374,12 +340,12 @@
       // Build list
       const list = document.getElementById('lessonList');
       list.innerHTML = '';
-      for (let i=0;i<lessonCount;i++){
+      for (let i = 0; i < lessonCount; i++) {
         const btn = document.createElement('button');
-        btn.type='button';
-        btn.className = `btn btn-sm lesson-pill text-start ${i===startIdx?'active':''}`;
-        btn.textContent = `${i+1}. ${subs[i] || '(No Title)'}`;
-        btn.addEventListener('click', ()=>showLesson(i));
+        btn.type = 'button';
+        btn.className = `btn btn-sm lesson-pill text-start ${i === startIdx ? 'active' : ''}`;
+        btn.textContent = `${i + 1}. ${subs[i] || '(No Title)'}`;
+        btn.addEventListener('click', () => showLesson(i));
         list.appendChild(btn);
       }
 
@@ -394,7 +360,7 @@
       return '';
     }
 
-    function showLesson(idx){
+    function showLesson(idx) {
       currentIdx = Math.max(0, Math.min(idx, lessonCount - 1));
       document.querySelectorAll('#lessonList .lesson-pill').forEach((el, i) => {
         el.classList.toggle('active', i === currentIdx);
@@ -404,9 +370,9 @@
       const subs = moduleDoc.moduleSubTitles || [];
       const descs = moduleDoc.moduleSubDescs || [];
       const title = subs[currentIdx] || '(No Title)';
-      const body  = descs[currentIdx] || '(No Content)';
+      const body = descs[currentIdx] || '(No Content)';
       document.getElementById('lessonTitle').textContent = title;
-      document.getElementById('lessonBody').textContent  = body;
+      document.getElementById('lessonBody').textContent = body;
 
       const wrap = document.getElementById('attachments');
       wrap.innerHTML = '';
@@ -451,8 +417,8 @@
           }
 
           // hook up preview
-          item.querySelectorAll('[data-open]').forEach(btn=>{
-            btn.addEventListener('click', ()=>{
+          item.querySelectorAll('[data-open]').forEach(btn => {
+            btn.addEventListener('click', () => {
               const openUrl = btn.getAttribute('data-open');
               openPreview(openUrl, label);
             });
@@ -466,7 +432,7 @@
       document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
     }
 
-    function openPreview(url, title='File'){
+    function openPreview(url, title = 'File') {
       document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
       setFileInfoUI(kindFromUrl(url), url);
       renderFilePreviewInto(document.getElementById("filePreviewContent"), url);
@@ -498,4 +464,5 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
