@@ -1,5 +1,6 @@
-/* Base styling */
-
+/* =======================
+   Base styling
+======================= */
 html, body {
   height: 100%;
   margin: 0;
@@ -7,20 +8,23 @@ html, body {
   overflow-y: auto; /* allow vertical scrolling */
   font-family: 'Outfit', sans-serif;
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: white;
+  color: #fff;
 }
 
-
+/* =======================
+   Layout
+======================= */
 .main-container {
   min-height: 100vh;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
 }
-.left-panel, .right-panel {
+
+.left-panel,
+.right-panel {
   flex: 1;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -28,50 +32,34 @@ html, body {
   box-sizing: border-box;
 }
 
-
+/* Left panel with image + overlay gradient */
 .left-panel {
-  flex: 1;
-  background: url('your-image-path.jpg') center center/cover no-repeat;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: start;
+  align-items: flex-start;
   padding: 60px;
+  background:
+    linear-gradient(to bottom, rgba(74,26,12,.6), rgba(122,40,16,.6)),
+    url('your-image-path.jpg') center center/cover no-repeat;
 }
 
-.left-panel h2 {
-  font-size: 2.8rem;
-  font-weight: 700;
-}
+.left-panel h2 { font-size: 2.8rem; font-weight: 700; }
+.left-panel p  { font-size: 1.2rem; margin-top: 20px; }
 
-.left-panel p {
-  font-size: 1.2rem;
-  margin-top: 20px;
-}
-
+/* Right panel */
 .right-panel {
-  flex: 1;
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
 }
 
-/* Logo */
-.logo {
-  width: 140px;
-}
+/* =======================
+   Logo
+======================= */
+.logo { width: 140px; }
+.top-logo { position: absolute; top: 20px; left: 30px; }
 
-/* Logo position */
-.top-logo {
-  position: absolute;
-  top: 20px;
-  left: 30px;
-}
-
-/* Center container */
+/* =======================
+   Auth container & card
+======================= */
 .login-container {
   height: 100vh;
   display: flex;
@@ -79,62 +67,62 @@ html, body {
   align-items: center;
 }
 
-/* Card-style form box */
 .login-box {
   background-color: #5c2213;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 20px rgba(0,0,0,.3);
   width: 100%;
   max-width: 800px;
   margin: auto;
   text-align: center;
 }
 
-/* Input fields */
-.form-control {
-  border-radius: 20px;
-}
+/* =======================
+   Forms & Buttons
+======================= */
+.form-control { border-radius: 20px; }
 
-/* Submit button */
 .login-btn {
   background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  color: white;
+  color: #fff;
   border: none;
   border-radius: 999px;
-  transition: background 0.3s ease, transform 0.2s ease;
+  transition: background .3s ease, transform .2s ease;
 }
-
 .login-btn:hover {
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.02);
 }
 
-/* Error message under password fields */
+.form-label {
+  color: #fff6dd;
+  font-weight: 500;
+  margin-bottom: .3rem;
+}
+
+/* Messages / notes */
 .error-message {
   font-size: 13px;
   color: #ffdddd;
   margin-top: 5px;
   text-align: left;
 }
-
 .requirement-note {
-  font-size: 13px;
-  color: #ffddaa;
-  /* changed to white */
+  color: #ffd580;
+  font-size: .85rem;
   margin-top: 5px;
-  margin-left: 8px;
   display: block;
 }
 
+/* Links */
 .options a {
   color: #fff6dd;
   text-decoration: none;
   font-weight: 500;
   position: relative;
-  transition: color 0.3s ease;
+  transition: color .3s ease;
 }
-
 .options a::after {
   content: '';
   position: absolute;
@@ -143,91 +131,73 @@ html, body {
   width: 0%;
   height: 2px;
   background-color: #FFD580;
-  transition: width 0.3s ease;
+  transition: width .3s ease;
 }
+.options a:hover { color: #FFD580; }
+.options a:hover::after { width: 100%; }
 
-.options a:hover {
-  color: #FFD580;
-}
-
-.options a:hover::after {
-  width: 100%;
-}
-
-/* Style labels for visibility */
-.form-label {
-  color: #fff6dd;
-  font-weight: 500;
-  margin-bottom: 0.3rem;
-}
-
-/* Style requirement note under password field */
-.requirement-note {
-  color: #ffd580;
-  font-size: 0.85rem;
-  margin-top: 5px;
-  display: block;
-}
-/* ===== Modal Customization ===== */
-
-/* Modal header with gradient background */
+/* =======================
+   Modal (brand aligned)
+======================= */
 .modal-header {
   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
   color: #fff;
   border-bottom: none;
 }
+.modal-header .modal-title { font-weight: 600; color: #fff; }
+.modal-header .btn-close { filter: brightness(0) invert(1); opacity: .9; }
+.modal-header .btn-close:hover { opacity: 1; }
 
-/* Title text inside modal header */
-.modal-header .modal-title {
-  font-weight: 600;
-  color: #fff;
-}
-
-/* Close button inside modal header */
-.modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
-  opacity: 0.9;
-}
-.modal-header .btn-close:hover {
-  opacity: 1;
-}
-
-/* Modal footer button with gradient */
 .modal-footer .btn,
-#successOkBtn, 
+#successOkBtn,
 #feedbackModal .btn {
   background: linear-gradient(to bottom, #FF6A00, #B03C10);
   border: none;
   color: #fff;
   border-radius: 999px;
-  padding: 0.5rem 1.2rem;
+  padding: .5rem 1.2rem;
   font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
+  transition: background .3s ease, transform .2s ease;
 }
-
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
   background: linear-gradient(to bottom, #ff8533, #cc3300);
   transform: scale(1.05);
 }
-.modal-body {
-  color:black
+.modal-body { color: #000; }
+
+/* =======================
+   OTP inputs
+======================= */
+.otp-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1rem;
 }
-/* ===== Tablet & down (≤1280px) ===== */
+.otp-input {
+  width: 40px;
+  height: 50px;
+  text-align: center;
+  font-size: 1.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+}
+.otp-input:focus {
+  outline: none;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 .2rem rgba(13,110,253,.25);
+}
+
+/* =======================
+   Responsive
+======================= */
+/* Tablet & down (≤1280px) */
 @media (max-width: 1280px) {
-  .top-logo {
-    top: 16px;
-    left: 20px;
-  }
-
-  .logo {
-    width: 120px;
-  }
-
-  .login-container {
-    padding: 20px;
-  }
+  .top-logo { top: 16px; left: 20px; }
+  .logo { width: 120px; }
+  .login-container { padding: 20px; }
 
   .login-box {
     max-width: 560px;
@@ -236,61 +206,40 @@ html, body {
   }
 
   .form-control,
-  .login-btn {
-    min-height: 44px;
-    font-size: 1rem;
-  }
+  .login-btn { min-height: 44px; font-size: 1rem; }
 
-  /* If you show a hero image next to the form, hide it for tablets and smaller */
-  .illustration {
-    display: none;
-  }
+  /* If a hero image is used next to the form */
+  .illustration { display: none; }
 }
 
-/* ===== Mobile (≤480px) ===== */
+/* Mobile (≤480px) */
 @media (max-width: 480px) {
+  html, body { background-attachment: fixed; }
 
-  html,
-  body {
-    background-attachment: fixed;
-  }
+  .top-logo { top: 12px; left: 12px; }
+  .logo { width: 110px; }
 
-  .top-logo {
-    top: 12px;
-    left: 12px;
-  }
-
-  .logo {
-    width: 110px;
-  }
-
-  .login-container {
-    padding: 16px;
-  }
+  .login-container { padding: 16px; }
 
   .login-box {
     max-width: 100%;
     padding: 1.25rem;
     border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
   }
 
-  .login-box h2 {
-    font-size: 1.25rem;
-  }
+  .login-box h2 { font-size: 1.25rem; }
 
   .form-control {
-    font-size: 0.95rem;
-    padding: 0.7rem 1rem;
-    min-height: 44px;
-    /* good tap target */
+    font-size: .95rem;
+    padding: .7rem 1rem;
+    min-height: 44px; /* good tap target */
   }
 
   .login-btn {
     font-size: 1rem;
-    padding: 0.7rem 1rem;
-    min-height: 48px;
-    /* slightly taller for thumbs */
+    padding: .7rem 1rem;
+    min-height: 48px; /* slightly taller for thumbs */
     width: 100%;
   }
 
@@ -300,8 +249,5 @@ html, body {
     gap: 8px;
     text-align: center;
   }
-
-  .options a::after {
-    bottom: -4px;
-  }
+  .options a::after { bottom: -4px; }
 }
