@@ -9,10 +9,15 @@
   --muted: #6a737d;
   --card: #fff;
   --border: #e5e7eb;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+   /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
   --card-radius: 14px;
 }
 
@@ -35,8 +40,25 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
 }
 
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
 .logo-header {
-  height: 45px;
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 .search-box {
@@ -75,6 +97,32 @@ body {
 
 .profile-btn .username {
   font-size: 14px;
+}
+.logout-btn {
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
+}
+
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
 }
 
 /* Mobile header: keep one row, no overlap */
@@ -464,23 +512,23 @@ body {
   opacity: 1;
 }
 
-/* Gradient primary actions */
+/* Modal CTA buttons (blue) */
 .modal-footer .btn,
 #successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   border: none;
   color: #fff;
   border-radius: 999px;
-  padding: .5rem 1.2rem;
+  padding: 0.5rem 1.2rem;
   font-weight: 500;
-  transition: background .3s ease, transform .2s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
   transform: scale(1.05);
 }
 

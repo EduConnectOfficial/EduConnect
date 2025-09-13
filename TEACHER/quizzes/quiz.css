@@ -8,10 +8,16 @@
   --card: #fff;
   --border: #e5e7eb;
 
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+  /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
+
 
   --card-radius: 14px;
 }
@@ -76,8 +82,25 @@ body {
   z-index: 5;
 }
 
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
 .logo-header {
-  height: 45px;
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 .search-box {
@@ -171,7 +194,7 @@ h2 {
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  color: #FFD8A9;
+  color: #eaf2ff;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
@@ -183,7 +206,7 @@ h2 {
   display: flex;
   gap: .5rem;
   align-items: center;
-  color: #ffe9ca;
+  color: #eaf2ff !important ;
 }
 
 .ui-subtext {
@@ -247,18 +270,30 @@ h2 {
 }
 
 .logout-btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
   border: none;
-  padding: .6rem 1.5rem;
-  border-radius: 20px;
-  color: #fff;
-  font-weight: 700;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
   opacity: 0;
-  transition: opacity .3s;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
 }
 
 .sidebar:hover .logout-btn {
   opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
 }
 
 /* =========================================================
@@ -993,3 +1028,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     min-width: 120px;
   }
 }
+  .assign-card { border: 1px solid rgba(0,0,0,.08); border-radius:.75rem; cursor: pointer; transition: .15s ease; }
+    .assign-card:hover { box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.06); }
+    .assign-card.selected { border-color: var(--bs-warning); box-shadow: 0 0.5rem 1rem rgba(255,193,7,.15); }
+    .assign-card .card-body { padding: 0.9rem 1rem; }
+    .small-muted { color: #6c757d; font-size: .875rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .row-excluded { opacity: .55; }

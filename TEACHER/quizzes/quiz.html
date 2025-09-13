@@ -14,16 +14,8 @@
   <!-- Your quiz styles -->
   <link rel="stylesheet" href="quiz.css" />
 
-  <!-- Assign-to-Classes lightweight styles -->
-  <style>
-    .assign-card { border: 1px solid rgba(0,0,0,.08); border-radius:.75rem; cursor: pointer; transition: .15s ease; }
-    .assign-card:hover { box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.06); }
-    .assign-card.selected { border-color: var(--bs-warning); box-shadow: 0 0.5rem 1rem rgba(255,193,7,.15); }
-    .assign-card .card-body { padding: 0.9rem 1rem; }
-    .small-muted { color: #6c757d; font-size: .875rem; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .row-excluded { opacity: .55; }
-  </style>
+
+ 
 </head>
 
 <body>
@@ -32,7 +24,11 @@
 
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+       <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box position-relative">
           <input type="text" class="form-control" placeholder="Search…">
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>

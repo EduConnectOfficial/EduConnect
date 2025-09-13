@@ -6,12 +6,15 @@
 
 :root {
   /* Brand & Theme */
-  --color-primary: #4A1A0C;
-  --color-secondary: #7A2810;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+  /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
 
   /* UI */
   --bg: #f6f8fa;
@@ -122,8 +125,25 @@ html, body {
   z-index: 10;
 }
 
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
 .logo-header {
-  height: 45px;
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 .search-box {
@@ -303,18 +323,30 @@ html, body {
 }
 
 .logout-btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
   border: none;
-  padding: .6rem 1.5rem;
-  border-radius: 20px;
-  color: #fff;
-  font-weight: 700;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
   opacity: 0;
-  transition: opacity .3s;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
 }
 
 .sidebar:hover .logout-btn {
   opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
 }
 
 .badge-soft {

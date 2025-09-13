@@ -17,10 +17,15 @@
   --muted: #6a737d;
   --card: #ffffff;
   --border: #e5e7eb;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+   /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
   --radius: 14px;
   --m-header-gap: 12px;
 }
@@ -722,3 +727,24 @@ body {
     gap: 10px !important;
   }
 }
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+

@@ -8,10 +8,15 @@
   --card: #fff;
   --border: #e5e7eb;
 
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+   /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
 
   --card-radius: 14px;
   --radius: 14px;
@@ -59,7 +64,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
   position: sticky;
@@ -67,8 +72,25 @@ body {
   z-index: 10;
 }
 
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
 .logo-header {
-  height: 45px;
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 .search-box {
@@ -213,7 +235,7 @@ body {
   align-items: center;
   padding: 12px 16px;
   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  color: #FFD8A9;
+  color: #eaf2ff;
   border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
 
@@ -224,7 +246,7 @@ body {
   display: flex;
   gap: .5rem;
   align-items: center;
-  color: #ffe9ca;
+  color: #eaf2ff;
 }
 
 .ui-card-body {
@@ -288,7 +310,7 @@ body {
 }
 
 .btn-amber:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, var(--brand-accent-2), var(--brand-accent-1));
   transform: scale(1.05);
   color: #fff;
 }
@@ -390,33 +412,36 @@ body {
 
 /* Logout button reveal */
 .logout-btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
   border: none;
-  padding: .6rem 1.5rem;
-  border-radius: 20px;
-  color: #fff;
-  font-weight: 700;
-  opacity: 0;
-  transition: opacity .3s;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  user-select: none;
-  cursor: pointer;
-}
-
-#sidebar-container:hover .logout-btn {
-  opacity: 1;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
 }
 
 .sidebar:hover .logout-btn {
   opacity: 1;
 }
 
+.logout-btn:hover {
+  filter: brightness(1.08);
+}
 /* =======================
    10) Modals (Unified)
 ======================= */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   border-bottom: none;
 }

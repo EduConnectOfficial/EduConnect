@@ -13,7 +13,8 @@
   <!-- Page theme -->
   <link rel="stylesheet" href="edit_module.css"/>
   <style>
-
+    /* Optional: ensure the check icon on assignment cards matches brand light text */
+    #assignedClassesContainer .card .bi-check2-circle { color: #eaf2ff !important; }
   </style>
 </head>
 <body>
@@ -23,7 +24,11 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect" class="logo-header"/>
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box position-relative" style="max-width:520px;">
           <input type="text" class="form-control" disabled placeholder="Edit Module"/>
           <i class="bi bi-pencil-square position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
@@ -172,7 +177,7 @@
             <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage selected
             </button>
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>
@@ -264,8 +269,33 @@
     const moduleId = url.searchParams.get('moduleId') || '';
     const backCourseId = url.searchParams.get('courseId') || '';
 
-    function showInfo(title, body){ document.getElementById('infoTitle').textContent=title; document.getElementById('infoBody').innerHTML=body; bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show(); }
-    function confirmDanger(title, body){ return new Promise(resolve=>{ document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmBody').innerHTML=body; const btn=document.getElementById('confirmYesBtn'); const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')); const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); }; const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); }; btn.addEventListener('click',onYes,{once:true}); document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true}); modal.show(); }); }
+    function showInfo(title, body){
+      document.getElementById('infoTitle').textContent=title;
+      document.getElementById('infoBody').innerHTML=body;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
+    }
+    function confirmDanger(title, body){
+      return new Promise(resolve=>{
+        document.getElementById('confirmTitle').textContent=title;
+        document.getElementById('confirmBody').innerHTML=body;
+        const btn=document.getElementById('confirmYesBtn');
+        const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+        const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); };
+        const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); };
+        btn.addEventListener('click',onYes,{once:true});
+        document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true});
+        modal.show();
+      });
+    }
+
+    // ✅ Brand-styled alert(): route native alerts to Info Modal using your CSS
+    (function attachBrandAlert(){
+      const escInline = (s) => String(s ?? '').replace(/[&<>"']/g, m => (
+        {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
+      ));
+      window.alert = (msg) => showInfo('Notice', escInline(msg));
+    })();
+
     function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0; if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime(); }
     function msToLocal(ms){ return ms ? new Date(ms).toLocaleString() : '—'; }
     const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
@@ -1015,6 +1045,19 @@
       return `/TEACHER/Modules/module_list.html`;
     }
 
+    // ✅ Replace native confirm() with brand modal for the Back action
+    document.getElementById('btnBack').addEventListener('click', async ()=>{
+      if (!isDirty()) {
+        location.href = computeBackUrl();
+        return;
+      }
+      const ok = await confirmDanger(
+        'Leave without saving?',
+        'You have unsaved changes (including staged files/links or class assignments). Leave without saving?'
+      );
+      if (ok) location.href = computeBackUrl();
+    });
+
     document.getElementById('btnDelete').addEventListener('click', async ()=>{
       if (!moduleId) return;
       const ok = await confirmDanger('Delete Module','<strong>Permanently delete</strong> this module? This cannot be undone.');
@@ -1026,11 +1069,6 @@
         showInfo('Deleted','Module deleted.');
         setTimeout(()=>{ location.href = computeBackUrl(); }, 800);
       }catch(e){ showInfo('Error', e.message||'Failed to delete.'); }
-    });
-
-    document.getElementById('btnBack').addEventListener('click', ()=>{
-      if (isDirty() && !confirm('You have unsaved changes (including staged files/links or class assignments). Leave without saving?')) return;
-      location.href = computeBackUrl();
     });
 
     function openPreviewModalWithMeta({url, title='File', mime='', isStaged=false, stageContext=null, stageLabel}){

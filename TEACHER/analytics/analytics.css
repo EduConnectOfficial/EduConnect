@@ -9,10 +9,15 @@
   --muted: #6a737d;
   --card: #fff;
   --border: #e5e7eb;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+    /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
   --radius: 14px;
 }
 
@@ -51,7 +56,26 @@ body {
 .logo-header {
   height: 44px;
 }
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
 
+.logo-header {
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
 .search-box {
   max-width: 520px;
   width: 100%;
@@ -226,48 +250,29 @@ body {
 }
 
 /* ========== 8) UI Cards & Segmented Controls ========== */
-.ui-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+.ui-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px
 }
+.ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ui-card-title{font-size:1rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+.ui-subtext{font-size:.9rem;color:var(--muted)}
 
-.ui-card.card-themed {
-  border-radius: var(--radius);
-  border: 1px solid rgba(0, 0, 0, .06);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
-  overflow: hidden;
+.ui-card.card-themed{
+  border-radius:var(--card-radius);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 10px 24px rgba(0,0,0,.10);
+  overflow:hidden;
 }
-
-.ui-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+.ui-card.card-themed .ui-card-head{
+  margin:-16px -16px 12px -16px;padding:12px 16px;
+  background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+  color:#eaf2ff;border-bottom:1px solid rgba(255,255,255,.1)
 }
-
-.ui-card.card-themed .ui-card-head {
-  margin: -16px -16px 12px -16px;
-  padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  color: #FFD8A9;
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
-}
-
-.ui-card-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin: 0;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.ui-subtext {
-  font-size: 1rem;
-  color: #ffe9ca;
-}
+.ui-card.card-themed .ui-card-title i{color:#eaf2ff}
+.ui-card.card-themed .ui-card-title h2{color:#eaf2ff}
+.ui-card.card-themed .ui-subtext{color:#eaf2ff}
+.ui-card.card-themed > :not(.ui-card-head){color:#1f2328}
 
 .segmented {
   display: flex;
@@ -312,7 +317,41 @@ body {
   color: #1e3a8a;
   border-color: #c7d2fe;
 }
+body {
+      background: #f6f8fb;
+    }
 
+    .card {
+      border: none;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, .06);
+      border-radius: 14px;
+    }
+
+    .metric {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .table td,
+    .table th {
+      vertical-align: middle;
+    }
+
+    /* FIXED chart size */
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 300px;
+    }
+
+    .chart-wrapper canvas {
+      max-height: 100% !important;
+    }
+
+    .page-title {
+      margin: 0;
+      font-weight: 700;
+    }
 /* ========== 9) Modals (Bootstrap 5) ========== */
 .modal-header {
   background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));

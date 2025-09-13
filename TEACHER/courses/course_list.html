@@ -14,10 +14,6 @@
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <link rel="stylesheet" href="course_list.css" />
 
-  <style>
-    /* optional: tiny spacing tweak for pills */
-    .pill-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
-  </style>
 </head>
 
 <body>
@@ -53,7 +49,11 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box">
           <input id="searchBox" type="text" placeholder="Search my courses..." aria-label="Search courses" />
           <i class="fas fa-search"></i>

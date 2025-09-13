@@ -13,43 +13,7 @@
 
   <!-- Global & Page CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
-  <style>
-    body {
-      background: #f6f8fb;
-    }
-
-    .card {
-      border: none;
-      box-shadow: 0 1px 8px rgba(0, 0, 0, .06);
-      border-radius: 14px;
-    }
-
-    .metric {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .table td,
-    .table th {
-      vertical-align: middle;
-    }
-
-    /* FIXED chart size */
-    .chart-wrapper {
-      position: relative;
-      width: 100%;
-      height: 300px;
-    }
-
-    .chart-wrapper canvas {
-      max-height: 100% !important;
-    }
-
-    .page-title {
-      margin: 0;
-      font-weight: 700;
-    }
-  </style>
+  
 </head>
 
 <body>
@@ -61,7 +25,11 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box position-relative">
           <input type="text" class="form-control" placeholder="Search..." />
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>

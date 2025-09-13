@@ -53,7 +53,11 @@
     <!-- Main Content -->
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+       <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box">
           <input id="searchBox" type="text" placeholder="Search my modules..." />
           <i class="fas fa-search"></i>
@@ -132,7 +136,7 @@
         <div class="modal-footer" id="filePreviewFooter">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto">
-            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+            <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn-close-footer">
               <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
             </a>
           </div>

@@ -8,10 +8,15 @@
   --card: #fff;
   --border: #e5e7eb;
 
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+  /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
 
   --ok: #0A7C3E;
   --warn: #B03C10;
@@ -37,6 +42,26 @@ body {
 .dashboard {
   display: flex;
   min-height: 100vh;
+}
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 .main {
@@ -70,9 +95,7 @@ body {
   z-index: 5;
 }
 
-.logo-header {
-  height: 45px;
-}
+
 
 .search-box {
   position: relative;
@@ -135,69 +158,55 @@ body {
 /* =======================
    5) Modals
 ======================= */
+/* Modal header with gradient background */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   color: #fff;
   border-bottom: none;
 }
 
+/* Title text inside modal header */
 .modal-header .modal-title {
   font-weight: 600;
   color: #fff;
 }
 
+/* Close button inside modal header */
 .modal-header .btn-close {
-  filter: brightness(0) invert(1);
-  opacity: .9;
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
 }
-
 .modal-header .btn-close:hover {
   opacity: 1;
 }
 
+/* Modal CTA buttons (blue) */
 .modal-footer .btn,
 #successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   border: none;
   color: #fff;
   border-radius: 999px;
   padding: 0.5rem 1.2rem;
   font-weight: 500;
-  transition: background .3s ease, transform .2s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
   transform: scale(1.05);
 }
-
 .modal-body {
-  color: black;
+  color:black
 }
-
-.modal.show {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  --bs-modal-margin: 0;
-  padding: 0 !important;
-}
-
-.modal.show .modal-dialog {
-  margin: 0 !important;
-  max-width: 640px;
-  width: calc(100% - 2rem);
-}
-
 .modal.show .modal-content {
-  max-height: min(90vh, 800px);
-  overflow: auto;
-  border: none;
-  border-radius: 14px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+  border: none;                 /* remove default bootstrap border */
+  border-radius: 14px;          /* match your --radius vibe */
+  overflow: hidden;             /* ensures header corners look perfect */
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
 }
 
 @media (max-width: 576px) {
@@ -210,50 +219,29 @@ body {
 /* =======================
    6) Cards
 ======================= */
-.ui-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--card-radius);
-  padding: 16px;
-  overflow: hidden;
-  /* clip rounded head bar */
+.ui-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px
 }
+.ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ui-card-title{font-size:1rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
+.ui-subtext{font-size:.9rem;color:var(--muted)}
 
-.ui-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: -16px -16px 12px -16px;
-  /* full-width head bar */
-  padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  border-bottom: 1px solid rgba(255, 255, 255, .12);
-  color: #FFD8A9;
+.ui-card.card-themed{
+  border-radius:var(--card-radius);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:0 10px 24px rgba(0,0,0,.10);
+  overflow:hidden;
 }
-
-.ui-card-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  display: inline-flex;
-  gap: .5rem;
-  align-items: center;
-  color: #FFE9CA;
+.ui-card.card-themed .ui-card-head{
+  margin:-16px -16px 12px -16px;padding:12px 16px;
+  background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
+  color:#eaf2ff;border-bottom:1px solid rgba(255,255,255,.1)
 }
-
-.ui-card-title i {
-  color: #FFE9CA;
-}
-
-.ui-subtext {
-  font-size: 1rem;
-  color: #ffe9ca;
-}
-
-.ui-card.card-themed {
-  border: 1px solid rgba(0, 0, 0, .06);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .10);
-}
+.ui-card.card-themed .ui-card-title i{color:#eaf2ff}
+.ui-card.card-themed .ui-card-title h2{color:#eaf2ff}
+.ui-card.card-themed .ui-subtext{color:#eaf2ff}
+.ui-card.card-themed > :not(.ui-card-head){color:#1f2328}
 
 /* =======================
    7) Buttons & Inputs
@@ -272,18 +260,30 @@ body {
 }
 
 .logout-btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
   border: none;
-  padding: .6rem 1.5rem;
-  border-radius: 20px;
-  color: #fff;
-  font-weight: 700;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
   opacity: 0;
-  transition: opacity .3s;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
 }
 
 .sidebar:hover .logout-btn {
   opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
 }
 
 .form-select,

@@ -11,10 +11,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="quiz.list.css" />
   <!-- Global dashboard CSS -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <link rel="stylesheet" href="../quizzes/quiz.list.css" />
 
-  <style>
-     </style>
+  
 </head>
 <body>
   <div class="dashboard">
@@ -25,7 +24,11 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box position-relative">
           <input id="searchBox" type="text" class="form-control" placeholder="Search quizzes…" />
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
@@ -235,7 +238,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-danger" id="deleteConfirmBtn" data-bs-dismiss="modal">
+              <button type="button" class="btn-delete" id="deleteConfirmBtn" data-bs-dismiss="modal">
                 <i class="bi bi-trash me-1"></i> Delete
               </button>
             </div>

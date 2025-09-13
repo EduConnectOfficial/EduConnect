@@ -15,10 +15,15 @@
     --muted: #6a737d;
     --card: #ffffff;
     --border: #e5e7eb;
-    --brand-dark-1: #4A1A0C;
-    --brand-dark-2: #7A2810;
-    --brand-accent-1: #FF6A00;
-    --brand-accent-2: #B03C10;
+     /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
     --radius: 14px;
     --m-header-gap: 12px;
   }
@@ -44,7 +49,26 @@
   }
 
   /* wrapper that controls hover-expand */
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
 
+.logo-header {
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
   /* Sidebar */
   .sidebar {
     position: fixed;
@@ -158,36 +182,39 @@
   }
 
   /* Sidebar footer / logout */
-  .sidebar-footer {
+  .sidebar-footer .logout-btn{
     margin-top: auto;
     display: flex;
     justify-content: center;
   }
 
   .logout-btn {
-    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-    border: none;
-    padding: .6rem 1.5rem;
-    border-radius: 20px;
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity .3s ease, color .3s;
-    user-select: none;
-    cursor: pointer;
-  }
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%) !important;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #eaf2ff;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
+}
 
-  #sidebar-container:hover .logout-btn {
-    opacity: 1;
-  }
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
 
-  .logout-btn:hover {
-    opacity: .85;
-    color: var(--brand-dark-1);
-  }
+.logout-btn:hover {
+  filter: brightness(1.08);
+}
+
 
   /* Main content shifts with sidebar */
   .main {
@@ -209,7 +236,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
-    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
     color: #fff;
     box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
     border-bottom: 1px solid rgba(255, 255, 255, .08);
@@ -218,9 +245,7 @@
     z-index: 10;
   }
 
-  .logo-header {
-    height: 45px;
-  }
+ 
 
   .search-box {
     position: relative;
