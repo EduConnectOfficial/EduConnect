@@ -12,7 +12,6 @@
 
   <!-- Reuse student theme -->
   <link rel="stylesheet" href="../modules/list.css" />
- 
 </head>
 <body>
   <div class="dashboard">
@@ -23,7 +22,11 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+         <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box">
           <input type="text" id="lessonSearch" placeholder="Search lessons in this module..." />
           <i class="fas fa-search"></i>
@@ -127,9 +130,30 @@
 
         <div class="modal-footer" id="filePreviewFooter">
           <div class="small" id="fileInfoText">Type: <span id="fileTypeText">File</span></div>
-          <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-amber">
+          <a id="openInNewTabBtn" href="#" target="_blank" rel="noopener" class="btn-close-footer">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Success Modal (brand-aligned) ===== -->
+  <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="successModalLabel" class="modal-title">Success</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="mb-2">
+            <i class="bi bi-check2-circle text-success fs-1" aria-hidden="true"></i>
+          </div>
+          <p id="successMsg" class="mb-0">Action completed successfully.</p>
+        </div>
+        <div class="modal-footer">
+          <button id="successOkBtn" type="button" class="btn" data-bs-dismiss="modal">OK</button>
         </div>
       </div>
     </div>
@@ -342,6 +366,20 @@
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
 
+    // ===== Success modal helper (uses your CSS: gradient header + #successOkBtn CTA) =====
+    function showSuccessModal(message = 'Done!', opts = {}) {
+      const modalEl = document.getElementById('successModal');
+      document.getElementById('successMsg').textContent = message;
+      document.getElementById('successModalLabel').textContent = opts.title || 'Success';
+      const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      // Optional onOk callback (no listener leak thanks to { once: true })
+      const okBtn = document.getElementById('successOkBtn');
+      if (opts.onOk) {
+        okBtn.addEventListener('click', opts.onOk, { once: true });
+      }
+      bsModal.show();
+    }
+
     // === Page state
     const params = new URLSearchParams(window.location.search);
     const moduleId = params.get('moduleId');
@@ -503,8 +541,12 @@
         });
         const js = await res.json().catch(()=>({success:false}));
         if (!js.success) throw new Error(js.message || 'Failed to mark complete');
+
         await refreshCompletion();
-        alert('✅ Module marked complete!');
+
+        // ✅ REPLACED alert() WITH SUCCESS MODAL
+        showSuccessModal('Module marked complete!', { title: 'Great job!' });
+
       } catch (e) {
         console.error(e);
         alert('❌ Could not mark complete.');

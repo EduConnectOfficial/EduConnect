@@ -1,5 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
 
+
+/* ===== Theme Vars (Blue) ===== */
+:root {
+  --bg: #f6f8fa;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --card: #ffffff;
+  --border: #e5e7eb;
+
+  /* Blue palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal/mid blue */
+  --accent-1: #3b6bb4;
+  /* lighter blue */
+  --accent-2: #113667;
+  /* dark accent */
+
+  --radius: 14px;
+}
+
 /* ===== Reset ===== */
 * { box-sizing: border-box; }
 
@@ -29,17 +51,38 @@ body {
   width: calc(100% - 280px);
 }
 
-/* ===== Header ===== */
+/* Header */
 .header-top {
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2), var(--accent-1));
   color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
 .logo-header { height: 45px; }
 
 .search-box { position: relative; flex: 1; max-width: 500px; margin: 0 20px; }
@@ -187,11 +230,13 @@ body {
   margin-top: auto;
 }
 .logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
   border: none;
   padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  color: white;
+  border-radius: 30px;
+  color: #eaf2ff;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
@@ -199,12 +244,17 @@ body {
   white-space: nowrap;
   display: inline-block;
   opacity: 0;
-  transition: opacity 0.3s ease, color 0.3s ease;
-  user-select: none;
+  transition: opacity 0.3s ease, filter 0.3s ease;
   text-align: center;
 }
-.sidebar:hover .logout-btn { opacity: 1; }
-.logout-btn:hover { opacity: 0.85; color: #4A1A0C; }
+
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
+}
 
 /* ===== Button (login) ===== */
 .login-btn {
@@ -248,18 +298,7 @@ body {
 /* =========================================================
    Theming & dashboard variant (CSS variables + components)
 ========================================================= */
-:root {
-  --bg: #f6f8fa;
-  --text: #1f2328;
-  --muted: #6a737d;
-  --card: #ffffff;
-  --border: #e5e7eb;
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --accent-1: #FF6A00;
-  --accent-2: #B03C10;
-  --radius: 14px;
-}
+
 
 html, body { height: 100%; background: var(--bg); color: var(--text); }
 .dashboard { display: flex; min-height: 100vh; }
@@ -293,9 +332,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .form-control:focus,
 .form-select:focus { border-color: var(--accent-2) !important; box-shadow: 0 0 0 .2rem rgba(255,106,0,.18) !important; }
 
-.modal-header { background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2)); color: #FFD8A9; border-bottom: none; }
-.modal-content { border-radius: 12px; border: 1px solid var(--border); }
-.modal-footer { border-top: 1px solid var(--border); }
+
 
 #studentId[readonly] { background-color: #f8f9fa; cursor: not-allowed; }
 .visually-hidden-input {
@@ -480,20 +517,75 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   #profileForm .text-end .btn.ms-2 { margin-left:0 !important; }
 }
 
-/* ===== Modal: brand-aligned, centered ===== */
+/* ===== Modals ===== */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2), var(--accent-1));
   color: #fff;
   border-bottom: none;
 }
-.modal-header .modal-title { font-weight: 600; color: #fff; }
-.modal-header .btn-close { filter: brightness(0) invert(1); opacity: 0.9; }
-.modal-header .btn-close:hover { opacity: 1; }
 
+.modal-header.is-success {
+  background: linear-gradient(90deg, #1f995c, #2db974);
+  color: #eafff1;
+}
+
+.modal-content {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border);
+}
+
+.modal-body {
+  color: black;
+}
+
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+
+.modal.show .modal-content {
+  overflow: auto;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
+  max-height: min(90vh, 800px);
+  border: none;
+  border-radius: 14px;
+}
+
+.modal-content .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+  opacity: .9
+}
+
+.modal-content .btn-close:hover {
+  opacity: 1;
+  transform: scale(1.05)
+}
+
+@media (max-width: 576px) {
+  .modal.show .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: 100%;
+  }
+}
+
+/* Modal CTA buttons (blue) */
 .modal-footer .btn,
 #successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   border: none;
   color: #fff;
   border-radius: 999px;
@@ -501,38 +593,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
   font-weight: 500;
   transition: background 0.3s ease, transform 0.2s ease;
 }
+
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
   transform: scale(1.05);
-}
-.modal-body { color:black; }
-
-.modal.show .modal-content {
-  border: none;                 /* remove default bootstrap border */
-  border-radius: 14px;          /* match your --radius vibe */
-  overflow: hidden;             /* ensures header corners look perfect */
-  box-shadow: 0 18px 40px rgba(0,0,0,.25);
-}
-
-/* Center-center modals (Bootstrap 5) */
-.modal.show {
-  display: flex !important;
-  align-items: center;       /* vertical center */
-  justify-content: center;   /* horizontal center */
-  --bs-modal-margin: 0;
-  padding: 0 !important;
-}
-.modal.show .modal-dialog {
-  margin: 0 !important;
-  max-width: 640px;
-  width: calc(100% - 2rem);
-}
-.modal.show .modal-content {
-  max-height: min(90vh, 800px);
-  overflow: auto;
-  border-radius: 12px;
 }
 
 /* Small screens: modal width */

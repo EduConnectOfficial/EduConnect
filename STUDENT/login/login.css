@@ -1,20 +1,40 @@
-/* =========================================================
-   Login Page Styles • organized & deduplicated
-   ========================================================= */
-
 html,
 body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   font-family: 'Outfit', sans-serif;
   color: white;
 }
 
-/* Branding */
+/* Branding / media */
 .logo { width: 140px; }
-.top-logo { position: absolute; top: 20px; left: 30px; }
+
+.top-logo {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+}
+
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;          /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;      /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
 
 /* Layout */
 .login-container {
@@ -23,23 +43,12 @@ body {
   justify-content: center;
   align-items: center;
 }
-.login-row { margin-top: 10px; }            /* nudge content up */
-.logo-container { margin-bottom: 10px; padding-top: 10px; }
 
-/* Card */
-.login-box {
-  background-color: #5c2213;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0,0,0,.4);
-  width: 100%;
-  max-width: 600px;
-  margin: auto;
-  transition: background-color .3s ease;
+.logo-container {
+  margin-bottom: 10px; /* reduce space below logo */
+  padding-top: 10px;   /* adjust top position of logo */
 }
-.login-box h2 { color: #fff6dd; }
 
-/* Illustration (optional column) */
 .illustration {
   width: 100%;
   height: 100%;
@@ -47,118 +56,154 @@ body {
   border-radius: 10px;
 }
 
-/* Form elements */
-.form-control { border-radius: 999px; }
-.form-check-label { color: #fff6dd; font-weight: 400; }
+.login-row { margin-top: 10px; /* move login content higher */ }
 
-/* CTA Button */
-.login-btn{
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+/* Card */
+.login-box {
+  background-color: #113667;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.4);
+  width: 100%;
+  max-width: 600px;
+  margin: auto;
+  transition: background-color 0.3s ease;
+}
+.login-box h2 { color: #eaf2ff; }
+
+/* Form */
+.form-control { border-radius: 999px; }
+
+.form-check-label {
+  color: #eaf2ff;
+  font-weight: 400;
+}
+
+/* Button */
+.login-btn {
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   color: white;
   border: none;
   border-radius: 999px;
-  transition: background .3s ease, transform .2s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
-.login-btn:hover{
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+.login-btn:hover {
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   transform: scale(1.02);
 }
 
-/* Secondary links */
-.options a{
-  color: #fff6dd;
+/* Links */
+.options a {
+  color: #eaf2ff;
   text-decoration: none;
   font-weight: 500;
   position: relative;
-  transition: color .3s ease;
+  transition: color 0.3s ease;
 }
-.options a::after{
-  content:'';
-  position:absolute; left:0; bottom:-2px;
-  width:0%; height:2px; background-color:#FFD580;
-  transition: width .3s ease;
+.options a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0%;
+  height: 2px;
+  background-color: #6EC9F5;
+  transition: width 0.3s ease;
 }
-.options a:hover{ color:#FFD580; }
-.options a:hover::after{ width:100%; }
+.options a:hover { color: #6EC9F5; }
+.options a:hover::after { width: 100%; }
 
 /* ===== Modal Customization ===== */
-.modal-header{
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color:#fff;
-  border-bottom:none;
+.modal-header {
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #fff;
+  border-bottom: none;
 }
-.modal-header .modal-title{ font-weight:600; color:#fff; }
-.modal-header .btn-close{
-  filter: brightness(0) invert(1);
-  opacity:.9;
+.modal-header .modal-title { font-weight: 600; color: #fff; }
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
 }
-.modal-header .btn-close:hover{ opacity:1; }
+.modal-header .btn-close:hover { opacity: 1; }
 
 .modal-footer .btn,
 #successOkBtn,
-#feedbackModal .btn{
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border:none; color:#fff;
-  border-radius:999px;
-  padding:.5rem 1.2rem;
-  font-weight:500;
-  transition: background .3s ease, transform .2s ease;
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 .modal-footer .btn:hover,
 #successOkBtn:hover,
-#feedbackModal .btn:hover{
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
   transform: scale(1.05);
 }
 
 /* Backdrop */
-.modal-backdrop.show{ background-color: rgba(0,0,0,.6); }
+.modal-backdrop.show { background-color: rgba(0, 0, 0, 0.6); }
 
 /* ===== Tablet & down (≤1280px) ===== */
-@media (max-width: 1280px){
-  .top-logo{ top:16px; left:20px; }
-  .logo{ width:120px; }
-  .login-container{ padding:20px; }
-  .login-box{ max-width:560px; padding:1.75rem; border-radius:14px; }
-  .form-control, .login-btn{ min-height:44px; font-size:1rem; }
-  .illustration{ display:none; }
+@media (max-width: 1280px) {
+  .top-logo { top: 16px; left: 20px; }
+  .logo { width: 120px; }
+
+  .login-container { padding: 20px; }
+
+  .login-box {
+    max-width: 560px;
+    padding: 1.75rem;
+    border-radius: 14px;
+  }
+
+  .form-control,
+  .login-btn {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .illustration { display: none; }
 }
 
 /* ===== Mobile (≤480px) ===== */
-@media (max-width: 480px){
-  html, body{ background-attachment: fixed; }
+@media (max-width: 480px) {
+  html, body { background-attachment: fixed; }
 
-  .top-logo{ top:12px; left:12px; }
-  .logo{ width:110px; }
+  .top-logo { top: 12px; left: 12px; }
+  .logo { width: 110px; }
 
-  .login-container{ padding:16px; }
+  .login-container { padding: 16px; }
 
-  .login-box{
-    max-width:100%;
-    padding:1.25rem;
-    border-radius:12px;
-    box-shadow:0 6px 18px rgba(0,0,0,.25);
+  .login-box {
+    max-width: 100%;
+    padding: 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
   }
-  .login-box h2{ font-size:1.25rem; }
+  .login-box h2 { font-size: 1.25rem; }
 
-  .form-control{
-    font-size:.95rem;
-    padding:.7rem 1rem;
-    min-height:44px;           /* good tap target */
-  }
-
-  .login-btn{
-    font-size:1rem;
-    padding:.7rem 1rem;
-    min-height:48px;           /* thumb-friendly */
-    width:100%;
+  .form-control {
+    font-size: 0.95rem;
+    padding: 0.7rem 1rem;
+    min-height: 44px; /* good tap target */
   }
 
-  .options{
-    flex-direction:column;
-    align-items:center;
-    gap:8px;
-    text-align:center;
+  .login-btn {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
+    min-height: 48px; /* slightly taller for thumbs */
+    width: 100%;
   }
-  .options a::after{ bottom:-4px; }
+
+  .options {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+  .options a::after { bottom: -4px; }
 }

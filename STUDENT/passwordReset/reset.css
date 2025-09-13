@@ -1,19 +1,14 @@
-/* =======================
-   Base styling
-======================= */
+/* Base styling */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
   overflow-y: auto; /* allow vertical scrolling */
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: white;
 }
 
-/* =======================
-   Layout
-======================= */
 .main-container {
   min-height: 100vh;
   display: flex;
@@ -21,10 +16,11 @@ html, body {
   flex-wrap: wrap;
 }
 
-.left-panel,
-.right-panel {
+/* Panels */
+.left-panel, .right-panel {
   flex: 1;
   min-height: 100vh;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -32,34 +28,32 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Left panel with image + overlay gradient */
+/* Left panel overrides */
 .left-panel {
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
+  align-items: start;
   padding: 60px;
-  background:
-    linear-gradient(to bottom, rgba(74,26,12,.6), rgba(122,40,16,.6)),
-    url('your-image-path.jpg') center center/cover no-repeat;
+}
+.left-panel h2 {
+  font-size: 2.8rem;
+  font-weight: 700;
+}
+.left-panel p {
+  font-size: 1.2rem;
+  margin-top: 20px;
 }
 
-.left-panel h2 { font-size: 2.8rem; font-weight: 700; }
-.left-panel p  { font-size: 1.2rem; margin-top: 20px; }
-
-/* Right panel */
-.right-panel {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-}
-
-/* =======================
-   Logo
-======================= */
+/* Logo */
 .logo { width: 140px; }
-.top-logo { position: absolute; top: 20px; left: 30px; }
 
-/* =======================
-   Auth container & card
-======================= */
+/* Logo position */
+.top-logo {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+}
+
+/* Center container */
 .login-container {
   height: 100vh;
   display: flex;
@@ -67,61 +61,58 @@ html, body {
   align-items: center;
 }
 
+/* Card-style form box */
 .login-box {
-  background-color: #5c2213;
+  background-color: #113667;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0,0,0,.3);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 800px;
   margin: auto;
   text-align: center;
 }
 
-/* =======================
-   Forms & Buttons
-======================= */
+/* Input fields */
 .form-control { border-radius: 20px; }
 
+/* Submit button */
 .login-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  color: #fff;
+  background: linear-gradient(to bottom, #3b6bb4, #1a388a);
+  color: white;
   border: none;
   border-radius: 999px;
-  transition: background .3s ease, transform .2s ease;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 .login-btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   transform: scale(1.02);
 }
 
-.form-label {
-  color: #fff6dd;
-  font-weight: 500;
-  margin-bottom: .3rem;
-}
-
-/* Messages / notes */
+/* Error message under password fields */
 .error-message {
   font-size: 13px;
-  color: #ffdddd;
+  color: #ffdede;
   margin-top: 5px;
   text-align: left;
 }
+
+/* Requirement note */
 .requirement-note {
-  color: #ffd580;
-  font-size: .85rem;
+  color: #cfe4ff;
+  font-size: 0.85rem;
   margin-top: 5px;
+  margin-left: 8px;
   display: block;
 }
 
 /* Links */
 .options a {
-  color: #fff6dd;
+  color: #eaf2ff;
   text-decoration: none;
   font-weight: 500;
   position: relative;
-  transition: color .3s ease;
+  transition: color 0.3s ease;
 }
 .options a::after {
   content: '';
@@ -130,46 +121,20 @@ html, body {
   bottom: -2px;
   width: 0%;
   height: 2px;
-  background-color: #FFD580;
-  transition: width .3s ease;
+  background-color: #6EC9F5;
+  transition: width 0.3s ease;
 }
-.options a:hover { color: #FFD580; }
+.options a:hover { color: #6EC9F5; }
 .options a:hover::after { width: 100%; }
 
-/* =======================
-   Modal (brand aligned)
-======================= */
-.modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-  color: #fff;
-  border-bottom: none;
-}
-.modal-header .modal-title { font-weight: 600; color: #fff; }
-.modal-header .btn-close { filter: brightness(0) invert(1); opacity: .9; }
-.modal-header .btn-close:hover { opacity: 1; }
-
-.modal-footer .btn,
-#successOkBtn,
-#feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  color: #fff;
-  border-radius: 999px;
-  padding: .5rem 1.2rem;
+/* Labels */
+.form-label {
+  color: #001369;
   font-weight: 500;
-  transition: background .3s ease, transform .2s ease;
+  margin-bottom: 0.3rem;
 }
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
-  transform: scale(1.05);
-}
-.modal-body { color: #000; }
 
-/* =======================
-   OTP inputs
-======================= */
+/* OTP inputs */
 .otp-container {
   display: flex;
   justify-content: center;
@@ -182,72 +147,105 @@ html, body {
   text-align: center;
   font-size: 1.5rem;
   border: 1px solid #ced4da;
-  border-radius: 5px;
+  border-radius: 8px;
 }
 .otp-input:focus {
   outline: none;
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 .2rem rgba(13,110,253,.25);
+  border-color: #6EC9F5;
+  box-shadow: 0 0 0 0.2rem rgba(110, 201, 245, 0.35);
 }
 
-/* =======================
-   Responsive
-======================= */
-/* Tablet & down (≤1280px) */
-@media (max-width: 1280px) {
-  .top-logo { top: 16px; left: 20px; }
-  .logo { width: 120px; }
-  .login-container { padding: 20px; }
-
-  .login-box {
-    max-width: 560px;
-    padding: 1.75rem;
-    border-radius: 14px;
-  }
-
-  .form-control,
-  .login-btn { min-height: 44px; font-size: 1rem; }
-
-  /* If a hero image is used next to the form */
-  .illustration { display: none; }
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;          /* space between the two logos */
+  min-width: 0;
 }
 
-/* Mobile (≤480px) */
-@media (max-width: 480px) {
-  html, body { background-attachment: fixed; }
+.logo-header {
+  height: 28px;      /* smaller to fit both logos */
+  width: auto;
+}
 
-  .top-logo { top: 12px; left: 12px; }
-  .logo { width: 110px; }
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
 
-  .login-container { padding: 16px; }
 
-  .login-box {
-    max-width: 100%;
-    padding: 1.25rem;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,.25);
-  }
+/* =========================================================
+   11) MODALS
+   ========================================================= */
+.modal-header {
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #fff;
+  border-bottom: none;
+}
 
-  .login-box h2 { font-size: 1.25rem; }
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
 
-  .form-control {
-    font-size: .95rem;
-    padding: .7rem 1rem;
-    min-height: 44px; /* good tap target */
-  }
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
 
-  .login-btn {
-    font-size: 1rem;
-    padding: .7rem 1rem;
-    min-height: 48px; /* slightly taller for thumbs */
-    width: 100%;
-  }
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
 
-  .options {
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    text-align: center;
-  }
-  .options a::after { bottom: -4px; }
+/* Centered modal layout (Bootstrap 5) */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border-radius: 12px;
+}
+
+/* Modal footer button */
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d;
+  color: #fff;
+  transform: scale(1.04);
+}
+
+.modal-body{
+  color: black;
+}
+
+.btn-upload {
+  background: linear-gradient(to bottom, #3b6bb4, #1a388a);
+  padding: 0.6rem 1.5rem;
+}
+
+.btn-upload:hover {
+  opacity: 0.85;
 }

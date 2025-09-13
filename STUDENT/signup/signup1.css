@@ -1,11 +1,11 @@
-/* ========== Base styling ========== */
+/* Base styling */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
   overflow-y: auto; /* allow vertical scrolling */
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: white;
 }
 
@@ -22,130 +22,290 @@ html, body {
 .login-row { margin-top: 10px; }            /* nudge content up */
 .logo-container { margin-bottom: 10px; padding-top: 10px; }
 
-/* Panels layout (optional split layout) */
-.main-container{
-  min-height:100vh;
-  display:flex;
-  flex-direction:row;
-  flex-wrap:wrap;
-}
-
-/* ========== Logo ========== */
-.logo{ width:140px; max-width:30vw; }
-.top-logo{ position:absolute; top:20px; left:30px; }
-
-/* ========== Auth boxes ========== */
+/* Signup box aligned with login box */
 .signup-box,
 .login-box {
-  background-color: #5c2213;
+  background-color: #113667;
   padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 0 20px rgba(0,0,0,.4);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
   width: 100%;
-  max-width: 600px;
+  max-width: 300px;   /* tighter width so it doesn’t stretch too wide */
   margin: auto;
-  transition: background-color .3s ease;
-}
-.login-box h2 { color: #fff6dd; }
-
-
-/* Inputs & labels */
-.form-control{ border-radius:20px; }
-.form-label{ color:#fff6dd; font-weight:500; margin-bottom:.3rem; }
-
-/* Buttons */
-.login-btn{
-  background:linear-gradient(to bottom,#FF6A00,#B03C10);
-  color:#fff; border:none; border-radius:999px;
-  transition:background .3s ease, transform .2s ease;
-}
-.login-btn:hover{
-  background:linear-gradient(to bottom,#ff8533,#cc3300);
-  transform:scale(1.02);
+  text-align: center;
 }
 
-/* Links */
-.options a{
-  color:#fff6dd; text-decoration:none; font-weight:500; position:relative; transition:color .3s ease;
+/* Adjust headings */
+.signup-box h2 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  color: #eaf2ff;
 }
-.options a::after{
-  content:''; position:absolute; left:0; bottom:-2px; width:0%; height:2px; background:#FFD580; transition:width .3s ease;
-}
-.options a:hover{ color:#FFD580; }
-.options a:hover::after{ width:100%; }
 
-/* Messages / helpers */
-.error-message{ font-size:13px; color:#ffdddd; margin-top:5px; text-align:left; }
-.requirement-note{ color:#ffd580; font-size:.85rem; margin-top:5px; display:block; }
-.disabled-link{ pointer-events:none; opacity:.6; text-decoration:none; }
-.muted{ opacity:.85; }
-.is-invalid{ border-color:#dc3545; }
+.main-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.left-panel, .right-panel {
+  flex: 1;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.left-panel {
+  flex: 1;
+  /* For an image, put your URL below; gradient acts as fallback/overlay */
+  background: linear-gradient(to bottom, rgba(0,19,105,.85), rgba(26,56,138,.85)), url('your-image-path.jpg') center center/cover no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: start;
+  padding: 60px;
+}
+
+.left-panel h2 { font-size: 2.8rem; font-weight: 700; }
+.left-panel p  { font-size: 1.2rem; margin-top: 20px; }
+
+/* Logo */
+.logo { width: 140px; }
+
+/* Logo position */
+.top-logo {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+}
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;          /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;      /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Card-style form box */
+.login-box {
+  background-color: #113667;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 800px;
+  margin: auto;
+  text-align: center;
+}
+.login-box h2 { color: #eaf2ff; }
+
+/* Input fields */
+.form-control {
+  border-radius: 20px;
+}
+
+/* Submit button */
+.login-btn {
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+.login-btn:hover {
+  background: linear-gradient(to bottom, #2b607a, #004891);
+  transform: scale(1.02);
+}
+
+/* Error message under password fields */
+.error-message {
+  font-size: 13px;
+  color: #ffdede;
+  margin-top: 5px;
+  text-align: left;
+}
+
+/* Style labels for visibility */
+.form-label {
+  color: #eaf2ff;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+/* Style requirement note under password field */
+.requirement-note {
+  color: #cfe4ff;
+  font-size: 0.85rem;
+  margin-top: 5px;
+  margin-left: 8px;
+  display: block;
+}
+
+.options a {
+  color: #eaf2ff;
+  text-decoration: none;
+  font-weight: 500;
+  position: relative;
+  transition: color 0.3s ease;
+}
+.options a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0%;
+  height: 2px;
+  background-color: #6EC9F5;
+  transition: width 0.3s ease;
+}
+.options a:hover { color: #6EC9F5; }
+.options a:hover::after { width: 100%; }
+
+/* Tablet and below */
+@media (max-width: 992px) {
+  .main-container { flex-direction: column; } /* stack panels vertically */
+
+  .left-panel, .right-panel {
+    flex: none;
+    width: 100%;
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .left-panel {
+    align-items: center;
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .left-panel h2 { font-size: 2rem; }
+  .left-panel p  { font-size: 1rem; }
+
+  .login-box { max-width: 90%; padding: 1.5rem; }
+}
+
+/* Mobile (phones) */
+@media (max-width: 480px) {
+  .logo { width: 100px; max-width: 25vw; }
+
+  .top-logo {
+    position: relative;
+    top: 0;
+    left: 0;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .left-panel h2 { font-size: 1.6rem; }
+  .left-panel p  { font-size: 0.9rem; }
+
+  .login-box { padding: 1rem; }
+
+  .login-btn {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+  }
+
+  .options { font-size: 0.85rem; }
+}
+
+/* Hide create account / options links on small screens */
+@media (max-width: 576px) { .left-panel { display: none; } }
+
+/* Medium screens */
+@media (max-width: 1280px) {
+  .logo { width: 100px; max-width: 25vw; }
+
+  .top-logo {
+    position: relative;
+    top: 0;
+    left: 0;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .left-panel h2 { font-size: 1.6rem; }
+  .left-panel p  { font-size: 0.9rem; }
+
+  .login-box { padding: 1rem; }
+  .login-btn { font-size: 0.85rem; padding: 0.5rem; }
+  .options   { font-size: 0.85rem; }
+}
+
+/* Hide create account / options links on medium screens */
+@media (max-width: 1280px) { .left-panel { display: none; } }
+
+/* ===== Modal Customization ===== */
+
+/* Modal header with gradient background */
+.modal-header {
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #fff;
+  border-bottom: none;
+}
+
+/* Title text inside modal header */
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Close button inside modal header */
+.modal-header .btn-close {
+  filter: brightness(0) invert(1); /* makes the close icon white */
+  opacity: 0.9;
+}
+.modal-header .btn-close:hover { opacity: 1; }
+
+/* Modal footer button with gradient */
+.modal-footer .btn,
+#successOkBtn, 
+#feedbackModal .btn {
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.modal-footer .btn:hover,
+#successOkBtn:hover,
+#feedbackModal .btn:hover {
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
+  transform: scale(1.05);
+}
 
 /* OTP */
-.otp-container{ display:flex; justify-content:center; gap:10px; margin-bottom:1rem; }
-.otp-input{
+.otp-container { display:flex; justify-content:center; gap:10px; margin-bottom:1rem; }
+.otp-input {
   width:42px; height:52px; text-align:center; font-size:1.4rem;
   border:1px solid #ced4da; border-radius:8px;
 }
 .otp-input:focus{
-  outline:none; border-color:#86b7fe; box-shadow:0 0 0 .2rem rgba(13,110,253,.25);
+  outline:none;
+  border-color:#6EC9F5;
+  box-shadow:0 0 0 .2rem rgba(110,201,245,.35);
 }
 
-/* ========== Modal (brand-aligned) ========== */
-.modal-header{
-  background:linear-gradient(to bottom,#4A1A0C,#7A2810);
-  color:#fff; border-bottom:none;
-}
-.modal-header .modal-title{ font-weight:600; color:#fff; }
-.modal-header .btn-close{ filter:brightness(0) invert(1); opacity:.9; }
-.modal-header .btn-close:hover{ opacity:1; }
+.disabled-link{ pointer-events:none; opacity:.6; text-decoration:none; }
+.muted{ opacity:.85; }
 
-.modal-footer .btn,
-#successOkBtn,
-#feedbackModal .btn{
-  background:linear-gradient(to bottom,#FF6A00,#B03C10);
-  border:none; color:#fff; border-radius:999px;
-  padding:.5rem 1.2rem; font-weight:500;
-  transition:background .3s ease, transform .2s ease;
-}
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover{
-  background:linear-gradient(to bottom,#ff8533,#cc3300);
-  transform:scale(1.05);
-}
-.modal-body{ color:#000; }
-#feedbackModal .modal-body{ color:#000 !important; }
-
-/* ========== Responsive ========== */
-/* Tablet and below */
-@media (max-width:992px){
-  .main-container{ flex-direction:column; }
-  .left-panel, .right-panel{
-    flex:none; width:100%; min-height:auto; padding:20px;
-  }
-  .left-panel{
-    align-items:center; text-align:center; padding:30px 20px;
-  }
-  .left-panel h2{ font-size:2rem; }
-  .left-panel p{ font-size:1rem; }
-  .login-box{ max-width:90%; padding:1.5rem; }
-}
-
-/* Mobile */
-@media (max-width:480px){
-  .logo{ width:100px; max-width:25vw; }
-  .top-logo{ position:relative; top:0; left:0; text-align:center; margin-bottom:1rem; }
-
-  .left-panel h2{ font-size:1.6rem; }
-  .left-panel p{ font-size:.9rem; }
-
-  .login-box{ padding:1rem; }
-  .login-btn{ font-size:.85rem; padding:.5rem; }
-  .options{ font-size:.85rem; }
-}
-
-/* Hide left panel on small screens (per note) */
-@media (max-width:576px){
-  .left-panel{ display:none; }
-}
+/* ensure modal text is black */
+.modal-body{ color:#000 !important; }
