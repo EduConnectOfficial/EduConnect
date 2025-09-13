@@ -13,90 +13,6 @@
 
   <!-- Sidebar / shared -->
   <link rel="stylesheet" href="../quiz/quiz.css" />
-
-  <style>
-    /* ===== Pills (course / module / statuses) ===== */
-    .pill-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .5rem;
-      margin: 10px 0 18px
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: .4rem;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: .8rem;
-      font-weight: 700;
-      border: 1px solid var(--border, #e5e7eb);
-      background: #fff;
-      color: #374151;
-      white-space: nowrap;
-      max-width: 100%;
-      overflow: hidden;
-    }
-
-    .pill .bi {
-      font-size: .9rem
-    }
-
-    .pill-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
-      display: inline-block
-    }
-
-    .pill-course {
-      background: #fff7ed;
-      border-color: #fed7aa;
-      color: #9a3412;
-    }
-
-    .pill-module {
-      background: #ecfdf5;
-      border-color: #a7f3d0;
-      color: #065f46;
-    }
-
-    .pill-open {
-      background: #ecfeff;
-      border-color: #a5f3fc;
-      color: #075985;
-    }
-
-    .pill-upcoming {
-      background: #f0f9ff;
-      border-color: #bae6fd;
-      color: #075985;
-    }
-
-    .pill-closed {
-      background: #fee2e2;
-      border-color: #fecaca;
-      color: #991b1b;
-    }
-
-    /* ===== Clamp quiz description ===== */
-    .quiz-card .desc {
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      line-clamp: 4;
-      -webkit-line-clamp: 4;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      word-break: break-word;
-      line-height: 1.4;
-      max-height: calc(1.4em * 4);
-      font-size: .95rem;
-      color: #6b7280;
-      margin-top: .25rem;
-    }
-  </style>
 </head>
 
 <body>
@@ -334,7 +250,7 @@
     const moduleSelect = document.getElementById("moduleSelect");
     const quizCards = document.getElementById("quizCards");
     const emptyState = document.getElementById("emptyState");
-    theErrorState = document.getElementById("errorState");
+    const errorState = document.getElementById("errorState");
     const quizSearch = document.getElementById("quizSearch");
     const statusFilter = document.getElementById("statusFilter");
     const sortBy = document.getElementById("sortBy");
@@ -348,11 +264,14 @@
     let currentCourseId = "";
     let currentModuleId = "";
 
-    const enrolledCourseIds = new Set();
     const attemptsCache = new Map(); // quizId -> { used, allowed, left, lock }
 
     const coursesById = new Map(); // courseId -> course
     const modulesByCourse = new Map(); // courseId -> Map(moduleId -> module)
+
+    // NEW: student classes for assignment filtering (client-side fallback)
+    const studentClassIds = new Set();
+    let classesLoadedOk = false;
 
     // ---------- Helpers ----------
     const ts = (obj) => {
@@ -367,8 +286,6 @@
     const fmt = (v) => { const d = ts(v); return d ? d.toLocaleString() : "—"; };
     const fmtDate = (v) => { const d = ts(v); return d ? d.toLocaleDateString() : "—"; };
     const isNum = v => (typeof v === 'number' && !Number.isNaN(v));
-    const toNum = v => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
-    const num = (v, def = 0) => (typeof v === 'number' && !isNaN(v)) ? v : def;
     const fmtTime = (sec) => {
       if (sec == null) return "—";
       const s = Math.max(0, parseInt(sec, 10));
@@ -383,8 +300,15 @@
       const nonEmpty = Object.values(choices).filter(v => v && String(v).trim() !== '');
       return nonEmpty.length === 0;
     }
+    // Prefer new rubricFile then legacy fields
     function pickRubricUrl(obj) {
       if (!obj || typeof obj !== 'object') return '';
+      if (obj.rubricFile && typeof obj.rubricFile === 'object') {
+        const d = obj.rubricFile.downloadUrl;
+        const p = obj.rubricFile.publicUrl;
+        if (typeof d === 'string' && d.trim()) return d.trim();
+        if (typeof p === 'string' && p.trim()) return p.trim();
+      }
       const keys = ['rubricUrl', 'rubricURL', 'rubric', 'rubric_link', 'rubric_url', 'rubricLink'];
       for (const k of keys) { const v = obj[k]; if (typeof v === 'string' && v.trim()) return v.trim(); }
       return '';
@@ -396,7 +320,6 @@
     // ---------- Data loaders ----------
     async function loadCourses() {
       courseSelect.innerHTML = `<option value="">-- All Courses --</option>`;
-      enrolledCourseIds.clear();
       coursesById.clear();
 
       try {
@@ -406,7 +329,6 @@
 
         list.forEach(c => {
           if (!c?.id) return;
-          enrolledCourseIds.add(c.id);
           coursesById.set(c.id, c);
 
           const code = c.courseNumber ?? c.code ?? c.number ?? c.classCode ?? null;
@@ -476,11 +398,52 @@
       await Promise.all(uniq.map(ensureModulesForCourse));
     }
 
+    // NEW: fetch the student's classes for client-side assignment filtering fallback
+    async function loadStudentClasses() {
+      classesLoadedOk = false;
+      studentClassIds.clear();
+      try {
+        // Primary expected endpoint
+        let res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/classes`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        let js = await res.json();
+        let list = Array.isArray(js?.classes) ? js.classes : [];
+        // Fallback shapes
+        if (!list.length && Array.isArray(js)) list = js;
+        list.forEach(c => {
+          const id = c?.id || c?.classId || c?._id;
+          if (id) studentClassIds.add(String(id));
+        });
+        classesLoadedOk = true;
+      } catch (e) {
+        // Try a looser fallback if your API differs
+        try {
+          const res2 = await fetch(`${API_BASE}/classes?studentId=${encodeURIComponent(userData.userId)}`);
+          const js2 = await res2.json();
+          const list2 = Array.isArray(js2?.classes) ? js2.classes : (Array.isArray(js2) ? js2 : []);
+          list2.forEach(c => { const id = c?.id || c?.classId || c?._id; if (id) studentClassIds.add(String(id)); });
+          classesLoadedOk = true;
+        } catch {}
+      }
+    }
+
+    // >>> Assignment-aware fetch here (server-side preferred)
     async function loadQuizzes() {
       try {
-        const res = await fetch(`${API_BASE}/quizzes`);
+        const uid = encodeURIComponent(userData.userId);
+        // Let the backend filter by assignedClasses for this student (new backend supports forStudent)
+        const res = await fetch(`${API_BASE}/quizzes?forStudent=${uid}`);
         const data = await res.json();
         allQuizzes = (data?.success && Array.isArray(data.quizzes)) ? data.quizzes : [];
+
+        // Client-side fallback in case the backend doesn't filter (only apply if we know classes)
+        if (classesLoadedOk) {
+          allQuizzes = allQuizzes.filter(q => {
+            const arr = Array.isArray(q.assignedClasses) ? q.assignedClasses.filter(Boolean) : [];
+            if (arr.length === 0) return true; // visible to all in course
+            return arr.some(id => studentClassIds.has(String(id)));
+          });
+        }
       } catch (e) {
         allQuizzes = [];
         console.error("Quizzes fetch failed", e);
@@ -605,6 +568,33 @@
       return { attempts, best, latest };
     }
 
+    // Rubric token fallback
+    const rubricStorageByQuizId = new Map();
+    function computeRubricButtonBits(quiz) {
+      const direct = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
+      if (direct) return { type: 'direct', url: direct };
+      const sp = quiz?.rubricFile?.storagePath || quiz?.storagePath || '';
+      if (sp) {
+        rubricStorageByQuizId.set(String(quiz.id), sp);
+        return { type: 'indirect', url: '' };
+      }
+      return { type: 'none', url: '' };
+    }
+
+    async function openRubricForQuiz(quizId) {
+      const sp = rubricStorageByQuizId.get(String(quizId));
+      if (!sp) return;
+      try {
+        const res = await fetch(`${API_BASE}/storage/token-url?path=${encodeURIComponent(sp)}`);
+        const js = await res.json();
+        const url = js?.url;
+        if (url) window.open(url, '_blank', 'noopener');
+        else alert('Could not open rubric.');
+      } catch (e) {
+        alert('Could not open rubric.');
+      }
+    }
+
     // ---------- Render ----------
     function refreshStatusPills(list) {
       const counts = { Open: 0, Upcoming: 0, Closed: 0 };
@@ -618,8 +608,8 @@
       quizCards.innerHTML = "";
       errorState.classList.add("d-none");
 
-      // start with ALL quizzes from enrolled courses
-      let list = allQuizzes.filter(qz => enrolledCourseIds.has(qz.courseId));
+      // IMPORTANT: start from ALL quizzes returned by the server (already assignment-filtered if backend supports it)
+      let list = allQuizzes.slice();
 
       // optional filters
       if (currentCourseId) list = list.filter(qz => qz.courseId === currentCourseId);
@@ -640,8 +630,13 @@
       if (sortBy.value === "az") {
         list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
       } else if (sortBy.value === "duration") {
-        const num = (v, d = 0) => (typeof v === 'number' && !isNaN(v)) ? v : d;
-        list.sort((a, b) => num(a.durationMinutes) - num(b.durationMinutes));
+        const numVal = (v, d = 0) => (typeof v === 'number' && !isNaN(v)) ? v : d;
+        // durationMinutes is inside settings in your backend; keep fallback for flat field
+        list.sort((a, b) => {
+          const ad = a.settings?.timerEnabled ? a.settings.durationMinutes : a.durationMinutes;
+          const bd = b.settings?.timerEnabled ? b.settings.durationMinutes : b.durationMinutes;
+          return numVal(ad) - numVal(bd);
+        });
       } else {
         list.sort((a, b) => {
           const ad = ts(a.dueAt) ? ts(a.dueAt).getTime() : Number.POSITIVE_INFINITY;
@@ -675,7 +670,12 @@
         const status = statusOf(quiz);
         const qs = Array.isArray(quiz.questions) ? quiz.questions.length
           : (quiz.totalQuestions || quiz.questionCount || 0);
-        const dur = (typeof quiz.durationMinutes === 'number' && !isNaN(quiz.durationMinutes)) ? quiz.durationMinutes : null;
+
+        // duration (prefer settings.durationMinutes when timerEnabled)
+        const dur = (quiz.settings?.timerEnabled && isNum(quiz.settings.durationMinutes))
+          ? quiz.settings.durationMinutes
+          : (isNum(quiz.durationMinutes) ? quiz.durationMinutes : null);
+
         const diff = quiz.difficulty || "—";
 
         const course = coursesById.get(quiz.courseId);
@@ -704,15 +704,17 @@
         const hasAutoQuestions = Array.isArray(quiz.questions) && quiz.questions.some(q => !isEssayQuestion(q));
         const essayOnly = Array.isArray(quiz.questions) && quiz.questions.length > 0 && !hasAutoQuestions;
 
-        // optional rubric
+        // rubric from new rubricFile or legacy fields (with storage token fallback)
         let rubricBtn = '';
-        const rubricUrl = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
-        if (rubricUrl) {
-          const safeUrl = String(rubricUrl).replace(/"/g, '&quot;');
-          rubricBtn = `<button class="btn btn-sm btn-outline-info"
-                               onclick="window.open('${safeUrl}', '_blank')"
-                               title="View Rubric">
+        const rubricBits = computeRubricButtonBits(quiz);
+        if (rubricBits.type === 'direct') {
+          const safeUrl = String(rubricBits.url).replace(/"/g, '&quot;');
+          rubricBtn = `<a class="btn btn-sm btn-outline-info" href="${safeUrl}" target="_blank" rel="noopener" title="View Rubric">
                           <i class="bi bi-file-earmark-text"></i> Show Rubric
+                       </a>`;
+        } else if (rubricBits.type === 'indirect') {
+          rubricBtn = `<button class="btn btn-sm btn-outline-info" data-action="rubric" data-quiz-id="${String(quiz.id)}" title="View Rubric">
+                        <i class="bi bi-file-earmark-text"></i> Show Rubric
                        </button>`;
         }
 
@@ -727,6 +729,12 @@
             <i class="bi bi-box"></i>
             <span class="pill-text">${escapeHTML(moduleLabel)}</span>
           </span>`;
+
+        const startDisabledReason = (status !== 'Open') ? (status === 'Upcoming' ? 'Not open yet' : 'Closed') : (locked ? 'No attempts left' : '');
+        const startDisabled = Boolean(startDisabledReason);
+        const startHref = startDisabled ? '#' : `/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}`;
+        const startBtnClass = startDisabled ? 'btn btn-sm btn-outline-secondary disabled' : 'btn btn-sm btn-amber';
+        const startTitle = startDisabledReason || 'See details, rubric, and start';
 
         const col = document.createElement("div");
         col.className = "col-12 col-md-6 col-xl-4";
@@ -772,9 +780,10 @@
         <i class="bi bi-graph-up"></i> View Score
       </button>
 
-      <a class="btn btn-sm btn-amber"
-         href="/STUDENT/quiz/view_quiz.html?id=${encodeURIComponent(quiz.id)}"
-         title="See details, rubric, and start">
+      <a class="${startBtnClass}"
+         href="${startHref}"
+         ${startDisabled ? 'aria-disabled="true"' : ''}
+         title="${startTitle}">
          Start
       </a>
 
@@ -810,8 +819,15 @@
     statusFilter.addEventListener("change", () => renderQuizzes());
     sortBy.addEventListener("change", () => renderQuizzes());
 
-    // View Score modal
+    // View Score modal / rubric click
     quizCards.addEventListener('click', async (e) => {
+      const rubricBtn = e.target.closest('[data-action="rubric"]');
+      if (rubricBtn) {
+        const qid = rubricBtn.getAttribute('data-quiz-id');
+        if (qid) openRubricForQuiz(qid);
+        return;
+      }
+
       const btn = e.target.closest('[data-action="view-score"]');
       if (!btn) return;
 
@@ -851,13 +867,6 @@
           const tB = ts(b.submittedAt)?.getTime() ?? 0;
           return tB - tA;
         });
-
-        const fmtTime = (sec) => {
-          if (sec == null) return "—";
-          const s = Math.max(0, parseInt(sec, 10));
-          const m = Math.floor(s / 60), ss = s % 60;
-          return `${m}m ${ss}s`;
-        };
 
         const rowsHtml = attemptsSorted.map(a => {
           const hasAuto = (a.autoTotal != null && a.autoTotal > 0);
@@ -904,8 +913,9 @@
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         await loadCourses();
-        await loadQuizzes();
-        renderQuizzes(); // shows ALL quizzes by default
+        await loadStudentClasses(); // NEW: for client-side fallback filtering
+        await loadQuizzes();        // <- assignment-aware (server) + fallback (client)
+        renderQuizzes();            // shows quizzes the server/logic says this student can see
       } catch {
         errorState.classList.remove("d-none");
       }
