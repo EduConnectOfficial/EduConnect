@@ -3,7 +3,7 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   font-family: 'Outfit', sans-serif;
   color: white;
 }
@@ -15,6 +15,25 @@ body {
   position: absolute;
   top: 20px;
   left: 30px;
+}
+
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;          /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;      /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
 }
 
 /* Layout */
@@ -41,7 +60,7 @@ body {
 
 /* Card */
 .login-box {
-  background-color: #5c2213;
+  background-color: #113667;
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 0 20px rgba(0,0,0,0.4);
@@ -50,32 +69,32 @@ body {
   margin: auto;
   transition: background-color 0.3s ease;
 }
-.login-box h2 { color: #fff6dd; }
+.login-box h2 { color: #eaf2ff; }
 
 /* Form */
 .form-control { border-radius: 999px; }
 
 .form-check-label {
-  color: #fff6dd;
+  color: #eaf2ff;
   font-weight: 400;
 }
 
 /* Button */
 .login-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   color: white;
   border: none;
   border-radius: 999px;
   transition: background 0.3s ease, transform 0.2s ease;
 }
 .login-btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   transform: scale(1.02);
 }
 
 /* Links */
 .options a {
-  color: #fff6dd;
+  color: #eaf2ff;
   text-decoration: none;
   font-weight: 500;
   position: relative;
@@ -88,15 +107,15 @@ body {
   bottom: -2px;
   width: 0%;
   height: 2px;
-  background-color: #FFD580;
+  background-color: #6EC9F5;
   transition: width 0.3s ease;
 }
-.options a:hover { color: #FFD580; }
+.options a:hover { color: #6EC9F5; }
 .options a:hover::after { width: 100%; }
 
 /* ===== Modal Customization ===== */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
   border-bottom: none;
 }
@@ -110,7 +129,7 @@ body {
 .modal-footer .btn,
 #successOkBtn,
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   border: none;
   color: #fff;
   border-radius: 999px;
@@ -121,7 +140,7 @@ body {
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
   transform: scale(1.05);
 }
 

@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Admin - Dashboard</title>
 
   <!-- Icons & CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
- 
+
 </head>
+
 <body>
   <div class="dashboard">
     <div id="sidebar-container"></div>
@@ -51,16 +53,23 @@
     <!-- Main -->
     <div class="main">
       <header class="header-top">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
+
         <div class="search-box">
-          <input type="text" placeholder="Search..."/>
+          <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
         </div>
+
         <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
       </header>
+
 
       <section class="content px-4">
         <h2 class="mt-4 mb-3 fw-bold text-center">Admin Dashboard</h2>
@@ -204,12 +213,15 @@
                       </tr>
                     </thead>
                     <tbody id="sampleUsersBody">
-                      <tr><td colspan="8">Loading…</td></tr>
+                      <tr>
+                        <td colspan="8">Loading…</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
                 <div class="text-end">
-                  <a href="../access/student_access.html" class="btn btn-sm btn-outline-secondary">View Student Users</a>
+                  <a href="../access/student_access.html" class="btn btn-sm btn-outline-secondary">View Student
+                    Users</a>
                 </div>
               </div>
             </div>
@@ -263,8 +275,8 @@
         document.getElementById("activeUsersCount").textContent = active;
         document.getElementById("inactiveUsersCount").textContent = inactive;
 
-        const actPct = total ? Math.round((active/total)*100) : 0;
-        const inactPct = total ? Math.round((inactive/total)*100) : 0;
+        const actPct = total ? Math.round((active / total) * 100) : 0;
+        const inactPct = total ? Math.round((inactive / total) * 100) : 0;
         document.getElementById("activePct").textContent = `${actPct}% of total`;
         document.getElementById("inactivePct").textContent = `${inactPct}% of total`;
 
@@ -280,19 +292,19 @@
         list.forEach(u => {
           const isTeacher = u?.isTeacher === true || Boolean(u?.teacherId);
           const isStudent = u?.isStudent === true || Boolean(u?.studentId);
-          const isAdmin   = u?.isAdmin === true;  
+          const isAdmin = u?.isAdmin === true;
 
           if (isTeacher) teachers++;
           if (isStudent) students++;
-          if (isAdmin)   superAdmins++;
+          if (isAdmin) superAdmins++;
 
           if ((isTeacher || isStudent) && sample.length < 12) {
-            const fn  = (u.firstName  || '').trim();
-            const mn  = (u.middleName || '').trim();
-            const ln  = (u.lastName   || '').trim();
+            const fn = (u.firstName || '').trim();
+            const mn = (u.middleName || '').trim();
+            const ln = (u.lastName || '').trim();
             const role = isTeacher && isStudent ? 'Teacher & Student'
-                       : isTeacher ? 'Teacher'
-                       : 'Student';
+              : isTeacher ? 'Teacher'
+                : 'Student';
 
             sample.push({
               username: u.username || '',
@@ -308,7 +320,7 @@
 
         document.getElementById("teachersCount").textContent = teachers;
         document.getElementById("studentsCount").textContent = students;
-        document.getElementById("itCount").textContent       = superAdmins;
+        document.getElementById("itCount").textContent = superAdmins;
 
         // Chart: Active vs Inactive
         const ctx1 = document.getElementById("activeInactiveChart");
@@ -331,7 +343,7 @@
         roleDistributionChart = new Chart(ctx2, {
           type: 'bar',
           data: {
-            labels: ['Teachers','Students','Super Admins'],
+            labels: ['Teachers', 'Students', 'Super Admins'],
             datasets: [{ label: 'Users', data: [teachers, students, superAdmins] }]
           },
           options: {
@@ -355,7 +367,7 @@
           sample.forEach((u, i) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-              <td>${i+1}</td>
+              <td>${i + 1}</td>
               <td>${u.username}</td>
               <td>${u.firstName}</td>
               <td>${u.middleName}</td>
@@ -384,4 +396,5 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,8 +9,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/ADMIN/access/access.css" />
-  
+
 </head>
+
 <body>
   <div class="dashboard">
     <div id="sidebar-container"></div>
@@ -43,7 +45,11 @@
 
     <div class="main">
       <header class="header-top">
-        <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
         <div class="search-box">
           <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
@@ -66,7 +72,8 @@
             <div class="filter-body">
               <div class="search-field">
                 <i class="bi bi-search"></i>
-                <input id="filterSearch" type="text" class="form-control" placeholder="Search by username, name, email..." />
+                <input id="filterSearch" type="text" class="form-control"
+                  placeholder="Search by username, name, email..." />
               </div>
 
               <select id="filterStatus" class="form-select">
@@ -105,7 +112,9 @@
                 </tr>
               </thead>
               <tbody id="userTableBody">
-                <tr><td colspan="9">Loading…</td></tr>
+                <tr>
+                  <td colspan="9">Loading…</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -115,7 +124,8 @@
   </div>
 
   <!-- Confirm Status Modal -->
-  <div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-labelledby="statusConfirmModalLabel" aria-hidden="true">
+  <div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-labelledby="statusConfirmModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -132,7 +142,8 @@
   </div>
 
   <!-- Confirm Delete Modal -->
-  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -198,14 +209,14 @@
         const rawLocal = localStorage.getItem("user");
         const rawSession = sessionStorage.getItem("user");
         let data = null;
-        if (rawLocal)  { try { data = JSON.parse(rawLocal); }  catch {} }
-        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch {} }
+        if (rawLocal) { try { data = JSON.parse(rawLocal); } catch { } }
+        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch { } }
 
         const getInitials = (info = {}) => {
           const f = (info.firstName || "").trim();
-          const l = (info.lastName  || "").trim();
-          const u = (info.username  || "").trim();
-          const e = (info.email     || "").trim();
+          const l = (info.lastName || "").trim();
+          const u = (info.username || "").trim();
+          const e = (info.email || "").trim();
 
           if (f || l) {
             let letters = "";
@@ -213,16 +224,16 @@
             if (l) letters += l[0];
             else if (f.length > 1) letters += f[1];
             letters = letters.toUpperCase();
-            if (letters.length >= 2) return letters.slice(0,2);
-            return (letters + "U").slice(0,2);
+            if (letters.length >= 2) return letters.slice(0, 2);
+            return (letters + "U").slice(0, 2);
           }
           if (u) {
             const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-            if (cleaned) return (cleaned + "U").slice(0,2);
+            if (cleaned) return (cleaned + "U").slice(0, 2);
           }
           if (e && e.includes("@")) {
             const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
-            if (local) return (local + "U").slice(0,2);
+            if (local) return (local + "U").slice(0, 2);
           }
           return "UU";
         };
@@ -264,17 +275,17 @@
       return res.json();
     }
 
-    const tableBody    = document.getElementById('userTableBody');
+    const tableBody = document.getElementById('userTableBody');
     const studentAlert = document.getElementById('studentAlert');
 
     const elSearch = document.getElementById('filterSearch');
     const elStatus = document.getElementById('filterStatus');
-    const elSort   = document.getElementById('filterSort');
+    const elSort = document.getElementById('filterSort');
 
     let students = []; // only students
     let selectedUser = null;
-    let selectedRow  = null;
-    let nextActive   = true;
+    let selectedRow = null;
+    let nextActive = true;
 
     // DEFAULT: sort by Student ID (ascending)
     let sortKey = 'studentId';
@@ -300,18 +311,18 @@
       const m = id.match(/^S-(\d{4})-(\d{1,})$/i);
       if (m) {
         const year = m[1];
-        const seq  = m[2].padStart(5, '0');
+        const seq = m[2].padStart(5, '0');
         return `${year}-${seq}`;
       }
       const digits = id.replace(/\D/g, '');
       return digits.padStart(9, '0');
     }
 
-    function applyFilters(list){
+    function applyFilters(list) {
       const q = norm(elSearch.value);
       const status = elStatus.value;
 
-      return list.filter(u=>{
+      return list.filter(u => {
         const active = isActive(u);
         if (status === 'active' && !active) return false;
         if (status === 'deactivated' && active) return false;
@@ -322,47 +333,47 @@
       });
     }
 
-    function nameKey(u){
+    function nameKey(u) {
       return norm(u.username || ((u.firstName ?? '') + ' ' + (u.lastName ?? '')));
     }
 
-    function sortByDropdown(a,b){
+    function sortByDropdown(a, b) {
       const mode = elSort.value;
       const aa = isActive(a), bb = isActive(b);
       if (mode === 'none') {
         // Default to Student ID ascending
         return 0;
       }
-      if (mode === 'nameAsc')  return nameKey(a).localeCompare(nameKey(b));
+      if (mode === 'nameAsc') return nameKey(a).localeCompare(nameKey(b));
       if (mode === 'nameDesc') return nameKey(b).localeCompare(nameKey(a));
-      if (mode === 'statusActiveFirst')      return (aa===bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? -1 : 1);
-      if (mode === 'statusDeactivatedFirst') return (aa===bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ?  1 : -1);
+      if (mode === 'statusActiveFirst') return (aa === bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? -1 : 1);
+      if (mode === 'statusDeactivatedFirst') return (aa === bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? 1 : -1);
       return 0;
     }
 
-    function sortByHeader(a,b){
+    function sortByHeader(a, b) {
       let av, bv;
-      switch (sortKey){
-        case 'index':     av=a.__index;                 bv=b.__index; break;
-        case 'studentId': av=studentIdSortKey(a);       bv=studentIdSortKey(b); break;
-        case 'username':  av=norm(a.username);          bv=norm(b.username); break;
-        case 'firstName': av=norm(a.firstName);         bv=norm(b.firstName); break;
-        case 'middleName':av=norm(a.middleName);        bv=norm(b.middleName); break;
-        case 'lastName':  av=norm(a.lastName);          bv=norm(b.lastName); break;
-        case 'email':     av=norm(a.email);             bv=norm(b.email); break;
-        case 'status':    av=isActive(a)?0:1;           bv=isActive(b)?0:1;   break;
-        default:          av=a.__index;                 bv=b.__index;
+      switch (sortKey) {
+        case 'index': av = a.__index; bv = b.__index; break;
+        case 'studentId': av = studentIdSortKey(a); bv = studentIdSortKey(b); break;
+        case 'username': av = norm(a.username); bv = norm(b.username); break;
+        case 'firstName': av = norm(a.firstName); bv = norm(b.firstName); break;
+        case 'middleName': av = norm(a.middleName); bv = norm(b.middleName); break;
+        case 'lastName': av = norm(a.lastName); bv = norm(b.lastName); break;
+        case 'email': av = norm(a.email); bv = norm(b.email); break;
+        case 'status': av = isActive(a) ? 0 : 1; bv = isActive(b) ? 0 : 1; break;
+        default: av = a.__index; bv = b.__index;
       }
-      if (av===bv) return 0;
-      const d = av>bv ? 1 : -1;
-      return (sortDir==='asc') ? d : -d;
+      if (av === bv) return 0;
+      const d = av > bv ? 1 : -1;
+      return (sortDir === 'asc') ? d : -d;
     }
 
-    function renderTable(list){
+    function renderTable(list) {
       tableBody.innerHTML = '';
 
       const filtered = applyFilters(list);
-      if (!filtered.length){
+      if (!filtered.length) {
         tableBody.innerHTML = '<tr><td colspan="9">No matching students.</td></tr>';
         return;
       }
@@ -370,21 +381,21 @@
       let sorted;
       if (elSort.value === 'none') {
         // Default sort: Student ID ascending
-        sorted = filtered.sort((a,b)=>sortByHeader(a,b));
+        sorted = filtered.sort((a, b) => sortByHeader(a, b));
       } else {
         // Sort by dropdown, then header as tiebreaker
-        sorted = filtered.sort((a,b)=>{
-          const d = sortByDropdown(a,b);
+        sorted = filtered.sort((a, b) => {
+          const d = sortByDropdown(a, b);
           if (d !== 0) return d;
-          return sortByHeader(a,b);
+          return sortByHeader(a, b);
         });
       }
 
-      sorted.forEach((user, i)=>{
+      sorted.forEach((user, i) => {
         const active = isActive(user);
         const row = document.createElement('tr');
         row.innerHTML =
-          '<td>' + (i+1) + '</td>' +
+          '<td>' + (i + 1) + '</td>' +
           '<td>' + (user.studentId || user.userId || '') + '</td>' +
           '<td>' + (user.username || '') + '</td>' +
           '<td>' + (user.firstName || '') + '</td>' +
@@ -392,21 +403,21 @@
           '<td>' + (user.lastName || '') + '</td>' +
           '<td>' + maskEmail(user.email || '') + '</td>' +
           '<td><span class="badge ' + (active ? 'bg-success' : 'bg-secondary') + ' status-badge">' +
-            (active ? 'Active' : 'Deactivated') +
+          (active ? 'Active' : 'Deactivated') +
           '</span></td>' +
           '<td class="d-flex gap-2 justify-content-center">' +
-            '<button class="btn btn-sm ' + (active ? 'btn-danger' : 'btn-success') + ' status-btn">' +
-              (active ? 'Deactivate' : 'Activate') +
-            '</button>' +
-            '<button class="btn btn-sm btn-outline-primary edit-btn">Edit</button>' +
-            '<button class="btn btn-sm btn-outline-danger delete-btn">Delete</button>' +
+          '<button class="btn btn-sm ' + (active ? 'btn-danger' : 'btn-success') + ' status-btn">' +
+          (active ? 'Deactivate' : 'Activate') +
+          '</button>' +
+          '<button class="btn btn-sm btn-outline-primary edit-btn">Edit</button>' +
+          '<button class="btn btn-sm btn-outline-danger delete-btn">Delete</button>' +
           '</td>';
 
         // Activate/Deactivate
-        row.querySelector('.status-btn').addEventListener('click', ()=>{
+        row.querySelector('.status-btn').addEventListener('click', () => {
           selectedUser = user;
-          selectedRow  = row;
-          nextActive   = !isActive(user);
+          selectedRow = row;
+          nextActive = !isActive(user);
 
           document.getElementById('statusModalBody').textContent =
             'Are you sure you want to ' + (nextActive ? 'activate' : 'deactivate') + ' student "' + (user.username || 'user') + '"?';
@@ -415,36 +426,36 @@
           const fresh = old.cloneNode(true);
           old.parentNode.replaceChild(fresh, old);
 
-          fresh.addEventListener('click', async ()=>{
-            try{
+          fresh.addEventListener('click', async () => {
+            try {
               fresh.disabled = true;
               const result = await getJSON(
                 API_BASE + '/' + encodeURIComponent(user.userId) + '/status',
-                { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ active: nextActive }) }
+                { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: nextActive }) }
               );
 
-              if (result && result.success){
+              if (result && result.success) {
                 user.active = nextActive;
 
                 const badge = row.querySelector('.status-badge');
                 badge.textContent = nextActive ? 'Active' : 'Deactivated';
-                badge.className   = 'badge ' + (nextActive ? 'bg-success' : 'bg-secondary') + ' status-badge';
+                badge.className = 'badge ' + (nextActive ? 'bg-success' : 'bg-secondary') + ' status-badge';
 
                 const btn = row.querySelector('.status-btn');
                 btn.textContent = nextActive ? 'Deactivate' : 'Activate';
-                btn.className   = 'btn btn-sm ' + (nextActive ? 'btn-danger' : 'btn-success') + ' status-btn';
+                btn.className = 'btn btn-sm ' + (nextActive ? 'btn-danger' : 'btn-success') + ' status-btn';
 
                 bootstrap.Modal.getInstance(document.getElementById('statusConfirmModal')).hide();
 
                 studentAlert.textContent = 'Successfully ' + (nextActive ? 'activated' : 'deactivated') + ' "' + (user.username || 'user') + '".';
                 studentAlert.classList.remove('d-none');
-                setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
+                setTimeout(() => studentAlert.classList.add('d-none'), 3000);
 
                 renderTable(students);
               } else {
                 alert((result && result.message) || 'Failed to update status.');
               }
-            } catch(err){
+            } catch (err) {
               console.error('Status update failed:', err);
               alert('Server error while updating status.');
             } finally {
@@ -456,20 +467,20 @@
         });
 
         // Edit
-        row.querySelector('.edit-btn').addEventListener('click', ()=>{
+        row.querySelector('.edit-btn').addEventListener('click', () => {
           selectedUser = user;
-          document.getElementById('editUsername').value   = user.username || '';
-          document.getElementById('editFirstName').value  = user.firstName || '';
+          document.getElementById('editUsername').value = user.username || '';
+          document.getElementById('editFirstName').value = user.firstName || '';
           document.getElementById('editMiddleName').value = user.middleName || '';
-          document.getElementById('editLastName').value   = user.lastName || '';
-          document.getElementById('editEmail').value      = user.email || '';
+          document.getElementById('editLastName').value = user.lastName || '';
+          document.getElementById('editEmail').value = user.email || '';
           new bootstrap.Modal(document.getElementById('editUserModal')).show();
         });
 
         // Delete
-        row.querySelector('.delete-btn').addEventListener('click', ()=>{
+        row.querySelector('.delete-btn').addEventListener('click', () => {
           selectedUser = user;
-          selectedRow  = row;
+          selectedRow = row;
           document.getElementById('deleteModalBody').textContent =
             'This will permanently delete "' + (user.username || 'user') + '". Continue?';
 
@@ -477,16 +488,16 @@
           const fresh = old.cloneNode(true);
           old.parentNode.replaceChild(fresh, old);
 
-          fresh.addEventListener('click', async ()=>{
-            try{
+          fresh.addEventListener('click', async () => {
+            try {
               fresh.disabled = true;
               const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
               if (!res.ok) {
                 const txt = await res.text();
-                throw new Error('HTTP ' + res.status + ': ' + txt.slice(0,120));
+                throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
               }
               const data = await res.json();
-              if (data && data.success){
+              if (data && data.success) {
                 students = students.filter(u => u.userId !== user.userId);
                 renderTable(students);
 
@@ -494,11 +505,11 @@
 
                 studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
                 studentAlert.classList.remove('d-none');
-                setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
+                setTimeout(() => studentAlert.classList.add('d-none'), 3000);
               } else {
                 alert((data && data.message) || 'Delete failed.');
               }
-            } catch(err){
+            } catch (err) {
               console.error('Delete failed:', err);
               alert('Server error while deleting user.');
             } finally {
@@ -513,7 +524,7 @@
       });
     }
 
-    async function loadStudents(){
+    async function loadStudents() {
       try {
         let payload;
         try { payload = await getJSON(API_BASE + '?role=student'); }
@@ -522,9 +533,9 @@
         let users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
         students = users
           .filter(u => u && (u.isStudent === true || !!u.studentId))
-          .map((u,i)=>({ ...u, __index:i }));
+          .map((u, i) => ({ ...u, __index: i }));
 
-        if (!students.length){
+        if (!students.length) {
           tableBody.innerHTML = '<tr><td colspan="9">No students found.</td></tr>';
           return;
         }
@@ -536,27 +547,27 @@
     }
 
     // Header sorting & filter wiring
-    document.addEventListener('DOMContentLoaded', ()=>{
+    document.addEventListener('DOMContentLoaded', () => {
       // Make Student ID header active by default (▲)
       const ths = document.querySelectorAll('th.sortable');
-      ths.forEach(h=>h.classList.remove('active'));
+      ths.forEach(h => h.classList.remove('active'));
       const idTh = document.querySelector('th.sortable[data-sort="studentId"]');
-      if (idTh){
+      if (idTh) {
         idTh.classList.add('active');
         const arrow = idTh.querySelector('.arrow');
         if (arrow) arrow.textContent = '▲';
       }
 
-      ths.forEach(th=>{
-        th.addEventListener('click', ()=>{
+      ths.forEach(th => {
+        th.addEventListener('click', () => {
           const key = th.getAttribute('data-sort');
           if (sortKey === key) sortDir = (sortDir === 'asc') ? 'desc' : 'asc';
           else { sortKey = key; sortDir = 'asc'; }
 
-          document.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('active'));
+          document.querySelectorAll('th.sortable').forEach(h => h.classList.remove('active'));
           th.classList.add('active');
 
-          document.querySelectorAll('th.sortable .arrow').forEach(a=>a.textContent='↕');
+          document.querySelectorAll('th.sortable .arrow').forEach(a => a.textContent = '↕');
           const arrow = th.querySelector('.arrow');
           if (arrow) arrow.textContent = (sortDir === 'asc') ? '▲' : '▼';
 
@@ -564,27 +575,27 @@
         });
       });
 
-      elSearch.addEventListener('input', ()=>renderTable(students));
-      elStatus.addEventListener('change', ()=>renderTable(students));
-      elSort.addEventListener('change', ()=>renderTable(students));
+      elSearch.addEventListener('input', () => renderTable(students));
+      elStatus.addEventListener('change', () => renderTable(students));
+      elSort.addEventListener('change', () => renderTable(students));
 
-      document.getElementById('editUserForm').addEventListener('submit', async (e)=>{
+      document.getElementById('editUserForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        try{
+        try {
           const payload = {
-            username  : document.getElementById('editUsername').value.trim(),
-            firstName : document.getElementById('editFirstName').value.trim(),
+            username: document.getElementById('editUsername').value.trim(),
+            firstName: document.getElementById('editFirstName').value.trim(),
             middleName: document.getElementById('editMiddleName').value.trim(),
-            lastName  : document.getElementById('editLastName').value.trim(),
-            email     : document.getElementById('editEmail').value.trim()
+            lastName: document.getElementById('editLastName').value.trim(),
+            email: document.getElementById('editEmail').value.trim()
           };
 
           const result = await getJSON(
             API_BASE + '/' + encodeURIComponent(selectedUser.userId) + '/edit',
-            { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }
+            { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
           );
 
-          if (result?.success && result.user){
+          if (result?.success && result.user) {
             const idx = students.findIndex(u => u.userId === selectedUser.userId);
             if (idx > -1) students[idx] = { ...students[idx], ...result.user };
             renderTable(students);
@@ -593,11 +604,11 @@
 
             studentAlert.textContent = 'User details updated for "' + (result.user.username || 'user') + '".';
             studentAlert.classList.remove('d-none');
-            setTimeout(()=>studentAlert.classList.add('d-none'), 3000);
+            setTimeout(() => studentAlert.classList.add('d-none'), 3000);
           } else {
             alert(result?.message || 'Failed to update user.');
           }
-        } catch(err){
+        } catch (err) {
           console.error('Edit user failed:', err);
           alert('Server error while updating user.');
         }
@@ -613,4 +624,5 @@
     }
   </script>
 </body>
+
 </html>

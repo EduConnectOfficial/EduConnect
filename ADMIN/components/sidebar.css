@@ -31,7 +31,12 @@ body, html {
   left: 0;
   width: 70px;
   height: 100vh;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(
+    to bottom,
+    #001369 0%,   /* deep navy */
+    #1a4a8a 40%,  /* royal blue */
+    #1976D2 100%  /* bright science blue */
+  );
   padding: 2rem 1rem;
   box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
   display: flex;
@@ -50,7 +55,7 @@ body, html {
 .sidebar-logo {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #f8e7d0;
+  color: #f2f4d0; /* light blue tint */
   margin-bottom: 2rem;
   text-align: center;
   white-space: nowrap;
@@ -76,7 +81,7 @@ body, html {
 }
 
 .sidebar-links a {
-  color: #fff6dd;
+  color: #f2f4d0;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -106,8 +111,12 @@ body, html {
 }
 
 .sidebar-links a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFD580;
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0.4),
+    rgba(13, 71, 161, 0.6)
+  );
+  color: #ffffff;
 }
 
 /* ===== Dropdown (Submenu) ===== */
@@ -121,10 +130,10 @@ body, html {
   justify-content: space-between;
   align-items: center;
   padding: 0.6rem 0.8rem;
-  color: #fff6dd;
+  color: #eaf2ff;
   border-radius: 10px;
   text-decoration: none;
-  transition: background-color 0.3s;
+  transition: background 0.3s, color 0.3s;
 }
 
 .sidebar:hover .has-submenu > a span {
@@ -132,8 +141,12 @@ body, html {
 }
 
 .has-submenu > a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFD580;
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0.4),
+    rgba(13, 71, 161, 0.6)
+  );
+  color: #ffffff;
 }
 
 .menu-item {
@@ -159,7 +172,7 @@ body, html {
   flex-direction: column;
   padding-left: 2.5rem;
   margin-top: 5px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   overflow: hidden;
   max-height: 0;
@@ -177,14 +190,18 @@ body, html {
   align-items: center;
   gap: 10px;
   border-radius: 8px;
-  color: #fff6dd;
+  color: #eaf2ff;
   text-decoration: none;
-  transition: background-color 0.3s;
+  transition: background 0.3s;
 }
 
 .submenu a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFD580;
+  background: linear-gradient(
+    90deg,
+    rgba(25, 118, 210, 0.4),
+    rgba(13, 71, 161, 0.6)
+  );
+  color: #ffffff;
 }
 
 /* ===== Footer / Logout Button ===== */
@@ -196,7 +213,12 @@ body, html {
 }
 
 .sidebar-logout {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(
+    to right,
+    #1976D2,
+    #1565C0,
+    #0D47A1
+  );
   border: none;
   padding: 0.6rem 1.5rem;
   border-radius: 20px;
@@ -206,7 +228,7 @@ body, html {
   text-decoration: none;
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.3s ease, color 0.3s ease;
+  transition: opacity 0.3s ease, color 0.3s ease, filter 0.3s ease;
 }
 
 .sidebar:hover .sidebar-logout {
@@ -214,8 +236,9 @@ body, html {
 }
 
 .sidebar-logout:hover {
-  color: #4A1A0C;
-  opacity: 0.85;
+  filter: brightness(1.1);
+  color: #eaf2ff;
+  opacity: 0.95;
 }
 
 /* ===== Scrollbar ===== */
@@ -228,14 +251,22 @@ body, html {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background-color: rgba(53, 0, 0, 0.6);
+  background: linear-gradient(
+    to bottom,
+    #1565C0,
+    #0D47A1
+  );
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(
+    to bottom,
+    #1E88E5,
+    #1565C0
+  );
 }
 
 .sidebar-links a,
@@ -244,16 +275,16 @@ body, html {
   align-items: center;
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
-  color: #fff6dd;
+  color: #eaf2ff;
   text-decoration: none;
   gap: 10px;
-  transition: background-color 0.3s, color 0.3s;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* 🧭 Fixes misalignment of icons */
 .sidebar-links a i,
 .has-submenu > a i:first-child {
-  width: 24px; /* consistent fixed width */
+  width: 24px;
   min-width: 24px;
   text-align: center;
   font-size: 1.2rem;

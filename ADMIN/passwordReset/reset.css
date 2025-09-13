@@ -5,7 +5,7 @@ html, body {
   padding: 0;
   overflow-y: auto; /* allow vertical scrolling */
   font-family: 'Outfit', sans-serif;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: white;
 }
 
@@ -20,7 +20,7 @@ html, body {
 .left-panel, .right-panel {
   flex: 1;
   min-height: 100vh;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -34,12 +34,10 @@ html, body {
   align-items: start;
   padding: 60px;
 }
-
 .left-panel h2 {
   font-size: 2.8rem;
   font-weight: 700;
 }
-
 .left-panel p {
   font-size: 1.2rem;
   margin-top: 20px;
@@ -65,7 +63,7 @@ html, body {
 
 /* Card-style form box */
 .login-box {
-  background-color: #5c2213;
+  background-color: #113667;
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
@@ -80,28 +78,28 @@ html, body {
 
 /* Submit button */
 .login-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, #3b6bb4, #1a388a);
   color: white;
   border: none;
   border-radius: 999px;
   transition: background 0.3s ease, transform 0.2s ease;
 }
 .login-btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, #6EC9F5, #004891);
   transform: scale(1.02);
 }
 
 /* Error message under password fields */
 .error-message {
   font-size: 13px;
-  color: #ffdddd;
+  color: #ffdede;
   margin-top: 5px;
   text-align: left;
 }
 
-/* Requirement note (merged) */
+/* Requirement note */
 .requirement-note {
-  color: #ffd580;
+  color: #cfe4ff;
   font-size: 0.85rem;
   margin-top: 5px;
   margin-left: 8px;
@@ -110,7 +108,7 @@ html, body {
 
 /* Links */
 .options a {
-  color: #fff6dd;
+  color: #eaf2ff;
   text-decoration: none;
   font-weight: 500;
   position: relative;
@@ -123,40 +121,131 @@ html, body {
   bottom: -2px;
   width: 0%;
   height: 2px;
-  background-color: #FFD580;
+  background-color: #6EC9F5;
   transition: width 0.3s ease;
 }
-.options a:hover {
-  color: #FFD580;
-}
-.options a:hover::after {
-  width: 100%;
-}
+.options a:hover { color: #6EC9F5; }
+.options a:hover::after { width: 100%; }
 
 /* Labels */
 .form-label {
-  color: #fff6dd;
+  color: #001369;
   font-weight: 500;
   margin-bottom: 0.3rem;
 }
- .otp-container {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 1rem;
-    }
 
-    .otp-input {
-      width: 40px;
-      height: 50px;
-      text-align: center;
-      font-size: 1.5rem;
-      border: 1px solid #ced4da;
-      border-radius: 5px;
-    }
+/* OTP inputs */
+.otp-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+.otp-input {
+  width: 40px;
+  height: 50px;
+  text-align: center;
+  font-size: 1.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+}
+.otp-input:focus {
+  outline: none;
+  border-color: #6EC9F5;
+  box-shadow: 0 0 0 0.2rem rgba(110, 201, 245, 0.35);
+}
 
-    .otp-input:focus {
-      outline: none;
-      border-color: #86b7fe;
-      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;          /* space between the two logos */
+  min-width: 0;
+}
+
+.logo-header {
+  height: 28px;      /* smaller to fit both logos */
+  width: auto;
+}
+
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+
+/* =========================================================
+   11) MODALS
+   ========================================================= */
+.modal-header {
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #fff;
+  border-bottom: none;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+/* Centered modal layout (Bootstrap 5) */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border-radius: 12px;
+}
+
+/* Modal footer button */
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d;
+  color: #fff;
+  transform: scale(1.04);
+}
+
+.modal-body{
+  color: black;
+}
+
+.btn-upload {
+  background: linear-gradient(to bottom, #3b6bb4, #1a388a);
+  padding: 0.6rem 1.5rem;
+}
+
+.btn-upload:hover {
+  opacity: 0.85;
+}

@@ -1,18 +1,30 @@
+/* ===== Root Variables ===== */
 :root {
-  --bg: #f6f8fa;
-  --text: #1f2328;
-  --muted: #6a737d;
-  --card: #fff;
-  --border: #e5e7eb;
+  --bg: #f5f8fb;
+  /* very light, slightly cool */
+  --text: #152238;
+  /* deep readable navy */
+  --muted: #5c6f86;
+  --card: #ffffff;
+  --border: #dde5ee;
 
-  /* Brand palette */
-  --brand-dark-1: #4A1A0C;
-  --brand-dark-2: #7A2810;
-  --brand-accent-1: #FF6A00;
-  --brand-accent-2: #B03C10;
+  /* ColorHunt Blue Palette */
+  --brand-dark-1: #001369;
+  /* deep navy */
+  --brand-dark-2: #1a388a;
+  /* royal / mid blue */
+  --brand-accent-1: #3b6bb4;
+  /* lighter sky blue */
+  --brand-accent-2: #113667;
+  /* darker accent */
   --card-radius: 14px;
+
+  /* Success / Error states */
+  --accent-green: #2E7D32;
+  --accent-red: #D32F2F;
 }
 
+/* ===== Base ===== */
 html,
 body {
   height: 100%;
@@ -21,6 +33,7 @@ body {
   color: var(--text);
 }
 
+/* ===== Layout ===== */
 .dashboard {
   display: flex;
   min-height: 100vh;
@@ -36,27 +49,57 @@ body {
   background: var(--bg);
 }
 
-.sidebar:hover ~ .main {
+.sidebar:hover~.main {
   margin-left: 220px;
   width: calc(100% - 220px);
 }
 
-/* Header */
+/* ===== Header ===== */
 .header-top {
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom,
+      var(--brand-dark-1) 0%,
+      var(--brand-dark-2) 55%,
+      var(--brand-accent-1) 100%);
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 18px rgba(17, 63, 103, 0.18);
+}
+
+/* Logos */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  /* space between the two logos */
+  min-width: 0;
 }
 
 .logo-header {
-  height: 45px;
+  height: 28px;
+  /* smaller to fit both logos */
+  width: auto;
 }
 
+.school-logo {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Responsive logo sizing */
+@media (max-width: 576px) {
+
+  .logo-header,
+  .school-logo {
+    height: 28px;
+  }
+}
+
+/* Header utilities */
 .search-box {
   position: relative;
   flex: 1;
@@ -70,6 +113,7 @@ body {
   border-radius: 30px;
   border: none;
   outline: none;
+  background: #ffffff;
 }
 
 .search-box i {
@@ -77,7 +121,7 @@ body {
   right: 15px;
   top: 50%;
   transform: translateY(-50%);
-  color: #999;
+  color: #9aa8b7;
 }
 
 .profile-btn {
@@ -95,6 +139,7 @@ body {
   font-size: 14px;
 }
 
+/* ===== Content ===== */
 .content {
   padding: 24px;
 }
@@ -107,13 +152,16 @@ body {
 }
 
 .page-title.brand {
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  background: linear-gradient(to bottom,
+      var(--brand-dark-1) 0%,
+      var(--brand-dark-2) 55%,
+      var(--brand-accent-1) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* Cards */
+/* ===== Cards ===== */
 .ui-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -124,7 +172,7 @@ body {
 .ui-card.card-themed {
   border-radius: var(--card-radius);
   border: 1px solid rgba(0, 0, 0, .06);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, .10);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
   overflow: hidden;
 }
 
@@ -138,9 +186,12 @@ body {
 .ui-card.card-themed .ui-card-head {
   margin: -16px -16px 12px -16px;
   padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-  color: #FFD8A9;
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  background: linear-gradient(to bottom,
+      var(--brand-dark-1) 0%,
+      var(--brand-dark-2) 55%,
+      var(--brand-accent-1) 100%);
+  color: #e9f4ff;
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
 }
 
 .ui-card-title {
@@ -153,15 +204,15 @@ body {
 }
 
 .ui-card.card-themed .ui-card-title i {
-  color: #FFD8A9;
+  color: #d5ecff;
 }
 
 .ui-card.card-themed .ui-subtext {
-  color: #f1e8d9;
+  color: #cfe4f6;
 }
 
-.ui-card.card-themed > :not(.ui-card-head) {
-  color: #1f2328;
+.ui-card.card-themed> :not(.ui-card-head) {
+  color: var(--text);
 }
 
 .ui-subtext {
@@ -169,22 +220,24 @@ body {
   color: var(--muted);
 }
 
-/* Inputs focus */
+/* ===== Forms ===== */
 .form-control:focus,
 .form-select:focus {
-  border-color: var(--brand-accent-2);
-  box-shadow: 0 0 0 .2rem rgba(255, 106, 0, .18);
+  border-color: var(--brand-accent-1);
+  box-shadow: 0 0 0 .2rem rgba(52, 105, 154, .25);
 }
 
-/* Brand buttons */
+/* ===== Buttons ===== */
 .btn-amber {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      var(--brand-accent-1) 0%,
+      var(--brand-dark-2) 100%);
   color: #fff;
   border: none;
 }
 
 .btn-amber:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
   color: #fff;
 }
 
@@ -195,18 +248,68 @@ body {
 }
 
 .btn-amber-outline:hover {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+  background: linear-gradient(to bottom,
+      var(--brand-accent-1) 0%,
+      var(--brand-dark-2) 100%);
   color: #fff;
   border-color: transparent;
 }
 
-/* Avatar */
+.btn-green {
+  background: var(--accent-green);
+  color: #fff;
+  border: none;
+}
+
+.btn-green:hover {
+  filter: brightness(1.05);
+}
+
+.btn-red {
+  background: var(--accent-red);
+  color: #fff;
+  border: none;
+}
+
+.btn-red:hover {
+  filter: brightness(1.05);
+}
+
+/* Logout button */
+.logout-btn {
+  background: linear-gradient(to bottom,
+      #6EC9F5 0%,
+      #004891 100%);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 30px;
+  color: #f2f4d0;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+  text-align: center;
+}
+
+.sidebar:hover .logout-btn {
+  opacity: 1;
+}
+
+.logout-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* ===== Avatars ===== */
 .avatar {
   width: 84px;
   height: 84px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(176, 60, 16, .35);
+  border: 2px solid rgba(52, 105, 154, .35);
 }
 
 .avatar-placeholder {
@@ -221,68 +324,72 @@ body {
   color: #9aa2a8;
 }
 
+/* ===== Misc ===== */
 .settings-label {
   font-weight: 600;
 }
 
-/* Logout button (sidebar footer) */
-.logout-btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  color: white;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: none;
-  white-space: nowrap;
-  display: inline-block;
-  opacity: 0;
-  transition: opacity 0.3s ease, color 0.3s ease;
-  user-select: none;
-  text-align: center;
-}
-
-.sidebar:hover .logout-btn {
-  opacity: 1;
-}
-
-.logout-btn:hover {
-  opacity: 0.85;
-  color: #4A1A0C;
-}
-
-/* —— Charts ——————————————————————————— */
-.chart-card {                 /* add this class to your chart cards */
-  height: 260px;              /* ↓ smaller overall */
+/* ===== Charts ===== */
+.chart-card {
+  height: 260px;
   max-width: 520px;
   padding: 12px;
 }
 
-.chart-card .ui-card-head { margin-bottom: 6px; }
+.chart-card .ui-card-head {
+  margin-bottom: 6px;
+}
 
 .chart-card canvas {
   width: 100% !important;
-  height: 100% !important;    /* fill the fixed card height */
+  height: 100% !important;
 }
 
-/* responsive tweaks */
-@media (max-width: 992px) { .chart-card { height: 220px; max-width: 480px; } }
-@media (max-width: 576px) { .chart-card { height: 180px; max-width: 100%; } }
-
-/* optional: tidy chart grid */
 .charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
 }
 
-/* smaller charts */
-.chart-sm .chart-wrap { height: 180px; }
-.chart-sm canvas { width: 100% !important; height: 100% !important; }
-@media (max-width: 576px) { .chart-sm .chart-wrap { height: 160px; } }
+.chart-sm .chart-wrap {
+  height: 180px;
+}
 
-.card-title { font-size: .95rem; }
-.stat-card .icon { font-size: 1.6rem; opacity: .9; }
-.mini { font-size: .85rem; color: #6a737d; }
+.chart-sm canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ===== Typography ===== */
+.card-title {
+  font-size: .95rem;
+}
+
+.stat-card .icon {
+  font-size: 1.6rem;
+  opacity: .9;
+}
+
+.mini {
+  font-size: .85rem;
+  color: #6b7a89;
+}
+
+/* ===== Responsive Tweaks ===== */
+@media (max-width: 992px) {
+  .chart-card {
+    height: 220px;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 576px) {
+  .chart-card {
+    height: 180px;
+    max-width: 100%;
+  }
+
+  .chart-sm .chart-wrap {
+    height: 160px;
+  }
+}
