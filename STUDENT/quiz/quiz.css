@@ -521,3 +521,86 @@
     max-width: 100%;
   }
 }
+
+
+    /* ===== Pills (course / module / statuses) ===== */
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: 10px 0 18px
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 700;
+      border: 1px solid var(--border, #e5e7eb);
+      background: #fff;
+      color: #374151;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .pill .bi {
+      font-size: .9rem
+    }
+
+    .pill-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      display: inline-block
+    }
+
+    .pill-course {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #9a3412;
+    }
+
+    .pill-module {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+
+    .pill-open {
+      background: #ecfeff;
+      border-color: #a5f3fc;
+      color: #075985;
+    }
+
+    .pill-upcoming {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+      color: #075985;
+    }
+
+    .pill-closed {
+      background: #fee2e2;
+      border-color: #fecaca;
+      color: #991b1b;
+    }
+
+    /* ===== Clamp quiz description ===== */
+    .quiz-card .desc {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      line-clamp: 4;
+      -webkit-line-clamp: 4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+      line-height: 1.4;
+      max-height: calc(1.4em * 4);
+      font-size: .95rem;
+      color: #6b7280;
+      margin-top: .25rem;
+    }

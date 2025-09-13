@@ -21,6 +21,8 @@
     .assign-card.selected { border-color: var(--bs-warning); box-shadow: 0 0.5rem 1rem rgba(255,193,7,.15); }
     .assign-card .card-body { padding: 0.9rem 1rem; }
     .small-muted { color: #6c757d; font-size: .875rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .row-excluded { opacity: .55; }
   </style>
 </head>
 
@@ -76,6 +78,7 @@
                     <div class="small-muted">
                       Select which of your classes should receive this quiz.
                       <span class="d-block">Tip: click a card to toggle selection. Use Space/Enter for keyboard.</span>
+                      <span class="d-block mt-1">If you <strong>don’t select any</strong>, the quiz is visible to the <strong>entire course</strong> (all active classes).</span>
                     </div>
                   </div>
                   <div id="assigned-status" class="small-muted">Loading your classes…</div>
@@ -112,7 +115,7 @@
                 </div>
               </div>
 
-              <!-- Rubric -->
+              <!-- Rubric (accept list updated to match backend) -->
               <div class="row g-3 mt-2" id="rubricSection">
                 <div class="col-12">
                   <label class="form-label fw-bold d-flex align-items-center gap-2">
@@ -120,7 +123,7 @@
                     Rubric File <span class="text-muted">(applies to Essay questions only)</span>
                   </label>
                   <input type="file" id="rubricsFile" class="form-control"
-                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*"
+                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
                          aria-disabled="true" disabled />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
@@ -139,7 +142,7 @@
                       <label class="btn btn-outline-secondary btn-sm mb-0" title="Replace">
                         <i class="bi bi-arrow-repeat"></i>
                         <input id="rubricReplaceInput" type="file" class="d-none"
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,video/*,audio/*">
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                       </label>
                       <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i class="bi bi-trash"></i></button>
                     </div>
@@ -332,6 +335,7 @@
                 <span class="text-muted">Quiz ID:</span>
                 <code id="createdQuizId" class="ms-2"></code>
               </div>
+              <div id="uploadWarnings" class="alert alert-warning d-none small"></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-amber" data-bs-dismiss="modal">Done</button></div>
           </div>
@@ -465,6 +469,7 @@
     const API = "http://localhost:5000";
     const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
+    const MAX_ASSIGNED_CLASSES = 500; // backend clamp
 
     /* ========= Brand Alert / Confirm helpers + alert override ========= */
     function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
@@ -793,6 +798,14 @@
 
     function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
+    function updateAssignedStatus() {
+      const n = selectedClassIds.size;
+      assignedStatus.textContent = `${n} selected${n >= MAX_ASSIGNED_CLASSES ? ' (max reached)' : ''}`;
+      assignedStatus.classList.toggle('text-danger', n >= MAX_ASSIGNED_CLASSES);
+      assignedStatus.classList.toggle('small-muted', n < MAX_ASSIGNED_CLASSES);
+      assignedStatus.style.display = '';
+    }
+
     function renderClassCards(classes) {
       assignedContainer.innerHTML = "";
       if (!classes.length) {
@@ -827,9 +840,14 @@
         card.appendChild(body);
 
         function toggle() {
-          const on = !card.classList.contains('selected');
-          card.classList.toggle("selected", on);
-          if (on) selectedClassIds.add(id); else selectedClassIds.delete(id);
+          const willSelect = !card.classList.contains('selected');
+          if (willSelect && selectedClassIds.size >= MAX_ASSIGNED_CLASSES) {
+            openBrandAlert({ title: 'Limit reached', message: `You can assign to at most <strong>${MAX_ASSIGNED_CLASSES}</strong> classes.` });
+            return;
+          }
+          card.classList.toggle("selected", willSelect);
+          if (willSelect) selectedClassIds.add(String(id)); else selectedClassIds.delete(String(id));
+          updateAssignedStatus();
           markDirty();
         }
         card.addEventListener("click", e => {
@@ -843,8 +861,8 @@
         col.appendChild(card);
         assignedContainer.appendChild(col);
       });
-      assignedStatus.style.display = "none";
       assignedEmpty.style.display = "none";
+      updateAssignedStatus();
     }
 
     async function loadTeacherClassesAndRender() {
@@ -1325,7 +1343,7 @@
       const maxRows = Math.min(items.length, 200);
       for (let i = 0; i < maxRows; i++) {
         const it = items[i];
-        const st = it.ok ? '<span class="badge bg-success btn-amber">OK</span>' :
+        const st = it.ok ? '<span class="badge bg-success">OK</span>' :
           `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
         const actionBtn = it.ok
           ? `<button type="button" class="btn btn-sm ${it.excluded ? 'btn-outline-secondary' : 'btn-outline-danger'} bulk-toggle"
@@ -1521,14 +1539,14 @@
         return;
       }
 
-      /* NEW: collect selected classes */
-      const assignedClasses = Array.from(selectedClassIds);
+      /* NEW: collect selected classes (clamped to backend max) */
+      const assignedClasses = Array.from(selectedClassIds).slice(0, MAX_ASSIGNED_CLASSES).map(String);
 
       const payload = {
         courseId, moduleId, title, description, dueAt,
         attemptsAllowed: attemptsAllowedVal,
         quiz, settings,
-        assignedClasses   // <— NEW: include targeting in payload
+        assignedClasses   // <— include targeting in payload
       };
 
       try {
@@ -1563,6 +1581,22 @@
             idCode.textContent = quizId;
           } else {
             idRow.classList.add('d-none');
+          }
+
+          // NEW: Show backend warnings for archived/missing classes
+          const warn = out.warnings || {};
+          const warnEl = document.getElementById('uploadWarnings');
+          const archived = Array.isArray(warn.archivedClassIds) ? warn.archivedClassIds : [];
+          const missing = Array.isArray(warn.missingClassIds) ? warn.missingClassIds : [];
+          if (archived.length || missing.length) {
+            const parts = [];
+            if (archived.length) parts.push(`<div><strong>Archived classes ignored (${archived.length}):</strong><br><code class="mono">${archived.join(', ')}</code></div>`);
+            if (missing.length) parts.push(`<div class="mt-2"><strong>Unknown class IDs (${missing.length}):</strong><br><code class="mono">${missing.join(', ')}</code></div>`);
+            warnEl.innerHTML = parts.join('\n');
+            warnEl.classList.remove('d-none');
+          } else {
+            warnEl.classList.add('d-none');
+            warnEl.innerHTML = '';
           }
 
           // Show success modal, then redirect to quiz_list.html after closing
@@ -1603,6 +1637,7 @@
 
           resetDirtySafely();
         } else {
+          // Surface server message (e.g., archived course/module)
           alert("Failed to upload quiz: " + (out.message || "Unknown error"));
         }
       } catch (err) {
