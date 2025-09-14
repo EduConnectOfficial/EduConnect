@@ -240,7 +240,7 @@ body {
 }
 
 .btn-amber:hover {
-    background: linear-gradient(to bottom, #ff8533, #cc3300);
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
     transform: scale(1.05);
     color: #fff;
 }
@@ -1112,3 +1112,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         min-width: 120px;
     }
 }
+   .assign-card { border: 1px solid rgba(0,0,0,.08); border-radius:.75rem; cursor: pointer; transition: .15s ease; }
+    .assign-card:hover { box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,.06); }
+    .assign-card.selected { border-color: #001369; box-shadow: 0 0.5rem 1rem rgba(7, 123, 255, 0.15); }
+    .assign-card .card-body { padding: 0.9rem 1rem; }
+    .small-muted { color: #6c757d; font-size: .875rem; }

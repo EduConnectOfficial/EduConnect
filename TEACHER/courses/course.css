@@ -70,7 +70,7 @@
 }
 .ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .ui-card-title{font-size:1rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-.ui-subtext{font-size:.9rem;color:var(--muted)}
+.ui-subtext{font-size:.9rem;color:var(--brand-dark-1)}
 
 .ui-card.card-themed{
   border-radius:var(--card-radius);
@@ -136,22 +136,13 @@
     }
 
     /* Selectable class cards */
-    .assign-card{   border: 2px solid var(--glow-accent, #3b6bb4) !important;
-  color: #4A1A0C !important;
-  box-shadow:
-    0 0 0 3px rgba(255, 90, 39, 0.18),
-    0 10px 24px rgba(255, 90, 39, 0.20),
-    0 4px 12px rgba(0,0,0,.06) !important; }
-    .assign-card:hover{   border: 2px solid var(--glow-accent, #3b6bb4) !important;
-  color: #4A1A0C !important;
-  box-shadow:
-    0 0 0 3px rgba(255, 90, 39, 0.18),
-    0 10px 24px rgba(255, 90, 39, 0.20),
-    0 4px 12px rgba(0,0,0,.06) !important; }
-    .assign-card.selected{ border-color:var(--brand-accent-2) !important; box-shadow:0 0 0 .15rem rgba(176,60,16,.15); background:#fff8f5; }
+.assign-card { cursor:pointer; border:1px solid var(--border); border-radius:12px; transition:.2s; }
+.assign-card.selected { outline:1px solid #001369; box-shadow:0 0.5rem 1rem rgba(7, 123, 255, 0.15); }
+.assign-card .card-title { font-weight:600; }
 /* Check icon color on class cards */
 #assignedClassesContainer .card .bi-check2-circle {
-  color: #eaf2ff !important;
+  color: #001369 !important;
+
 }
 
     /* Extra visual cues */
@@ -933,7 +924,7 @@ textarea.form-control {
   margin: 0 !important;
 
   /* keep your brand look, but softer */
-  background: linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2)) !important;
+  background: transparent !important;
   box-shadow: 0 4px 10px rgba(0,0,0,.12) !important;
 
   /* cancel any global full-width overrides */
@@ -951,18 +942,18 @@ textarea.form-control {
 #assignedClassesContainer .card .card-title {
   font-size: 1rem !important;
   margin: 0 0 2px 0 !important;
-  color: #eaf2ff !important;
+  color: #001369 !important;
 }
 #assignedClassesContainer .card .card-text {
   font-size: .9rem !important;
   margin: 0 !important;
-  color: #eaf2ff !important;
+  color: #001369 !important;
 }
-
+#assignedClassesContainer .ui-subtext{color:#001369}
 /* Selected state: slimmer glow (reuses your styles) */
 #assignedClassesContainer .card.border-primary.bg-light {
   border: 2px solid var(--glow-accent, #3b6bb4) !important;
-  color: #eaf2ff !important;
+  color: #001369 !important;
 
 }
 

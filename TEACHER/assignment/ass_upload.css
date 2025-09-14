@@ -393,7 +393,7 @@ body {
 .lesson-page.card { border:1px solid var(--border); }
 
 .assign-card { cursor:pointer; border:1px solid var(--border); border-radius:12px; transition:.2s; }
-.assign-card.selected { outline:2px solid var(--brand-accent-1); box-shadow:0 0 0 3px rgba(255,106,0,.15); }
+.assign-card.selected { outline:1px solid #001369; box-shadow:0 0.5rem 1rem rgba(7, 123, 255, 0.15); }
 .assign-card .card-title { font-weight:600; }
 
 /* =======================
