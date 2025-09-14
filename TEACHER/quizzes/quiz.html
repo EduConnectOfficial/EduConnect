@@ -13,9 +13,6 @@
 
   <!-- Your quiz styles -->
   <link rel="stylesheet" href="quiz.css" />
-
-
- 
 </head>
 
 <body>
@@ -24,7 +21,7 @@
 
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-       <div class="brand">
+        <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -114,17 +111,18 @@
               <!-- Rubric (accept list updated to match backend) -->
               <div class="row g-3 mt-2" id="rubricSection">
                 <div class="col-12">
-                  <label class="form-label fw-bold d-flex align-items-center gap-2">
+                  <label class="form-label fw-bold d-flex align-items-center gap-2" for="rubricsFile">
                     <i class="bi bi-clipboard2-check"></i>
-                    Rubric File <span class="text-muted">(applies to Essay questions only)</span>
+                    Rubric File <span class="text-muted">(applies to Essay questions)</span>
                   </label>
+                  <!-- FIX: remove disabled gating so you can attach anytime -->
                   <input type="file" id="rubricsFile" class="form-control"
-                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-                         aria-disabled="true" disabled />
+                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
-                    <span id="rubricStateNote" class="off">Add an Essay question to enable rubric upload.</span>
+                    <!-- FIX: clearer live note -->
+                    <span id="rubricStateNote" class="on">You can stage a rubric anytime. It will only be uploaded if the quiz includes at least one Essay question.</span>
                   </div>
 
                   <div id="rubricRow" class="rubric-row mt-2 d-none">
@@ -920,26 +918,23 @@
     function countEssayQuestions() {
       return document.querySelectorAll(".question-block[data-type='essay']").length;
     }
+
+    // FIX: don’t disable the input; just update the helper text.
     function updateEssayRubricState() {
       const n = countEssayQuestions();
       essayCountText.textContent = String(n);
-
       if (n > 0) {
-        rubricsFileInput.removeAttribute('disabled');
-        rubricsFileInput.setAttribute('aria-disabled', 'false');
-        rubricsFileInput.classList.remove('rubric-disabled');
-        rubricStateNote.classList.remove('off'); rubricStateNote.classList.add('on');
+        rubricStateNote.classList.remove('off');
+        rubricStateNote.classList.add('on');
         rubricStateNote.textContent = __stagedRubricFile
           ? 'Rubric staged and ready to upload.'
           : 'Rubric upload enabled (applies to Essay questions).';
       } else {
-        rubricsFileInput.setAttribute('disabled', 'true');
-        rubricsFileInput.setAttribute('aria-disabled', 'true');
-        rubricsFileInput.classList.add('rubric-disabled');
-        rubricStateNote.classList.remove('on'); rubricStateNote.classList.add('off');
+        rubricStateNote.classList.remove('on');
+        rubricStateNote.classList.add('off');
         rubricStateNote.textContent = __stagedRubricFile
-          ? 'Rubric staged, but it will only be uploaded if you add an Essay question.'
-          : 'Add an Essay question to enable rubric upload.';
+          ? 'Rubric staged — it will only be uploaded after you add at least one Essay question.'
+          : 'You can stage a rubric now; it will upload only if the quiz includes an Essay question.';
       }
     }
 
@@ -960,7 +955,8 @@
       const f = rubricsFileInput.files && rubricsFileInput.files[0];
       if (!f) return;
       const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-      submitBtn.disabled = tooBig;
+      // FIX: always re-enable submit if size OK
+      submitBtn.disabled = !!tooBig;
       if (tooBig) {
         alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`);
         return;
@@ -1002,7 +998,8 @@
       const f = rubricReplaceInput.files && rubricReplaceInput.files[0];
       if (!f) return;
       const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-      submitBtn.disabled = tooBig;
+      // FIX: re-enable submit when size OK
+      submitBtn.disabled = !!tooBig;
       if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
       const blobUrl = URL.createObjectURL(f);
       currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
@@ -1542,14 +1539,25 @@
         courseId, moduleId, title, description, dueAt,
         attemptsAllowed: attemptsAllowedVal,
         quiz, settings,
-        assignedClasses   // <— include targeting in payload
+        assignedClasses
       };
+
+      // FIX: Friendly warning if rubric staged but no Essay present.
+      if (rubricFile && essayCount === 0) {
+        const proceed = await brandConfirm({
+          title: 'Rubric won’t be uploaded',
+          message: 'You staged a rubric, but there are no Essay questions. The rubric will be ignored unless you add at least one Essay question. Continue?',
+          confirmText: 'Continue',
+          cancelText: 'Go back'
+        });
+        if (!proceed) return;
+      }
 
       try {
         let res, out;
         if (rubricFile && essayCount > 0) {
           const fd = new FormData();
-          fd.append("rubrics", rubricFile);
+          fd.append("rubrics", rubricFile); // backend expects 'rubrics'
           fd.append("payload", JSON.stringify(payload));
           res = await fetch(`${API}/upload-quiz`, { method: "POST", body: fd });
         } else {
@@ -1579,7 +1587,7 @@
             idRow.classList.add('d-none');
           }
 
-          // NEW: Show backend warnings for archived/missing classes
+          // Show backend warnings for archived/missing classes
           const warn = out.warnings || {};
           const warnEl = document.getElementById('uploadWarnings');
           const archived = Array.isArray(warn.archivedClassIds) ? warn.archivedClassIds : [];
@@ -1595,7 +1603,6 @@
             warnEl.innerHTML = '';
           }
 
-          // Show success modal, then redirect to quiz_list.html after closing
           const successModal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
           successModal.show();
           const modalEl = document.getElementById('uploadSuccessModal');
@@ -1633,7 +1640,6 @@
 
           resetDirtySafely();
         } else {
-          // Surface server message (e.g., archived course/module)
           alert("Failed to upload quiz: " + (out.message || "Unknown error"));
         }
       } catch (err) {
@@ -1650,7 +1656,7 @@
       updateEssayRubricState();
       document.getElementById("perPageInput").disabled = true;
       await loadCourses();
-      await loadTeacherClassesAndRender(); // NEW
+      await loadTeacherClassesAndRender();
     })();
 
     function logoutUser() {
@@ -1660,5 +1666,4 @@
     }
   </script>
 </body>
-
 </html>

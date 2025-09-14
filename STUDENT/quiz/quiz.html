@@ -24,8 +24,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -47,7 +46,7 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-question-circle"></i> Filter & Sort</h2>
-            <div class="ui-subtext">All quizzes are shown below. Use these controls to narrow or sort.</div>
+            <div class="ui-subtext">All quizzes you can access appear below.</div>
           </div>
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
@@ -88,21 +87,17 @@
           </div>
         </div>
 
-        <!-- Always-visible status pills -->
+        <!-- Status pills -->
         <div class="pill-row">
-          <span class="pill pill-open"><i class="bi bi-check2-circle"></i><span class="pill-text"><strong
-                id="countOpen">0</strong> Open</span></span>
-          <span class="pill pill-upcoming"><i class="bi bi-calendar-event"></i><span class="pill-text"><strong
-                id="countUpcoming">0</strong> Upcoming</span></span>
-          <span class="pill pill-closed"><i class="bi bi-lock"></i><span class="pill-text"><strong
-                id="countClosed">0</strong> Closed</span></span>
+          <span class="pill pill-open"><i class="bi bi-check2-circle"></i><span class="pill-text"><strong id="countOpen">0</strong> Open</span></span>
+          <span class="pill pill-upcoming"><i class="bi bi-calendar-event"></i><span class="pill-text"><strong id="countUpcoming">0</strong> Upcoming</span></span>
+          <span class="pill pill-closed"><i class="bi bi-lock"></i><span class="pill-text"><strong id="countClosed">0</strong> Closed</span></span>
         </div>
 
         <!-- Quiz Cards Grid -->
         <div id="quizCards" class="row g-3"></div>
         <div id="emptyState" class="d-none alert alert-warning text-center">No quizzes found.</div>
-        <div id="errorState" class="d-none alert alert-danger text-center">Could not load quizzes. Please try again.
-        </div>
+        <div id="errorState" class="d-none alert alert-danger text-center">Could not load quizzes. Please try again.</div>
       </div>
     </div>
   </div>
@@ -269,9 +264,11 @@
     const coursesById = new Map(); // courseId -> course
     const modulesByCourse = new Map(); // courseId -> Map(moduleId -> module)
 
-    // NEW: student classes for assignment filtering (client-side fallback)
+    // student classes & courses for assignment filtering (client-side)
     const studentClassIds = new Set();
+    const studentCourseIds = new Set();
     let classesLoadedOk = false;
+    let coursesLoadedOk = false;
 
     // ---------- Helpers ----------
     const ts = (obj) => {
@@ -300,7 +297,6 @@
       const nonEmpty = Object.values(choices).filter(v => v && String(v).trim() !== '');
       return nonEmpty.length === 0;
     }
-    // Prefer new rubricFile then legacy fields
     function pickRubricUrl(obj) {
       if (!obj || typeof obj !== 'object') return '';
       if (obj.rubricFile && typeof obj.rubricFile === 'object') {
@@ -317,34 +313,117 @@
       .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
+    // Normalize server quiz shapes to a consistent model
+    function normalizeQuiz(raw) {
+      const q = { ...raw };
+
+      // id
+      q.id = q.id ?? q._id ?? q.quizId ?? q.uid ?? q.key;
+
+      // courseId (flatten)
+      q.courseId =
+        q.courseId ??
+        q.course_id ??
+        q.courseID ??
+        q.course?.id ??
+        q.course?.courseId ??
+        q.courseRef ??
+        q.courseKey ??
+        null;
+
+      // moduleId
+      q.moduleId =
+        q.moduleId ??
+        q.module_id ??
+        q.moduleID ??
+        q.module?.id ??
+        q.module?.moduleId ??
+        q.moduleRef ??
+        q.moduleKey ??
+        null;
+
+      // assigned classes (various field names)
+      let ac =
+        q.assignedClasses ??
+        q.assignedClassIds ??
+        q.assigned ??
+        q.classes ??
+        q.classIds ??
+        q.assigned_to ??
+        [];
+      if (!Array.isArray(ac)) {
+        if (ac && typeof ac === 'object') ac = Object.values(ac);
+        else ac = [];
+      }
+      q.assignedClasses = ac.filter(v => v !== null && v !== undefined).map(String);
+
+      return q;
+    }
+
+    // Visibility logic for assignment + enrollment
+    function isQuizVisibleToStudent(q) {
+      const courseOk = q.courseId ? studentCourseIds.has(String(q.courseId)) : false;
+      const arr = Array.isArray(q.assignedClasses) ? q.assignedClasses : [];
+
+      // If no classes explicitly assigned: treat as course-wide
+      // Show it if (a) we know courses and it's in one of the student's courses, OR
+      // (b) courses haven't loaded yet — be permissive so we don't hide valid quizzes by accident.
+      if (arr.length === 0) {
+        if (coursesLoadedOk && q.courseId) return courseOk;
+        return true; // permissive fallback
+      }
+
+      // If classes are specified: require intersection, but only if we actually know student's classes.
+      if (!classesLoadedOk) return false; // can't verify yet; avoid showing incorrectly
+      for (const cid of arr) if (studentClassIds.has(String(cid))) return true;
+      return false;
+    }
+
     // ---------- Data loaders ----------
     async function loadCourses() {
       courseSelect.innerHTML = `<option value="">-- All Courses --</option>`;
       coursesById.clear();
+      studentCourseIds.clear();
+      coursesLoadedOk = false;
 
-      try {
-        const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`);
-        const js = await res.json();
-        const list = Array.isArray(js?.courses) ? js.courses : [];
+      // Try multiple shapes/endpoints
+      const tryEndpoints = [
+        `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`,
+        `${API_BASE}/students/${encodeURIComponent(userData.userId)}/courses`,
+        `${API_BASE}/api/courses?studentId=${encodeURIComponent(userData.userId)}`
+      ];
 
-        list.forEach(c => {
-          if (!c?.id) return;
-          coursesById.set(c.id, c);
+      for (const url of tryEndpoints) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const js = await res.json();
+          const list = Array.isArray(js?.courses) ? js.courses : (Array.isArray(js) ? js : []);
+          if (!list.length) continue;
 
-          const code = c.courseNumber ?? c.code ?? c.number ?? c.classCode ?? null;
-          const title = c.title || "Untitled Course";
-          const label = code ? `${code} — ${title}` : title;
+          list.forEach(c => {
+            const cid = c?.id ?? c?.courseId ?? c?._id ?? c?.key;
+            if (!cid) return;
+            studentCourseIds.add(String(cid));
+            coursesById.set(String(cid), c);
 
-          const opt = document.createElement("option");
-          opt.value = c.id;
-          opt.textContent = label;
-          courseSelect.appendChild(opt);
-        });
+            const code = c.courseNumber ?? c.code ?? c.number ?? c.classCode ?? null;
+            const title = c.title || "Untitled Course";
+            const label = code ? `${code} — ${title}` : title;
 
-      } catch (e) {
-        console.error("Courses fetch failed", e);
-        errorState.classList.remove("d-none");
+            const opt = document.createElement("option");
+            opt.value = String(cid);
+            opt.textContent = label;
+            courseSelect.appendChild(opt);
+          });
+
+          coursesLoadedOk = true;
+          return;
+        } catch {}
       }
+
+      // if we reach here, none succeeded
+      coursesLoadedOk = false;
     }
 
     async function loadModules(courseId) {
@@ -359,18 +438,19 @@
 
         // cache modules by course
         const map = new Map();
-        modules.forEach(m => { if (m?.id) map.set(m.id, m); });
-        modulesByCourse.set(courseId, map);
+        modules.forEach(m => { const mid = m?.id ?? m?._id ?? m?.moduleId; if (mid) map.set(String(mid), m); });
+        modulesByCourse.set(String(courseId), map);
 
         modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
         modules.forEach(m => {
-          if (!m?.id) return;
+          const mid = m?.id ?? m?._id ?? m?.moduleId;
+          if (!mid) return;
           const label = (typeof m.moduleNumber === 'number')
             ? `Module ${m.moduleNumber}: ${m.title || "Untitled Module"}`
             : (m.title || "Untitled Module");
 
           const opt = document.createElement("option");
-          opt.value = m.id;
+          opt.value = String(mid);
           opt.textContent = label;
           moduleSelect.appendChild(opt);
         });
@@ -380,16 +460,16 @@
     }
 
     async function ensureModulesForCourse(courseId) {
-      if (!courseId || modulesByCourse.has(courseId)) return;
+      if (!courseId || modulesByCourse.has(String(courseId))) return;
       try {
         const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules`);
         const js = await res.json();
         const modules = Array.isArray(js?.modules) ? js.modules : (Array.isArray(js) ? js : []);
         const map = new Map();
-        modules.forEach(m => { if (m?.id) map.set(m.id, m); });
-        modulesByCourse.set(courseId, map);
+        modules.forEach(m => { const mid = m?.id ?? m?._id ?? m?.moduleId; if (mid) map.set(String(mid), m); });
+        modulesByCourse.set(String(courseId), map);
       } catch (e) {
-        modulesByCourse.set(courseId, new Map()); // avoid refetch loop
+        modulesByCourse.set(String(courseId), new Map()); // avoid refetch loop
       }
     }
 
@@ -398,56 +478,69 @@
       await Promise.all(uniq.map(ensureModulesForCourse));
     }
 
-    // NEW: fetch the student's classes for client-side assignment filtering fallback
+    // fetch student's classes (try a few endpoints)
     async function loadStudentClasses() {
       classesLoadedOk = false;
       studentClassIds.clear();
-      try {
-        // Primary expected endpoint
-        let res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/classes`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        let js = await res.json();
-        let list = Array.isArray(js?.classes) ? js.classes : [];
-        // Fallback shapes
-        if (!list.length && Array.isArray(js)) list = js;
-        list.forEach(c => {
-          const id = c?.id || c?.classId || c?._id;
-          if (id) studentClassIds.add(String(id));
-        });
-        classesLoadedOk = true;
-      } catch (e) {
-        // Try a looser fallback if your API differs
+
+      const tryEndpoints = [
+        `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/classes`,
+        `${API_BASE}/classes?studentId=${encodeURIComponent(userData.userId)}`,
+        `${API_BASE}/api/classes?studentId=${encodeURIComponent(userData.userId)}`
+      ];
+
+      for (const url of tryEndpoints) {
         try {
-          const res2 = await fetch(`${API_BASE}/classes?studentId=${encodeURIComponent(userData.userId)}`);
-          const js2 = await res2.json();
-          const list2 = Array.isArray(js2?.classes) ? js2.classes : (Array.isArray(js2) ? js2 : []);
-          list2.forEach(c => { const id = c?.id || c?.classId || c?._id; if (id) studentClassIds.add(String(id)); });
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const js = await res.json();
+          const list = Array.isArray(js?.classes) ? js.classes : (Array.isArray(js) ? js : []);
+          list.forEach(c => {
+            const id = c?.id ?? c?.classId ?? c?._id ?? c?.key;
+            if (id) studentClassIds.add(String(id));
+          });
           classesLoadedOk = true;
+          return;
         } catch {}
       }
+      classesLoadedOk = false;
     }
 
-    // >>> Assignment-aware fetch here (server-side preferred)
+    // Assignment-aware quiz fetch with multiple fallbacks + normalization
     async function loadQuizzes() {
-      try {
-        const uid = encodeURIComponent(userData.userId);
-        // Let the backend filter by assignedClasses for this student (new backend supports forStudent)
-        const res = await fetch(`${API_BASE}/quizzes?forStudent=${uid}`);
-        const data = await res.json();
-        allQuizzes = (data?.success && Array.isArray(data.quizzes)) ? data.quizzes : [];
+      const uid = encodeURIComponent(userData.userId);
+      const params = new URLSearchParams({ forStudent: uid });
+      if (currentCourseId) params.set('courseId', currentCourseId);
+      if (currentModuleId) params.set('moduleId', currentModuleId);
 
-        // Client-side fallback in case the backend doesn't filter (only apply if we know classes)
-        if (classesLoadedOk) {
-          allQuizzes = allQuizzes.filter(q => {
-            const arr = Array.isArray(q.assignedClasses) ? q.assignedClasses.filter(Boolean) : [];
-            if (arr.length === 0) return true; // visible to all in course
-            return arr.some(id => studentClassIds.has(String(id)));
-          });
-        }
-      } catch (e) {
-        allQuizzes = [];
-        console.error("Quizzes fetch failed", e);
+      const endpoints = [
+        `${API_BASE}/api/students/${uid}/quizzes`,                 // preferred: student-scoped
+        `${API_BASE}/quizzes?${params.toString()}`,                // supports forStudent
+        `${API_BASE}/api/quizzes?${params.toString()}`,            // alt path
+        `${API_BASE}/quizzes`                                      // last resort
+      ];
+
+      let raw = [];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const js = await res.json();
+          const list = (Array.isArray(js?.quizzes) ? js.quizzes
+                      : Array.isArray(js?.data) ? js.data
+                      : Array.isArray(js) ? js
+                      : []);
+          if (list.length) { raw = list; break; }
+          // even if empty, accept it (could be none). break after first success.
+          if ('success' in js) { raw = list; break; }
+        } catch {}
       }
+
+      // normalize
+      const normalized = raw.map(normalizeQuiz);
+
+      // client-side visibility filter (course + assigned classes)
+      allQuizzes = normalized.filter(isQuizVisibleToStudent);
     }
 
     function statusOf(quiz) {
@@ -471,8 +564,7 @@
         const js = await res.json();
         const data = js?.data || {};
         Object.keys(data).forEach(qid => attemptsCache.set(qid, data[qid]));
-      } catch (err) {
-        console.warn('Attempt status fetch failed:', err.message);
+      } catch {
         missing.forEach(qid => attemptsCache.set(qid, { used: 0, allowed: null, left: null, lock: false }));
       }
     }
@@ -568,7 +660,6 @@
       return { attempts, best, latest };
     }
 
-    // Rubric token fallback
     const rubricStorageByQuizId = new Map();
     function computeRubricButtonBits(quiz) {
       const direct = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
@@ -590,7 +681,7 @@
         const url = js?.url;
         if (url) window.open(url, '_blank', 'noopener');
         else alert('Could not open rubric.');
-      } catch (e) {
+      } catch {
         alert('Could not open rubric.');
       }
     }
@@ -608,12 +699,10 @@
       quizCards.innerHTML = "";
       errorState.classList.add("d-none");
 
-      // IMPORTANT: start from ALL quizzes returned by the server (already assignment-filtered if backend supports it)
       let list = allQuizzes.slice();
 
-      // optional filters
-      if (currentCourseId) list = list.filter(qz => qz.courseId === currentCourseId);
-      if (currentModuleId) list = list.filter(qz => qz.moduleId === currentModuleId);
+      if (currentCourseId) list = list.filter(qz => String(qz.courseId) === String(currentCourseId));
+      if (currentModuleId) list = list.filter(qz => String(qz.moduleId) === String(currentModuleId));
 
       const q = (quizSearch.value || "").toLowerCase();
       if (q) {
@@ -626,12 +715,10 @@
       const st = statusFilter.value;
       if (st !== "All") list = list.filter(qz => statusOf(qz) === st);
 
-      // sort
       if (sortBy.value === "az") {
         list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
       } else if (sortBy.value === "duration") {
         const numVal = (v, d = 0) => (typeof v === 'number' && !isNaN(v)) ? v : d;
-        // durationMinutes is inside settings in your backend; keep fallback for flat field
         list.sort((a, b) => {
           const ad = a.settings?.timerEnabled ? a.settings.durationMinutes : a.durationMinutes;
           const bd = b.settings?.timerEnabled ? b.settings.durationMinutes : b.durationMinutes;
@@ -645,7 +732,6 @@
         });
       }
 
-      // Update status pills for the current (filtered) view
       refreshStatusPills(list);
 
       if (!list.length) {
@@ -656,14 +742,11 @@
         emptyState.classList.add("d-none");
       }
 
-      // make sure we have modules for the courses shown so we can print module names
       const listCourseIds = list.map(q => q.courseId);
       await ensureModulesForCourses(listCourseIds);
 
-      // attempt & lock info
       await ensureAttemptStatus(list.map(q => q.id));
 
-      // render cards
       list.forEach(quiz => {
         const created = ts(quiz.createdAt);
         const due = ts(quiz.dueAt);
@@ -671,20 +754,19 @@
         const qs = Array.isArray(quiz.questions) ? quiz.questions.length
           : (quiz.totalQuestions || quiz.questionCount || 0);
 
-        // duration (prefer settings.durationMinutes when timerEnabled)
         const dur = (quiz.settings?.timerEnabled && isNum(quiz.settings.durationMinutes))
           ? quiz.settings.durationMinutes
           : (isNum(quiz.durationMinutes) ? quiz.durationMinutes : null);
 
         const diff = quiz.difficulty || "—";
 
-        const course = coursesById.get(quiz.courseId);
+        const course = coursesById.get(String(quiz.courseId));
         const courseCode = course?.courseNumber ?? course?.code ?? course?.number ?? course?.classCode ?? null;
         const courseTitle = course?.title || quiz.courseTitle || quiz.courseName || "Untitled Course";
         const courseLabel = courseCode ? `${courseCode} — ${courseTitle}` : courseTitle;
 
-        const modMap = modulesByCourse.get(quiz.courseId);
-        const mod = modMap ? modMap.get(quiz.moduleId) : null;
+        const modMap = modulesByCourse.get(String(quiz.courseId));
+        const mod = modMap ? modMap.get(String(quiz.moduleId)) : null;
         const moduleTitle = mod?.title || quiz.moduleTitle || quiz.moduleName || "Untitled Module";
         const moduleLabel = (typeof mod?.moduleNumber === 'number')
           ? `Module ${mod.moduleNumber} • ${moduleTitle}`
@@ -704,18 +786,21 @@
         const hasAutoQuestions = Array.isArray(quiz.questions) && quiz.questions.some(q => !isEssayQuestion(q));
         const essayOnly = Array.isArray(quiz.questions) && quiz.questions.length > 0 && !hasAutoQuestions;
 
-        // rubric from new rubricFile or legacy fields (with storage token fallback)
         let rubricBtn = '';
-        const rubricBits = computeRubricButtonBits(quiz);
-        if (rubricBits.type === 'direct') {
-          const safeUrl = String(rubricBits.url).replace(/"/g, '&quot;');
+        const directRubric = pickRubricUrl(quiz) || pickRubricUrl(quiz?.settings || {});
+        if (directRubric) {
+          const safeUrl = String(directRubric).replace(/"/g, '&quot;');
           rubricBtn = `<a class="btn btn-sm btn-outline-info" href="${safeUrl}" target="_blank" rel="noopener" title="View Rubric">
                           <i class="bi bi-file-earmark-text"></i> Show Rubric
                        </a>`;
-        } else if (rubricBits.type === 'indirect') {
-          rubricBtn = `<button class="btn btn-sm btn-outline-info" data-action="rubric" data-quiz-id="${String(quiz.id)}" title="View Rubric">
-                        <i class="bi bi-file-earmark-text"></i> Show Rubric
-                       </button>`;
+        } else {
+          const sp = quiz?.rubricFile?.storagePath || quiz?.storagePath || '';
+          if (sp) {
+            rubricStorageByQuizId.set(String(quiz.id), sp);
+            rubricBtn = `<button class="btn btn-sm btn-outline-info" data-action="rubric" data-quiz-id="${String(quiz.id)}" title="View Rubric">
+                          <i class="bi bi-file-earmark-text"></i> Show Rubric
+                         </button>`;
+          }
         }
 
         const coursePill = `
@@ -753,13 +838,11 @@
       <span class="badge-soft"><i class="bi bi-bar-chart"></i>${escapeHTML(diff)}</span>
     </div>
 
-    <!-- Course & Module pills -->
     <div class="mt-2 mb-1 d-flex flex-wrap gap-1">
       ${coursePill}
       ${modulePill}
     </div>
 
-    <!-- Facts row (badges) -->
     <div class="d-flex flex-wrap gap-2 mt-1 mb-2">
       <span class="badge-soft"><i class="bi bi-list-ol"></i> ${qs} questions</span>
       <span class="badge-soft"><i class="bi bi-stopwatch"></i> ${dur ?? "—"} min</span>
@@ -767,7 +850,6 @@
       <span class="badge-soft"><i class="bi bi-calendar-event"></i> Due: ${due ? fmtDate(due) : "—"}</span>
     </div>
 
-    <!-- Short, clamped description (now AFTER all pills) -->
     <div class="desc mb-3" title="${escapeHTML(quiz.description || '')}">
       ${escapeHTML(quiz.description || '')}
     </div>
@@ -796,7 +878,6 @@
     </div>
   </div>
 `;
-
         quizCards.appendChild(col);
       });
     }
@@ -807,11 +888,13 @@
       currentModuleId = "";
       moduleSelect.value = "";
       await loadModules(currentCourseId);
+      await loadQuizzes();
       renderQuizzes();
     });
 
-    moduleSelect.addEventListener("change", function () {
+    moduleSelect.addEventListener("change", async function () {
       currentModuleId = this.value;
+      await loadQuizzes();
       renderQuizzes();
     });
 
@@ -819,7 +902,6 @@
     statusFilter.addEventListener("change", () => renderQuizzes());
     sortBy.addEventListener("change", () => renderQuizzes());
 
-    // View Score modal / rubric click
     quizCards.addEventListener('click', async (e) => {
       const rubricBtn = e.target.closest('[data-action="rubric"]');
       if (rubricBtn) {
@@ -834,7 +916,6 @@
       const quizId = btn.getAttribute('data-quiz-id');
       const title = btn.getAttribute('data-quiz-title') || 'Quiz Results';
 
-      // Reset modal
       document.getElementById('scoreModalLabel').textContent = title;
       document.getElementById('scoreLoading').classList.remove('d-none');
       document.getElementById('scoreEmpty').classList.add('d-none');
@@ -912,10 +993,16 @@
     // ---------- Boot ----------
     document.addEventListener("DOMContentLoaded", async () => {
       try {
-        await loadCourses();
-        await loadStudentClasses(); // NEW: for client-side fallback filtering
-        await loadQuizzes();        // <- assignment-aware (server) + fallback (client)
-        renderQuizzes();            // shows quizzes the server/logic says this student can see
+        await loadCourses();         // populates studentCourseIds (maybe)
+        await loadStudentClasses();  // populates studentClassIds (maybe)
+        await loadQuizzes();         // server + client filtering, normalized
+        renderQuizzes();
+        // if nothing, relax class guard once more (courses-only)
+        if (!quizCards.children.length && allQuizzes.length === 0) {
+          // final fallback: fetch raw quizzes and show course-wide ones
+          await loadQuizzes();
+          renderQuizzes();
+        }
       } catch {
         errorState.classList.remove("d-none");
       }
@@ -925,7 +1012,6 @@
   <!-- Small-screen tweak -->
   <style>
     @media (max-width: 768px) {
-
       .form-select,
       .form-control {
         text-align: center;

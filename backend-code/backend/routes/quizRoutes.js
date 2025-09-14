@@ -30,7 +30,9 @@ const ALLOWED_MIMES = new Set([
   'text/csv',
   'text/plain',
 ]);
-const ALLOWED_EXTS = /\.(pdf|doc|docx|xls|xlsx|csv|txt)$/i;
+
+// Use RegExp constructor (avoids parser edge-cases with literal /.../):
+const ALLOWED_EXTS = new RegExp('\\.(pdf|doc|docx|xls|xlsx|csv|txt)$', 'i');
 
 function rubricFileOk(file) {
   const okMime = ALLOWED_MIMES.has(file.mimetype);
@@ -41,64 +43,136 @@ function rubricFileOk(file) {
 /* ===========================================================
    assignedClasses helpers
 =========================================================== */
-/**
- * Ensure assignedClasses is a deduped array of string IDs.
- * Limits to 500 IDs and trims falsy values.
- */
+/** Ensure assignedClasses is a deduped array of string IDs (max 500). */
 function sanitizeAssignedClasses(input) {
   if (!input) return [];
   let arr = Array.isArray(input) ? input : [];
-  arr = arr
-    .map(v => (typeof v === 'string' ? v.trim() : ''))
-    .filter(Boolean);
+  arr = arr.map(v => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
   const set = new Set(arr);
   const out = Array.from(set);
   return out.slice(0, 500);
 }
 
 /* ===========================================================
-   Student-class helpers
+   Identity + Student-class helpers
 =========================================================== */
-async function getStudentEmailById(userId) {
-  try {
-    const u = await firestore.collection('users').doc(userId).get();
-    if (u.exists) {
-      const d = u.data() || {};
-      const email =
-        (d.email || d.userEmail || d.username || '').trim();
-      return email || null;
-    }
-  } catch {}
-  return null;
-}
-
 /**
- * Returns a deduped array of class IDs a student belongs to.
- * Tries several common schema patterns:
- *  - classes.students: array of userId
- *  - classes.studentIds: array of userId
- *  - classes.members: array of userId
- *  - classes.studentEmails: array of email
+ * Resolve an input (userId/docId/username/email) into a canonical identity.
+ * Returns { id, email, studentId } or null.
  */
-async function getClassesForStudent(studentId) {
-  const classesCol = firestore.collection('classes');
-  const results = new Map();
-  const email = await getStudentEmailById(studentId);
+async function resolveUserIdentity(idOrEmail) {
+  const key = String(idOrEmail || '').trim();
+  const users = firestore.collection('users');
 
-  const tryQuery = async (field, value) => {
+  const fromDoc = async (docId) => {
     try {
-      const snap = await classesCol.where(field, 'array-contains', value).get();
-      snap.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
-    } catch {}
+      const snap = await users.doc(docId).get();
+      if (!snap.exists) return null;
+      const u = snap.data() || {};
+      return {
+        id: snap.id,
+        email: (u.email || u.userEmail || u.username || '').trim() || null,
+        studentId: (u.studentId || '').trim() || null,
+      };
+    } catch {
+      return null;
+    }
   };
 
-  await tryQuery('students', studentId);
-  await tryQuery('studentIds', studentId);
-  await tryQuery('members', studentId);
-  if (email) await tryQuery('studentEmails', email);
+  // 1) direct users/{docId}
+  if (key) {
+    const byDoc = await fromDoc(key);
+    if (byDoc) return byDoc;
+  }
 
-  return Array.from(results.values()).map(c => c.id);
+  // 2) exact email string (if it looks like one)
+  if (key.includes('@')) return { id: null, email: key, studentId: null };
+
+  // 3) try common identity fields
+  const tryField = async (field) => {
+    try {
+      const q = await users.where(field, '==', key).limit(1).get();
+      if (q.empty) return null;
+      const d = q.docs[0];
+      const u = d.data() || {};
+      return {
+        id: d.id,
+        email: (u.email || u.userEmail || u.username || '').trim() || null,
+        studentId: (u.studentId || '').trim() || null,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  return (await tryField('email')) ||
+         (await tryField('userEmail')) ||
+         (await tryField('username')) ||
+         null;
 }
+
+/** Email helper kept for compatibility. */
+async function getStudentEmailById(userId) {
+  const who = await resolveUserIdentity(userId);
+  return (who && who.email) ? who.email : null;
+}
+
+// Returns a deduped array of class IDs a student belongs to.
+// Priority:
+//  1) users/{uid}/enrollments/{classId}
+//  2) legacy arrays on classes (students, studentIds, members, uids, studentEmails)
+//  3) classes/*/roster (collectionGroup) on userId / studentId / email
+async function getClassesForStudent(userIdOrEmail) {
+  const who = await resolveUserIdentity(userIdOrEmail);
+  if (!who) return [];
+
+  const ids = new Set();
+
+  // (1) enrollments (authoritative)
+  if (who.id) {
+    try {
+      const snap = await firestore.collection('users').doc(who.id).collection('enrollments').get();
+      snap.forEach(d => ids.add(d.id)); // doc id == classId
+    } catch {}
+    if (ids.size) return [...ids];
+  }
+
+  // (2) legacy arrays
+  const classesCol = firestore.collection('classes');
+  const tryClassArr = async (field, value) => {
+    try {
+      const s = await classesCol.where(field, 'array-contains', value).get();
+      s.forEach(doc => ids.add(doc.id));
+    } catch {}
+  };
+  if (who.id) {
+    await tryClassArr('students', who.id);
+    await tryClassArr('studentIds', who.id);
+    await tryClassArr('members', who.id);
+    await tryClassArr('uids', who.id);
+  }
+  if (who.email) await tryClassArr('studentEmails', who.email);
+
+  // (3) roster CG fallback
+  if (ids.size === 0) {
+    const rosterCG = firestore.collectionGroup('roster');
+    const tryRoster = async (field, value) => {
+      try {
+        const s = await rosterCG.where(field, '==', value).get();
+        s.forEach(doc => {
+          const parent = doc.ref.parent.parent; // classes/{classId}
+          if (parent) ids.add(parent.id);
+        });
+      } catch {}
+    };
+    if (who.id)        await tryRoster('userId', who.id);
+    if (who.studentId) await tryRoster('studentId', who.studentId);
+    if (who.email)     await tryRoster('email', who.email);
+  }
+
+  return [...ids];
+}
+
 
 /* ===========================================================
    Conditionally run multer when multipart (memory storage)
@@ -195,7 +269,7 @@ async function deleteAllAttemptsForQuiz(quizId) {
 /* ===========================================================
    QUIZ: UPLOAD (rubric to Cloud Storage)
    Accepts JSON OR multipart with: (rubrics file) + (payload JSON)
-   NEW: supports assignedClasses: string[]
+   Supports assignedClasses: string[]
 =========================================================== */
 router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => {
   let body = req.body || {};
@@ -323,11 +397,11 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
     if (!forStudent) return true;
 
     const assigned = Array.isArray(x.assignedClasses) ? x.assignedClasses : [];
-    // business rule: no assignment means visible to all
+    // business rule: no assignment means visible to all in course
     if (assigned.length === 0) return true;
 
     const set = new Set(studentClassIds || []);
-    return assigned.some(cid => set.has(cid));
+    return assigned.some(cid => set.has(String(cid)));
   });
 
   // then hydrate questions
@@ -393,7 +467,7 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    QUIZ: UPDATE (replace questions)
-   NEW: allows updating assignedClasses
+   Allows updating assignedClasses
 =========================================================== */
 router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
   const { questions, settings, title, description, dueAt, attemptsAllowed, assignedClasses: assignedClassesRaw } = req.body || {};
@@ -550,7 +624,7 @@ router.delete('/quizzes/:quizId', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   SUBMIT QUIZ SCORE (unchanged core, minor tidy)
+   SUBMIT QUIZ SCORE
 =========================================================== */
 router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
   const { email, quizId, score, total, moduleId, courseId, reason, timeTakenSeconds, answers } = req.body || {};
@@ -818,110 +892,6 @@ router.get('/storage/token-url', asyncHandler(async (req, res) => {
       message: notFound ? 'Object not found' : (e?.message || 'Failed to ensure token URL')
     });
   }
-}));
-
-/* ===========================================================
-   Convenience endpoint (teacher):
-   GET /api/classes?teacherId=<id>
-   - Filters classes where uploadedBy == teacherId OR teacherId in teachers[]
-=========================================================== */
-router.get('/api/classes', asyncHandler(async (req, res) => {
-  const teacherId = String(req.query.teacherId || '').trim();
-  if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
-
-  const classesCol = firestore.collection('classes'); // adjust collection name if needed
-  const results = new Map();
-
-  // uploadedBy == teacherId
-  try {
-    const q1 = await classesCol.where('uploadedBy', '==', teacherId).get();
-    q1.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
-  } catch {}
-
-  // teachers array contains teacherId
-  try {
-    const q2 = await classesCol.where('teachers', 'array-contains', teacherId).get();
-    q2.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
-  } catch {}
-
-  const classes = Array.from(results.values())
-    .map(c => ({
-      id: c.id,
-      name: c.name || c.className || 'Untitled Class',
-      gradeLevel: c.gradeLevel ?? c.grade ?? null,
-      section: c.section ?? c.sectionName ?? null,
-      uploadedBy: c.uploadedBy ?? null,
-      teachers: Array.isArray(c.teachers) ? c.teachers : []
-    }))
-    .sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
-
-  res.json({ success:true, classes });
-}));
-
-/* ===========================================================
-   STUDENT: list classes
-   - GET /api/students/:userId/classes
-   - GET /classes?studentId=<id>       (compat for older clients)
-=========================================================== */
-router.get('/api/students/:userId/classes', asyncHandler(async (req, res) => {
-  const { userId } = req.params;
-  if (!userId) return res.status(400).json({ success:false, message:'userId is required' });
-
-  const classesCol = firestore.collection('classes');
-  const results = new Map();
-
-  const email = await getStudentEmailById(userId);
-
-  const tryQuery = async (field, value) => {
-    try {
-      const snap = await classesCol.where(field, 'array-contains', value).get();
-      snap.forEach(doc => results.set(doc.id, { id: doc.id, ...doc.data() }));
-    } catch {}
-  };
-
-  await tryQuery('students', userId);
-  await tryQuery('studentIds', userId);
-  await tryQuery('members', userId);
-  if (email) await tryQuery('studentEmails', email);
-
-  const classes = Array.from(results.values()).map(c => ({
-    id: c.id,
-    name: c.name || c.className || 'Untitled Class',
-    gradeLevel: c.gradeLevel ?? c.grade ?? null,
-    section: c.section ?? c.sectionName ?? null,
-    teachers: Array.isArray(c.teachers) ? c.teachers : [],
-  })).sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
-
-  res.json({ success:true, classes });
-}));
-
-router.get('/classes', asyncHandler(async (req, res) => {
-  const studentId = String(req.query.studentId || '').trim();
-  if (!studentId) return res.status(400).json({ success:false, message:'studentId is required' });
-
-  const ids = await getClassesForStudent(studentId);
-  if (!ids.length) return res.json({ success:true, classes: [] });
-
-  const classesCol = firestore.collection('classes');
-  const results = [];
-  for (const id of ids) {
-    try {
-      const d = await classesCol.doc(id).get();
-      if (d.exists) {
-        const c = d.data() || {};
-        results.push({
-          id: d.id,
-          name: c.name || c.className || 'Untitled Class',
-          gradeLevel: c.gradeLevel ?? c.grade ?? null,
-          section: c.section ?? c.sectionName ?? null,
-          teachers: Array.isArray(c.teachers) ? c.teachers : [],
-        });
-      }
-    } catch {}
-  }
-
-  results.sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
-  res.json({ success:true, classes: results });
 }));
 
 module.exports = router;
