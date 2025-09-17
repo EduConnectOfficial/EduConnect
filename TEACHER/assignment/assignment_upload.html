@@ -10,7 +10,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
   <link href="ass_upload.css" rel="stylesheet"/>
-
 </head>
 <body>
   <div class="dashboard">
@@ -89,7 +88,10 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label">Points</label>
-                <input id="points" type="number" min="0" step="1" class="form-control" placeholder="e.g., 100"/>
+                <input id="points" type="number" min="0" max="100" step="1" class="form-control" placeholder="0–100"/>
+                <div class="hint mt-1">
+                  Allowed range: 0–100. <strong>Over 100 is not allowed.</strong> Leave blank for ungraded.
+                </div>
               </div>
             </div>
 
@@ -318,6 +320,7 @@
     /* ===== Utilities ===== */
     const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const toMillis = v => v ? new Date(v).getTime() : null;
+    const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
@@ -441,6 +444,23 @@
     const btnPreviewLink = document.getElementById('btnPreviewLink');
     const btnStageLink   = document.getElementById('btnStageLink');
     const filesList      = document.getElementById('filesList');
+    const pointsInput    = document.getElementById('points');
+
+    // Auto-correct points to [0..100] when field loses focus/change
+    if (pointsInput) {
+      pointsInput.addEventListener("change", () => {
+        const v = pointsInput.value.trim();
+        if (v === "") return; // allow blank (meaning “ungraded”)
+        const n = parseInt(v, 10);
+        if (Number.isNaN(n)) { pointsInput.value = ""; return; }
+        pointsInput.value = String(clamp(n, 0, 100));
+      });
+      // Clear error styling while typing
+      pointsInput.addEventListener("input", () => {
+        pointsInput.classList.remove("is-invalid");
+        formError.textContent = "";
+      });
+    }
 
     /* ===== Staging ===== */
     let staged = {
@@ -834,8 +854,32 @@
       const moduleId = (moduleSelect.value || '').trim();
       const title    = (document.getElementById("title").value || '').trim();
       const content  = (document.getElementById("content").value || '').trim();
-      const pointsV  = document.getElementById("points").value;
-      const points   = pointsV ? parseInt(pointsV, 10) : null;
+
+      // Points strict validation (blocks submit if > 100)
+      const pointsV = pointsInput.value.trim();
+      let points = null;
+      if (pointsV !== "") {
+        const n = parseInt(pointsV, 10);
+        if (Number.isNaN(n)) {
+          formError.textContent = "Points must be a whole number between 0 and 100.";
+          pointsInput.classList.add("is-invalid");
+          pointsInput.focus();
+          return;
+        }
+        if (n > 100) {
+          formError.textContent = "Over 100 is not allowed. Please set Points to 0–100.";
+          pointsInput.classList.add("is-invalid");
+          pointsInput.focus();
+          return;
+        }
+        if (n < 0) {
+          formError.textContent = "Points cannot be negative.";
+          pointsInput.classList.add("is-invalid");
+          pointsInput.focus();
+          return;
+        }
+        points = n;
+      }
 
       if (!courseId || !moduleId || !title || !content) {
         formError.textContent = "Please complete Course, Module, Title and Content.";

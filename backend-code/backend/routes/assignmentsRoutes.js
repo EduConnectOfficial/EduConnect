@@ -32,6 +32,14 @@ function toTimestampOrNull(v) {
   return null;
 }
 
+// Clamp points to 0..100, or return null when empty/invalid
+function clampPointsMaybe(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  if (Number.isNaN(n)) return null;
+  return Math.max(0, Math.min(100, n));
+}
+
 /** Gather assigned classes from body (supports multiple shapes) */
 function parseAssignedClassesFromBody(body = {}) {
   // Accept: assignedClasses (string|array), assignedClasses[], classIds, classId
@@ -259,7 +267,8 @@ router.post(
       courseTitle: courseTitle ? String(courseTitle).trim() : undefined,
       moduleId: moduleId ? String(moduleId).trim() : null,
       moduleNumber,
-      points: points != null && points !== '' ? Number(points) : null,
+      // CLAMPED points 0..100 (or null)
+      points: clampPointsMaybe(points),
       publishAt: toTimestampOrNull(publishAt) || admin.firestore.Timestamp.now(),
       dueAt: toTimestampOrNull(dueAt) || null,
       createdBy: String(teacherId).trim(),
@@ -379,7 +388,12 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
   if (req.body.title !== undefined)   updates.title   = String(req.body.title).trim();
   if (req.body.content !== undefined) updates.content = String(req.body.content).trim();
-  if (req.body.points !== undefined)  updates.points  = (req.body.points === null || req.body.points === '') ? null : Number(req.body.points);
+
+  // CLAMP points to 0..100 (or null)
+  if (req.body.points !== undefined) {
+    updates.points = clampPointsMaybe(req.body.points);
+  }
+
   if (req.body.archived !== undefined) updates.archived = !!req.body.archived;
 
   if (req.body.publishAt !== undefined) {
@@ -535,7 +549,7 @@ router.get('/courses/:courseId/assignments', asyncHandler(async (req, res) => {
    (now hides assignments targeted at other classes)
 =========================================================== */
 router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
-  const { userId } = req.params;
+  const { userId } = req.params();
 
   const enrollSnap = await firestore.collection('users').doc(userId).collection('enrollments').get();
   const classIds = enrollSnap.docs.map(d => d.id);
