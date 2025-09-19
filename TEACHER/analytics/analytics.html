@@ -23,8 +23,7 @@
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2"
         style="background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));color:#fff;">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -42,6 +41,18 @@
       <section class="content px-4">
         <h1 class="page-title">Analytics & Reporting</h1>
 
+        <!-- Selected from Picker -->
+        <div id="selectedMeta" class="d-flex flex-wrap align-items-center gap-2 mb-3" style="display:none">
+          <span class="badge rounded-pill text-bg-primary">
+            <i class="bi bi-journal-text me-1"></i>
+            <span id="metaCourse">Course</span>
+          </span>
+          <span class="badge rounded-pill text-bg-secondary">
+            <i class="bi bi-mortarboard me-1"></i>
+            <span id="metaClass">Class</span>
+          </span>
+        </div>
+
         <!-- THEMED FILTER/SORT BAR -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
@@ -50,14 +61,30 @@
             </h2>
           </div>
           <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-4">
-              <label class="form-label fw-semibold">Class</label>
-              <select id="classSelect" class="form-select">
-                <option value="">All classes</option>
+
+            <!-- Course Picker -->
+            <div class="col-12 col-lg-4">
+              <label class="form-label fw-semibold">Course</label>
+              <select id="courseSelect" class="form-select" disabled>
+                <option value="">Loading courses…</option>
               </select>
+              <small id="courseHint" class="text-muted d-block mt-1" style="display:none">
+                Preselected from Class Picker.
+              </small>
             </div>
 
-            <div class="col-12 col-md-4">
+            <!-- Class Picker (filtered by course) -->
+            <div class="col-12 col-lg-4">
+              <label class="form-label fw-semibold">Class</label>
+              <select id="classSelect" class="form-select" disabled>
+                <option value="">Select a course first</option>
+              </select>
+              <small id="classHint" class="text-muted d-block mt-1" style="display:none">
+                Preselected from Class Picker.
+              </small>
+            </div>
+
+            <div class="col-12 col-lg-2">
               <label class="form-label fw-semibold">View</label>
               <select id="viewSelect" class="form-select">
                 <option value="quiz" selected>Quizzes</option>
@@ -65,7 +92,7 @@
               </select>
             </div>
 
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-lg-2">
               <label class="form-label fw-semibold">Sort</label>
               <select id="sortBy" class="form-select">
                 <option value="avg_desc" selected>Avg Quiz Score (High → Low)</option>
@@ -194,7 +221,7 @@
     </div>
   </div>
 
-  <!-- Alert helper (closes any open modal before showing alert) -->
+  <!-- Alert helper -->
   <script>
     function showAppAlert(message, { title = "Notice", variant = "primary", closeOtherModals = true } = {}) {
       const header = document.getElementById("appAlertHeader");
@@ -202,7 +229,6 @@
       const bodyEl = document.getElementById("appAlertBody");
       const alertEl = document.getElementById("appAlertModal");
 
-      // Variant styling
       header.className = "modal-header";
       const bg = {
         primary: "bg-primary text-white", success: "bg-success text-white",
@@ -215,7 +241,6 @@
       titleEl.textContent = title;
       bodyEl.textContent = message;
 
-      // Close any other open modals before showing the alert
       if (closeOtherModals) {
         document.querySelectorAll(".modal.show").forEach(m => {
           if (m.id !== "appAlertModal") {
@@ -224,7 +249,6 @@
           }
         });
       }
-
       bootstrap.Modal.getOrCreateInstance(alertEl).show();
     }
   </script>
@@ -260,8 +284,9 @@
   <!-- Page Scripts -->
   <script>
     const API_BASE = 'http://localhost:5000';
+    const ALL = '__all__'; // sentinel for "All Courses" / "All Classes"
 
-    // ---- Auth guard + header initials (robust, initials-only) ----
+    // ---- Auth guard + header initials (initials-only) ----
     (function initHeaderInitials() {
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       const u = stored.user || stored;
@@ -274,7 +299,7 @@
       const nameEl = document.getElementById('Username');
       if (nameEl) {
         const initials = getInitials(u);
-        nameEl.textContent = initials; // initials only
+        nameEl.textContent = initials;
         const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
           || u.username || u.email || 'Profile';
         nameEl.setAttribute('title', fullLabel);
@@ -298,32 +323,22 @@
       }
     })();
 
+    // ---- Read params (from Class Picker, optional) ----
+    const params = new URLSearchParams(location.search);
     const teacherId =
-      new URLSearchParams(location.search).get('teacherId') ||
+      params.get('teacherId') ||
       (window.currentUser && window.currentUser.userId) ||
       localStorage.getItem('teacherId') ||
       '';
-
-    function logoutUser() {
-      localStorage.clear();
-      sessionStorage.clear();
-      location.href = "/TEACHER/login/login.html";
-    }
-
-    async function getJson(url) {
-      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
-      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
-      return res.json();
-    }
-    async function getBlob(url) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
-      return res.blob();
-    }
-    const fmtPct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
+    const preselectedClassId = params.get('classId') || '';
+    const preselectedCourse = params.get('course') || params.get('courseName') || ''; // may be an id or a title
+    const preselectedLabel = params.get('classLabel') || params.get('section') || '';
 
     // Refs
+    const courseSelectEl = document.getElementById('courseSelect');
+    const courseHintEl = document.getElementById('courseHint');
     const classSelectEl = document.getElementById('classSelect');
+    const classHintEl = document.getElementById('classHint');
     const viewSelectEl = document.getElementById('viewSelect');
     const sortByEl = document.getElementById('sortBy');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -340,21 +355,40 @@
     const tableHeadRow = document.getElementById('tableHeadRow');
     const atRiskTbody = document.getElementById('atRiskTbody');
 
-    // ---- Label shortener (used for BOTH charts) ----
+    // Selection badges
+    const selectedMetaWrap = document.getElementById('selectedMeta');
+    const metaCourseEl = document.getElementById('metaCourse');
+    const metaClassEl = document.getElementById('metaClass');
+
+    // Local data
+    let ALL_CLASSES = [];
+    let ALL_COURSES = []; // fetched from /courses
+
+    // Helpers
+    async function getJson(url) {
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+      return res.json();
+    }
+    const fmtPct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
+
+    function fullClassLabel(c) {
+      const className = c.className || c.sectionName || c.name || 'Class';
+      const gl = c.gradeLevel ? `${c.gradeLevel}` : '';
+      const sec = c.section ? `${c.section}` : '';
+      const suffix = (gl || sec) ? ` (${[gl, sec].filter(Boolean).join('-')})` : '';
+      return `${className}${suffix}`;
+    }
+
+    // ---- Charts ----
+    const charts = { left: null, right: null };
+    function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
     function cleanLabel(s, max = 28) {
       if (!s) return '—';
-      let t = String(s)
-        .replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '')
-        .replace(/\s*\([^)]*\)\s*$/, '')
-        .trim();
+      let t = String(s).replace(/^(Course|Lesson|Unit)\s*\d+\s*:\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
       if (t.length > max) t = t.slice(0, max - 1) + '…';
       return t;
     }
-
-    // Charts
-    const charts = { left: null, right: null };
-    function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
-
     function renderBar(key, id, fullLabels, values, lbl) {
       destroyChart(key);
       const displayLabels = (fullLabels || []).map(l => cleanLabel(l));
@@ -369,7 +403,6 @@
         }
       });
     }
-
     function renderLine(key, id, fullLabels, values, lbl) {
       destroyChart(key);
       const displayLabels = (fullLabels || []).map(l => cleanLabel(l));
@@ -385,21 +418,12 @@
       });
     }
 
-    // Badge helper
-    function statusBadge(status) {
-      const s = (status || '').toLowerCase();
-      if (s === 'at risk') return '<span class="badge bg-danger">At Risk</span>';
-      if (s === 'on track') return '<span class="badge bg-success">On Track</span>';
-      return '<span class="badge bg-secondary">—</span>';
-    }
-
-    // ===== Sorting =====
+    // ---- Sorting / table rendering ----
     let SORT_BY = 'avg_desc';
     let lastQuizProgress = [];
     let lastAssignmentProgress = [];
 
     function setSortOptionsForMode(mode) {
-      if (!sortByEl) return;
       const label = (val, text) => sortByEl.querySelector(`option[value="${val}"]`).textContent = text;
       if (mode === 'assignment') {
         label('avg_desc', 'Avg Assignment Score (High → Low)');
@@ -433,12 +457,10 @@
           }
         }
       };
-
       rows.sort((a, b) => {
         const val = SORT_BY;
         if (val === 'name_az') return get(a, 'name').localeCompare(get(b, 'name'));
         if (val === 'status_risk') return get(a, 'statusRank') - get(b, 'statusRank');
-
         const metric = val.startsWith('avg') ? 'avg'
           : val.startsWith('taken') ? 'taken'
             : val.startsWith('ontime') ? 'ontime'
@@ -449,11 +471,9 @@
         if (!Number.isFinite(bv)) bv = asc ? Infinity : -Infinity;
         return asc ? (av - bv) : (bv - av);
       });
-
       return rows;
     }
 
-    // Tables
     function renderQuizTable(rows) {
       const data = Array.isArray(rows) ? rows.slice() : [];
       sortRows(data, 'quiz');
@@ -486,8 +506,14 @@
           <td><button class="btn btn-sm btn-primary view-analytics" data-student="${encodeURIComponent(r.studentId || '')}">View</button></td>
         </tr>`).join('');
     }
+    function statusBadge(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'at risk') return '<span class="badge bg-danger">At Risk</span>';
+      if (s === 'on track') return '<span class="badge bg-success">On Track</span>';
+      return '<span class="badge bg-secondary">—</span>';
+    }
 
-    // Labels
+    // Labels + summaries
     function setModeLabels(mode) {
       setSortOptionsForMode(mode);
       if (mode === 'assignment') {
@@ -512,8 +538,6 @@
           <th>On-time %</th><th>Modules Completed</th><th>Status</th><th>Actions</th>`;
       }
     }
-
-    // Summaries
     function setSummaryValuesForQuiz(summary, progress) {
       const s = summary || {};
       let avg = s.averageQuizScore != null ? +s.averageQuizScore : null;
@@ -534,22 +558,112 @@
       modulesCompletedEl.textContent = s.modulesCompleted ?? '—';
     }
 
-    // Loaders
+    // ===== LOADERS =====
     async function loadClasses() {
       const resp = await getJson(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
-      const classes = resp.classes || [];
-      classSelectEl.innerHTML = `<option value="">All classes</option>`;
-      classes.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id || c.classId;
-        opt.textContent = `${c.name} (${c.gradeLevel}-${c.section})`;
-        classSelectEl.appendChild(opt);
-      });
+      ALL_CLASSES = resp.classes || [];
     }
+
+    async function loadCourses() {
+      const includeArchived = false;
+      const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=${includeArchived}`;
+      ALL_COURSES = await getJson(url);
+    }
+
+    function fillCourseOptions() {
+      const items = (ALL_COURSES || []).slice().sort((a, b) => {
+        const an = Number(a.courseNumber || 0), bn = Number(b.courseNumber || 0);
+        if (an !== bn) return an - bn;
+        return String(a.title || '').localeCompare(String(b.title || ''));
+      });
+
+      if (!items.length) {
+        courseSelectEl.innerHTML = `<option value="">No courses found</option>`;
+        classSelectEl.innerHTML = `<option value="">No classes</option>`;
+        courseSelectEl.disabled = true;
+        classSelectEl.disabled = true;
+        return;
+      }
+
+      courseSelectEl.innerHTML = [
+        `<option value="${ALL}">All Courses</option>`,
+        ...items.map(c => {
+          const left = Number.isFinite(+c.courseNumber) && c.courseNumber > 0 ? `Course ${c.courseNumber}: ` : '';
+          const text = `${left}${c.title || 'Untitled Course'}`;
+          return `<option value="${c.id}">${text}</option>`;
+        })
+      ].join('');
+
+      courseSelectEl.disabled = false;
+      // default classes list when page loads (we'll set to All later)
+      classSelectEl.innerHTML = `<option value="${ALL}">All Classes</option>`;
+      classSelectEl.disabled = false;
+    }
+
+    function fillClassOptionsForCourse(courseId) {
+      // Build list of classes for the selected course (or all)
+      let list;
+      if (!courseId || courseId === ALL) {
+        list = (ALL_CLASSES || []).slice();
+      } else {
+        const course = (ALL_COURSES || []).find(c => c.id === courseId);
+        const ids = course ? (course.assignedClasses || []) : [];
+        list = (ALL_CLASSES || []).filter(c => ids.includes(c.id || c.classId));
+      }
+
+      const opts = [
+        `<option value="${ALL}">All Classes</option>`,
+        ...list.map(c => `<option value="${c.id || c.classId}">${fullClassLabel(c)}</option>`)
+      ].join('');
+
+      classSelectEl.innerHTML = opts;
+      classSelectEl.disabled = list.length === 0 && courseId !== ALL;
+    }
+
+    /* ===== Meta Pill updater (COURSE / CLASS) ===== */
+    function updateMetaPills() {
+      const courseId = courseSelectEl.value;
+      const classId = classSelectEl.value;
+
+      // Course text
+      let courseText = 'Course';
+      if (courseId === ALL) {
+        courseText = 'All Courses';
+      } else if (courseId) {
+        const course = (ALL_COURSES || []).find(c => c.id === courseId);
+        if (course) {
+          const prefix = Number.isFinite(+course.courseNumber) && course.courseNumber > 0
+            ? `Course ${course.courseNumber}: `
+            : '';
+          courseText = `${prefix}${course.title || 'Course'}`;
+        }
+      }
+      metaCourseEl.textContent = courseText;
+
+      // Class text
+      let classText = 'Class';
+      if (classId === ALL) {
+        classText = 'All Classes';
+      } else if (classId) {
+        const cls = (ALL_CLASSES || []).find(c => (c.id || c.classId) === classId);
+        if (cls) classText = fullClassLabel(cls);
+      }
+      metaClassEl.textContent = classText;
+
+      // Show both pills when anything selected (including ALL)
+      const coursePill = metaCourseEl.closest('.badge');
+      const classPill = metaClassEl.closest('.badge');
+      coursePill.style.display = courseId ? 'inline-flex' : 'none';
+      classPill.style.display = classId ? 'inline-flex' : 'none';
+
+      selectedMetaWrap.style.display = (courseId || classId) ? 'flex' : 'none';
+    }
+
     async function loadQuizAnalytics() {
       setModeLabels('quiz');
-      const classId = classSelectEl.value || '';
-      const data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
+      const classId = classSelectEl.value;
+      const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
+      const data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
       const qLabels = data.byQuiz?.labels || [];
       renderBar('left', 'quizAvgChart', qLabels, data.byQuiz?.avgScores || [], 'Average Score (%)');
       renderLine('right', 'quizAttemptsChart', qLabels, data.byQuiz?.attempts || [], 'Attempts');
@@ -557,10 +671,12 @@
       lastQuizProgress = data.progress || [];
       renderQuizTable(lastQuizProgress);
     }
+
     async function loadAssignmentAnalytics() {
       setModeLabels('assignment');
-      const classId = classSelectEl.value || '';
-      const data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
+      const classId = classSelectEl.value;
+      const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
+      const data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
       const aLabels = data.byAssignment?.labels || [];
       renderBar('left', 'quizAvgChart', aLabels, data.byAssignment?.avgScores || [], 'Average Score (%)');
       renderLine('right', 'quizAttemptsChart', aLabels, data.byAssignment?.submissions || [], 'Submissions');
@@ -568,15 +684,18 @@
       lastAssignmentProgress = data.progress || [];
       renderAssignmentTable(lastAssignmentProgress);
     }
+
     async function loadAnalyticsView() {
+      // When "All Classes" is selected, we call the API WITHOUT a classId -> aggregate for teacher
       if (viewSelectEl.value === 'assignment') await loadAssignmentAnalytics();
       else await loadQuizAnalytics();
     }
 
-    // Exports helpers (unchanged)
+    // ===== Exports =====
     async function getBothAnalytics(classId) {
-      const quiz = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
-      const assignment = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
+      const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
+      const quiz = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
+      const assignment = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
       return { quiz, assignment };
     }
     function csvForAnalytics(mode, data, classLabel) {
@@ -608,8 +727,8 @@
     }
     async function exportAllCsv() {
       try {
-        const classId = classSelectEl.value || '';
-        const classLabel = classSelectEl.options[classSelectEl.selectedIndex].text;
+        const classId = classSelectEl.value || ALL;
+        const classLabel = classId === ALL ? 'All Classes' : (classSelectEl.options[classSelectEl.selectedIndex]?.text || '');
         const both = await getBothAnalytics(classId);
         let csv = [];
         csv.push(csvForAnalytics('quiz', both.quiz, classLabel));
@@ -618,7 +737,7 @@
         const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `all_analytics_${classId || 'all'}.csv`;
+        a.download = `all_analytics_${classId === ALL ? 'all' : classId}.csv`;
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(a.href);
@@ -645,8 +764,8 @@
             s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
           });
         }
-        const classId = classSelectEl.value || '';
-        const classLabel = classSelectEl.options[classSelectEl.selectedIndex].text;
+        const classId = classSelectEl.value || ALL;
+        const classLabel = classId === ALL ? 'All Classes' : (classSelectEl.options[classSelectEl.selectedIndex]?.text || '');
         const both = await getBothAnalytics(classId);
         const doc = new window.jspdf.jsPDF();
         doc.setFont('times', 'bold'); doc.setFontSize(18);
@@ -688,7 +807,7 @@
           body: (both.assignment.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
           theme: 'grid', styles: { font: 'times', fontSize: 10 }, headStyles: { fillColor: [240, 240, 240], textColor: 0 }
         });
-        doc.save(`all_analytics_${classId || 'all'}.pdf`);
+        doc.save(`all_analytics_${classId === ALL ? 'all' : classId}.pdf`);
       } catch (e) {
         console.error(e);
         showAppAlert('PDF download failed.');
@@ -696,34 +815,29 @@
     }
     async function exportCsv() {
       try {
-        const classId = classSelectEl.value || '';
+        const classId = classSelectEl.value || ALL;
         const mode = viewSelectEl.value;
         const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-        let data;
-        if (mode === 'assignment') {
-          data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
-        } else {
-          data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
-        }
+        const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
+        const data = await getJson(`${API_BASE}/api/teacher/${mode}-analytics?teacherId=${teacherId}${useClass}`);
         let csv = [];
         csv.push('Class,View,Date');
-        csv.push(`"${classSelectEl.options[classSelectEl.selectedIndex].text}","${mode}","${new Date().toLocaleDateString()}"`);
+        const label = classId === ALL ? 'All Classes' : (classSelectEl.options[classSelectEl.selectedIndex]?.text || '');
+        csv.push(`"${label}","${mode}","${new Date().toLocaleDateString()}"`);
         if (mode === 'assignment') {
           csv.push(''); csv.push('Summary');
           csv.push('Total Assignments,Average Assignment Score,On-time Rate,Modules Completed');
           csv.push(`"${data.summary?.totalAssignments ?? ''}","${data.summary?.averageAssignmentScore ?? ''}","${data.summary?.onTimeRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
-        } else {
-          csv.push(''); csv.push('Summary');
-          csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
-          csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
-        }
-        csv.push(''); csv.push('Students');
-        if (mode === 'assignment') {
+          csv.push(''); csv.push('Students');
           csv.push('Student,ID,Avg Assignment Score,Assignments Submitted,On-time %,Modules Completed,Status');
           (data.progress || []).forEach(r => {
             csv.push(`"${r.name}","${r.studentId}","${r.avgAssignmentScore}","${r.assignmentsSubmitted}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
           });
         } else {
+          csv.push(''); csv.push('Summary');
+          csv.push('Total Quizzes,Average Quiz Score,Pass Rate,Modules Completed');
+          csv.push(`"${data.summary?.totalQuizzes ?? ''}","${data.summary?.averageQuizScore ?? ''}","${data.summary?.passRate ?? ''}","${data.summary?.modulesCompleted ?? ''}"`);
+          csv.push(''); csv.push('Students');
           csv.push('Student,ID,Avg Quiz Score,Quizzes Taken,On-time %,Modules Completed,Status');
           (data.progress || []).forEach(r => {
             csv.push(`"${r.name}","${r.studentId}","${r.avgQuizScore}","${r.quizzesTaken}","${r.onTimePct}","${r.modulesCompleted}","${r.status}"`);
@@ -732,7 +846,7 @@
         const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${base}_${classId || 'all'}.csv`;
+        a.download = `${base}_${classId === ALL ? 'all' : classId}.csv`;
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(a.href);
@@ -742,84 +856,30 @@
         showAppAlert('CSV export failed.');
       }
     }
-    async function downloadPdf() {
-      try {
-        if (typeof window.jspdf === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
-          });
-        }
-        if (typeof window.jspdf?.jsPDF === 'undefined') { showAppAlert('Failed to load jsPDF.'); return; }
-        if (typeof window.jspdf?.autoTable === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
-          });
-        }
-        const classId = classSelectEl.value || '';
-        const mode = viewSelectEl.value;
-        const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
-        let data;
-        if (mode === 'assignment') {
-          data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
-        } else {
-          data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${classId ? `&classId=${classId}` : ''}`);
-        }
-        const doc = new window.jspdf.jsPDF();
-        doc.setFont('times', 'bold'); doc.setFontSize(18);
-        doc.text('Class Analytics Report', 105, 20, { align: 'center' });
-        doc.setFontSize(12); doc.setFont('times', 'normal');
-        doc.text(`Class: ${classSelectEl.options[classSelectEl.selectedIndex].text}`, 20, 32);
-        doc.text(`View: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`, 20, 40);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
-        if (mode === 'assignment') {
-          doc.autoTable({
-            startY: 55,
-            head: [['Total Assignments', 'Average Assignment Score', 'On-time Rate', 'Modules Completed']],
-            body: [[data.summary?.totalAssignments ?? '', data.summary?.averageAssignmentScore ?? '', data.summary?.onTimeRate ?? '', data.summary?.modulesCompleted ?? '']],
-            theme: 'grid', styles: { font: 'times', fontSize: 11, halign: 'center' }, headStyles: { fillColor: [255, 178, 0], textColor: 0 },
-          });
-        } else {
-          doc.autoTable({
-            startY: 55,
-            head: [['Total Quizzes', 'Average Quiz Score', 'Pass Rate', 'Modules Completed']],
-            body: [[data.summary?.totalQuizzes ?? '', data.summary?.averageQuizScore ?? '', data.summary?.passRate ?? '', data.summary?.modulesCompleted ?? '']],
-            theme: 'grid', styles: { font: 'times', fontSize: 11, halign: 'center' }, headStyles: { fillColor: [255, 178, 0], textColor: 0 },
-          });
-        }
-        let y = doc.lastAutoTable.finalY + 8;
-        doc.setFont('times', 'bold'); doc.text('Students', 20, y); doc.setFont('times', 'normal'); y += 2;
-        if (mode === 'assignment') {
-          doc.autoTable({
-            startY: y,
-            head: [['Student', 'ID', 'Avg Assignment Score', 'Assignments Submitted', 'On-time %', 'Modules Completed', 'Status']],
-            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgAssignmentScore, r.assignmentsSubmitted, r.onTimePct, r.modulesCompleted, r.status]),
-            theme: 'grid', styles: { font: 'times', fontSize: 10 }, headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-          });
-        } else {
-          doc.autoTable({
-            startY: y,
-            head: [['Student', 'ID', 'Avg Quiz Score', 'Quizzes Taken', 'On-time %', 'Modules Completed', 'Status']],
-            body: (data.progress || []).map(r => [r.name, r.studentId, r.avgQuizScore, r.quizzesTaken, r.onTimePct, r.modulesCompleted, r.status]),
-            theme: 'grid', styles: { font: 'times', fontSize: 10 }, headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-          });
-        }
-        doc.save(`${base}_${classId || 'all'}.pdf`);
-      } catch (e) {
-        console.error(e);
-        showAppAlert('PDF download failed.');
-      }
-    }
 
-    // Events
+    // ===== EVENTS =====
     document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv().catch(alert));
-    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf().catch(alert));
+    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadAllPdf?.().catch?.(alert));
     document.getElementById('exportAllCsvBtn').addEventListener('click', () => exportAllCsv().catch(alert));
     document.getElementById('downloadAllPdfBtn').addEventListener('click', () => downloadAllPdf().catch(alert));
-    classSelectEl.addEventListener('change', () => loadAnalyticsView().catch(alert));
+
+    // Course → populate classes
+    courseSelectEl.addEventListener('change', () => {
+      const courseId = courseSelectEl.value;
+      fillClassOptionsForCourse(courseId);
+      // default class to ALL whenever course changes
+      classSelectEl.value = ALL;
+      classHintEl.style.display = 'none';
+      updateMetaPills();
+      loadAnalyticsView().catch(console.error);
+    });
+
+    // Class → load analytics
+    classSelectEl.addEventListener('change', () => {
+      updateMetaPills();
+      loadAnalyticsView().catch(alert);
+    });
+
     viewSelectEl.addEventListener('change', () => { setSortOptionsForMode(viewSelectEl.value); loadAnalyticsView().catch(alert); });
     refreshBtn.addEventListener('click', () => loadAnalyticsView().catch(console.error));
     sortByEl.addEventListener('change', (e) => {
@@ -837,8 +897,52 @@
     });
 
     // Init
-    (async () => { await loadClasses(); setSortOptionsForMode('quiz'); await loadAnalyticsView(); })();
+    (async () => {
+      await loadClasses();
+      await loadCourses();
+      fillCourseOptions();
+      // Default to "All Courses" + "All Classes" unless URL preselects are present
+      let appliedCourse = false;
+
+      if (preselectedCourse) {
+        let found = ALL_COURSES.find(c => c.id === preselectedCourse)
+                || ALL_COURSES.find(c => (c.title || '').trim() === preselectedCourse.trim());
+        if (found) {
+          courseSelectEl.value = found.id;
+          courseHintEl.style.display = 'block';
+          appliedCourse = true;
+          fillClassOptionsForCourse(found.id);
+        }
+      }
+      if (!appliedCourse && preselectedClassId) {
+        const ownerCourse = ALL_COURSES.find(c => (c.assignedClasses || []).includes(preselectedClassId));
+        if (ownerCourse) {
+          courseSelectEl.value = ownerCourse.id;
+          fillClassOptionsForCourse(ownerCourse.id);
+        }
+      }
+      // If nothing preselected, set ALL/ALL
+      if (!courseSelectEl.value) {
+        courseSelectEl.value = ALL;
+        fillClassOptionsForCourse(ALL);
+      }
+
+      if (preselectedClassId) {
+        const hasIt = Array.from(classSelectEl.options).some(o => o.value === preselectedClassId);
+        if (hasIt) {
+          classSelectEl.value = preselectedClassId;
+          classHintEl.style.display = 'block';
+        } else {
+          classSelectEl.value = ALL;
+        }
+      } else if (!classSelectEl.value) {
+        classSelectEl.value = ALL;
+      }
+
+      setSortOptionsForMode('quiz');
+      updateMetaPills();
+      await loadAnalyticsView();
+    })();
   </script>
 </body>
-
 </html>

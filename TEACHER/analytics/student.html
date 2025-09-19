@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,9 +12,7 @@
 
   <!-- Global & Page CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
-  
 </head>
-
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -26,7 +23,6 @@
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -44,7 +40,15 @@
       <section class="content px-4">
         <div class="d-flex align-items-center justify-content-between mt-3 mb-3">
           <h1 class="page-title">Student Analytics</h1>
-          <div class="d-flex gap-2">
+          <div class="d-flex flex-wrap align-items-end gap-2">
+            <!-- Course filter -->
+            <div class="me-2" style="min-width:260px">
+              <label for="courseFilter" class="form-label mb-1">Course</label>
+              <select id="courseFilter" class="form-select form-select-sm" disabled>
+                <option value="">Loading courses…</option>
+              </select>
+            </div>
+
             <a href="./analytics.html" class="btn btn-outline-secondary">
               <i class="fa fa-arrow-left me-1"></i> Back to Analytics
             </a>
@@ -93,23 +97,16 @@
           <div class="col-md-6">
             <div class="card p-3">
               <h5 class="mb-2">Quizzes (Best % per Quiz)</h5>
-              <div class="chart-wrapper">
-                <canvas id="quizChart"></canvas>
-              </div>
+              <div class="chart-wrapper"><canvas id="quizChart"></canvas></div>
               <div class="table-responsive mt-3">
                 <table class="table table-sm">
                   <thead class="table-light">
                     <tr>
-                      <th>Quiz</th>
-                      <th>Best %</th>
-                      <th>Attempts</th>
-                      <th>Last Attempt</th>
+                      <th>Quiz</th><th>Best %</th><th>Attempts</th><th>Last Attempt</th>
                     </tr>
                   </thead>
                   <tbody id="quizTbody">
-                    <tr>
-                      <td colspan="4" class="text-muted text-center">Loading…</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -120,22 +117,14 @@
           <div class="col-md-6">
             <div class="card p-3">
               <h5 class="mb-2">Assignments</h5>
-              <div class="chart-wrapper">
-                <canvas id="assignChart"></canvas>
-              </div>
+              <div class="chart-wrapper"><canvas id="assignChart"></canvas></div>
               <div class="table-responsive mt-3">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr>
-                      <th>Assignment</th>
-                      <th>Grade</th>
-                      <th>Graded At</th>
-                    </tr>
+                    <tr><th>Assignment</th><th>Grade</th><th>Graded At</th></tr>
                   </thead>
                   <tbody id="assignTbody">
-                    <tr>
-                      <td colspan="3" class="text-muted text-center">Loading…</td>
-                    </tr>
+                    <tr><td colspan="3" class="text-muted text-center">Loading…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -150,17 +139,11 @@
                 <table class="table table-sm">
                   <thead class="table-light">
                     <tr>
-                      <th>Quiz</th>
-                      <th>Question #</th>
-                      <th>Status</th>
-                      <th>Score</th>
-                      <th>Submitted</th>
+                      <th>Quiz</th><th>Question #</th><th>Status</th><th>Score</th><th>Submitted</th>
                     </tr>
                   </thead>
                   <tbody id="essayTbody">
-                    <tr>
-                      <td colspan="5" class="text-muted text-center">Loading…</td>
-                    </tr>
+                    <tr><td colspan="5" class="text-muted text-center">Loading…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -174,17 +157,10 @@
               <div class="table-responsive">
                 <table class="table table-sm">
                   <thead class="table-light">
-                    <tr>
-                      <th>Course</th>
-                      <th>Module</th>
-                      <th>Percent</th>
-                      <th>Completed At</th>
-                    </tr>
+                    <tr><th>Course</th><th>Module</th><th>Percent</th><th>Completed At</th></tr>
                   </thead>
                   <tbody id="modTbody">
-                    <tr>
-                      <td colspan="4" class="text-muted text-center">Loading…</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -212,7 +188,7 @@
     </div>
   </div>
 
-  <!-- Alert helper (closes any open modal before showing alert) -->
+  <!-- Alert helper -->
   <script>
     function showAppAlert(message, { title = "Notice", variant = "primary", closeOtherModals = true } = {}) {
       const header = document.getElementById("appAlertHeader");
@@ -220,7 +196,6 @@
       const bodyEl = document.getElementById("appAlertBody");
       const alertEl = document.getElementById("appAlertModal");
 
-      // Variant styling
       header.className = "modal-header";
       const bg = {
         primary: "bg-primary text-white", success: "bg-success text-white",
@@ -229,11 +204,9 @@
         dark: "bg-dark text-white", light: "bg-light"
       }[variant] || "bg-primary text-white";
       header.classList.add(...bg.split(" "));
-
       titleEl.textContent = title;
       bodyEl.textContent = message;
 
-      // Close any other open modals before showing the alert
       if (closeOtherModals) {
         document.querySelectorAll(".modal.show").forEach(m => {
           if (m.id !== "appAlertModal") {
@@ -242,20 +215,17 @@
           }
         });
       }
-
       bootstrap.Modal.getOrCreateInstance(alertEl).show();
     }
   </script>
+
+  <!-- Robust initials + auth gate -->
   <script>
-    // ---- Auth guard + header initials (robust) ----
     (function initHeaderInitials() {
       try {
         const raw = localStorage.getItem("user");
         const stored = raw ? JSON.parse(raw) : {};
-        // support both shapes: {user:{...}} or {...}
         const u = stored.user || stored;
-
-        // teacher gate
         if (!u?.userId || !u?.isTeacher) {
           window.location.href = "/TEACHER/login/login.html";
           return;
@@ -263,16 +233,12 @@
         window.currentUser = u;
 
         const initials = getInitials(u);
-
         window.addEventListener("DOMContentLoaded", () => {
           const el = document.getElementById("Username");
           if (!el) return;
-          el.textContent = initials;                           // 👈 initials only
-          // Helpful tooltip/aria label with full name/username
+          el.textContent = initials;
           const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-            || u.username
-            || u.email
-            || 'Profile';
+            || u.username || u.email || 'Profile';
           el.setAttribute('title', fullLabel);
           el.setAttribute('aria-label', fullLabel);
         });
@@ -280,27 +246,16 @@
         console.error('initHeaderInitials failed:', e);
         window.location.href = "/TEACHER/login/login.html";
       }
-
-      // --- Helpers ---
       function getInitials(u) {
         const fn = (u.firstName || '').trim();
         const ln = (u.lastName || '').trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-        // fall back to username-like fields
         const nameish = (u.username || u.displayName || u.name || '').trim();
         if (nameish) {
-          // split on space, dot, underscore, or hyphen
-          const parts = nameish
-            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-            .split(/[\s._-]+/)
-            .filter(Boolean);
-
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
           return parts[0][0].toUpperCase();
         }
-
-        // last resort: first letter of email
         const em = (u.email || '').trim();
         return em ? em[0].toUpperCase() : 'U';
       }
@@ -309,186 +264,6 @@
 
   <!-- Sidebar Logic -->
   <script>
-    // --- PDF and CSV Export ---
-    function csvForStudentAnalytics(data) {
-      let csv = [];
-      // Header
-      csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
-      csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
-
-      // Quizzes
-      csv.push('');
-      csv.push('Quizzes');
-      csv.push('Quiz,Best %,Attempts,Last Attempt');
-      (data.quizzes?.perQuiz || []).forEach(r => {
-        csv.push(`"${r.title}","${pct(r.bestPercent)}","${r.attemptsUsed}","${dt(r.lastSubmittedAt)}"`);
-      });
-
-      // Assignments
-      csv.push('');
-      csv.push('Assignments');
-      csv.push('Assignment,Grade,Graded At');
-      (data.assignments?.grades || []).forEach(a => {
-        csv.push(`"${a.assignmentTitle}","${pct(a.grade)}","${dt(a.gradedAt)}"`);
-      });
-
-      // Essays
-      csv.push('');
-      csv.push('Essay Submissions');
-      csv.push('Quiz,Question #,Status,Score,Submitted');
-      (data.essays?.submissions || []).forEach(e => {
-        csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex + 1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
-      });
-
-      // Modules
-      csv.push('');
-      csv.push('Completed Modules');
-      csv.push('Course,Module,Percent,Completed At');
-      (data.modules?.completed || []).forEach(m => {
-        csv.push(`"${m.courseTitle}","${m.moduleTitle}","${pct(m.percent)}","${dt(m.completedAt)}"`);
-      });
-      return csv.join('\r\n');
-    }
-
-    async function exportCsv() {
-      try {
-        const url = `${API_BASE}/api/teacher/student-analytics?teacherId=${encodeURIComponent(teacherId)}&student=${encodeURIComponent(studentKey)}`;
-        const data = await getJson(url);
-        const csv = csvForStudentAnalytics(data);
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `student_analytics_${data.profile?.studentId || 'student'}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      } catch (e) {
-        console.error(e);
-        showAppAlert('CSV export failed.');
-      }
-    }
-
-    async function downloadPdf() {
-      try {
-        // Load jsPDF and autoTable if not present
-        if (typeof window.jspdf === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-        if (typeof window.jspdf?.jsPDF === 'undefined') {
-          showAppAlert('Failed to load jsPDF.');
-          return;
-        }
-        if (typeof window.jspdf?.autoTable === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-        const url = `${API_BASE}/api/teacher/student-analytics?teacherId=${encodeURIComponent(teacherId)}&student=${encodeURIComponent(studentKey)}`;
-        const data = await getJson(url);
-        const doc = new window.jspdf.jsPDF();
-
-        // Formal Header
-        doc.setFont('times', 'bold');
-        doc.setFontSize(18);
-        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('times', 'normal');
-        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
-        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
-
-        // Summary Table
-        doc.autoTable({
-          startY: 55,
-          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
-          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 11, halign: 'center' },
-          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
-        });
-
-        let y = doc.lastAutoTable.finalY + 8;
-
-        // Quizzes Table
-        doc.setFont('times', 'bold');
-        doc.text('Quizzes', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
-          body: (data.quizzes?.perQuiz || []).map(r => [r.title, pct(r.bestPercent), r.attemptsUsed, dt(r.lastSubmittedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Assignments Table
-        doc.setFont('times', 'bold');
-        doc.text('Assignments', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Assignment', 'Grade', 'Graded At']],
-          body: (data.assignments?.grades || []).map(a => [a.assignmentTitle, pct(a.grade), dt(a.gradedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Essays Table
-        doc.setFont('times', 'bold');
-        doc.text('Essay Submissions', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
-          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex + 1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Modules Table
-        doc.setFont('times', 'bold');
-        doc.text('Completed Modules', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Course', 'Module', 'Percent', 'Completed At']],
-          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, pct(m.percent), dt(m.completedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 },
-        });
-
-        // Download
-        doc.save(`student_analytics_${data.profile?.studentId || 'student'}.pdf`);
-      } catch (e) {
-        console.error(e);
-        showAppAlert('PDF download failed.');
-      }
-    }
-
-    document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv());
-    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf());
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(r => r.text())
@@ -512,8 +287,9 @@
     });
   </script>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js + Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Page Scripts -->
   <script>
@@ -551,7 +327,7 @@
       qs.get('userId') ||
       '';
 
-    // Helpers
+    // ---------- utils ----------
     async function getJson(url) {
       const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
       if (!res.ok) {
@@ -560,6 +336,7 @@
       }
       return res.json();
     }
+    async function tryJson(url) { try { return await getJson(url); } catch { return null; } }
 
     const el = (id) => document.getElementById(id);
     const pct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
@@ -570,16 +347,9 @@
       return new Date(ms).toLocaleString();
     }
 
-    // Chart instances (so we can destroy safely)
+    // ---------- charts ----------
     let charts = { quiz: null, assign: null };
-
-    function destroyChart(key) {
-      if (charts[key] && typeof charts[key].destroy === 'function') {
-        charts[key].destroy();
-      }
-      charts[key] = null;
-    }
-
+    function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
     function renderBar(key, canvasId, labels, values, datasetLabel) {
       const ctx = document.getElementById(canvasId);
       destroyChart(key);
@@ -587,79 +357,227 @@
         type: 'bar',
         data: { labels, datasets: [{ label: datasetLabel, data: values }] },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          resizeDelay: 150,
-          animation: { duration: 200 },
-          plugins: { legend: { display: true } },
-          scales: {
-            y: { beginAtZero: true, suggestedMax: 100, ticks: { stepSize: 20 } }
-          }
+          responsive: true, maintainAspectRatio: false, resizeDelay: 150,
+          animation: { duration: 200 }, plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: true, suggestedMax: 100, ticks: { stepSize: 20 } } }
         }
       });
     }
 
-    async function loadStudentAnalytics() {
-      if (!teacherId || !studentKey) {
-        showAppAlert('Missing teacherId or student id in URL.'); return;
+    // ---------- id normalization & cache helpers ----------
+    const normId = v => String(v ?? '').trim();
+
+    // Cache for /quizzes/:id details (to get missing courseId)
+    const QUIZ_DETAIL_CACHE = new Map();
+
+    async function getQuizCourseId(q) {
+      const inline = normId(q.courseId);
+      if (inline) return inline;
+
+      const qid = normId(q.id || q.quizId || q.quizID);
+      if (!qid) return '';
+
+      if (QUIZ_DETAIL_CACHE.has(qid)) return QUIZ_DETAIL_CACHE.get(qid);
+
+      try {
+        const detail = await getJson(`${API_BASE}/quizzes/${encodeURIComponent(qid)}`);
+        const cid = normId(detail?.quiz?.courseId);
+        QUIZ_DETAIL_CACHE.set(qid, cid);
+        return cid;
+      } catch {
+        QUIZ_DETAIL_CACHE.set(qid, '');
+        return '';
+      }
+    }
+
+    // ---------- courses ----------
+    let COURSES = [];
+    let TITLE_TO_ID = {}; // <<< FIX: for title→id fallback in filtering
+    let selectedCourseId = '';
+
+    async function loadCourses() {
+      const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`;
+      const arr = await tryJson(url);
+      const sel = el('courseFilter');
+
+      if (!Array.isArray(arr) || !arr.length) {
+        sel.innerHTML = `<option value="">No courses</option>`;
+        sel.disabled = true;
+        return;
       }
 
-      const url = `${API_BASE}/api/teacher/student-analytics?teacherId=${encodeURIComponent(teacherId)}&student=${encodeURIComponent(studentKey)}`;
-      const data = await getJson(url);
+      // Normalize: some APIs return courseId, some id
+      COURSES = arr
+        .map(c => ({
+          _id: normId(c.id || c.courseId || c.courseID),
+          title: c.title || (c.courseNumber ? `Course ${c.courseNumber}` : 'Untitled Course'),
+          courseNumber: c.courseNumber || 0,
+          archived: !!c.archived
+        }))
+        .filter(c => c._id && !c.archived);
 
-      // Header metrics
-      el('s_name').textContent = data.profile?.name || 'Student';
-      el('s_id').textContent = data.profile?.studentId || '—';
-      el('s_avg_quiz').textContent = pct(data.summary?.averageQuizScore);
-      el('s_avg_asg').textContent = pct(data.summary?.averageAssignmentGrade);
+      // <<< FIX: build title→id lookup
+      TITLE_TO_ID = {};
+      COURSES.forEach(c => { TITLE_TO_ID[c.title.trim().toLowerCase()] = c._id; });
+
+      sel.innerHTML = [
+        `<option value="">All Courses</option>`,
+        ...COURSES
+          .sort((a, b) => (a.courseNumber - b.courseNumber) || a.title.localeCompare(b.title))
+          .map(c => `<option value="${c._id}">${c.courseNumber ? `#${c.courseNumber} — ` : ''}${c.title}</option>`)
+      ].join('');
+      sel.disabled = false;
+
+      // Preselect via query (?courseId= or ?course=)
+      const qsCourse = qs.get('courseId') || qs.get('course');
+      if (qsCourse) {
+        const chosen = COURSES.find(c => c._id === qsCourse) ||
+                       COURSES.find(c => c.title.trim().toLowerCase() === String(qsCourse).trim().toLowerCase());
+        if (chosen) { selectedCourseId = chosen._id; sel.value = chosen._id; }
+      }
+    }
+
+    // ---------- analytics header/base (summary/assignments/essays/modules) ----------
+    async function fetchHeaderAndBase() {
+      const params = new URLSearchParams({ teacherId, student: studentKey });
+      if (selectedCourseId) params.set('courseId', selectedCourseId);
+      return await tryJson(`${API_BASE}/api/teacher/student-analytics?${params.toString()}`);
+    }
+
+    // ---------- fetch quizzes list + per-quiz results (strict course filtering) ----------
+    async function fetchQuizzesEnriched() {
+      const listUrl = `${API_BASE}/quizzes?forStudent=${encodeURIComponent(studentKey)}&includeArchived=false`;
+      const data = await tryJson(listUrl);
+      const allQuizzes = Array.isArray(data?.quizzes) ? data.quizzes : [];
+
+      const enriched = await Promise.all(allQuizzes.map(async q => {
+        const courseId = await getQuizCourseId(q);
+        return { ...q, courseId };
+      }));
+
+      const wanted = normId(selectedCourseId);
+      const quizzes = wanted
+        ? enriched.filter(q => normId(q.courseId) === wanted) // strict match
+        : enriched;
+
+      if (!quizzes.length) return [];
+
+      const rows = await Promise.all(quizzes.map(async q => {
+        const qid = q.id;
+        const title = q.title || qid;
+        let attempts = 0;
+        let bestPercent = null;
+        let lastSubmittedAt = null;
+
+        try {
+          const r = await getJson(`${API_BASE}/api/students/${encodeURIComponent(studentKey)}/quiz-results?quizId=${encodeURIComponent(qid)}`);
+          const arr = Array.isArray(r?.attempts) ? r.attempts : [];
+          attempts = arr.length;
+          if (r?.best && Number.isFinite(Number(r.best.percent))) bestPercent = Number(r.best.percent);
+          if (r?.latest?.submittedAt) lastSubmittedAt = r.latest.submittedAt;
+        } catch {}
+
+        return {
+          quizId: qid,
+          title,
+          courseId: q.courseId,
+          bestPercent,
+          attemptsUsed: attempts,
+          lastSubmittedAt
+        };
+      }));
+
+      return rows;
+    }
+
+    // ---------- shared course filter for NON-QUIZ rows (assignments/essays/modules) ----------
+    // <<< FIX: strict matching; unknown-course rows are excluded when a specific course is selected
+    function courseIdFromAny(x) {
+      return normId(
+        x?.courseId ||
+        x?.courseID ||
+        x?.quizCourseId ||
+        x?.quiz?.courseId ||
+        x?.assignment?.courseId ||
+        (x?.courseTitle && TITLE_TO_ID[x.courseTitle.trim().toLowerCase()]) ||
+        ''
+      );
+    }
+    function filterBySelectedCourse(rows) {
+      const wanted = normId(selectedCourseId);
+      if (!wanted) return rows || [];
+      return (rows || []).filter(r => courseIdFromAny(r) === wanted);
+    }
+
+    // ---------- renderers ----------
+    function renderHeader(base) {
+      if (base?.profile) {
+        el('s_name').textContent = base.profile?.name || 'Student';
+        el('s_id').textContent = base.profile?.studentId || '—';
+      }
+      el('s_avg_quiz').textContent = pct(base?.summary?.averageQuizScore);
+      el('s_avg_asg').textContent = pct(base?.summary?.averageAssignmentGrade);
       el('s_modules').textContent =
-        (data.summary?.modulesCompleted != null && data.summary?.totalModules != null)
-          ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
-          : (data.summary?.modulesCompleted ?? '—');
+        (base?.summary?.modulesCompleted != null && base?.summary?.totalModules != null)
+          ? `${base.summary.modulesCompleted}/${base.summary.totalModules}`
+          : (base?.summary?.modulesCompleted ?? '—');
+    }
 
-      // Quizzes table + chart
-      const qrows = data.quizzes?.perQuiz || [];
-      if (!qrows.length) {
+    function renderQuizzes(rows) {
+      if (!rows.length) {
         el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
         destroyChart('quiz');
-      } else {
-        el('quizTbody').innerHTML = qrows.map(r => `
-          <tr>
-            <td>${r.title || r.quizId}</td>
-            <td>${pct(r.bestPercent)}</td>
-            <td>${r.attemptsUsed ?? 0}</td>
-            <td>${dt(r.lastSubmittedAt)}</td>
-          </tr>
-        `).join('');
-        renderBar('quiz', 'quizChart',
-          qrows.map(r => r.title || r.quizId),
-          qrows.map(r => Number(r.bestPercent) || 0),
-          'Best %'
-        );
+        return;
       }
+      el('quizTbody').innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.title || r.quizId}</td>
+          <td>${pct(r.bestPercent)}</td>
+          <td>${r.attemptsUsed ?? 0}</td>
+          <td>${dt(r.lastSubmittedAt)}</td>
+        </tr>
+      `).join('');
 
-      // Assignments table + chart
-      const arows = data.assignments?.grades || [];
+      renderBar(
+        'quiz',
+        'quizChart',
+        rows.map(r => r.title || r.quizId),
+        rows.map(r => Number(r.bestPercent) || 0),
+        'Best %'
+      );
+    }
+
+    function renderAssignments(base) {
+      // <<< FIX: filter strictly by course
+      const all = base?.assignments?.grades || [];
+      const arows = filterBySelectedCourse(all);
+
       if (!arows.length) {
         el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
         destroyChart('assign');
-      } else {
-        el('assignTbody').innerHTML = arows.map(a => `
-          <tr>
-            <td>${a.assignmentTitle || a.assignmentId}</td>
-            <td>${pct(a.grade)}</td>
-            <td>${dt(a.gradedAt)}</td>
-          </tr>
-        `).join('');
-        renderBar('assign', 'assignChart',
-          arows.map(a => a.assignmentTitle || a.assignmentId),
-          arows.map(a => Number(a.grade) || 0),
-          'Grade %'
-        );
+        return;
       }
+      el('assignTbody').innerHTML = arows.map(a => `
+        <tr>
+          <td>${a.assignmentTitle || a.assignmentId}</td>
+          <td>${pct(a.grade)}</td>
+          <td>${dt(a.gradedAt)}</td>
+        </tr>
+      `).join('');
+      renderBar(
+        'assign',
+        'assignChart',
+        arows.map(a => a.assignmentTitle || a.assignmentId),
+        arows.map(a => Number(a.grade) || 0),
+        'Grade %'
+      );
+    }
 
-      // Essays
-      const erows = data.essays?.submissions || [];
+    function renderEssays(base) {
+      // <<< FIX: filter strictly by course
+      const all = base?.essays?.submissions || [];
+      const erows = filterBySelectedCourse(all);
+
       el('essayTbody').innerHTML = erows.length
         ? erows.map(e => `
           <tr>
@@ -671,9 +589,13 @@
           </tr>
         `).join('')
         : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
+    }
 
-      // Modules
-      const mrows = data.modules?.completed || [];
+    function renderModules(base) {
+      // <<< FIX: filter strictly by course
+      const all = base?.modules?.completed || [];
+      const mrows = filterBySelectedCourse(all);
+
       el('modTbody').innerHTML = mrows.length
         ? mrows.map(m => `
           <tr>
@@ -686,23 +608,176 @@
         : '<tr><td colspan="4" class="text-center text-muted">No modules</td></tr>';
     }
 
-    // Initial load
-    loadStudentAnalytics().catch(err => {
-      console.error(err);
-      showAppAlert('Failed to load student analytics.');
+    // ---------- load pipeline ----------
+    async function loadAll() {
+      if (!teacherId || !studentKey) { showAppAlert('Missing teacherId or student id in URL.'); return; }
+
+      // header + non-quiz sections
+      const base = await fetchHeaderAndBase();
+      renderHeader(base || {});
+      renderAssignments(base || {});
+      renderEssays(base || {});
+      renderModules(base || {});
+
+      // quizzes (from /quizzes + /quiz-results) with course filter
+      el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>';
+      const quizRows = await fetchQuizzesEnriched();
+      renderQuizzes(quizRows);
+    }
+
+    // ---------- CSV ----------
+    async function exportCsv() {
+      try {
+        const base = await fetchHeaderAndBase();
+        const quizRows = await fetchQuizzesEnriched();
+
+        // <<< FIX: filter non-quiz sections before exporting
+        const arows = filterBySelectedCourse(base?.assignments?.grades || []);
+        const erows = filterBySelectedCourse(base?.essays?.submissions || []);
+        const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+
+        let csv = [];
+        csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
+        csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
+
+        csv.push('');
+        csv.push('Quizzes');
+        csv.push('Quiz,Best %,Attempts,Last Attempt');
+        (quizRows || []).forEach(r => {
+          csv.push(`"${r.title || r.quizId}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
+        });
+
+        csv.push('');
+        csv.push('Assignments');
+        csv.push('Assignment,Grade,Graded At');
+        arows.forEach(a => csv.push(`"${a.assignmentTitle || a.assignmentId}","${pct(a.grade)}","${dt(a.gradedAt)}"`));
+
+        csv.push('');
+        csv.push('Essay Submissions');
+        csv.push('Quiz,Question #,Status,Score,Submitted');
+        erows.forEach(e => csv.push(`"${e.quizTitle || e.quizId}","${e.questionIndex != null ? (e.questionIndex + 1) : ''}","${(e.status || 'pending').toUpperCase()}","${e.score != null ? `${e.score}/${e.maxScore ?? 10}` : ''}","${dt(e.createdAt)}"`));
+
+        csv.push('');
+        csv.push('Completed Modules');
+        csv.push('Course,Module,Percent,Completed At');
+        mrows.forEach(m => csv.push(`"${m.courseTitle || m.courseId || ''}","${m.moduleTitle || m.moduleId || ''}","${pct(m.percent)}","${dt(m.completedAt)}"`));
+
+        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.csv`;
+        document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove();
+      } catch (e) { console.error(e); showAppAlert('CSV export failed.'); }
+    }
+
+    // ---------- PDF ----------
+    async function downloadPdf() {
+      try {
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+          });
+        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') { showAppAlert('Failed to load jsPDF.'); return; }
+        if (typeof window.jspdf?.autoTable === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+          });
+        }
+
+        const base = await fetchHeaderAndBase();
+        const quizRows = await fetchQuizzesEnriched();
+
+        const arows = filterBySelectedCourse(base?.assignments?.grades || []);
+        const erows = filterBySelectedCourse(base?.essays?.submissions || []);
+        const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+
+        const doc = new window.jspdf.jsPDF();
+        doc.setFont('times', 'bold'); doc.setFontSize(18);
+        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
+        doc.setFontSize(12); doc.setFont('times', 'normal');
+        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
+        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
+        if (selectedCourseId) doc.text(`Course: ${selectedCourseId}`, 20, 48);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 56);
+
+        doc.autoTable({
+          startY: 63,
+          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
+          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 11, halign: 'center' },
+          headStyles: { fillColor: [255, 178, 0], textColor: 0 }
+        });
+        let y = doc.lastAutoTable.finalY + 8;
+
+        doc.setFont('times', 'bold'); doc.text('Quizzes', 20, y); y += 2; doc.setFont('times', 'normal');
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
+          body: (quizRows || []).map(r => [r.title || r.quizId, pct(r.bestPercent), r.attemptsUsed ?? 0, dt(r.lastSubmittedAt)]),
+          theme: 'grid', styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        doc.setFont('times', 'bold'); doc.text('Assignments', 20, y); y += 2; doc.setFont('times', 'normal');
+        doc.autoTable({
+          startY: y,
+          head: [['Assignment', 'Grade', 'Graded At']],
+          body: arows.map(a => [a.assignmentTitle || a.assignmentId, pct(a.grade), dt(a.gradedAt)]),
+          theme: 'grid', styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        doc.setFont('times', 'bold'); doc.text('Essay Submissions', 20, y); y += 2; doc.setFont('times', 'normal');
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
+          body: erows.map(e => [e.quizTitle || e.quizId, e.questionIndex != null ? e.questionIndex + 1 : '', (e.status || 'pending').toUpperCase(), e.score != null ? `${e.score}/${e.maxScore ?? 10}` : '', dt(e.createdAt)]),
+          theme: 'grid', styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        doc.setFont('times', 'bold'); doc.text('Completed Modules', 20, y); y += 2; doc.setFont('times', 'normal');
+        doc.autoTable({
+          startY: y,
+          head: [['Course', 'Module', 'Percent', 'Completed At']],
+          body: mrows.map(m => [m.courseTitle || m.courseId || '', m.moduleTitle || m.moduleId || '', pct(m.percent), dt(m.completedAt)]),
+          theme: 'grid', styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+        });
+
+        doc.save(`student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.pdf`);
+      } catch (e) { console.error(e); showAppAlert('PDF download failed.'); }
+    }
+
+    // ---------- events ----------
+    document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv());
+    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf());
+    document.getElementById('courseFilter').addEventListener('change', async (e) => {
+      selectedCourseId = (e.target.value || '').trim();
+      try { await loadAll(); } catch (err) {
+        console.error(err);
+        showAppAlert('Failed to load student analytics for selected course.');
+      }
     });
 
-    // Make sure charts don’t multiply on nav/resize
-    window.addEventListener('beforeunload', () => {
-      destroyChart('quiz');
-      destroyChart('assign');
-    });
-    function logoutUser() {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/TEACHER/login/login.html";
-    }
+    // ---------- boot ----------
+    (async () => {
+      try { await loadCourses(); } catch (e) { console.error('loadCourses failed:', e); }
+      await loadAll().catch(err => { console.error(err); showAppAlert('Failed to load student analytics.'); });
+    })();
+
+    // ---------- cleanup ----------
+    window.addEventListener('beforeunload', () => { destroyChart('quiz'); destroyChart('assign'); });
+    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
   </script>
 </body>
-
 </html>
