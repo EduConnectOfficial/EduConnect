@@ -32,12 +32,12 @@ function toTimestampOrNull(v) {
   return null;
 }
 
-// Clamp points to 0..100, or return null when empty/invalid
-function clampPointsMaybe(v) {
+// Parse a positive finite number; return null when empty/invalid
+function parsePositiveNumberOrNull(v) {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
-  if (Number.isNaN(n)) return null;
-  return Math.max(0, Math.min(100, n));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
 }
 
 /** Gather assigned classes from body (supports multiple shapes) */
@@ -213,7 +213,7 @@ async function ensurePreviewableUrls(attArr = []) {
 }
 
 /* ===========================================================
-   CREATE ASSIGNMENT (now supports assigned classes)
+   CREATE ASSIGNMENT (now supports assigned classes and maxPoints)
 =========================================================== */
 const memAssignUpload = uploadMemory.fields([
   { name: 'files',   maxCount: 30 },
@@ -226,7 +226,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const {
       title, content, courseId, courseTitle, moduleId,
-      publishAt, dueAt, points, teacherId
+      publishAt, dueAt, points, maxPoints, teacherId
     } = req.body;
 
     if (!title || !content || !courseId || !teacherId) {
@@ -267,8 +267,8 @@ router.post(
       courseTitle: courseTitle ? String(courseTitle).trim() : undefined,
       moduleId: moduleId ? String(moduleId).trim() : null,
       moduleNumber,
-      // CLAMPED points 0..100 (or null)
-      points: clampPointsMaybe(points),
+      // Teacher-defined maximum points (back-compat: `points` maps to maxPoints)
+      maxPoints: parsePositiveNumberOrNull(maxPoints ?? points),
       publishAt: toTimestampOrNull(publishAt) || admin.firestore.Timestamp.now(),
       dueAt: toTimestampOrNull(dueAt) || null,
       createdBy: String(teacherId).trim(),
@@ -277,7 +277,6 @@ router.post(
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
       archived: false,
-      // NEW:
       classIds: classIds.length ? classIds : []
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
@@ -380,7 +379,7 @@ router.get('/assignments/:id', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   UPDATE (PATCH) ASSIGNMENT  (now supports changing classIds)
+   UPDATE (PATCH) ASSIGNMENT  (now supports changing classIds and maxPoints)
 =========================================================== */
 router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -389,9 +388,12 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   if (req.body.title !== undefined)   updates.title   = String(req.body.title).trim();
   if (req.body.content !== undefined) updates.content = String(req.body.content).trim();
 
-  // CLAMP points to 0..100 (or null)
-  if (req.body.points !== undefined) {
-    updates.points = clampPointsMaybe(req.body.points);
+  if (req.body.maxPoints !== undefined) {
+    updates.maxPoints = parsePositiveNumberOrNull(req.body.maxPoints);
+  }
+  // Back-compat: `points` acts as maxPoints if provided
+  if (req.body.points !== undefined && updates.maxPoints === undefined) {
+    updates.maxPoints = parsePositiveNumberOrNull(req.body.points);
   }
 
   if (req.body.archived !== undefined) updates.archived = !!req.body.archived;
@@ -468,19 +470,15 @@ router.delete('/assignments/:id', asyncHandler(async (req, res) => {
 
   // 2) Best-effort delete of all GCS objects tied to this assignment
   try {
-    // Primary prefixes where we store teacher files/rubrics and student submissions
     const prefixes = [
       `assignments/${id}/`,                // teacher files & rubric
       `assignment_submissions/${id}/`,     // all student submissions for this assignment
     ];
 
-    // Bulk delete by prefix (fast path)
     await Promise.all(prefixes.map(prefix =>
       bucket.deleteFiles({ prefix }).catch(() => {})
     ));
 
-    // Defensive: if any attachment had a storagePath outside those prefixes, delete it too.
-    // (e.g. if structure changed historically)
     await Promise.all(
       attachments
         .map(a => a && a.storagePath)
@@ -488,7 +486,6 @@ router.delete('/assignments/:id', asyncHandler(async (req, res) => {
         .map(storagePath => bucket.file(storagePath).delete().catch(() => {}))
     );
   } catch (e) {
-    // Don’t fail the request if storage cleanup partially fails; just log it.
     console.error('Storage cleanup error for assignment', id, e);
   }
 
@@ -549,7 +546,7 @@ router.get('/courses/:courseId/assignments', asyncHandler(async (req, res) => {
    (now hides assignments targeted at other classes)
 =========================================================== */
 router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
-  const { userId } = req.params();
+  const { userId } = req.params; // FIXED: no parentheses
 
   const enrollSnap = await firestore.collection('users').doc(userId).collection('enrollments').get();
   const classIds = enrollSnap.docs.map(d => d.id);
@@ -588,7 +585,7 @@ router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
 
   let filtered = results.filter(a => a.archived !== true);
 
-  // NEW: respect assignment.classIds targeting (empty/absent = visible to course)
+  // Respect assignment.classIds targeting (empty/absent = visible to course)
   filtered = filtered.filter(a => {
     const arr = Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : [];
     if (!arr.length) return true; // no targeting -> show
@@ -698,7 +695,7 @@ router.post(
 );
 
 /* ===========================================================
-   TEACHER: GRADE SUBMISSION
+   TEACHER: GRADE SUBMISSION (stores raw score and percent)
 =========================================================== */
 router.patch('/assignments/:id/submissions/:studentId', asyncHandler(async (req, res) => {
   const { id: assignmentId, studentId } = req.params;
@@ -718,6 +715,13 @@ router.patch('/assignments/:id/submissions/:studentId', asyncHandler(async (req,
   const a = aSnap.data() || {};
   const s = sSnap.exists ? (sSnap.data() || {}) : {};
 
+  // Compute percent safely
+  const maxPoints = Number.isFinite(a.maxPoints) ? Number(a.maxPoints) : null;
+  const rawScore = (grade !== undefined) ? Number(grade) : (typeof s.grade === 'number' ? s.grade : null);
+  const percent = (maxPoints && Number.isFinite(rawScore))
+    ? Math.max(0, (rawScore / maxPoints) * 100)
+    : null;
+
   const userRef = await getUserRefByAnyId(studentId);
   if (userRef) {
     const gradeDocRef = userRef.collection('assignmentGrades').doc(assignmentId);
@@ -726,23 +730,29 @@ router.patch('/assignments/:id/submissions/:studentId', asyncHandler(async (req,
       courseId: a.courseId || null,
       moduleId: a.moduleId || null,
       assignmentTitle: a.title || 'Untitled',
-      points: a.points ?? null,
+      maxPoints: maxPoints ?? null,
       dueAt: a.dueAt ?? null,
       submittedAt: s.submittedAt ?? null,
       gradedAt: admin.firestore.FieldValue.serverTimestamp(),
-      grade: grade !== undefined ? Number(grade) : (typeof s.grade === 'number' ? s.grade : null),
+      grade: rawScore, // raw score
+      percent: (percent !== null) ? Math.round(percent * 100) / 100 : null,
       feedback: feedback !== undefined ? String(feedback) : (s.feedback ?? null),
     }, { merge: true });
 
+    // Recompute user aggregates (percent-based for comparability)
     const gSnap = await userRef.collection('assignmentGrades').get();
-    let sum = 0, count = 0;
-    gSnap.forEach(d => { const g = d.data()?.grade; if (typeof g === 'number') { sum += g; count += 1; } });
+    let psum = 0, pcount = 0;
+    gSnap.forEach(d => {
+      const p = d.data()?.percent;
+      if (typeof p === 'number' && Number.isFinite(p)) { psum += p; pcount += 1; }
+    });
     await userRef.set({
-      gradedAssignmentsCount: count,
-      averageAssignmentGrade: count ? Math.round(sum / count) : 0,
+      gradedAssignmentsCount: pcount,
+      averageAssignmentPercent: pcount ? Math.round((psum / pcount) * 100) / 100 : 0,
       lastAssignmentGrade: {
         assignmentId,
-        grade: grade !== undefined ? Number(grade) : (typeof s.grade === 'number' ? s.grade : null),
+        grade: rawScore,
+        percent: (percent !== null) ? Math.round(percent * 100) / 100 : null,
         at: admin.firestore.FieldValue.serverTimestamp(),
       },
     }, { merge: true });
@@ -773,7 +783,7 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
 
   const a = aDoc.data() || {};
   const assigned = Array.isArray(a.classIds) ? a.classIds : [];
-  const singleAssignedClassId = assigned.length === 1 ? a.classIds[0] : null;
+  const singleAssignedClassId = assigned.length === 1 ? assigned[0] : null; // FIXED
 
   let courseAssigned = [];
   if (a.courseId) {
@@ -951,6 +961,7 @@ router.delete('/assignments/:id/submissions/:studentId', asyncHandler(async (req
   try {
     const userRef = await getUserRefByAnyId(studentId);
     if (userRef) await userRef.collection('assignmentGrades').doc(assignmentId).delete();
+    // (Optional) You can recompute averages here similar to grading route.
   } catch {}
 
   return res.json({ success:true, message:'Submission deleted.' });
