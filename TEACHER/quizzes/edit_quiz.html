@@ -10,9 +10,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="edit_quiz.css" />
-
-   <!-- Assign-to-Classes lightweight styles -->
-
 </head>
 
 <body>
@@ -22,8 +19,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -43,13 +39,11 @@
           <div class="d-flex flex-wrap gap-2">
             <button id="btnBack" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</button>
             <button id="btnArchive" class="btn btn-outline-warning"><i class="bi bi-archive"></i> Archive</button>
-            <button id="btnUnarchive" class="btn btn-outline-success d-none"><i
-                class="bi bi-arrow-counterclockwise"></i> Unarchive</button>
+            <button id="btnUnarchive" class="btn btn-outline-success d-none"><i class="bi bi-arrow-counterclockwise"></i> Unarchive</button>
             <button id="btnDelete" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
             <button id="btnSave" class="btn btn-amber">
               <span class="save-text">Save Changes</span>
-              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status"
-                aria-hidden="true"></span>
+              <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
             </button>
           </div>
         </div>
@@ -71,8 +65,7 @@
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Attempts Allowed</label>
-                    <input type="number" id="attemptsInput" min="0" step="1" class="form-control"
-                      placeholder="0 = unlimited" />
+                    <input type="number" id="attemptsInput" min="0" step="1" class="form-control" placeholder="0 = unlimited" />
                   </div>
                   <div class="col-12">
                     <label class="form-label">Description</label>
@@ -86,7 +79,7 @@
                     <input type="datetime-local" id="dueInput" class="form-control" />
                   </div>
 
-                  <!-- NEW: Publish At -->
+                  <!-- Publish At -->
                   <div class="col-md-6">
                     <label class="form-label">Publish At <span class="text-muted">(optional)</span></label>
                     <div class="input-group">
@@ -98,12 +91,11 @@
                       If blank, the quiz remains hidden until you set a time (Draft). If set in the future, it’s Scheduled; if in the past/now, it’s Published.
                     </div>
                   </div>
-                  <!-- /NEW -->
                 </div>
               </div>
             </div>
 
-            <!-- Assign to Classes (NEW, matches assignment editor) -->
+            <!-- Assign to Classes -->
             <div class="ui-card mb-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
@@ -134,13 +126,11 @@
                     <div class="row g-2 mt-1">
                       <div class="col-6">
                         <label class="form-label">Minutes</label>
-                        <input type="number" id="timerMinutes" class="form-control" min="1" step="1" placeholder="30"
-                          disabled>
+                        <input type="number" id="timerMinutes" class="form-control" min="1" step="1" placeholder="30" disabled>
                       </div>
                       <div class="col-6">
                         <label class="form-label">Grace (sec)</label>
-                        <input type="number" id="graceSeconds" class="form-control" min="0" step="1" placeholder="10"
-                          disabled>
+                        <input type="number" id="graceSeconds" class="form-control" min="0" step="1" placeholder="10" disabled>
                       </div>
                     </div>
                   </div>
@@ -183,14 +173,10 @@
                 <div class="mb-3">
                   <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
                   <div class="d-flex flex-wrap gap-2 mt-2">
-                    <button type="button" id="downloadCsvTplMcq" class="btn btn-outline-secondary btn-sm"><i
-                        class="bi bi-download me-1"></i> CSV: Multiple Choice</button>
-                    <button type="button" id="downloadCsvTplTf" class="btn btn-outline-secondary btn-sm"><i
-                        class="bi bi-download me-1"></i> CSV: True / False</button>
-                    <button type="button" id="downloadCsvTplEssay" class="btn btn-outline-secondary btn-sm"><i
-                        class="bi bi-download me-1"></i> CSV: Essay</button>
-                    <button type="button" id="downloadCsvTplAll" class="btn btn-outline-secondary btn-sm"><i
-                        class="bi bi-download me-1"></i> CSV: All Types</button>
+                    <button type="button" id="downloadCsvTplMcq" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i> CSV: Multiple Choice</button>
+                    <button type="button" id="downloadCsvTplTf" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i> CSV: True / False</button>
+                    <button type="button" id="downloadCsvTplEssay" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i> CSV: Essay</button>
+                    <button type="button" id="downloadCsvTplAll" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i> CSV: All Types</button>
                   </div>
                   <div class="small-muted mt-2">
                     Columns (case-insensitive):
@@ -258,7 +244,6 @@
                 <h2 class="ui-card-title"><i class="bi bi-clipboard-check"></i> Rubric</h2>
               </div>
               <div class="p-3">
-                <!-- picker (quiet) -->
                 <div class="mb-2">
                   <label class="form-label mb-1">Upload rubric (single file)</label>
                   <input id="rubricInput" type="file" class="form-control"
@@ -267,14 +252,12 @@
                     replace, or remove before saving.</div>
                 </div>
 
-                <!-- single row -->
                 <ul id="rubricList" class="list-unstyled m-0"></ul>
 
                 <div class="form-text mt-2">
                   <strong>Staging:</strong> items marked with
                   <span class="badge-soft badge-stage">Staged</span> will be added/replaced on Save.
-                  Items marked with <span class="badge-soft badge-removal">Pending removal</span> will be removed on
-                  Save.
+                  Items marked with <span class="badge-soft badge-removal">Pending removal</span> will be removed on Save.
                 </div>
               </div>
             </div>
@@ -292,8 +275,7 @@
                 <div class="mb-2"><span class="muted">Module:</span> <span id="metaModule">—</span></div>
                 <div class="mb-2"><span class="muted">Created:</span> <span id="metaCreated">—</span></div>
                 <div class="mb-2"><span class="muted">Last Updated:</span> <span id="metaUpdated">—</span></div>
-                <div class="mb-2"><span class="muted">Status:</span> <span id="metaStatus"
-                    class="badge text-bg-success">Active</span></div>
+                <div class="mb-2"><span class="muted">Status:</span> <span id="metaStatus" class="badge text-bg-success">Active</span></div>
               </div>
             </div>
 
@@ -317,8 +299,7 @@
   </div>
 
   <!-- File Preview Modal -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
-    aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -601,7 +582,6 @@
     const attemptsInput = document.getElementById('attemptsInput');
     const dueInput = document.getElementById('dueInput');
 
-    // NEW: Publish At refs
     const publishInput = document.getElementById('publishInput');
     const publishNowBtn = document.getElementById('publishNowBtn');
     const publishClearBtn = document.getElementById('publishClearBtn');
@@ -642,12 +622,12 @@
     // URL params
     const url = new URL(location.href);
     const quizId = url.searchParams.get('quizId') || '';
-    const courseId = url.searchParams.get('courseId') || '';
+    const courseIdParam = url.searchParams.get('courseId') || '';
 
     // Back button
     btnBack.addEventListener('click', () => {
       if (dirtyGuard()) return;
-      const params = new URLSearchParams(); if (courseId) params.set('courseId', courseId);
+      const params = new URLSearchParams(); if (courseIdParam) params.set('courseId', courseIdParam);
       window.location.href = `/TEACHER/quizzes/quiz_list.html${params.toString() ? `?${params}` : ''}`;
     });
 
@@ -1213,17 +1193,32 @@
     document.getElementById('addQuestionBtn')?.addEventListener('click', () => addQuestion('mcq', {}));
 
     /* =============================
-       ASSIGN-TO-CLASSES
+       ASSIGN-TO-CLASSES  (FILTERED BY COURSE)
     ============================= */
     let selectedClassIds = new Set();   // working selection
-    let initialAssigned = new Set();   // snapshot for dirty checking
+    let initialAssigned = new Set();    // snapshot for dirty checking
+
+    // --- Debug toggle (set to true to log payloads) ---
+    const DEBUG_CLASSES = false;
+    const dlog = (...a) => { if (DEBUG_CLASSES) console.log('[classes]', ...a); };
+
+    async function fetchCourseById(courseId) {
+      try {
+        const r = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers:{Accept:'application/json'} });
+        const js = await r.json().catch(()=>null);
+        return js?.course || js || null;
+      } catch { return null; }
+    }
 
     function renderClassCards(classes) {
       if (!assignedContainer) return;
       assignedContainer.innerHTML = "";
       if (!classes.length) {
         if (assignedStatus) assignedStatus.style.display = "none";
-        if (assignedEmpty) assignedEmpty.style.display = "block";
+        if (assignedEmpty) {
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No classes enrolled in this course.";
+        }
         return;
       }
       classes.forEach(c => {
@@ -1243,7 +1238,7 @@
         chk.type = "checkbox";
         chk.value = id;
         chk.className = "d-none";
-        if (selectedClassIds.has(id)) { chk.checked = true; card.classList.add("selected"); }
+        if (selectedClassIds.has(String(id))) { chk.checked = true; card.classList.add("selected"); }
         card.appendChild(chk);
 
         const body = document.createElement("div");
@@ -1261,7 +1256,7 @@
           const isChecked = !chk.checked;
           chk.checked = isChecked;
           card.classList.toggle("selected", isChecked);
-          if (isChecked) selectedClassIds.add(id); else selectedClassIds.delete(id);
+          if (isChecked) selectedClassIds.add(String(id)); else selectedClassIds.delete(String(id));
           const now = [...selectedClassIds].sort().join(',');
           const was = [...initialAssigned].sort().join(',');
           if (now !== was) markDirty();
@@ -1281,8 +1276,10 @@
       if (assignedEmpty) assignedEmpty.style.display = "none";
     }
 
-    async function loadTeacherClassesAndRender() {
+    // FILTERED loader: teacher's classes ∩ course.assignedClasses
+    async function loadTeacherClassesAndRender(courseIdFromQuiz) {
       if (!assignedStatus) return;
+
       try {
         const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
         if (!teacherId) {
@@ -1290,18 +1287,63 @@
           assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
           return;
         }
-        // NOTE: using non-/api path to match your other quiz endpoints
+
+        // 1) Teacher classes
         const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`, {
           headers: { "Accept": "application/json" }
         });
-        const json = await res.json().catch(() => ({ success: false, classes: [] }));
-        const classes = json?.classes || [];
-        if (!json.success && json.success !== undefined) {
-          assignedStatus.textContent = "Could not load your classes.";
-          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+        const js = await res.json().catch(() => ({ success: false, classes: [] }));
+        const teacherClasses = Array.isArray(js?.classes) ? js.classes : [];
+        dlog('teacherClasses:', teacherClasses.length);
+
+        // 2) Course -> assignedClasses
+        const courseId = courseIdFromQuiz || initialQuiz?.courseId || '';
+        const course = await fetchCourseById(courseId);
+        const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
+        const allowedIds = new Set(assigned.map(x => String(x)));
+        dlog('course.assignedClasses:', assigned);
+
+        // 3) Intersect
+        let filtered = teacherClasses.filter(c => {
+          const id = String(c.id || c._id || c.classId || '');
+          return allowedIds.size ? allowedIds.has(id) : true;
+        });
+        dlog('filtered after intersect:', filtered.length);
+
+        // 4) Optional fallback: /courses/:id/classes
+        if (filtered.length === 0 && courseId) {
+          try {
+            const r2 = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/classes`, { headers:{Accept:'application/json'} });
+            if (r2.ok) {
+              const j2 = await r2.json().catch(()=>({}));
+              const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
+              filtered = classes2.filter(c => {
+                const id = String(c.id || c._id || c.classId || '');
+                return allowedIds.size ? allowedIds.has(id) : true;
+              });
+              dlog('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
+            }
+          } catch {}
+        }
+
+        // 5) Trim selection to visible IDs
+        const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || '')));
+        selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
+
+        if (!filtered.length) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No classes enrolled in this course.";
+          assignedStatus.style.display = "none";
           return;
         }
-        renderClassCards(classes);
+
+        renderClassCards(filtered);
+        if (assignedStatus) {
+          assignedStatus.textContent = `${selectedClassIds.size} selected (from this course)`;
+          assignedStatus.classList.remove('text-danger','small-muted');
+          assignedStatus.style.display = "";
+        }
       } catch (e) {
         console.error("Could not load classes:", e);
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
@@ -1334,7 +1376,6 @@
       descInput.value = q.description || '';
       attemptsInput.value = (q.attemptsAllowed == null || q.attemptsAllowed === 0) ? 0 : q.attemptsAllowed;
       dueInput.value = msToLocalInput(tsToMs(q.dueAt));
-      // NEW: hydrate Publish At
       publishInput.value = msToLocalInput(tsToMs(q.publishAt));
 
       // settings
@@ -1366,7 +1407,7 @@
         metaModule.textContent = labelModule(moduleMeta);
       } catch { }
 
-      // Status badge (archived vs publishAt)
+      // Status badge
       updateStatusBadge(q.archived === true, tsToMs(q.publishAt));
 
       // rubric normalize
@@ -1390,12 +1431,13 @@
       // questions
       renderQuestions(q.questions || []);
 
-      // Assign-to-Classes
-      selectedClassIds = new Set(Array.isArray(q.assignedClasses) ? q.assignedClasses.filter(Boolean) : []);
+      // Assign-to-Classes (seed from quiz then render filtered)
+      selectedClassIds = new Set(Array.isArray(q.assignedClasses) ? q.assignedClasses.filter(Boolean).map(String) : []);
       initialAssigned = new Set(selectedClassIds);
-      await loadTeacherClassesAndRender();
+      await loadTeacherClassesAndRender(q.courseId);
 
       clearDirty();
+      return q;
     }
 
     function markDirty() { window.__dirty = true; }
@@ -1404,7 +1446,6 @@
       if (!initialQuiz) return false;
       if (window.__dirty) return true;
       if (rubricStaged.addRubric || rubricStaged.removeRubric) return true;
-      // class selection delta
       const now = [...selectedClassIds].sort().join(',');
       const was = [...initialAssigned].sort().join(',');
       if (now !== was) return true;
@@ -1429,7 +1470,7 @@
       el?.addEventListener('input', markDirty);
     });
 
-    // NEW: Publish buttons
+    // Publish buttons
     publishNowBtn?.addEventListener('click', () => {
       publishInput.value = localNowForInput();
       markDirty();
@@ -1445,7 +1486,7 @@
       const description = descInput.value.trim();
       const attemptsAllowed = parseInt(attemptsInput.value || '0', 10);
       const dueAt = dueInput.value;
-      const publishAt = publishInput.value; // NEW
+      const publishAt = publishInput.value;
 
       const settings = {};
       if (timerEnabled.checked) {
@@ -1466,14 +1507,12 @@
       const questions = collectQuestions();
       if (!questions.length) { formError.textContent = 'At least one question is required.'; return; }
 
-      // PUT quiz core (+ classIds + publishAt)
       const put = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title, description, dueAt, publishAt, attemptsAllowed, settings, questions,
           assignedClasses: Array.from(selectedClassIds)
         })
-
       });
       const putJs = await put.json().catch(() => ({}));
       if (!put.ok || putJs.success === false) throw new Error(putJs.message || 'Failed to save quiz.');
@@ -1516,7 +1555,6 @@
       try {
         const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}/archive`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: false }) });
         const js = await res.json(); if (!res.ok || js.success === false) throw new Error(js.message || 'Failed to unarchive.');
-        // Recompute from current publishAt input (user may have changed it)
         updateStatusBadge(false, new Date(publishInput.value || 0).getTime() || tsToMs(initialQuiz?.publishAt));
         showInfo('Unarchived', 'Students can see this quiz again if it is Published or becomes Scheduled.');
       } catch (e) { showInfo('Error', e.message || 'Failed to unarchive.'); }
@@ -1530,7 +1568,7 @@
         const js = await res.json(); if (!res.ok || js.success === false) throw new Error(js.message || 'Failed to delete.');
         showInfo('Deleted', 'Quiz deleted.');
         setTimeout(() => {
-          const params = new URLSearchParams(); if (courseId) params.set('courseId', courseId);
+          const params = new URLSearchParams(); if (courseIdParam) params.set('courseId', courseIdParam);
           window.location.href = `/TEACHER/quizzes/quiz_list.html${params.toString() ? `?${params}` : ''}`;
         }, 800);
       } catch (e) { showInfo('Error', e.message || 'Failed to delete.'); }
@@ -1549,5 +1587,4 @@
   </script>
 
 </body>
-
 </html>

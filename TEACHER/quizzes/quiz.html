@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,7 +21,6 @@
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -63,21 +61,21 @@
                 </div>
               </div>
 
-              <!-- NEW: Assign to Classes -->
+              <!-- Assign to Classes -->
               <div class="mt-3 p-3 border rounded-3">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                   <div>
                     <h5 class="mb-1"><i class="bi bi-people me-1"></i> Assign to Classes</h5>
                     <div class="small-muted">
-                      Select which of your classes should receive this quiz.
-                      <span class="d-block">Tip: click a card to toggle selection. Use Space/Enter for keyboard.</span>
-                      <span class="d-block mt-1">If you <strong>don’t select any</strong>, the quiz is visible to the <strong>entire course</strong> (all active classes).</span>
+                      Shows only the classes enrolled in the selected course.
+                      <span class="d-block">Tip: click a card to toggle selection. Space/Enter also works.</span>
+                      <span class="d-block mt-1">If you select none, the quiz is visible to the entire course (all active classes in it).</span>
                     </div>
                   </div>
-                  <div id="assigned-status" class="small-muted">Loading your classes…</div>
+                  <div id="assigned-status" class="small-muted">Pick a course to see its classes…</div>
                 </div>
                 <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
-                  No classes found for your account.
+                  No classes enrolled in the selected course.
                 </div>
                 <div id="assignedClassesContainer" class="row g-3"></div>
               </div>
@@ -94,7 +92,7 @@
                 </div>
               </div>
 
-              <!-- PUBLISH AT + Due date & Attempts (three columns) -->
+              <!-- Publish/Due/Attempts -->
               <div class="row g-3 mt-1">
                 <div class="col-12 col-md-4">
                   <label class="form-label fw-bold">Publish At <span class="text-muted">(optional)</span></label>
@@ -113,20 +111,18 @@
                 </div>
               </div>
 
-              <!-- Rubric (accept list updated to match backend) -->
+              <!-- Rubric -->
               <div class="row g-3 mt-2" id="rubricSection">
                 <div class="col-12">
                   <label class="form-label fw-bold d-flex align-items-center gap-2" for="rubricsFile">
                     <i class="bi bi-clipboard2-check"></i>
                     Rubric File <span class="text-muted">(applies to Essay questions)</span>
                   </label>
-                  <!-- FIX: remove disabled gating so you can attach anytime -->
                   <input type="file" id="rubricsFile" class="form-control"
                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
-                    <!-- FIX: clearer live note -->
                     <span id="rubricStateNote" class="on">You can stage a rubric anytime. It will only be uploaded if the quiz includes at least one Essay question.</span>
                   </div>
 
@@ -219,7 +215,7 @@
 
               <hr class="my-4" />
 
-              <!-- Bulk import (CSV only) -->
+              <!-- Bulk import -->
               <div class="p-3 mb-4 border rounded-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                   <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
@@ -437,7 +433,7 @@
         </div>
       </div>
 
-      <!-- Dirty Guard (Unsaved Changes) Modal -->
+      <!-- Dirty Guard -->
       <div class="modal fade" id="dirtyGuardModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content">
@@ -468,9 +464,10 @@
     const API = "http://localhost:5000";
     const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
-    const MAX_ASSIGNED_CLASSES = 500; // backend clamp
+    const MAX_ASSIGNED_CLASSES = 500;
+    const DEBUG_CLASSES = false;
 
-    /* ========= Brand Alert / Confirm helpers + alert override ========= */
+    /* ========= Brand Alert / Confirm ========= */
     function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
       const el = document.getElementById('brandAlertModal');
       document.getElementById('brandAlertTitle').textContent = title;
@@ -516,8 +513,9 @@
       });
     }
     window.alert = (msg) => openBrandAlert({ title: 'Notice', message: String(msg || '') });
+    const dbg = (...args) => { if (DEBUG_CLASSES) console.log('[classes]', ...args); };
 
-    /* ---------- Sidebar Loader ---------- */
+    /* ---------- Sidebar ---------- */
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(res => res.text())
@@ -542,7 +540,7 @@
         .catch(err => console.error("Failed to load sidebar:", err));
     });
 
-    /* ---------- Auth Guard + initials-only header ---------- */
+    /* ---------- Auth Guard + initials ---------- */
     (function initHeaderInitials() {
       try {
         const stored = JSON.parse(localStorage.getItem("user") || "{}");
@@ -557,9 +555,7 @@
 
         const initials = getInitials(u);
         const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-          || u.username
-          || u.email
-          || 'Profile';
+          || u.username || u.email || 'Profile';
 
         if (el) {
           el.textContent = initials;
@@ -577,7 +573,6 @@
         const ln = (u.lastName || '').trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
         if (fn && mn) return (fn[0] + mn[0]).toUpperCase();
-
         const nameish = (u.username || u.displayName || u.name || '').trim();
         if (nameish) {
           const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
@@ -605,25 +600,26 @@
       }).join(',')).join('\n');
     }
     function bytesToKB(b) { return Math.round((b || 0) / 102.4) / 10; }
+    const getSelectedCourseId = () => document.getElementById("courseSelect")?.value || "";
 
-    /* ---------- File preview helpers (modal) ---------- */
+    /* ---------- File preview helpers ---------- */
     function extFromUrl(u = '') { const clean = String(u).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
     function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
     function kindFrom({ url = '', name = '', mime = '' }) {
       const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
-      if ((mime || '').startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if ((mime || '').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
       if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
-      if ((mime || '').startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
-      if ((mime || '').startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
-      if ((mime || '').startsWith('text/') || ['txt', 'csv', 'log'].includes(ext)) return 'text';
-      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(ext)) return 'office';
+      if ((mime || '').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if ((mime || '').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
+      if ((mime || '').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx','csv'].includes(ext)) return 'office';
       return 'other';
     }
     function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
     function setFileInfoUI(kind, url) {
       const info = document.getElementById('fileInfoText');
       const hdr = document.getElementById('filePreviewModalLabel');
-      const labelMap = { video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
+      const labelMap = { video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File' };
       let badge = document.getElementById('fileKindBadge'); if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
       badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
       badge.textContent = labelMap[kind] || 'File';
@@ -658,7 +654,7 @@
     }
     function showStageBtn(show) { document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
 
-    /* ========= Dirty Guard (unsaved changes) ========= */
+    /* ---------- Dirty Guard ---------- */
     let isDirty = false;
     let suppressDirty = false;
     let pendingNavigateTo = null;
@@ -691,8 +687,7 @@
     quizFormEl.addEventListener('change', markDirty, true);
 
     document.getElementById('question-container').addEventListener('click', (e) => {
-      const act = e.target.closest('[data-action]');
-      if (act) markDirty();
+      const act = e.target.closest('[data-action]'); if (act) markDirty();
     });
     document.getElementById('addQuestionBtn')?.addEventListener('click', markDirty);
     document.getElementById('addQuestionBtnTop')?.addEventListener('click', markDirty);
@@ -701,23 +696,15 @@
     document.getElementById('bulkFile')?.addEventListener('change', markDirty);
 
     document.addEventListener('click', (e) => {
-      const a = e.target.closest('a[href]');
-      if (!a) return;
+      const a = e.target.closest('a[href]'); if (!a) return;
       const href = a.getAttribute('href') || '';
       const t = (a.getAttribute('target') || '').toLowerCase();
       if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank') return;
-      if (isDirty) {
-        e.preventDefault();
-        pendingNavigateTo = href;
-        dirtyModal.show();
-      }
+      if (isDirty) { e.preventDefault(); pendingNavigateTo = href; dirtyModal.show(); }
     });
 
     window.addEventListener('beforeunload', (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
+      if (isDirty) { e.preventDefault(); e.returnValue = ''; }
     });
 
     /* ---------- Course / Module ---------- */
@@ -734,28 +721,31 @@
         const payload = await res.json();
         let courses = Array.isArray(payload) ? payload : (payload.courses || []);
         if (courses.length && 'uploadedBy' in courses[0]) {
-          courses = courses.filter(c => c.uploadedBy === TEACHER_ID);
+          courses = courses.filter(c => String(c.uploadedBy) === String(TEACHER_ID));
         }
         courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
         courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
           courses.map(c => `<option value="${c.id}">${escapeHTML(c.title || 'Untitled')}${c.courseNumber ? ' (#' + escapeHTML(c.courseNumber) + ')' : ''}</option>`).join('');
 
+        // Preselect via URL query if present
         const params = new URLSearchParams(location.search);
         const preCourse = params.get('courseId');
         const preModule = params.get('moduleId');
-        if (preCourse && courses.find(x => x.id === preCourse)) {
+        if (preCourse && courses.find(x => String(x.id) === String(preCourse))) {
           courseSelect.value = preCourse;
           await loadModules(preCourse);
           if (preModule) {
             moduleSelect.value = preModule;
             moduleSelect.disabled = !moduleSelect.value;
           }
+          await loadTeacherClassesAndRender(preCourse); // filter by course’s assignedClasses
         }
       } catch (err) {
         console.error(err);
         courseSelect.innerHTML = `<option value="">(Failed to load)</option>`;
       }
     }
+
     async function loadModules(courseId) {
       const moduleSelect = document.getElementById("moduleSelect");
       moduleSelect.innerHTML = `<option value="">Loading…</option>`;
@@ -779,24 +769,33 @@
         moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
       }
     }
-    document.getElementById("courseSelect").addEventListener("change", function () {
+
+    document.getElementById("courseSelect").addEventListener("change", async function () {
       const cid = this.value;
-      if (cid) loadModules(cid);
-      else {
+      selectedClassIds = new Set();
+      updateAssignedStatus?.();
+
+      if (cid) {
+        await loadModules(cid);
+        await loadTeacherClassesAndRender(cid); // <<< refresh using course.assignedClasses
+      } else {
         const moduleSelect = document.getElementById("moduleSelect");
         moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
         moduleSelect.disabled = true;
+        assignedClassesContainer.innerHTML = "";
+        assignedEmpty.style.display = "block";
+        assignedEmpty.textContent = "Pick a course to see its classes.";
+        document.getElementById("assigned-status").style.display = "none";
       }
     });
 
-    /* ---------- Assign-to-Classes (NEW) ---------- */
+    /* ---------- Assign-to-Classes (filtered by course.assignedClasses) ---------- */
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
     let selectedClassIds = new Set();
 
     function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
     function updateAssignedStatus() {
       const n = selectedClassIds.size;
       assignedStatus.textContent = `${n} selected${n >= MAX_ASSIGNED_CLASSES ? ' (max reached)' : ''}`;
@@ -825,7 +824,7 @@
         card.className = "card assign-card";
         card.tabIndex = 0;
 
-        if (selectedClassIds.has(id)) card.classList.add("selected");
+        if (selectedClassIds.has(String(id))) card.classList.add("selected");
 
         const body = document.createElement("div");
         body.className = "card-body";
@@ -849,13 +848,8 @@
           updateAssignedStatus();
           markDirty();
         }
-        card.addEventListener("click", e => {
-          if (window.getSelection && String(window.getSelection()).length) return;
-          toggle();
-        });
-        card.addEventListener("keydown", e => {
-          if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
-        });
+        card.addEventListener("click", e => { if (window.getSelection && String(window.getSelection()).length) return; toggle(); });
+        card.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
 
         col.appendChild(card);
         assignedContainer.appendChild(col);
@@ -864,26 +858,84 @@
       updateAssignedStatus();
     }
 
-    async function loadTeacherClassesAndRender() {
+    // Fetch a single course; tolerant to {course:{...}} or raw object
+    async function fetchCourseById(courseId) {
+      try {
+        const r = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
+        const js = await r.json().catch(()=>null);
+        const course = js?.course || js || null;
+        return course;
+      } catch { return null; }
+    }
+
+    // The FIX: only show teacher’s classes that are listed in course.assignedClasses
+    async function loadTeacherClassesAndRender(courseId = getSelectedCourseId()) {
       try {
         if (!TEACHER_ID) {
           assignedStatus.textContent = "Missing teacher ID in your session.";
-          assignedStatus.classList.remove('small-muted');
-          assignedStatus.classList.add('text-danger');
+          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
           return;
         }
-        const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`, {
-          headers: { "Accept": "application/json" }
-        });
-        const json = await res.json().catch(()=>({success:false, classes:[]}));
-        const classes = json?.classes || [];
-        if (json.success === false) {
-          assignedStatus.textContent = "Could not load your classes.";
-          assignedStatus.classList.remove('small-muted');
-          assignedStatus.classList.add('text-danger');
+
+        if (!courseId) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "Pick a course to see its classes.";
+          assignedStatus.style.display = "none";
           return;
         }
-        renderClassCards(classes);
+
+        // 1) Load teacher’s classes
+        const url1 = `${API}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`;
+        const resp1 = await fetch(url1, { headers: { "Accept": "application/json" } });
+        const json1 = await resp1.json().catch(()=>({success:false, classes:[]}));
+        const teacherClasses = Array.isArray(json1?.classes) ? json1.classes : [];
+        dbg('teacherClasses:', teacherClasses.length);
+
+        // 2) Load course & read assignedClasses (array of class IDs)
+        const course = await fetchCourseById(courseId);
+        const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
+        const allowedIds = new Set(assigned.map(x => String(x)));
+        dbg('course.assignedClasses:', assigned);
+
+        // 3) Filter teacher classes to only those inside course.assignedClasses
+        let filtered = teacherClasses.filter(c => allowedIds.has(String(c.id || c._id || c.classId || "")));
+        dbg('filtered:', filtered.length);
+
+        // Fallbacks if needed:
+        // a) If no intersection (maybe teacherClasses endpoint doesn’t return all), try a course-based endpoint
+        if (filtered.length === 0) {
+          try {
+            const url2 = `${API}/courses/${encodeURIComponent(courseId)}/classes`;
+            const resp2 = await fetch(url2, { headers: { "Accept": "application/json" } });
+            if (resp2.ok) {
+              const j2 = await resp2.json().catch(()=>({}));
+              const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
+              // still intersect with assignedClasses if present
+              filtered = classes2.filter(c => allowedIds.size ? allowedIds.has(String(c.id || c._id || c.classId || "")) : true);
+              dbg('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
+            }
+          } catch {}
+        }
+
+        // 4) Trim current selections to visible list
+        const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || "")));
+        selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
+
+        if (!filtered.length) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No classes enrolled in the selected course.";
+          assignedStatus.style.display = "none";
+          dbg('sample teacherClass:', teacherClasses[0]);
+          dbg('course payload sample:', course);
+          return;
+        }
+
+        renderClassCards(filtered);
+        assignedStatus.textContent = `${selectedClassIds.size} selected (showing classes enrolled in this course)`;
+        assignedStatus.classList.remove('text-danger', 'small-muted');
+        assignedStatus.style.display = "";
       } catch (e) {
         console.error("Could not load classes:", e);
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
@@ -914,7 +966,7 @@
     let currentPreviewRevoke = null;
 
     document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', () => {
-      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch { } }
+      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch {} }
       currentPreviewRevoke = null;
       previewStageCtx = null;
       showStageBtn(false);
@@ -923,107 +975,66 @@
     function countEssayQuestions() {
       return document.querySelectorAll(".question-block[data-type='essay']").length;
     }
-
-    // FIX: don’t disable the input; just update the helper text.
     function updateEssayRubricState() {
       const n = countEssayQuestions();
       essayCountText.textContent = String(n);
       if (n > 0) {
-        rubricStateNote.classList.remove('off');
-        rubricStateNote.classList.add('on');
+        rubricStateNote.classList.remove('off'); rubricStateNote.classList.add('on');
         rubricStateNote.textContent = __stagedRubricFile
           ? 'Rubric staged and ready to upload.'
           : 'Rubric upload enabled (applies to Essay questions).';
       } else {
-        rubricStateNote.classList.remove('on');
-        rubricStateNote.classList.add('off');
+        rubricStateNote.classList.remove('on'); rubricStateNote.classList.add('off');
         rubricStateNote.textContent = __stagedRubricFile
           ? 'Rubric staged — it will only be uploaded after you add at least one Essay question.'
           : 'You can stage a rubric now; it will upload only if the quiz includes an Essay question.';
       }
     }
-
     function renderRubricRow() {
       if (!__stagedRubricFile) {
-        rubricRow.classList.add('d-none');
-        rubricNameBtn.textContent = '';
-        rubricChip.textContent = '';
-        return;
+        rubricRow.classList.add('d-none'); rubricNameBtn.textContent = ''; rubricChip.textContent = ''; return;
       }
       rubricRow.classList.remove('d-none');
       rubricNameBtn.textContent = __stagedRubricFile.name;
       rubricChip.textContent = __stagedRubricFile.name;
     }
-
-    // Pick rubric -> open pre-upload preview modal immediately
     rubricsFileInput.addEventListener('change', () => {
-      const f = rubricsFileInput.files && rubricsFileInput.files[0];
-      if (!f) return;
+      const f = rubricsFileInput.files && rubricsFileInput.files[0]; if (!f) return;
       const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-      // FIX: always re-enable submit if size OK
-      submitBtn.disabled = !!tooBig;
-      if (tooBig) {
-        alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`);
-        return;
-      }
-      const blobUrl = URL.createObjectURL(f);
-      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-      openPreviewModalWithMeta({
-        url: blobUrl, title: f.name, mime: f.type || '',
-        stageContext: { file: f }
-      });
-    });
-
-    // Stage from preview (pre-upload)
-    document.getElementById('stageFromPreviewBtn').addEventListener('click', () => {
-      if (!previewStageCtx || !previewStageCtx.file) return;
-      __stagedRubricFile = previewStageCtx.file;
-      renderRubricRow();
-      updateEssayRubricState();
-      bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-      rubricsFileInput.value = '';
-      markDirty();
-    });
-
-    // Click filename or eye -> preview staged
-    function openPreviewOfStaged() {
-      if (!__stagedRubricFile) return;
-      const blobUrl = URL.createObjectURL(__stagedRubricFile);
-      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-      openPreviewModalWithMeta({
-        url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '',
-        stageContext: null
-      });
-    }
-    rubricNameBtn.addEventListener('click', openPreviewOfStaged);
-    rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
-
-    // Replace -> file picker -> modal preview with stage button again
-    rubricReplaceInput.addEventListener('change', () => {
-      const f = rubricReplaceInput.files && rubricReplaceInput.files[0];
-      if (!f) return;
-      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-      // FIX: re-enable submit when size OK
       submitBtn.disabled = !!tooBig;
       if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
       const blobUrl = URL.createObjectURL(f);
       currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-      openPreviewModalWithMeta({
-        url: blobUrl, title: f.name, mime: f.type || '',
-        stageContext: { file: f }
-      });
-      rubricReplaceInput.value = '';
-      markDirty();
+      openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
     });
-
-    // Delete staged
+    document.getElementById('stageFromPreviewBtn').addEventListener('click', () => {
+      if (!previewStageCtx || !previewStageCtx.file) return;
+      __stagedRubricFile = previewStageCtx.file;
+      renderRubricRow(); updateEssayRubricState();
+      bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+      rubricsFileInput.value = ''; markDirty();
+    });
+    function openPreviewOfStaged() {
+      if (!__stagedRubricFile) return;
+      const blobUrl = URL.createObjectURL(__stagedRubricFile);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({ url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '' });
+    }
+    rubricNameBtn.addEventListener('click', openPreviewOfStaged);
+    rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
+    rubricReplaceInput.addEventListener('change', () => {
+      const f = rubricReplaceInput.files && rubricReplaceInput.files[0]; if (!f) return;
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      submitBtn.disabled = !!tooBig;
+      if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
+      rubricReplaceInput.value = ''; markDirty();
+    });
     rubricDeleteBtn.addEventListener('click', () => {
-      __stagedRubricFile = null;
-      renderRubricRow();
-      updateEssayRubricState();
-      rubricsFileInput.value = '';
-      submitBtn.disabled = false;
-      markDirty();
+      __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
+      rubricsFileInput.value = ''; submitBtn.disabled = false; markDirty();
     });
 
     function renderBody(type, idx) {
@@ -1175,8 +1186,7 @@
 
     enableTimerEl.addEventListener("change", () => {
       const on = enableTimerEl.checked;
-      timerMinutesEl.disabled = !on;
-      gracePeriodEl.disabled = !on;
+      timerMinutesEl.disabled = !on; gracePeriodEl.disabled = !on;
       if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
       markDirty();
     });
@@ -1197,57 +1207,50 @@
     function normalizeHeader(s) { return String(s || '').trim().toLowerCase(); }
     function normalizeType(t) {
       const x = String(t || '').trim().toLowerCase();
-      if (['mcq', 'multiple choice', 'multiple-choice', 'multiplechoice'].includes(x)) return 'mcq';
-      if (['tf', 'true/false', 'truefalse', 'true-false'].includes(x)) return 'tf';
-      if (['essay', 'open', 'long', 'long answer', 'long-answer'].includes(x)) return 'essay';
+      if (['mcq','multiple choice','multiple-choice','multiplechoice'].includes(x)) return 'mcq';
+      if (['tf','true/false','truefalse','true-false'].includes(x)) return 'tf';
+      if (['essay','open','long','long answer','long-answer'].includes(x)) return 'essay';
       return '';
     }
     function normalizeCorrectForTF(v) {
       const x = String(v || '').trim().toLowerCase();
-      if (['true', 't', 'a', '1', 'yes', 'y'].includes(x)) return 'A';
-      if (['false', 'f', 'b', '0', 'no', 'n'].includes(x)) return 'B';
+      if (['true','t','a','1','yes','y'].includes(x)) return 'A';
+      if (['false','f','b','0','no','n'].includes(x)) return 'B';
       return '';
     }
     function normalizeCorrectForMCQ(v) {
       const x = String(v || '').trim().toUpperCase();
-      return ['A', 'B', 'C', 'D'].includes(x) ? x : '';
+      return ['A','B','C','D'].includes(x) ? x : '';
     }
 
     function buildCsvTemplate(kind) {
-      const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
+      const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
       let rows = [header];
       if (kind === 'mcq') {
-        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
-        rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
+        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
+        rows.push(['mcq','Which color is the sky?','Blue','Green','Red','Yellow','A']);
       } else if (kind === 'tf') {
-        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
-        rows.push(['tf', 'The Earth is flat', '', '', '', '', 'FALSE']);
+        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
+        rows.push(['tf','The Earth is flat','','','','','FALSE']);
       } else if (kind === 'essay') {
-        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
-        rows.push(['essay', 'Describe Newton’s three laws of motion.', '', '', '', '', '']);
+        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
+        rows.push(['essay','Describe Newton’s three laws of motion.','','','','','']);
       } else {
-        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
-        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
-        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
+        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
+        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
+        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
       }
       return toCSV(rows);
     }
     function downloadCSV(kind, filename) {
       const csv = buildCsvTemplate(kind);
-      // Add UTF-8 BOM for Excel compatibility
       const bom = '\uFEFF';
       const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
+      a.style.display = 'none'; a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     }
 
     btnTplMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
@@ -1264,17 +1267,10 @@
       let rows = [];
       try {
         rows = await new Promise((resolve, reject) => {
-          Papa.parse(f, {
-            header: true,
-            skipEmptyLines: 'greedy',
-            complete: (res) => resolve(res.data || []),
-            error: reject
-          });
+          Papa.parse(f, { header: true, skipEmptyLines: 'greedy', complete: (res) => resolve(res.data || []), error: reject });
         });
       } catch (err) {
-        console.error(err);
-        alert('Failed to read the CSV. Please check your format.');
-        return;
+        console.error(err); alert('Failed to read the CSV. Please check your format.'); return;
       }
 
       const result = validateBulkRows(rows);
@@ -1284,15 +1280,12 @@
 
     function validateBulkRows(rawRows) {
       const normed = rawRows.map(r => {
-        const out = {};
-        Object.keys(r || {}).forEach(k => out[normalizeHeader(k)] = r[k]);
-        return out;
+        const out = {}; Object.keys(r || {}).forEach(k => out[normalizeHeader(k)] = r[k]); return out;
       });
 
-      const items = [];
-      let validCount = 0, invalidCount = 0;
+      const items = []; let validCount = 0, invalidCount = 0;
 
-      normed.forEach((r, i) => {
+      normed.forEach((r) => {
         const type = normalizeType(r.type);
         const question = String(r.question || '').trim();
         const A = String(r.choicea || '').trim();
@@ -1384,8 +1377,7 @@
     }
 
     document.getElementById('bulkTbody').addEventListener('click', (e) => {
-      const btn = e.target.closest('.bulk-toggle');
-      if (!btn) return;
+      const btn = e.target.closest('.bulk-toggle'); if (!btn) return;
       const idx = Number(btn.dataset.idx);
       const addValidBtn = document.getElementById('addValidBtn');
       const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
@@ -1411,9 +1403,7 @@
       const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
       if (allPlaceholders) {
         container.innerHTML = "";
-        qIndex = 0;
-        qPager.cur = 0;
-        renderQPager();
+        qIndex = 0; qPager.cur = 0; renderQPager();
       }
 
       const LIMIT = 300;
@@ -1476,7 +1466,6 @@
       const title = document.getElementById("quizTitleInput").value.trim();
       const description = document.getElementById("quizDescInput").value.trim();
 
-      // NEW: capture publishAt
       const publishAtRaw = document.getElementById("publishAtInput").value;
       const dueAtRaw = document.getElementById("dueAtInput").value;
       const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
@@ -1484,8 +1473,7 @@
       if (!courseId || !moduleId) { alert("Please select a course and a module."); return; }
       if (!title) { alert("Please enter a quiz title."); return; }
       if (!Number.isInteger(attemptsAllowedVal) || attemptsAllowedVal < 0) {
-        alert("Attempts Allowed must be 0 (unlimited) or a positive whole number.");
-        return;
+        alert("Attempts Allowed must be 0 (unlimited) or a positive whole number."); return;
       }
 
       const blocks = document.querySelectorAll(".question-block");
@@ -1504,10 +1492,7 @@
           const C = block.querySelector("input[name='choiceC']")?.value?.trim();
           const D = block.querySelector("input[name='choiceD']")?.value?.trim();
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
-          if (!A || !B || !C || !D || !correct) {
-            alert("Complete all MCQ fields and pick the correct answer.");
-            return;
-          }
+          if (!A || !B || !C || !D || !correct) { alert("Complete all MCQ fields and pick the correct answer."); return; }
           quiz.push({ type, question: qText, choices: { A, B, C, D }, correct });
         } else if (type === "tf") {
           const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
@@ -1526,12 +1511,8 @@
         const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
         if (!Number.isInteger(mins) || mins < 1) { alert("Time Limit must be at least 1 minute."); return; }
         if (!Number.isInteger(grace) || grace < 0) { alert("Grace Period must be 0 or more."); return; }
-        settings.timerEnabled = true;
-        settings.durationMinutes = mins;
-        settings.graceSeconds = grace;
-      } else {
-        settings.timerEnabled = false;
-      }
+        settings.timerEnabled = true; settings.durationMinutes = mins; settings.graceSeconds = grace;
+      } else { settings.timerEnabled = false; }
       settings.shuffleQuestions = !fixedOrderEl.checked;
 
       const pagEnabled = enablePaginationEl.checked;
@@ -1540,22 +1521,17 @@
       settings.pagination = { enabled: pagEnabled, perPage };
       settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
 
-      // Date handling
+      // Dates
       const publishAt = publishAtRaw ? new Date(publishAtRaw).toISOString() : null;
       const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
-
-      // Validate publishAt vs dueAt
       if (publishAt && dueAt && new Date(publishAt) > new Date(dueAt)) {
-        alert("Publish At must be earlier than or equal to the Due Date.");
-        return;
+        alert("Publish At must be earlier than or equal to the Due Date."); return;
       }
-      // Warn if publishAt is in the past (optional, allow proceed)
       if (publishAt && new Date(publishAt).getTime() < Date.now()) {
         const proceed = await brandConfirm({
           title: 'Publish time in the past',
           message: 'The selected Publish At is in the past. This will make the quiz available immediately. Continue?',
-          confirmText: 'Continue',
-          cancelText: 'Go back'
+          confirmText: 'Continue', cancelText: 'Go back'
         });
         if (!proceed) return;
       }
@@ -1563,29 +1539,25 @@
       const essayCount = countEssayQuestions();
       const rubricFile = __stagedRubricFile || null;
       if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
-        alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`);
-        return;
+        alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`); return;
       }
 
-      /* NEW: collect selected classes (clamped to backend max) */
+      // Only classes enrolled in the selected course are available, but still clamp to max
       const assignedClasses = Array.from(selectedClassIds).slice(0, MAX_ASSIGNED_CLASSES).map(String);
 
       const payload = {
         courseId, moduleId, title, description,
-        publishAt,     // <<<<<< NEW
-        dueAt,
+        publishAt, dueAt,
         attemptsAllowed: attemptsAllowedVal,
         quiz, settings,
         assignedClasses
       };
 
-      // FIX: Friendly warning if rubric staged but no Essay present.
       if (rubricFile && essayCount === 0) {
         const proceed = await brandConfirm({
           title: 'Rubric won’t be uploaded',
           message: 'You staged a rubric, but there are no Essay questions. The rubric will be ignored unless you add at least one Essay question. Continue?',
-          confirmText: 'Continue',
-          cancelText: 'Go back'
+          confirmText: 'Continue', cancelText: 'Go back'
         });
         if (!proceed) return;
       }
@@ -1594,13 +1566,12 @@
         let res, out;
         if (rubricFile && essayCount > 0) {
           const fd = new FormData();
-          fd.append("rubrics", rubricFile); // backend expects 'rubrics'
+          fd.append("rubrics", rubricFile);
           fd.append("payload", JSON.stringify(payload));
           res = await fetch(`${API}/upload-quiz`, { method: "POST", body: fd });
         } else {
           res = await fetch(`${API}/upload-quiz`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
         }
@@ -1617,14 +1588,8 @@
 
           const idRow = document.getElementById('quizIdRow');
           const idCode = document.getElementById('createdQuizId');
-          if (quizId) {
-            idRow.classList.remove('d-none');
-            idCode.textContent = quizId;
-          } else {
-            idRow.classList.add('d-none');
-          }
+          if (quizId) { idRow.classList.remove('d-none'); idCode.textContent = quizId; } else { idRow.classList.add('d-none'); }
 
-          // Show backend warnings for archived/missing classes
           const warn = out.warnings || {};
           const warnEl = document.getElementById('uploadWarnings');
           const archived = Array.isArray(warn.archivedClassIds) ? warn.archivedClassIds : [];
@@ -1633,12 +1598,8 @@
             const parts = [];
             if (archived.length) parts.push(`<div><strong>Archived classes ignored (${archived.length}):</strong><br><code class="mono">${archived.join(', ')}</code></div>`);
             if (missing.length) parts.push(`<div class="mt-2"><strong>Unknown class IDs (${missing.length}):</strong><br><code class="mono">${missing.join(', ')}</code></div>`);
-            warnEl.innerHTML = parts.join('\n');
-            warnEl.classList.remove('d-none');
-          } else {
-            warnEl.classList.add('d-none');
-            warnEl.innerHTML = '';
-          }
+            warnEl.innerHTML = parts.join('\n'); warnEl.classList.remove('d-none');
+          } else { warnEl.classList.add('d-none'); warnEl.innerHTML = ''; }
 
           const successModal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
           successModal.show();
@@ -1650,7 +1611,7 @@
           };
           modalEl.addEventListener('hidden.bs.modal', redirectHandler);
 
-          // Reset form/UI without re-arming dirty
+          // Reset UI
           resetDirtySafely();
           document.getElementById("quizForm").reset();
           container.innerHTML = "";
@@ -1661,9 +1622,7 @@
           document.getElementById("enablePagination").checked = false;
           document.getElementById("perPageInput").disabled = true;
 
-          __stagedRubricFile = null;
-          renderRubricRow();
-          updateEssayRubricState();
+          __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
 
           addQuestion(); renderQPager();
 
@@ -1672,8 +1631,8 @@
           document.getElementById('bulkTbody').innerHTML = '';
           document.getElementById('addValidBtn').disabled = true;
 
-          selectedClassIds = new Set(); // clear selection
-          await loadTeacherClassesAndRender();
+          selectedClassIds = new Set();
+          await loadTeacherClassesAndRender(getSelectedCourseId());
 
           resetDirtySafely();
         } else {
@@ -1693,7 +1652,7 @@
       updateEssayRubricState();
       document.getElementById("perPageInput").disabled = true;
       await loadCourses();
-      await loadTeacherClassesAndRender();
+      // Don't load classes until a course is chosen (or preselected in URL)
     })();
 
     function logoutUser() {
