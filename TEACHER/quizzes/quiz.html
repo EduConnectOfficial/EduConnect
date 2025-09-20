@@ -1229,12 +1229,20 @@
     }
     function downloadCSV(kind, filename) {
       const csv = buildCsvTemplate(kind);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      // Add UTF-8 BOM for Excel compatibility
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     }
 
     btnTplMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
