@@ -11,7 +11,10 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="upload.css" />
   <style>
-
+    .assign-card.selected { outline: 2px solid var(--brand-accent-1, #3b6bb4); }
+    .small-muted { color: #6c757d; font-size: .9rem; }
+    .btn-icon { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+    .inline-field { min-width: 260px; }
   </style>
 </head>
 <body>
@@ -21,10 +24,9 @@
 
     <!-- Main -->
     <div class="main">
-      <!-- Header (exact match with Assignment Upload) -->
+      <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -45,7 +47,7 @@
         <div class="ui-card card-themed mb-3 mx-auto" style="max-width:1080px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-folder-plus"></i> Upload Module</h2>
-            <div class="ui-subtext">Create a module with lessons, choose which classes will get it, then stage files/links (if needed) and upload.</div>
+            <div class="ui-subtext">Create a module with lessons, choose classes, stage files/links, and publish now or at a scheduled time.</div>
           </div>
 
           <form id="moduleUploadForm" class="px-3 py-3" enctype="multipart/form-data" novalidate>
@@ -65,15 +67,15 @@
               </div>
             </div>
 
-            <!-- Assign-to-Classes (NEW) -->
+            <!-- Assign-to-Classes (FILTERED to course) -->
             <div class="mt-3">
               <label class="form-label fw-semibold">Assign to Classes</label>
               <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
               <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
-                No classes found for your account.
+                No classes linked to this course were found.
               </div>
               <div id="assignedClassesContainer" class="row g-3"></div>
-              <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
+              <div class="small-muted mt-2">Only classes enrolled in this course are shown.</div>
             </div>
 
             <!-- Lessons header / pager controls -->
@@ -94,7 +96,7 @@
             <!-- Lessons container (paged) -->
             <div id="lessonPager" class="mt-2"></div>
 
-            <!-- Staging UI (visibility depends on moduleType) -->
+            <!-- Staging UI (depends on moduleType) -->
             <div class="ui-card mt-3" id="stagingCard">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-paperclip"></i> Attachments & Links</h2>
@@ -152,19 +154,38 @@
                 <div class="form-text mt-2">
                   <strong>Staging:</strong> items marked with
                   <span class="badge-soft badge-stage">Staged</span>
-                  will be uploaded/added when you click <strong>Upload Module</strong>.
+                  will be uploaded/added when you click <strong>Upload</strong>.
                 </div>
               </div>
             </div>
 
-            <!-- Error / debug -->
+            <!-- Publish options (NOW vs SCHEDULE) -->
+            <div class="ui-card mt-3" id="publishCard">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-broadcast"></i> Publish</h2>
+              </div>
+              <div class="p-3 d-flex align-items-center gap-4 flex-wrap">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="pubMode" id="pubNow" value="now" checked>
+                  <label class="form-check-label" for="pubNow">Publish now</label>
+                </div>
+                <div class="form-check d-flex align-items-center gap-2">
+                  <input class="form-check-input" type="radio" name="pubMode" id="pubSchedule" value="schedule">
+                  <label class="form-check-label" for="pubSchedule">Schedule publish</label>
+                  <input type="datetime-local" id="publishAt" class="form-control form-control-sm inline-field" disabled>
+                </div>
+                <div class="small-muted">Times use your device’s timezone.</div>
+              </div>
+            </div>
+
+            <!-- Error -->
             <div id="formError" class="text-danger mt-3" style="min-height:1.2rem;"></div>
 
             <!-- Actions -->
             <div class="d-flex justify-content-end gap-2 mt-4">
               <a href="/TEACHER/modules/select_Course.html" class="btn btn-close-footer">← Back</a>
               <button id="submitBtn" type="submit" class="btn btn-amber">
-                <span class="submit-text">Upload Module</span>
+                <span class="submit-text">Upload & Publish</span>
                 <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
               </button>
             </div>
@@ -335,6 +356,98 @@
       const obj=document.createElement('object'); obj.data=url; obj.type=mime||'application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
     }
 
+    /* ======= COURSE-LINKED CLASSES FILTERING ======= */
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseId = urlParams.get("courseId");
+    let eligibleClassIdSet = new Set();
+
+    async function fetchCourseObject() {
+      if (!courseId) return null;
+
+      const candidates = [
+        `${API_BASE}/courses/${encodeURIComponent(courseId)}`,
+        `${API_BASE}/courses?courseId=${encodeURIComponent(courseId)}`,
+        `${API_BASE}/api/courses/${encodeURIComponent(courseId)}`,
+        `${API_BASE}/api/courses?courseId=${encodeURIComponent(courseId)}`
+      ];
+
+      for (const url of candidates) {
+        try {
+          const r = await fetch(url, { headers: { "Accept": "application/json" }});
+          if (!r.ok) continue;
+          const j = await r.json();
+          if (j && typeof j === 'object') {
+            if (j.course && typeof j.course === 'object') return j.course;
+            if (Array.isArray(j.courses)) {
+              const hit = j.courses.find(c => (c.id || c._id) === courseId);
+              return hit || j.courses[0] || null;
+            }
+            if (j.id || j._id || j.title || j.courseNumber) return j;
+          }
+        } catch {}
+      }
+      return null;
+    }
+
+    function collectIds(maybe) {
+      const ids = [];
+      if (Array.isArray(maybe)) {
+        for (const v of maybe) {
+          if (typeof v === 'string') ids.push(v);
+          else if (v && typeof v === 'object') {
+            ids.push(v.id || v._id || v.classId || v.value || v.key || null);
+          }
+        }
+      } else if (maybe && typeof maybe === 'object') {
+        for (const k of Object.keys(maybe)) {
+          const val = maybe[k];
+          if (typeof val === 'string') ids.push(val);
+          else if (val && typeof val === 'object') {
+            ids.push(val.id || val._id || val.classId || k);
+          } else {
+            ids.push(k);
+          }
+        }
+      }
+      return ids.filter(Boolean);
+    }
+
+    async function loadCourseEligibleClassIds() {
+      eligibleClassIdSet = new Set();
+      const course = await fetchCourseObject();
+      if (!course) return;
+
+      const candidateFields = [
+        'assignedClasses', 'assignedClassIds', 'classIds', 'classes', 'enrolledClasses', 'linkedClasses'
+      ];
+
+      for (const field of candidateFields) {
+        if (course[field] !== undefined) {
+          const ids = collectIds(course[field]);
+          ids.forEach(id => eligibleClassIdSet.add(String(id)));
+        }
+      }
+
+      for (const [k, v] of Object.entries(course)) {
+        if (Array.isArray(v) && v.length && (k.toLowerCase().includes('class'))) {
+          collectIds(v).forEach(id => eligibleClassIdSet.add(String(id)));
+        }
+      }
+    }
+
+    function classMatchesCourse(c) {
+      const id = String(c.id || c._id || c.classId || '');
+      if (!id) return false;
+      if (eligibleClassIdSet.size > 0 && eligibleClassIdSet.has(id)) return true;
+      if (String(c.courseId || '') === courseId) return true;
+      if (Array.isArray(c.courseIds) && c.courseIds.map(String).includes(courseId)) return true;
+      if (Array.isArray(c.courses)) {
+        const ids = c.courses.map(v => typeof v === 'string' ? v : (v?.id || v?._id));
+        if (ids.map(String).includes(courseId)) return true;
+      }
+      return false;
+    }
+
     /* ===== Previews & stage from modal ===== */
     let currentPreviewRevoke = null;
     let previewStageCtx = null; // { mode:'file'|'link', files?:File[], url?:string }
@@ -375,14 +488,14 @@
         fileInput.value = '';
         renderAttachments();
         bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-        showInfo('Staged','File(s) are staged and will be uploaded on Upload Module.');
+        showInfo('Staged','File(s) are staged and will be uploaded on Upload.');
       }
       if (previewStageCtx.mode === 'link' && previewStageCtx.url) {
         staged.addLinks.push({ url: previewStageCtx.url, lesson: tgt });
         linkInput.value = '';
         renderAttachments();
         bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-        showInfo('Staged','Link will be added on Upload Module.');
+        showInfo('Staged','Link will be added on Upload.');
       }
       previewStageCtx = null;
       showStageBtn(false);
@@ -401,6 +514,11 @@
     const spinner      = submitBtn.querySelector(".spinner-border");
     const submitText   = submitBtn.querySelector(".submit-text");
 
+    // Publish controls
+    const pubNowRadio      = document.getElementById('pubNow');
+    const pubScheduleRadio = document.getElementById('pubSchedule');
+    const publishAtInput   = document.getElementById('publishAt');
+
     const fileSection   = document.getElementById('fileSection');
     const linkSection   = document.getElementById('linkSection');
     const stagingCard   = document.getElementById('stagingCard');
@@ -414,7 +532,7 @@
     const filesList      = document.getElementById('filesList');
     const targetLessonSelect = document.getElementById('targetLessonSelect');
 
-    /* ===== Assign-to-Classes (fetch + render) ===== */
+    /* ===== Assign-to-Classes (FILTERED) ===== */
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
@@ -429,29 +547,52 @@
           return;
         }
 
-        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const classes = json?.classes || [];
-        const success = json?.success === undefined ? true : !!json.success;
+        await loadCourseEligibleClassIds();
+
+        const classCandidates = [
+          `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}&courseId=${encodeURIComponent(courseId||'')}`,
+          `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`,
+          `${API_BASE}/classes?teacherId=${encodeURIComponent(teacherId)}&courseId=${encodeURIComponent(courseId||'')}`,
+          `${API_BASE}/classes?teacherId=${encodeURIComponent(teacherId)}`
+        ];
+
+        let classes = null, success = false, lastErr = null;
+        for (const u of classCandidates) {
+          try {
+            const res = await fetch(u, { headers: { "Accept": "application/json" } });
+            if (!res.ok) { lastErr = `HTTP ${res.status}`; continue; }
+            const json = await res.json();
+            const arr = json?.classes || json?.data || (Array.isArray(json) ? json : null);
+            if (Array.isArray(arr)) { classes = arr; success = (json?.success === undefined ? true : !!json.success); break; }
+          } catch (e) { lastErr = e?.message || 'fetch error'; }
+        }
 
         assignedContainer.innerHTML = "";
         assignedEmpty.style.display = "none";
 
+        if (!classes) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          if (lastErr) console.error('classes fetch:', lastErr);
+          return;
+        }
         if (!success) {
           assignedStatus.textContent = "Could not load your classes.";
           assignedStatus.classList.remove('small-muted');
           assignedStatus.classList.add('text-danger');
           return;
         }
-        if (!Array.isArray(classes) || classes.length === 0) {
+
+        const filtered = classes.filter(classMatchesCourse);
+
+        if (filtered.length === 0) {
           assignedStatus.style.display = "none";
           assignedEmpty.style.display = "block";
           return;
         }
 
-        classes.forEach(c => {
+        filtered.forEach(c => {
           const id = c.id || c._id || c.classId || "";
           const name = c.name || c.className || "Untitled Class";
           const grade = c.gradeLevel ?? c.grade ?? "—";
@@ -468,7 +609,6 @@
           chk.type = "checkbox";
           chk.value = id;
           chk.className = "d-none";
-          card.appendChild(chk);
 
           const body = document.createElement("div");
           body.className = "card-body";
@@ -479,13 +619,13 @@
             </div>
             <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
           `;
-          card.appendChild(body);
 
           function toggle() {
             const isChecked = !chk.checked;
             chk.checked = isChecked;
             card.classList.toggle("selected", isChecked);
           }
+
           card.addEventListener("click", e => {
             if (window.getSelection && String(window.getSelection()).length) return;
             toggle();
@@ -494,6 +634,8 @@
             if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); }
           });
 
+          card.appendChild(chk);
+          card.appendChild(body);
           col.appendChild(card);
           assignedContainer.appendChild(col);
         });
@@ -612,7 +754,7 @@
     addLesson(false);
     renderPager();
 
-    /* ===== Staging (with lesson assignment) ===== */
+    /* ===== Staging ===== */
     let staged = {
       addFiles: [],      // File[] (with __lesson:number)
       addLinks: []       // {url:string, lesson:number}[]
@@ -699,10 +841,10 @@
       }
     });
 
-    /* ===== Pre-stage preview buttons ===== */
+    /* Pre-stage preview buttons */
     btnPreviewSelectedFiles.addEventListener('click', (e)=>{
       e.preventDefault();
-      if (moduleType.value !== 'file') return; // guard
+      if (moduleType.value !== 'file') return;
       const files = fileInput.files;
       if (!files || !files.length) { showInfo('Nothing selected','Choose one or more files first.'); return; }
       const f = files[0];
@@ -716,7 +858,7 @@
 
     btnPreviewLink.addEventListener('click', (e)=>{
       e.preventDefault();
-      if (moduleType.value !== 'text') return; // guard
+      if (moduleType.value !== 'text') return;
       const val = (linkInput.value || '').trim();
       if (!val) { showInfo('No link entered','Paste a URL first.'); return; }
       openPreviewModalWithMeta({
@@ -725,7 +867,7 @@
       });
     });
 
-    /* ===== Stage buttons ===== */
+    /* Stage buttons */
     btnStageFiles.addEventListener('click', (e)=>{
       e.preventDefault();
       if (moduleType.value !== 'file') return;
@@ -737,7 +879,7 @@
       Array.from(files).forEach(f => { f.__uid = Math.random().toString(36).slice(2,10); f.__lesson = tgt; staged.addFiles.push(f); });
       fileInput.value = '';
       renderAttachments();
-      showInfo('Staged','File(s) are staged and will be uploaded on Upload Module.');
+      showInfo('Staged','File(s) are staged and will be uploaded on Upload.');
     });
 
     btnStageLink.addEventListener('click', (e)=>{
@@ -749,7 +891,7 @@
       staged.addLinks.push({ url: val, lesson: tgt });
       linkInput.value = '';
       renderAttachments();
-      showInfo('Staged','Link will be added on Upload Module.');
+      showInfo('Staged','Link will be added on Upload.');
     });
 
     /* Auto pre-preview when selecting one file */
@@ -768,6 +910,20 @@
       }
     });
 
+    /* ===== Publish UI logic ===== */
+    function syncPublishControls(){
+      const schedule = pubScheduleRadio.checked;
+      publishAtInput.disabled = !schedule;
+      syncSubmitLabel();
+    }
+    function syncSubmitLabel(){
+      const schedule = pubScheduleRadio.checked;
+      submitText.textContent = schedule ? "Upload & Schedule" : "Upload & Publish";
+    }
+    pubNowRadio.addEventListener('change', syncPublishControls);
+    pubScheduleRadio.addEventListener('change', syncPublishControls);
+    syncPublishControls();
+
     /* ===== Staging visibility rules ===== */
     function syncStagingVisibility(){
       const t = moduleType.value;
@@ -785,9 +941,6 @@
     }
 
     /* ===== Submit (upload) ===== */
-    const urlParams = new URLSearchParams(window.location.search);
-    const courseId = urlParams.get("courseId");
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       formError.textContent = "";
@@ -796,6 +949,8 @@
 
       const title    = (document.getElementById("moduleTitle").value || '').trim();
       const mode     = moduleType.value;
+      const pubMode  = document.querySelector('input[name="pubMode"]:checked')?.value || 'now';
+      const schedule = (pubMode === 'schedule');
 
       if (!title) { formError.textContent = "Please enter a Module Title."; return; }
 
@@ -809,8 +964,7 @@
 
       // Gather assigned classes
       const assigned = Array.from(document.querySelectorAll("#assignedClassesContainer input[type='checkbox']:checked")).map(i => i.value);
-      // Optional: enforce at least one selection. Comment this out if not required.
-      if (!assigned.length) { formError.textContent = "Please select at least one class to assign this module."; return; }
+      if (!assigned.length) { formError.textContent = "Please select at least one class."; return; }
 
       // Validate based on mode
       if (mode === 'file') {
@@ -819,34 +973,47 @@
         if (!staged.addFiles.length) { formError.textContent = "Please stage at least one file."; return; }
       } else if (mode === 'text') {
         if (!staged.addLinks.length) { formError.textContent = "Please stage at least one link."; return; }
-      } else {
-        // textonly — no staging required
+      }
+
+      // Validate publishAt if scheduled
+      let publishAtISO = "";
+      if (schedule) {
+        const raw = publishAtInput.value;
+        if (!raw) { formError.textContent = "Please choose a publish date/time."; return; }
+        const dt = new Date(raw);
+        if (isNaN(dt.getTime())) { formError.textContent = "Invalid publish date/time."; return; }
+        const now = Date.now();
+        if (dt.getTime() < now + 60 * 1000) { formError.textContent = "Publish time must be in the future."; return; }
+        publishAtISO = dt.toISOString();
       }
 
       const fd = new FormData();
       fd.append('moduleTitle', title);
       fd.append('moduleType', mode);
       fd.append('courseId', courseId);
+      // For immediate publish, published=true. For schedule, published=false + publishAt
+      fd.append('published', String(!schedule));
+      if (schedule) fd.append('publishAt', publishAtISO);
+
       subTitles.forEach(v => fd.append('moduleSubTitles', v));
       subDescs.forEach(v => fd.append('moduleSubDescs', v));
-      // include assigned classes
       assigned.forEach(id => fd.append('assignedClasses', id));
 
       if (mode === 'file' && staged.addFiles.length) {
         staged.addFiles.forEach(f => fd.append('attachmentFiles', f));
         staged.addFiles.forEach(f => fd.append('attachmentLessonIdx', String(f.__lesson || 0)));
-        staged.addFiles.forEach(_ => fd.append('attachmentDescs', '')); // optional desc placeholder
+        staged.addFiles.forEach(_ => fd.append('attachmentDescs', ''));
       }
       if (mode === 'text' && staged.addLinks.length) {
         staged.addLinks.forEach(l => fd.append('videoUrls', l.url));
         staged.addLinks.forEach(l => fd.append('videoLessonIdx', String(l.lesson || 0)));
-        staged.addLinks.forEach(_ => fd.append('videoDesc', '')); // optional desc placeholder
+        staged.addLinks.forEach(_ => fd.append('videoDesc', ''));
       }
 
       // UI lock
       submitBtn.disabled = true;
       spinner.classList.remove("visually-hidden");
-      submitText.textContent = "Uploading…";
+      submitText.textContent = schedule ? "Uploading & Scheduling…" : "Uploading & Publishing…";
 
       try {
         const res = await fetch(`${API_BASE}/upload-module`, { method: "POST", body: fd });
@@ -856,7 +1023,10 @@
           formError.textContent = msg || "Failed to upload module.";
           return;
         }
-        showInfo('Success','✅ Module uploaded successfully!');
+        showInfo('Success', schedule
+          ? '✅ Module uploaded and scheduled.'
+          : '✅ Module uploaded and published!'
+        );
         setTimeout(()=>{ window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`; }, 900);
       } catch (err) {
         console.error(err);
@@ -864,14 +1034,14 @@
       } finally {
         submitBtn.disabled = false;
         spinner.classList.add("visually-hidden");
-        submitText.textContent = "Upload Module";
+        syncPublishControls();
       }
     });
 
     // First-time visibility and data
     syncStagingVisibility();
     renderAttachments();
-    loadClasses(); // <-- fetch & render class cards
+    loadClasses();
   </script>
 
   <!-- Bootstrap JS -->

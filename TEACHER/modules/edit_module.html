@@ -13,8 +13,21 @@
   <!-- Page theme -->
   <link rel="stylesheet" href="edit_module.css"/>
   <style>
-    /* Optional: ensure the check icon on assignment cards matches brand light text */
     #assignedClassesContainer .card .bi-check2-circle { color: #eaf2ff !important; }
+    .muted { color:#6c757d; }
+    .badge-soft { border-radius: 999px; padding:.25rem .5rem; background: #eef2ff; color:#344767; }
+    .badge-stage { background:#fff3cd; color:#8a6d3b; }
+    .badge-removal { background:#fde2e1; color:#842029; }
+    .file-list { list-style:none; padding-left:0; margin:0; display:flex; flex-direction:column; gap:.5rem; }
+    .file-item { display:flex; align-items:center; gap:.75rem; justify-content:space-between; padding:.5rem .75rem; border:1px dashed #e9ecef; border-radius:.5rem; }
+    .file-item .file-name { flex:1 1 auto; min-width:0; word-break:break-word; }
+    .file-item .btn-icon { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; }
+    .lesson-page.active { outline:2px solid var(--brand-accent-1,#3b6bb4); }
+    .step-dots .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d0d5dd;margin-left:4px}
+    .step-dots .dot.active{background:#3b6bb4}
+    .preview-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #e9ecef;border-radius:.5rem;padding:1rem}
+    .name-removed{ text-decoration: line-through; opacity:.7; }
+    .ctrl-row .form-text{ font-size:.85rem; }
   </style>
 </head>
 <body>
@@ -25,7 +38,6 @@
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -102,16 +114,16 @@
               </div>
             </div>
 
-            <!-- NEW: Assign to Classes -->
+            <!-- Assign to Classes (FILTERED to course) -->
             <div class="ui-card mb-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
-                <div class="ui-card-title fw-normal">Selected classes will have access to this module.</div>
+                <div class="ui-card-title fw-normal">Only classes enrolled in this course are shown.</div>
               </div>
               <div class="p-3">
                 <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
                 <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
-                  No classes found for your account.
+                  No classes linked to this course were found.
                 </div>
                 <div id="assignedClassesContainer" class="row g-3"></div>
                 <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
@@ -134,14 +146,46 @@
               </div>
             </div>
 
+            <!-- Publish & Visibility -->
             <div class="ui-card">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Publish</h2>
+              </div>
+              <div class="p-3">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="publishedSwitch">
+                  <label class="form-check-label" for="publishedSwitch">Published</label>
+                </div>
+
+                <div class="mb-2">
+                  <label for="publishAtInput" class="form-label">Publish At (optional)</label>
+                  <!-- REAL calendar time control -->
+                  <input type="datetime-local" id="publishAtInput" class="form-control" />
+                  <div class="form-text">Set a date & time to schedule. Leave empty to publish immediately.</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button id="btnPublishNow" class="btn btn-outline-primary btn-sm"><i class="bi bi-clock-history"></i> Set to Now</button>
+                  <button id="btnClearSchedule" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i> Clear</button>
+                </div>
+
+                <hr>
+                <div class="small">
+                  <div><span class="muted">Current:</span> <span id="metaPublishedState">—</span></div>
+                  <div><span class="muted">Publish At:</span> <span id="metaPublishAt">—</span></div>
+                  <div><span class="muted">Published At:</span> <span id="metaPublishedAt">—</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ui-card mt-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-lightbulb"></i> Tips</h2>
               </div>
               <div class="p-3">
                 <ul class="mb-0">
                   <li>Use <em>Archive</em> to hide the module from students.</li>
-                  <li>Preview files (including staged ones) to confirm compatibility.</li>
+                  <li>Use the switch above to publish/unpublish, and the scheduler to set a future date/time.</li>
                   <li>Files are shown only for <strong>File</strong> type; link URLs only for <strong>Video (URL)</strong>.</li>
                 </ul>
               </div>
@@ -173,7 +217,6 @@
         <div class="modal-footer">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto d-flex gap-2">
-            <!-- Shown only when previewing pre-upload selections -->
             <button id="stageFromPreviewBtn" class="btn btn-outline-primary d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage selected
             </button>
@@ -288,7 +331,7 @@
       });
     }
 
-    // ✅ Brand-styled alert(): route native alerts to Info Modal using your CSS
+    // Redirect native alerts to brand modal
     (function attachBrandAlert(){
       const escInline = (s) => String(s ?? '').replace(/[&<>"']/g, m => (
         {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
@@ -296,12 +339,35 @@
       window.alert = (msg) => showInfo('Notice', escInline(msg));
     })();
 
-    function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0; if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime(); }
+    // Timestamp/date helpers
+    function tsToMs(ts){
+      if(!ts) return null;
+      const s=ts._seconds??ts.seconds;
+      const ns=ts._nanoseconds??ts.nanoseconds??0;
+      if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6);
+      if(typeof ts==='number') return ts;
+      const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime();
+    }
     function msToLocal(ms){ return ms ? new Date(ms).toLocaleString() : '—'; }
+
+    // Format for <input type="datetime-local"> as "YYYY-MM-DDThh:mm"
+    function dateToLocalInputValue(d){
+      if(!d) return '';
+      const pad = n => String(n).padStart(2,'0');
+      const y=d.getFullYear(), m=pad(d.getMonth()+1), day=pad(d.getDate()), h=pad(d.getHours()), min=pad(d.getMinutes());
+      return `${y}-${m}-${day}T${h}:${min}`;
+    }
+    function localInputValueToDate(v){
+      if(!v) return null;
+      // v is "YYYY-MM-DDThh:mm"
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
     const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
     const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-    // Preview helpers (unchanged)
+    // Preview helpers
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
@@ -381,7 +447,7 @@
       currentPreviewRevoke = null; previewStageCtx = null; showStageBtn(false);
     });
 
-    // ✅ Stage directly from preview
+    // Stage directly from preview
     stageFromPreviewBtn.addEventListener('click', ()=>{
       if (!previewStageCtx) return;
       const { idx, files } = previewStageCtx;
@@ -717,18 +783,20 @@
       }
       pager.pages.forEach(p=>p.syncLessonTypeUI && p.syncLessonTypeUI());
     }
-    document.getElementById('addLessonBtn').addEventListener('click', ()=>addLesson(true));
+    document.getElementById('addLessonBtn').addEventListener('click', ()=>{ addLesson(true); });
     document.getElementById('removeLessonBtn').addEventListener('click', removeCurrentLesson);
     document.getElementById('prevBtn').addEventListener('click', ()=>{ if(pager.cur>0){ pager.cur--; renderPager(); }});
     document.getElementById('nextBtn').addEventListener('click', ()=>{ if(pager.cur<pager.pages.length-1){ pager.cur++; renderPager(); }});
     document.getElementById('moduleType').addEventListener('change', ()=>{ renderPager(); });
 
-    /* -------------------- Assign-to-Classes (NEW) -------------------- */
+    /* -------------------- Assign-to-Classes (FILTERED) -------------------- */
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
     let selectedClassIds = new Set();     // working selection
     let initialAssigned = new Set();      // from module load (for dirty tracking)
+
+    let eligibleClassIdSet = new Set();   // derived from course doc and heuristics
 
     function escapeHTML(str='') {
       return String(str)
@@ -763,7 +831,6 @@
         chk.type = "checkbox";
         chk.value = id;
         chk.className = "d-none";
-        // preselect based on module's assignedClasses
         if (selectedClassIds.has(id)) {
           chk.checked = true;
           card.classList.add("selected");
@@ -787,7 +854,6 @@
           card.classList.toggle("selected", isChecked);
           if (isChecked) selectedClassIds.add(id);
           else selectedClassIds.delete(id);
-          // mark form dirty when selection diverges from initial
           const now = [...selectedClassIds].sort().join(',');
           const was = [...initialAssigned].sort().join(',');
           if (now !== was) markDirty();
@@ -807,7 +873,79 @@
       assignedEmpty.style.display = "none";
     }
 
-    async function loadTeacherClassesAndRender() {
+    // ---- Course-linked class filtering helpers ----
+    async function fetchCourseObject(courseId) {
+      if (!courseId) return null;
+      const candidates = [
+        `${API}/courses/${encodeURIComponent(courseId)}`,
+        `${API}/courses?courseId=${encodeURIComponent(courseId)}`,
+        `${API}/api/courses/${encodeURIComponent(courseId)}`,
+        `${API}/api/courses?courseId=${encodeURIComponent(courseId)}`
+      ];
+      for (const u of candidates) {
+        try {
+          const r = await fetch(u, { headers:{Accept:'application/json'} });
+          if (!r.ok) continue;
+          const j = await r.json();
+          if (j && typeof j === 'object') {
+            if (j.course && typeof j.course === 'object') return j.course;
+            if (Array.isArray(j.courses)) {
+              const hit = j.courses.find(c => (c.id || c._id) === courseId);
+              return hit || j.courses[0] || null;
+            }
+            if (j.id || j._id || j.title || j.courseNumber) return j;
+          }
+        } catch {}
+      }
+      return null;
+    }
+    function collectIds(maybe) {
+      const out = [];
+      if (Array.isArray(maybe)) {
+        for (const v of maybe) {
+          if (typeof v === 'string') out.push(v);
+          else if (v && typeof v === 'object') out.push(v.id || v._id || v.classId || v.value || v.key || null);
+        }
+      } else if (maybe && typeof maybe === 'object') {
+        for (const k of Object.keys(maybe)) {
+          const v = maybe[k];
+          if (typeof v === 'string') out.push(v);
+          else if (v && typeof v === 'object') out.push(v.id || v._id || v.classId || k);
+          else out.push(k);
+        }
+      }
+      return out.filter(Boolean).map(String);
+    }
+    async function loadCourseEligibleClassIds(courseId) {
+      eligibleClassIdSet = new Set();
+      const course = await fetchCourseObject(courseId);
+      if (!course) return;
+      const candidateFields = ['assignedClasses','assignedClassIds','classIds','classes','enrolledClasses','linkedClasses'];
+      for (const f of candidateFields) {
+        if (course[f] !== undefined) {
+          collectIds(course[f]).forEach(id => eligibleClassIdSet.add(String(id)));
+        }
+      }
+      for (const [k,v] of Object.entries(course)) {
+        if (Array.isArray(v) && v.length && k.toLowerCase().includes('class')) {
+          collectIds(v).forEach(id => eligibleClassIdSet.add(String(id)));
+        }
+      }
+    }
+    function classMatchesCourse(c, courseId) {
+      const id = String(c.id || c._id || c.classId || '');
+      if (!id) return false;
+      if (eligibleClassIdSet.size > 0 && eligibleClassIdSet.has(id)) return true;
+      if (String(c.courseId || '') === String(courseId)) return true;
+      if (Array.isArray(c.courseIds) && c.courseIds.map(String).includes(String(courseId))) return true;
+      if (Array.isArray(c.courses)) {
+        const ids = c.courses.map(v => typeof v === 'string' ? v : (v?.id || v?._id));
+        if (ids.map(String).includes(String(courseId))) return true;
+      }
+      return false;
+    }
+
+    async function loadTeacherClassesAndRender(courseId) {
       try {
         const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
         if (!teacherId) {
@@ -816,17 +954,44 @@
           assignedStatus.classList.add('text-danger');
           return;
         }
-        const url = `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
-        const json = await res.json().catch(()=>({success:false, classes:[]}));
-        const classes = json?.classes || [];
-        if (!json.success && json.success !== undefined) {
+
+        await loadCourseEligibleClassIds(courseId);
+
+        const candidates = [
+          `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}&courseId=${encodeURIComponent(courseId||'')}`,
+          `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`,
+          `${API}/classes?teacherId=${encodeURIComponent(teacherId)}&courseId=${encodeURIComponent(courseId||'')}`,
+          `${API}/classes?teacherId=${encodeURIComponent(teacherId)}`
+        ];
+        let classes=null, success=false;
+        for (const u of candidates) {
+          try {
+            const r = await fetch(u, { headers:{Accept:'application/json'} });
+            if (!r.ok) continue;
+            const j = await r.json();
+            const arr = j?.classes || j?.data || (Array.isArray(j) ? j : null);
+            if (Array.isArray(arr)) { classes = arr; success = (j?.success === undefined ? true : !!j.success); break; }
+          } catch {}
+        }
+
+        assignedContainer.innerHTML = "";
+        assignedEmpty.style.display = "none";
+
+        if (!classes) {
           assignedStatus.textContent = "Could not load your classes.";
           assignedStatus.classList.remove('small-muted');
           assignedStatus.classList.add('text-danger');
           return;
         }
-        renderClassCards(classes);
+        if (!success) {
+          assignedStatus.textContent = "Could not load your classes.";
+          assignedStatus.classList.remove('small-muted');
+          assignedStatus.classList.add('text-danger');
+          return;
+        }
+
+        const filtered = classes.filter(c => classMatchesCourse(c, courseId));
+        renderClassCards(filtered);
       } catch (e) {
         console.error("Could not load classes:", e);
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
@@ -835,6 +1000,29 @@
         showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
       }
     }
+
+    /* -------------------- Publish UI refs -------------------- */
+    const publishedSwitch = document.getElementById('publishedSwitch');
+    const publishAtInput  = document.getElementById('publishAtInput');
+    const btnPublishNow   = document.getElementById('btnPublishNow');
+    const btnClearSchedule= document.getElementById('btnClearSchedule');
+    const metaPublishedState = document.getElementById('metaPublishedState');
+    const metaPublishAt   = document.getElementById('metaPublishAt');
+    const metaPublishedAt = document.getElementById('metaPublishedAt');
+
+    btnPublishNow.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const now = new Date();
+      publishAtInput.value = dateToLocalInputValue(now);
+      markDirty();
+    });
+    btnClearSchedule.addEventListener('click', (e)=>{
+      e.preventDefault();
+      publishAtInput.value = '';
+      markDirty();
+    });
+    publishedSwitch.addEventListener('change', markDirty);
+    publishAtInput.addEventListener('change', markDirty);
 
     /* -------------------- Load module -------------------- */
     let initialModule=null;
@@ -860,6 +1048,16 @@
         document.getElementById('metaCreated').textContent = msToLocal(tsToMs(m.createdAt));
         document.getElementById('metaUpdated').textContent = msToLocal(tsToMs(m.updatedAt));
         updateStatusBadge(m.archived === true);
+
+        // Publish fields
+        const published   = !!m.published;
+        const publishAtMs = tsToMs(m.publishAt);
+        const publishedAtMs = tsToMs(m.publishedAt);
+        publishedSwitch.checked = published;
+        publishAtInput.value = publishAtMs ? dateToLocalInputValue(new Date(publishAtMs)) : '';
+        metaPublishedState.textContent = published ? 'Published' : 'Unpublished';
+        metaPublishAt.textContent = publishAtMs ? msToLocal(publishAtMs) : '—';
+        metaPublishedAt.textContent = publishedAtMs ? msToLocal(publishedAtMs) : '—';
 
         document.getElementById('titleInput').value = m.title || '';
         document.getElementById('moduleType').value = (m.type==='textonly'?'textonly':m.type||'file');
@@ -894,7 +1092,7 @@
         initialAssigned = new Set(selectedClassIds);
 
         await loadCourseTitle(m.courseId || '');
-        await loadTeacherClassesAndRender();
+        await loadTeacherClassesAndRender(m.courseId || backCourseId || '');
 
         clearDirty();
       }catch(e){ console.error(e); showInfo('Error', e.message || 'Failed to load module.'); }
@@ -936,7 +1134,12 @@
 
       const { subs, descs, count } = collectLessonsForSave();
 
-      // ✅ include assignedClasses in PATCH
+      // Publish payload (use proper date!)
+      const published = !!publishedSwitch.checked;
+      const publishAtDate = localInputValueToDate(publishAtInput.value); // returns Date or null
+      const publishAtISO = publishAtDate ? publishAtDate.toISOString() : null;
+
+      // include assignedClasses in PATCH
       const assignedClasses = Array.from(selectedClassIds);
 
       const payload = {
@@ -945,8 +1148,11 @@
         moduleSubTitles: subs,
         moduleSubDescs:  descs,
         lessonCount: count,
-        assignedClasses
+        assignedClasses,
+        published,
+        publishAt: publishAtISO   // ← backend will parse this ISO string into Timestamp
       };
+
       const upd = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, {
         method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
@@ -1001,9 +1207,7 @@
 
       await loadModule();
       clearDirty();
-      document.getElementById('infoTitle').textContent = 'Success';
-      document.getElementById('infoBody').innerHTML = 'Your changes (including staged files/links and class assignments) have been saved.';
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
+      showInfo('Success','Your changes (including publish settings, staged files/links, and class assignments) have been saved.');
     }
 
     const btnSave = document.getElementById('btnSave');
@@ -1038,14 +1242,12 @@
       }catch(e){ showInfo('Error', e.message||'Failed to unarchive.'); }
     });
 
-    // 🔹 Compute a safe back URL that always includes courseId
     function computeBackUrl() {
       const cid = backCourseId || initialModule?.courseId || '';
       if (cid) return `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(cid)}`;
       return `/TEACHER/Modules/module_list.html`;
     }
 
-    // ✅ Replace native confirm() with brand modal for the Back action
     document.getElementById('btnBack').addEventListener('click', async ()=>{
       if (!isDirty()) {
         location.href = computeBackUrl();
@@ -1053,7 +1255,7 @@
       }
       const ok = await confirmDanger(
         'Leave without saving?',
-        'You have unsaved changes (including staged files/links or class assignments). Leave without saving?'
+        'You have unsaved changes (including staged files/links, class assignments, or publish settings). Leave without saving?'
       );
       if (ok) location.href = computeBackUrl();
     });

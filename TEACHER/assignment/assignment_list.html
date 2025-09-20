@@ -256,6 +256,9 @@
     // Cache for module lookups (moduleId -> { title, moduleNumber })
     const moduleCache = new Map();
 
+    // NEW: submission counts cache (assignmentId -> number)
+    const submissionCountCache = new Map();
+
     // Utils
     function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
     function escapeHTML(str = '') { return String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", "&#039;"); }
@@ -277,12 +280,10 @@
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d.getTime();
     }
-    function msToLocalInput(ms) {
-      if (!ms) return '';
+    function fmtDateTime(ms) {
+      if (!ms) return 'N/A';
       const d = new Date(ms);
-      const pad = n => String(n).padStart(2, '0');
-      const yyyy = d.getFullYear(), mm = pad(d.getMonth() + 1), dd = pad(d.getDate()), hh = pad(d.getHours()), mi = pad(d.getMinutes());
-      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
     }
     function showToast(msg, variant = 'success') {
       const el = document.getElementById('actionToast');
@@ -379,6 +380,37 @@
       });
     }
 
+    // NEW: fetch & cache submission count for an assignment
+    async function fetchSubmissionCount(assignmentId) {
+      try {
+        const r = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`);
+        const js = await r.json();
+        if (!r.ok || js.success === false || !Array.isArray(js.submissions)) return 0;
+        return js.submissions.length;
+      } catch {
+        return 0;
+      }
+    }
+
+    // NEW: warm submission counts with a small concurrency limit
+    async function warmSubmissionCounts(list, limit = 8) {
+      const ids = list.map(a => a.id).filter(Boolean).filter(id => !submissionCountCache.has(id));
+      let idx = 0;
+      async function worker() {
+        while (idx < ids.length) {
+          const my = idx++; // pick an id
+          const id = ids[my];
+          const count = await fetchSubmissionCount(id);
+          submissionCountCache.set(id, count);
+          // update UI for cards already rendered
+          const badge = document.querySelector(`[data-assignment-card="${id}"] .js-submission-count`);
+          if (badge) badge.textContent = String(count);
+        }
+      }
+      const pool = Array.from({ length: Math.min(limit, ids.length) }, worker);
+      await Promise.all(pool);
+    }
+
     // PRELOAD: load assignments across ALL courses (includes archived)
     async function preloadAllAssignments() {
       if (!coursesList.length) return;
@@ -422,6 +454,9 @@
 
       // Update always-visible pills from full snapshot
       refreshAssignmentPills();
+
+      // Warm counts for everything in the background (UI updates live)
+      warmSubmissionCounts(masterAssignments).catch(()=>{});
     }
 
     // Update active/archived counts
@@ -457,6 +492,9 @@
       filtered = list;
 
       renderGrid();
+
+      // Warm counts for just the filtered set (fast perceived load)
+      warmSubmissionCounts(filtered).catch(()=>{});
     }
 
     // ---- Archive / Unarchive ----
@@ -513,14 +551,15 @@
       });
     }
 
-    // Render cards with Course + Module pills
+    // Render cards with Course + Module pills + Published & Submissions
     function renderGrid() {
       if (!filtered.length) {
         elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">No assignments found.</div></div>`;
         return;
       }
       elGrid.innerHTML = filtered.map(a => {
-        const dueStr = a._dueMs ? new Date(a._dueMs).toLocaleString() : 'N/A';
+        const dueStr = fmtDateTime(a._dueMs);
+        const pubStr = fmtDateTime(a._pubMs);
         const pts = (typeof a.points === 'number') ? `${a.points} pts` : '';
 
         const coursePill = a.courseLabel
@@ -546,9 +585,12 @@
              </span>`
           : '';
 
+        // Show cached count if we have it; otherwise placeholder
+        const subCount = submissionCountCache.has(a.id) ? String(submissionCountCache.get(a.id)) : '…';
+
         return `
           <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
-            <div class="assignment-card ${a.archived === true ? 'archived' : ''}">
+            <div class="assignment-card ${a.archived === true ? 'archived' : ''}" data-assignment-card="${escapeHTML(a.id)}">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="m-0">${escapeHTML(a.title || 'Untitled')}</h5>
                 <div class="d-flex align-items-center gap-2">
@@ -563,9 +605,10 @@
                 ${escapeHTML(a.content || '')}
               </div>
 
-              <div class="d-flex align-items-center justify-content-between small mb-3">
+              <div class="d-flex flex-column gap-1 small mb-3">
                 <span class="text-muted"><i class="bi bi-calendar2-week me-1"></i><strong>Due:</strong> ${dueStr}</span>
-                <span class="text-muted">${a.submissionCount ?? '—'} submissions</span>
+                <span class="text-muted"><i class="bi bi-calendar-check me-1"></i><strong>Published:</strong> ${pubStr}</span>
+                <span class="text-muted"><i class="bi bi-people me-1"></i><strong>Submissions:</strong> <span class="js-submission-count">${subCount}</span></span>
               </div>
 
               <div class="card-footer-actions">
