@@ -12,6 +12,7 @@
 
   <!-- Global teacher styles -->
   <link rel="stylesheet" href="grade.css"/>
+
 </head>
 <body>
   <div class="dashboard">
@@ -217,7 +218,7 @@
         <div class="modal-body" id="confirmModalBody">Are you sure?</div>
         <div class="modal-footer">
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-danger" id="confirmYesBtn">Yes</button>
+          <button type="button" class="btn btn-amber" id="confirmYesBtn">Yes</button>
         </div>
       </div>
     </div>
@@ -311,6 +312,13 @@
     const viewGradedBtn = document.getElementById('viewGradedBtn');
     const elSortBy   = document.getElementById('sortBy');
 
+    /* ---------- Modal management: always close others first ---------- */
+    function closeAllModals() {
+      document.querySelectorAll('.modal.show').forEach(m => {
+        try { bootstrap.Modal.getInstance(m)?.hide(); } catch {}
+      });
+    }
+
     /* ---------- State ---------- */
     let assignmentMeta = null;
     let moduleTitle = '—';
@@ -319,13 +327,17 @@
 
     /* ---------- Modal helpers ---------- */
     function showInfoModal(message, title = 'Notice') {
+      closeAllModals();
       document.getElementById('infoModalLabel').textContent = title;
       document.getElementById('infoModalBody').textContent = message;
       bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show();
     }
     function showConfirmModal(message, title = 'Confirm') {
+      closeAllModals();
       return new Promise(resolve => {
         const modalEl = document.getElementById('confirmModal');
+        const content = modalEl.querySelector('.modal-content');
+        content.classList.remove('confirm-themed'); // ensure normal confirm
         document.getElementById('confirmModalLabel').textContent = title;
         document.getElementById('confirmModalBody').textContent = message;
 
@@ -346,12 +358,116 @@
           resolve(false);
         }
 
+        yesBtn.textContent = 'Yes';
+        yesBtn.disabled = false;
+        yesBtn.className = 'btn btn-danger';
+
         yesBtn.addEventListener('click', onYes, { once: true });
         modalEl.addEventListener('hidden.bs.modal', onHide, { once: true });
 
         modal.show();
       });
     }
+
+    /* ----- Type-to-confirm (hardened) ----- */
+/* Blocks copying the expected text or hint, and prevents paste/⌘V/drag. */
+function showTypeToConfirm({ title, expected, hint='Type the Student Name exactly to delete', primaryText='Delete' }){
+  // Close any open modals first (matches the rest of your page flow)
+  closeAllModals();
+
+  return new Promise((resolve)=>{
+    const modalEl = document.getElementById('confirmModal');
+    const content = modalEl.querySelector('.modal-content');
+    content.classList.add('confirm-themed');
+
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const escAttr = s => String(s).replace(/"/g,'&quot;');
+
+    document.getElementById('confirmModalLabel').textContent = title || 'Confirm';
+    const body = document.getElementById('confirmModalBody');
+
+    body.innerHTML = `
+      <p class="mb-2 no-copy">${esc(hint)}</p>
+      <div class="no-copy pill-danger mb-2" id="ttcPill">
+        Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+      </div>
+      <div class="mb-1">
+        <input id="ttcInput" type="text" class="form-control is-invalid"
+               placeholder="${escAttr('Type here…')}" autocomplete="off"
+               autocapitalize="off" spellcheck="false">
+      </div>
+      <div id="ttcBad" class="invalid-msg no-copy">
+        Input does not match. Please type <strong>${esc(expected||'')}</strong>.
+      </div>
+      <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+    `;
+
+    const okBtn = document.getElementById('confirmYesBtn');
+    const cancelBtn = modalEl.querySelector('.btn-close-footer');
+
+    okBtn.textContent = primaryText;
+    okBtn.className = 'btn btn-delete';
+    okBtn.disabled = true;
+
+    // --- Hardening guards ---
+    const guardRoots = [modalEl, body.querySelector('#ttcPill'), body.querySelector('#ttcBad')];
+    const block = e => e.preventDefault();
+    guardRoots.forEach(node=>{
+      ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.addEventListener(evt, block));
+    });
+
+    const input = body.querySelector('#ttcInput');
+    input.addEventListener('paste', block);
+    input.addEventListener('beforeinput', e => {
+      if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+    });
+    input.addEventListener('keydown', e => {
+      const k = (e.key||'').toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
+    });
+
+    const bad = body.querySelector('#ttcBad');
+    const good = body.querySelector('#ttcGood');
+    const expectedRaw = String(expected||'');
+
+    function refresh(){
+      const ok = (input.value === expectedRaw);
+      okBtn.disabled = !ok;
+      input.classList.toggle('is-valid', ok);
+      input.classList.toggle('is-invalid', !ok);
+      bad.classList.toggle('d-none', ok);
+      good.classList.toggle('d-none', !ok);
+    }
+    input.addEventListener('input', refresh);
+    setTimeout(()=>input.focus(), 60);
+
+    let confirmed = false;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
+    const onCancel = () => { modal.hide(); };
+    const onHidden = () => {
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+      modalEl.removeEventListener('hidden.bs.modal', onHidden);
+      content.classList.remove('confirm-themed');
+
+      // cleanup guards
+      guardRoots.forEach(node=>{
+        ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.removeEventListener(evt, block));
+      });
+      input.removeEventListener('paste', block);
+
+      resolve(confirmed);
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn && cancelBtn.addEventListener('click', onCancel);
+    modalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
+
+    modal.show();
+  });
+}
+
 
     /* ---------- Utils ---------- */
     function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
@@ -411,6 +527,7 @@
       const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=()=>fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done,1200);
     }
     function openPreviewModal(viewUrl, title='File'){
+      closeAllModals();
       document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
       setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
       renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
@@ -445,7 +562,6 @@
     // Open preview (modal) after resolving a safe URL (uses signed URL if needed)
     async function openPreviewFromObj(obj = {}) {
       const direct = pickHref(obj);
-      // If it's already a Firebase token URL, preview it directly
       if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
         openPreviewModal(direct, pickName(obj));
         return;
@@ -464,22 +580,6 @@
         }
       } catch {}
       if (direct) openPreviewModal(direct, pickName(obj));
-    }
-
-    // Legacy new-tab fallback if you still need it elsewhere
-    async function openAttachmentWithFallback(obj) {
-      const direct = pickHref(obj);
-      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
-        window.open(direct, '_blank', 'noopener'); return;
-      }
-      const storagePath = extractStoragePath(obj);
-      if (!storagePath) { if (direct) window.open(direct, '_blank', 'noopener'); return; }
-      try {
-        const r = await fetch(`${API}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
-        const js = await r.json().catch(()=>null);
-        if (r.ok && js?.success && js?.url) { window.open(js.url, '_blank', 'noopener'); return; }
-      } catch {}
-      if (direct) window.open(direct, '_blank', 'noopener');
     }
 
     // Status helpers
@@ -745,6 +845,8 @@
     function openViewModal(item){
       if (!item) return;
 
+      closeAllModals();
+
       vmStudentName.textContent = item.studentName || item.studentId || '—';
       const metaParts = [
         item.assignmentTitle || 'Untitled',
@@ -812,6 +914,9 @@
 
     function openGradeModal(item){
       if (!item) return;
+
+      closeAllModals();
+
       const maxPts = (typeof item.maxPoints === 'number') ? item.maxPoints : null;
       gradeStudentNameEl.textContent = item.studentName || item.studentId;
       gradeLabelEl.textContent = maxPts!=null ? `Grade (0–${maxPts})` : 'Grade';
@@ -862,12 +967,21 @@
       }
     });
 
-    // Delete submission
+    // Delete submission (TYPE-TO-CONFIRM: Student Name)
     async function deleteSubmission(item){
-      const ok = await showConfirmModal(
-        'Delete this submission? This will allow the student to resubmit.',
-        'Delete Submission'
-      );
+      const expected = (item?.studentName || item?.studentId || '').trim();
+      let ok = false;
+
+      if (expected) {
+        ok = await showTypeToConfirm({
+          title: 'Delete Submission',
+          expected,
+          hint: 'Confirm deletion by typing the exact Student Name (case-sensitive). This allows the student to resubmit.',
+          primaryText: 'Delete'
+        });
+      } else {
+        ok = await showConfirmModal('Delete this submission? This will allow the student to resubmit.','Delete Submission');
+      }
       if (!ok) return;
 
       try{
@@ -880,9 +994,6 @@
         submissions = submissions.filter(x => !(x.assignmentId === item.assignmentId && x.studentId === item.studentId));
         filtered    = filtered.filter(x => !(x.assignmentId === item.assignmentId && x.studentId === item.studentId));
         applyFilters();
-
-        const inst = bootstrap.Modal.getInstance(viewModalEl) || bootstrap.Modal.getOrCreateInstance(viewModalEl);
-        inst.hide();
 
         showInfoModal('Submission deleted.', 'Deleted');
       }catch(err){

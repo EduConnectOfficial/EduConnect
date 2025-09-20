@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,14 +13,6 @@
 
   <!-- Your course page css (kept) -->
   <link rel="stylesheet" href="../courses/course.css" />
-  <style>
-    .muted { color: #6c757d; }
-    .form-hint { font-size:.9rem; color:#6c757d; }
-    .radio-row { gap: 1rem; }
-    .publish-row .col-timezone { display:flex; align-items:end; }
-    .assign-card.selected { outline: 2px solid var(--brand-accent-1,#3b6bb4); }
-    .btn-icon { width: 36px; height: 36px; display:inline-flex; align-items:center; justify-content:center; }
-  </style>
 </head>
 
 <body>
@@ -54,7 +47,8 @@
         <div class="ui-card card-themed constrain mb-3" style="--ui-card-max: 1120px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-easel2"></i> Upload Course</h2>
-            <div class="ui-subtext">Give your course a title & description, choose publish timing, then assign it to classes.</div>
+            <div class="ui-subtext">Give your course a title & description, choose publish timing, then assign it to
+              classes.</div>
           </div>
 
           <form id="courseUploadForm" class="px-1" novalidate>
@@ -73,7 +67,8 @@
             <!-- Description -->
             <div class="mt-3">
               <label for="courseDescription" class="form-label fw-semibold">Course Description</label>
-              <textarea class="form-control" id="courseDescription" rows="4" placeholder="Write a short course description..." required></textarea>
+              <textarea class="form-control" id="courseDescription" rows="4"
+                placeholder="Write a short course description..." required></textarea>
             </div>
 
             <!-- Publish At (NEW) -->
@@ -189,52 +184,52 @@
 
   <!-- Header initials (APPLIED) -->
   <script>
-  // ---- Auth guard + header initials (robust) ----
-  (function initHeaderInitials(){
-    try{
-      const raw = localStorage.getItem("user");
-      const stored = raw ? JSON.parse(raw) : {};
-      const u = stored.user || stored;   // supports both shapes
+    // ---- Auth guard + header initials (robust) ----
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;   // supports both shapes
 
-      // teacher gate
-      if (!u?.userId || !u?.isTeacher) {
+        // teacher gate
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;            // reuse elsewhere
+
+        const initials = getInitials(u);
+
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");   // 👈 header span on this page
+          if (!el) return;
+          el.textContent = initials;                        // initials only
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
         window.location.href = "/TEACHER/login/login.html";
-        return;
       }
-      window.currentUser = u;            // reuse elsewhere
 
-      const initials = getInitials(u);
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
 
-      window.addEventListener("DOMContentLoaded", () => {
-        const el = document.getElementById("Username");   // 👈 header span on this page
-        if (!el) return;
-        el.textContent = initials;                        // initials only
-        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                        || u.username || u.email || 'Profile';
-        el.setAttribute('title', fullLabel);
-        el.setAttribute('aria-label', fullLabel);
-      });
-    }catch(e){
-      console.error('initHeaderInitials failed:', e);
-      window.location.href = "/TEACHER/login/login.html";
-    }
-
-    function getInitials(u){
-      const fn = (u.firstName || '').trim();
-      const ln = (u.lastName  || '').trim();
-      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-      const nameish = (u.username || u.displayName || u.name || '').trim();
-      if (nameish){
-        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-                             .split(/[\s._-]+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return parts[0][0].toUpperCase();
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
       }
-      const em = (u.email || '').trim();
-      return em ? em[0].toUpperCase() : 'U';
-    }
-  })();
+    })();
   </script>
 
   <!-- Page Logic -->
@@ -276,16 +271,16 @@
       } catch {
         tzLabel.textContent = 'Local time';
       }
-      function offsetToHHMM(d){
+      function offsetToHHMM(d) {
         const m = -d.getTimezoneOffset(); // minutes east of UTC
         const sign = m >= 0 ? '+' : '-';
         const abs = Math.abs(m);
-        const hh = String(Math.floor(abs/60)).padStart(2,'0');
-        const mm = String(abs%60).padStart(2,'0');
+        const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+        const mm = String(abs % 60).padStart(2, '0');
         return `${sign}${hh}:${mm}`;
       }
 
-      function setScheduleVisible(vis){
+      function setScheduleVisible(vis) {
         scheduleWrap.style.display = vis ? '' : 'none';
         publishError.textContent = '';
       }
@@ -296,37 +291,37 @@
       setScheduleVisible(false);
 
       // Validate schedule in future (>= now)
-      function validateSchedule(){
+      function validateSchedule() {
         publishError.textContent = '';
-        if (!pubSchedule.checked) return { ok:true, iso:null };
+        if (!pubSchedule.checked) return { ok: true, iso: null };
 
         const d = (publishDate.value || '').trim();
         const t = (publishTime.value || '').trim();
         if (!d || !t) {
           publishError.textContent = 'Choose both a date and time.';
-          return { ok:false, iso:null };
+          return { ok: false, iso: null };
         }
 
         // Build local Date from yyyy-mm-dd and HH:MM
-        const [y,m,day] = d.split('-').map(n => parseInt(n,10));
-        const [hh,mm] = t.split(':').map(n => parseInt(n,10));
-        if (![y,m,day,hh,mm].every(Number.isFinite)) {
+        const [y, m, day] = d.split('-').map(n => parseInt(n, 10));
+        const [hh, mm] = t.split(':').map(n => parseInt(n, 10));
+        if (![y, m, day, hh, mm].every(Number.isFinite)) {
           publishError.textContent = 'Invalid date/time.';
-          return { ok:false, iso:null };
+          return { ok: false, iso: null };
         }
 
         // Create local time -> convert to UTC ISO
-        const local = new Date(y, m-1, day, hh, mm, 0, 0);
+        const local = new Date(y, m - 1, day, hh, mm, 0, 0);
         if (Number.isNaN(local.getTime())) {
           publishError.textContent = 'Invalid date/time.';
-          return { ok:false, iso:null };
+          return { ok: false, iso: null };
         }
         const now = new Date();
-        if (local.getTime() < now.getTime() - 60*1000) {
+        if (local.getTime() < now.getTime() - 60 * 1000) {
           publishError.textContent = 'Publish time can’t be in the past.';
-          return { ok:false, iso:null };
+          return { ok: false, iso: null };
         }
-        return { ok:true, iso: new Date(local.getTime() - (local.getTimezoneOffset()*60000)).toISOString() };
+        return { ok: true, iso: new Date(local.getTime() - (local.getTimezoneOffset() * 60000)).toISOString() };
       }
 
       const assignedContainer = document.getElementById("assignedClassesContainer");
@@ -494,4 +489,5 @@
     })();
   </script>
 </body>
+
 </html>

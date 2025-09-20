@@ -9,7 +9,7 @@
   --muted: #6a737d;
   --card: #fff;
   --border: #e5e7eb;
-   /* ColorHunt Blue Palette */
+  /* ColorHunt Blue Palette */
   --brand-dark-1: #001369;
   /* deep navy */
   --brand-dark-2: #1a388a;
@@ -98,6 +98,7 @@ body {
 .profile-btn .username {
   font-size: 14px;
 }
+
 .logout-btn {
   background: linear-gradient(to bottom,
       #6EC9F5 0%,
@@ -489,6 +490,33 @@ body {
 /* Action cluster spacing */
 .actions-wrap {
   gap: .5rem;
+}
+
+.confirm-no-copy,
+.confirm-no-copy * {
+  user-select: none !important;
+}
+
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .5rem
+}
+
+.results-toolbar .count {
+  font-size: .9rem;
+  color: #6c757d
+}
+
+.search-result {
+  padding: .5rem;
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: .5rem
+}
+
+.search-result:hover {
+  background: #f8f9fa
 }
 
 /* ========== 8) Modals (Bootstrap 5 theme) ========== */

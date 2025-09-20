@@ -321,7 +321,7 @@ body {
   box-shadow: 0 0 0 .15rem rgba(255, 106, 0, .25);
 }
 
-.btn-del {
+.btn-danger {
   background: #dc3545;
   border: none;
   color: #fff;
@@ -332,7 +332,7 @@ body {
   transition: background .3s ease, transform .2s ease, box-shadow .2s ease;
 }
 
-.btn-del:hover {
+.btn-danger:hover {
   background: #ca3140;
   transform: scale(1.05);
   color: #fff;
@@ -443,17 +443,17 @@ body {
 }
 
 .btn-edit {
-  color: #FF6A00;
+  color: var(--brand-accent-1);
   background: transparent;
-  border: 1px solid #FF6A00;
+  border: 1px solid var(--brand-accent-1);
   box-shadow: none;
   border-radius: 5px;
 }
 
 .btn-edit:hover {
   color: #fff;
-  background: #FF6A00;
-  border-color: #FF6A00;
+  background: var(--brand-dark-2);
+  border-color: var(--brand-dark-2);
 }
 
 /* Neutral secondary button used in modal footers for non-brand actions */
@@ -718,6 +718,40 @@ body {
 
 .badge.bg-primary {
   background-color: var(--color-primary) !important;
+}
+
+/* Themed confirm modal (matches your screenshot) */
+.confirm-themed .modal-header {
+  background: #0D348C;
+  color: #fff;
+  border-top-left-radius: .75rem;
+  border-top-right-radius: .75rem;
+}
+
+.confirm-themed .no-copy {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+.confirm-themed .pill-danger {
+  background: var(--bs-danger-bg-subtle, #f8d7da);
+  color: var(--bs-danger-text-emphasis, #842029);
+  border: 1px solid var(--bs-danger-border-subtle, #f5c2c7);
+  border-radius: .5rem;
+  padding: .6rem .75rem;
+  font-size: .9rem;
+}
+
+.confirm-themed .valid-msg {
+  color: #198754;
+  font-size: .875rem;
+}
+
+.confirm-themed .invalid-msg {
+  color: #dc3545;
+  font-size: .875rem;
 }
 
 /* =========================================================

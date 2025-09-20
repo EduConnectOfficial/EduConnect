@@ -9,6 +9,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link rel="stylesheet" href="edit_assignment.css" />
+
 </head>
 <body>
   <div class="dashboard">
@@ -262,12 +263,12 @@
   </div>
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header bg-danger text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
+      <div class="modal-header text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
         <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
       <div class="modal-body" id="confirmBody">Are you sure?</div>
       <div class="modal-footer">
         <button class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
-        <button id="confirmYesBtn" class="btn btn-danger">Yes</button>
+        <button id="confirmYesBtn" class="btn btn-amber">Yes</button>
       </div>
     </div></div>
   </div>
@@ -329,7 +330,120 @@
     function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0; if(typeof s==='number') return (s*1000)+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d.getTime())?null:d.getTime(); }
     function msToLocalInput(ms){ if(!ms) return ''; const d=new Date(ms); const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
     function showInfo(title, body){ document.getElementById('infoTitle').textContent=title; document.getElementById('infoBody').innerHTML=body; bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show(); }
-    function confirmDanger(title, body){ return new Promise(resolve=>{ document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmBody').innerHTML=body; const btn=document.getElementById('confirmYesBtn'); const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')); const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); }; const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); }; btn.addEventListener('click',onYes,{once:true}); document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true}); modal.show(); }); }
+    function confirmDanger(title, body){
+      return new Promise(resolve=>{
+        document.getElementById('confirmTitle').textContent=title;
+        document.getElementById('confirmBody').innerHTML=body;
+        const btn=document.getElementById('confirmYesBtn');
+        const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+        // remove themed class if previously added
+        document.querySelector('#confirmModal .modal-content').classList.remove('confirm-themed');
+        const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); };
+        const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); };
+        btn.addEventListener('click',onYes,{once:true});
+        document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, {once:true});
+        modal.show();
+      });
+    }
+
+    /* ===== Type-to-confirm helper (expects exact text) ===== */
+   /* ===== Type-to-confirm helper (expects exact text) =====
+   Hardened: cannot copy the phrase OR the hint, and input blocks paste/⌘V/drag-drop. */
+function showTypeToConfirm({ title, expected, placeholder='Type here', primaryText='Delete' }){
+  return new Promise((resolve)=>{
+    const el = document.getElementById('confirmModal');
+    const content = el.querySelector('.modal-content');
+    content.classList.add('confirm-themed');
+
+    document.getElementById('confirmTitle').textContent = title || 'Confirm';
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const escAttr = s => String(s).replace(/"/g,'&quot;');
+    const body = document.getElementById('confirmBody');
+
+    body.innerHTML = `
+      <p class="mb-2">
+        Confirm you want to delete this assignment by typing the exact
+        <strong>Assignment Title</strong> (case-sensitive).
+      </p>
+      <div class="no-copy pill-danger mb-2" id="ttcPill">
+        Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+      </div>
+      <div class="mb-1">
+        <input id="ttcInput" type="text" class="form-control is-invalid"
+               placeholder="${escAttr(placeholder)}" autocomplete="off"
+               autocapitalize="off" spellcheck="false">
+      </div>
+      <div id="ttcBad" class="invalid-msg no-copy">
+        Input does not match. Please type <strong>${esc(expected||'')}</strong> to proceed.
+      </div>
+      <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+    `;
+
+    const okBtn = document.getElementById('confirmYesBtn');
+    const cancelBtn = document.querySelector('#confirmModal .btn-close-footer');
+    okBtn.textContent = primaryText;
+    okBtn.className = 'btn btn-danger';
+    okBtn.disabled = true;
+
+    // Hardening: block copy/cut/context menu/drag/drop on modal, pill, and hint
+    const pill = body.querySelector('#ttcPill');
+    const bad = body.querySelector('#ttcBad');
+    const guardRoots = [el, pill, bad];
+    const block = e => e.preventDefault();
+    guardRoots.forEach(node=>{
+      ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
+    });
+
+    // Hardening: block paste / kb shortcuts / insertFromPaste on the input
+    const input = body.querySelector('#ttcInput');
+    const good = body.querySelector('#ttcGood');
+    const expectedRaw = String(expected||'');
+
+    input.addEventListener('paste', block);
+    input.addEventListener('beforeinput', e => {
+      if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+    });
+    input.addEventListener('keydown', e => {
+      const k = (e.key||'').toLowerCase();
+      // block Ctrl/Cmd + (v x c a)
+      if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
+    });
+
+    function refresh(){
+      const ok = (input.value === expectedRaw);
+      okBtn.disabled = !ok;
+      input.classList.toggle('is-valid', ok);
+      input.classList.toggle('is-invalid', !ok);
+      bad.classList.toggle('d-none', ok);
+      good.classList.toggle('d-none', !ok);
+    }
+    input.addEventListener('input', refresh);
+    setTimeout(()=>input.focus(), 60);
+
+    let confirmed = false;
+    const modal = bootstrap.Modal.getOrCreateInstance(el);
+    const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
+    const onCancel = () => { modal.hide(); };
+    const onHidden = () => {
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+      el.removeEventListener('hidden.bs.modal', onHidden);
+      content.classList.remove('confirm-themed');
+      // cleanup guards
+      guardRoots.forEach(node=>{
+        ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
+      });
+      input.removeEventListener('paste', block);
+      resolve(confirmed);
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn && cancelBtn.addEventListener('click', onCancel);
+    el.addEventListener('hidden.bs.modal', onHidden, { once:true });
+    modal.show();
+  });
+}
+
 
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
@@ -1019,7 +1133,6 @@
     async function fetchCourseById(cid) {
       if (!cid) return null;
       try {
-        // Try both shapes in case your API has both
         const res = await fetch(`${API}/api/courses/${encodeURIComponent(cid)}`);
         const js  = await res.json().catch(()=>null);
         return js?.course || js || null;
@@ -1062,7 +1175,7 @@
           });
           dlog('filtered after intersect:', filtered.length);
 
-          // Optional fallback: /courses/:id/classes (if you support it)
+          // Optional fallback: /courses/:id/classes
           if (filtered.length === 0) {
             try {
               const r2 = await fetch(`${API}/courses/${encodeURIComponent(courseIdForAssignment)}/classes`, { headers:{Accept:'application/json'} });
@@ -1073,7 +1186,7 @@
                   const id = String(c.id || c._id || c.classId || '');
                   return allowedIds.size ? allowedIds.has(id) : true;
                 });
-                dlog('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
+                dlog('fallback ->', classes2.length, 'after intersect ->', filtered.length);
               }
             } catch {}
           }
@@ -1258,10 +1371,35 @@
       }catch(e){ showInfo('Error', e.message||'Failed to unarchive.'); }
     });
 
+    /* ===== Delete with TYPE-TO-CONFIRM (Assignment Title) ===== */
     btnDelete.addEventListener('click', async ()=>{
       if (!assignmentId) return;
-      const ok = await confirmDanger('Delete Assignment','<strong>Permanently delete</strong> this assignment? This cannot be undone.');
+
+      // Use loaded title if available; fallback to fetch
+      let titleToMatch = (initialAssignment && initialAssignment.title) ? String(initialAssignment.title).trim() : '';
+      if (!titleToMatch) {
+        try {
+          const metaRes = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`);
+          if (metaRes.ok) {
+            const meta = await metaRes.json().catch(()=>({}));
+            titleToMatch = (meta?.assignment?.title || meta?.title || '').trim();
+          }
+        } catch {}
+      }
+
+      let ok = false;
+      if (titleToMatch) {
+        ok = await showTypeToConfirm({
+          title: 'Delete Assignment',
+          expected: titleToMatch,
+          placeholder: 'Type Assignment Title here',
+          primaryText: 'Delete'
+        });
+      } else {
+        ok = await confirmDanger('Delete Assignment','<strong>Permanently delete</strong> this assignment? This cannot be undone.');
+      }
       if (!ok) return;
+
       try{
         const res = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}`, { method:'DELETE' });
         const js = await res.json(); if(!res.ok||js.success===false) throw new Error(js.message||'Failed to delete.');

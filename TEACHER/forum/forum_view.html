@@ -11,6 +11,17 @@
 
   <!-- Shared styles -->
   <link rel="stylesheet" href="../forum/forum.css" />
+
+  <style>
+    /* Type-to-delete styles to match other pages */
+    .brandlike-header{background:linear-gradient(90deg,#0d2a7a,#143aa6);color:#fff}
+    .confirm-pill{border:1px solid #f1aeb5;background:#fdebed;color:#b02a37;display:flex;gap:.5rem;align-items:center}
+    .btn-close-footer{background:#f5f5f5;border:1px solid #e5e5e5}
+    .no-select, .no-select *{
+      user-select:none; -webkit-user-select:none; -ms-user-select:none;
+      -webkit-touch-callout:none;
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -80,7 +91,7 @@
     </div>
   </div>
 
-  <!-- ===== Modals (same structure/classes as Threads page) ===== -->
+  <!-- ===== Modals ===== -->
 
   <!-- CONFIRM MODAL -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
@@ -115,7 +126,7 @@
     </div>
   </div>
 
-  <!-- EDIT COMMENT MODAL (styled consistently) -->
+  <!-- EDIT COMMENT MODAL -->
   <div class="modal fade" id="editCommentModal" tabindex="-1" aria-labelledby="editCommentLabel" aria-hidden="true">
     <div class="modal-dialog">
       <form class="modal-content" id="editCommentForm">
@@ -135,7 +146,7 @@
     </div>
   </div>
 
-  <!-- EDIT THREAD MODAL (styled consistently) -->
+  <!-- EDIT THREAD MODAL -->
   <div class="modal fade" id="editThreadModal" tabindex="-1" aria-labelledby="editThreadLabel" aria-hidden="true">
     <div class="modal-dialog">
       <form class="modal-content" id="editThreadForm">
@@ -154,6 +165,36 @@
           <button type="submit" class="btn btn-amber">Save changes</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- TYPE-TO-DELETE THREAD MODAL -->
+  <div class="modal fade" id="deleteThreadModal" tabindex="-1" aria-hidden="true" aria-labelledby="deleteThreadTitle">
+    <div class="modal-dialog">
+      <div class="modal-content no-select">
+        <div class="modal-header brandlike-header">
+          <h5 class="modal-title" id="deleteThreadTitle">Delete Thread</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2">Confirm you want to delete this thread by typing the <strong>Thread Title</strong> (case-sensitive).</p>
+          <div class="form-control confirm-pill mb-2" id="deleteThreadExactPill" title="Copy disabled here">
+            <span class="small text-muted">Type exactly:</span>
+            <strong id="deleteThreadExactText">—</strong>
+          </div>
+          <label for="deleteThreadInput" class="form-label small mb-1">Type Thread Title here</label>
+          <input id="deleteThreadInput" type="text" class="form-control" placeholder="Exact thread title"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <div class="invalid-feedback">Input does not match. Please type <strong id="deleteThreadExactHint">—</strong> to proceed.</div>
+          <div class="valid-feedback">Title matches. You can proceed.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="deleteThreadBtn" disabled>
+            <i class="bi bi-trash me-1"></i> Delete
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -189,10 +230,8 @@
   try{
     const raw = localStorage.getItem("user");
     const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
     const u = stored.user || stored;
 
-    // teacher gate
     if (!u?.userId || !u?.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
       return;
@@ -204,12 +243,9 @@
     window.addEventListener("DOMContentLoaded", () => {
       const el = document.getElementById("Username");
       if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
+      el.textContent = initials;
       const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
+                      || u.username || u.email || 'Profile';
       el.setAttribute('title', fullLabel);
       el.setAttribute('aria-label', fullLabel);
     });
@@ -218,26 +254,17 @@
     window.location.href = "/TEACHER/login/login.html";
   }
 
-  // --- Helpers ---
   function getInitials(u){
     const fn = (u.firstName || '').trim();
     const ln = (u.lastName  || '').trim();
     if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-    // fall back to username-like fields
     const nameish = (u.username || u.displayName || u.name || '').trim();
     if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
-
+      const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ')
+        .split(/[\s._-]+/).filter(Boolean);
       if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
       return parts[0][0].toUpperCase();
     }
-
-    // last resort: first letter of email
     const em = (u.email || '').trim();
     return em ? em[0].toUpperCase() : 'U';
   }
@@ -334,6 +361,73 @@
       });
     }
 
+    /* ========= Type-to-delete helper (same as threads list) ========= */
+    function showTypeToDeleteThread(expectedTitle=''){
+      const el = document.getElementById('deleteThreadModal');
+      const input = document.getElementById('deleteThreadInput');
+      const btn = document.getElementById('deleteThreadBtn');
+      const exactText = document.getElementById('deleteThreadExactText');
+      const exactHint = document.getElementById('deleteThreadExactHint');
+
+      exactText.textContent = expectedTitle || 'Untitled';
+      exactHint.textContent = expectedTitle || 'Untitled';
+      input.value = '';
+      input.classList.remove('is-valid','is-invalid');
+      btn.disabled = true;
+
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+
+      // Block copy/cut/contextmenu and paste/drag
+      const blockDefault = (e)=> e.preventDefault();
+      const blockPasteKeys = (e)=>{ if ((e.ctrlKey||e.metaKey) && (e.key==='v'||e.key==='V')) e.preventDefault(); };
+      const blockBeforeInputPaste = (e)=>{ if (e.inputType && e.inputType.toLowerCase().includes('insertfrompaste')) e.preventDefault(); };
+
+      el.addEventListener('copy', blockDefault);
+      el.addEventListener('cut', blockDefault);
+      el.addEventListener('contextmenu', blockDefault);
+      input.addEventListener('paste', blockDefault);
+      input.addEventListener('drop', blockDefault);
+      input.addEventListener('dragover', blockDefault);
+      input.addEventListener('keydown', blockPasteKeys);
+      input.addEventListener('beforeinput', blockBeforeInputPaste);
+
+      return new Promise(resolve=>{
+        const onInput = ()=>{
+          const match = input.value === (expectedTitle || '');
+          input.classList.toggle('is-valid', match);
+          input.classList.toggle('is-invalid', !match);
+          btn.disabled = !match;
+        };
+        const onEnter = (e)=>{ if(e.key==='Enter' && !btn.disabled){ btn.click(); } };
+        const onConfirm = ()=>{ cleanup(); modal.hide(); resolve(true); };
+        const onCancel  = ()=>{ cleanup(); resolve(false); };
+
+        function cleanup(){
+          input.removeEventListener('input', onInput);
+          input.removeEventListener('keydown', onEnter);
+          btn.removeEventListener('click', onConfirm);
+          el.removeEventListener('hidden.bs.modal', onCancel);
+
+          el.removeEventListener('copy', blockDefault);
+          el.removeEventListener('cut', blockDefault);
+          el.removeEventListener('contextmenu', blockDefault);
+          input.removeEventListener('paste', blockDefault);
+          input.removeEventListener('drop', blockDefault);
+          input.removeEventListener('dragover', blockDefault);
+          input.removeEventListener('keydown', blockPasteKeys);
+          input.removeEventListener('beforeinput', blockBeforeInputPaste);
+        }
+
+        input.addEventListener('input', onInput);
+        input.addEventListener('keydown', onEnter);
+        btn.addEventListener('click', onConfirm, { once:true });
+        el.addEventListener('hidden.bs.modal', onCancel, { once:true });
+
+        modal.show();
+        setTimeout(()=>{ try{ input.focus(); }catch{} }, 150);
+      });
+    }
+
     /* ========= Thread & replies ========= */
     async function loadThread(){
       try{
@@ -369,9 +463,9 @@
             ${actionHtml}
           </div>`;
 
-        // DELETE thread (confirm modal)
+        // DELETE thread — now uses type-to-delete (title) with no-copy/paste
         qs(".action-delete-thread")?.addEventListener("click", async ()=>{
-          const ok = await showConfirm('Delete Thread','Delete this thread? This cannot be undone.');
+          const ok = await showTypeToDeleteThread(thread.title || '');
           if(!ok) return;
           try{
             await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'});
@@ -425,21 +519,10 @@
         const collapseId=`replies-${r.id}`;
         const isOwn = userData?.uid && (String(r.author?.uid) === String(userData.uid));
 
-        const dropdownHtml = `
-          <div class="bubble-kebab dropdown">
-            <button class="kebab" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Comment actions">
-              <i class="bi bi-three-dots"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              ${isOwn ? `<li><button class="dropdown-item action-edit-reply"><i class="bi bi-pencil-square"></i> Edit</button></li>` : ``}
-              <li><button class="dropdown-item text-danger action-delete-reply"><i class="bi bi-trash"></i> Delete</button></li>
-            </ul>
-          </div>`;
 wrap.innerHTML = `
   <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
   <div class="fb-body flex-grow-1">
     <div class="fb-bubble">
-
       <div class="name-row">
         <div class="name">${escapeHtml(name)}</div>
         <div class="d-flex align-items-center gap-2">
@@ -469,10 +552,9 @@ wrap.innerHTML = `
     ${hasChildren ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
   </div>`;
 
-
         container.appendChild(wrap);
 
-        // DELETE comment (confirm modal)
+        // DELETE comment — keeping simple confirm (not type-to-delete to avoid UX pain)
         wrap.querySelector(".action-delete-reply")?.addEventListener("click", async ()=>{
           const ok = await showConfirm('Delete Comment','Delete this comment?');
           if(!ok) return;
@@ -486,7 +568,7 @@ wrap.innerHTML = `
           }
         });
 
-        // EDIT comment (owner only) via modal
+        // EDIT comment (owner only)
         if (isOwn) {
           wrap.querySelector(".action-edit-reply")?.addEventListener("click", async ()=>{
             const updated = await showEditComment(r.text || "");
@@ -588,23 +670,19 @@ wrap.innerHTML = `
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Modal helpers (exactly the same helpers/signature as Threads page) -->
+  <!-- Modal helpers -->
   <script>
-    // Creates and shows an info modal
     function showInfo(title='Notice', html=''){
       const el = document.getElementById('infoModal');
       document.getElementById('infoModalLabel').textContent = title;
       document.getElementById('infoModalBody').innerHTML = html;
-      const modal = bootstrap.Modal.getOrCreateInstance(el);
-      modal.show();
+      bootstrap.Modal.getOrCreateInstance(el).show();
     }
 
-    // Shows a confirm modal and resolves to true/false
     function showConfirm(title='Confirm Action', html='Are you sure?'){
       const el = document.getElementById('confirmModal');
       document.getElementById('confirmModalLabel').textContent = title;
       document.getElementById('confirmModalBody').innerHTML = html;
-
       const modal = bootstrap.Modal.getOrCreateInstance(el);
       const okBtn = document.getElementById('confirmOkBtn');
 

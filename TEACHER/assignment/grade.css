@@ -551,3 +551,54 @@ body {
   justify-content: center;
   background: #ffffff;
 }
+
+   .confirm-themed .modal-header{background:#0D348C;color:#fff;border-top-left-radius:.75rem;border-top-right-radius:.75rem}
+    .confirm-themed .no-copy{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  -ms-user-select:none !important;
+  -webkit-touch-callout:none !important;
+}
+
+    .confirm-themed .pill-danger{background:#f8d7da;color:#842029;border:1px solid #f5c2c7;border-radius:.5rem;padding:.6rem .75rem;font-size:.9rem}
+    .confirm-themed .valid-msg{color:#198754;font-size:.875rem}
+    .confirm-themed .invalid-msg{color:#dc3545;font-size:.875rem}
+
+     .confirm-themed .modal-header{background:#0D348C;color:#fff;border-top-left-radius:.75rem;border-top-right-radius:.75rem}
+    .confirm-themed .pill-danger{background:#f8d7da;color:#842029;border:1px solid #f5c2c7;border-radius:.5rem;padding:.6rem .75rem;font-size:.9rem}
+    .confirm-themed .valid-msg{color:#198754;font-size:.875rem}
+    .confirm-themed .invalid-msg{color:#dc3545;font-size:.875rem}
+
+    /* Make the hint (and the expected text) impossible to copy/select */
+    #confirmDeleteModal .no-copy,
+    #confirmDeleteModal #ttcExpected{
+      user-select:none !important;
+      -webkit-user-select:none !important;
+      -ms-user-select:none !important;
+      -webkit-touch-callout:none !important;
+      pointer-events:auto;
+    }
+
+    /* Harden the entire confirm modal body against selection/copy, except inputs & buttons */
+  #confirmDeleteModal.confirm-themed .modal-body {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+  #confirmDeleteModal.confirm-themed .modal-body input,
+  #confirmDeleteModal.confirm-themed .modal-body textarea,
+  #confirmDeleteModal.confirm-themed .modal-body button {
+    user-select: text !important; /* keep fields usable */
+    -webkit-user-select: text !important;
+  }
+
+  /* Specific “no-copy” blocks */
+  #confirmDeleteModal .no-copy,
+  #confirmDeleteModal #ttcExpected,
+  #confirmDeleteModal #ttcBad {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -ms-user-select: none !important;
+    -webkit-touch-callout: none !important;
+    pointer-events: auto;
+  }

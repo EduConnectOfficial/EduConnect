@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,7 +12,6 @@
 
   <!-- (Optional) your page css -->
   <link rel="stylesheet" href="list.css" />
-
 </head>
 
 <body>
@@ -69,16 +67,13 @@
       </header>
 
       <section class="content">
-      
           <h1 id="courseTitleHeading" class="page-title">Modules for …</h1>
-     
 
         <!-- Themed toolbar (Sort + Active/Archived/All + Upload) -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Course Modules</h2>
-            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.
-            </div>
+            <div class="ui-subtext">Everything shows up right away. Use the filters only if you want to narrow it down.</div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -114,8 +109,7 @@
   </div>
 
   <!-- File Preview Modal -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
-    aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -161,7 +155,7 @@
     </div>
   </div>
 
-  <!-- Generic CONFIRM Modal -->
+  <!-- Generic CONFIRM Modal (re-used by type-to-confirm) -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -270,6 +264,109 @@
       });
     }
 
+    /* ===== Type-to-confirm helper (Module Title or any string) =====
+       — hardened against copy/paste on the phrase AND the hint, and paste/⌘V in the input. */
+    function showTypeToConfirm({ title, expected, placeholder, primaryText='Delete' }){
+      return new Promise((resolve)=>{
+        // Theme the modal
+        const content = confirmModalEl.querySelector('.modal-content');
+        content.classList.add('confirm-themed');
+
+        // Escape helpers
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const escAttr = s => String(s).replace(/"/g,'&quot;');
+
+        // Body markup
+        confirmTitleEl.textContent = title;
+        confirmBodyEl.innerHTML = `
+          <p class="mb-2">
+            Confirm you want to delete this by typing the exact <strong>Module Title</strong> (case-sensitive).
+          </p>
+          <div class="no-copy pill-danger mb-2" id="ttcPill">
+            Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+          </div>
+          <div class="mb-1">
+            <input id="ttcInput" type="text" class="form-control is-invalid"
+                   placeholder="${escAttr(placeholder||'Type here')}" autocomplete="off"
+                   autocapitalize="off" spellcheck="false">
+          </div>
+          <div id="ttcBad" class="invalid-msg no-copy">
+            Input does not match. Please type <strong id="ttcBadExpected">${esc(expected||'')}</strong> to proceed.
+          </div>
+          <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+        `;
+
+        // Buttons
+        confirmOkBtn.textContent = primaryText;
+        confirmOkBtn.className = 'btn btn-danger';
+        confirmOkBtn.disabled = true;
+        confirmCancelBtn.textContent = 'Cancel';
+        confirmCancelBtn.className = 'btn-close-footer';
+
+        // Elements to guard
+        const pill = confirmBodyEl.querySelector('#ttcPill');
+        const badBox = confirmBodyEl.querySelector('#ttcBad');
+        const input = confirmBodyEl.querySelector('#ttcInput');
+
+        // Block copy/cut/context menu/drag/drop in key areas (and modal root for good measure)
+        const guardRoots = [confirmModalEl, pill, badBox];
+        const block = e => e.preventDefault();
+        guardRoots.forEach(node=>{
+          ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
+        });
+        // Block paste & kb shortcuts in the input
+        const blockKeys = e => {
+          const k = (e.key || '').toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && (k === 'v' || k === 'x' || k === 'c' || k === 'a')) {
+            e.preventDefault();
+          }
+        };
+        const blockBeforeInput = e => {
+          if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+        };
+        input.addEventListener('paste', block);
+        input.addEventListener('keydown', blockKeys);
+        input.addEventListener('beforeinput', blockBeforeInput);
+
+        // Validation
+        const good = confirmBodyEl.querySelector('#ttcGood');
+        const expectedRaw = String(expected||'');
+        function refresh(){
+          const ok = (input.value === expectedRaw);
+          confirmOkBtn.disabled = !ok;
+          input.classList.toggle('is-valid', ok);
+          input.classList.toggle('is-invalid', !ok);
+          badBox.classList.toggle('d-none', ok);
+          good.classList.toggle('d-none', !ok);
+        }
+        input.addEventListener('input', refresh);
+        setTimeout(()=>input?.focus(), 75);
+
+        // Resolve on OK/Cancel
+        let confirmed = false;
+        const onOk = () => { if (!confirmOkBtn.disabled){ confirmed = true; confirmModal.hide(); } };
+        const onHidden = () => { cleanup(); resolve(confirmed); };
+        const onCancel = () => { confirmModal.hide(); };
+        function cleanup(){
+          confirmOkBtn.removeEventListener('click', onOk);
+          confirmCancelBtn.removeEventListener('click', onCancel);
+          confirmModalEl.removeEventListener('hidden.bs.modal', onHidden);
+          guardRoots.forEach(node=>{
+            ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
+          });
+          input.removeEventListener('paste', block);
+          input.removeEventListener('keydown', blockKeys);
+          input.removeEventListener('beforeinput', blockBeforeInput);
+          input.removeEventListener('input', refresh);
+        }
+        confirmOkBtn.addEventListener('click', onOk);
+        confirmCancelBtn.addEventListener('click', onCancel);
+        confirmModalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
+
+        confirmModal.show();
+      });
+    }
+
     /* ===== State & filters ===== */
     let modulesAll = [];
     let statusFilter = 'active';
@@ -353,35 +450,42 @@
       info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
       document.getElementById('openInNewTabBtn').href = url;
     }
-    function isYouTubeUrl(url = '') { try { const u = new URL(url); const h = u.hostname.replace(/^www\./, '').toLowerCase(); return ['youtu.be', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(h); } catch { return false; } }
+    function isYouTubeUrl(url = '') { try { const u = new URL(url); const h = u.hostname.replace(/^www\./, '').toLowerCase(); return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h); } catch { return false; } }
     function toYouTubeEmbed(url = '') {
       try {
         const u = new URL(url); const h = u.hostname.replace(/^www\./, '').toLowerCase();
-        let id = ''; let start = u.searchParams.get('start') || u.searchParams.get('t') || ''; if (start && /^\d+s$/.test(start)) start = parseInt(start, 10); if (start && /^\d+$/.test(start)) start = parseInt(start, 10); if (!Number.isFinite(start)) start = '';
-        if (h === 'youtu.be') { id = (u.pathname || '').replace(/^\//, '').split('/')[0]; } else { if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || ''; if (!id) id = u.searchParams.get('v') || ''; }
-        if (!id) return null; const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start)); return `${base}?${qs.toString()}`;
+        let id = ''; let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
+        if (!Number.isFinite(start)) start = '';
+        if (h === 'youtu.be') { id = (u.pathname || '').replace(/^\//,'').split('/')[0]; }
+        else { if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || ''; if (!id) id = u.searchParams.get('v') || ''; }
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
       } catch { return null; }
     }
-    function getExtFromUrl(url = '') { const clean = String(url).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function getExtFromUrl(url = '') { const clean = String(url).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : ''; }
     function kindFromUrl(url) {
       if (isYouTubeUrl(url)) return 'youtube'; const ext = getExtFromUrl(url);
-      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
-      if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
-      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
+      if (['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
+      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
       if (ext === 'pdf') return 'pdf';
-      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
-      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
+      if (['txt','csv','log'].includes(ext)) return 'text';
+      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
       return 'other';
     }
     function renderFilePreviewInto(container, url) {
       container.innerHTML = '';
       const ext = getExtFromUrl(url);
-      const isImg = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"].includes(ext);
+      const isImg = ["jpg","jpeg","png","gif","bmp","webp","svg"].includes(ext);
       const isPdf = ext === "pdf";
-      const isVideo = ["mp4", "webm", "ogg", "ogv", "mov"].includes(ext);
-      const isAudio = ["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext);
-      const isText = ["txt", "csv", "log"].includes(ext);
-      const isOffice = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext);
+      const isVideo = ["mp4","webm","ogg","ogv","mov"].includes(ext);
+      const isAudio = ["mp3","wav","ogg","m4a","aac","flac"].includes(ext);
+      const isText = ["txt","csv","log"].includes(ext);
+      const isOffice = ["doc","docx","ppt","pptx","xls","xlsx"].includes(ext);
       const fallback = (note) => {
         const wrap = document.createElement('div'); wrap.className = 'preview-fallback';
         wrap.innerHTML = `<div class="text-muted mb-2">${note || 'Preview failed or is blocked by the browser.'}</div>
@@ -446,7 +550,7 @@
               const url = FILE_BASE + att.filePath;
               const kind = kindFromUrl(url);
               const icon = (kind === 'youtube') ? '▶️' : (kind === 'video' ? '🎬' : '📄');
-              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video' ? 'Video' : 'File');
+              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video') ? 'Video' : 'File';
               attachmentsHtml += `
                 <div class="attachment-item ps-2">
                   <button type="button" class="btn btn-link p-0 file-preview-btn fw-bold d-block text-decoration-none"
@@ -459,7 +563,7 @@
               const url = att.url;
               const kind = kindFromUrl(url);
               const icon = (kind === 'youtube') ? '▶️' : (kind === 'video' ? '🎬' : '🔗');
-              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video' ? 'Video' : 'File');
+              const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video') ? 'Video' : 'File';
               attachmentsHtml += `
                 <div class="attachment-item ps-2">
                   <button type="button" class="btn btn-link p-0 file-preview-btn fw-bold d-block text-decoration-none"
@@ -543,7 +647,7 @@
     loadModules();
     loadCourseTitle();
 
-    // Delegated actions
+    // Delegated actions (view, archive, unarchive, delete)
     document.getElementById("moduleList").addEventListener("click", function (e) {
       const target = e.target;
       const link = target.closest('.sub-lesson-link');
@@ -615,14 +719,35 @@
       if (delBtn) {
         const id = delBtn.dataset.id;
         (async () => {
-          const ok = await showConfirm({
-            title: 'Delete Module',
-            html: '<strong>Delete this module?</strong><br/>This action cannot be undone. Modules will be renumbered.',
-            confirmText: 'Delete',
-            confirmBtnClass: 'btn btn-del'
-          });
-          if (!ok) return;
+          // 1) fetch module to get the exact title
+          let moduleTitle = '';
+          try {
+            const r = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}`);
+            const j = await r.json();
+            moduleTitle = (j && j.title) ? String(j.title) : '';
+          } catch {}
 
+          // 2) type-to-confirm using Module Title
+          if (moduleTitle) {
+            const okTyped = await showTypeToConfirm({
+              title: 'Delete Module',
+              expected: moduleTitle,
+              placeholder: 'Type Module Title here',
+              primaryText: 'Delete'
+            });
+            if (!okTyped) return;
+          } else {
+            // fallback if we couldn’t load title
+            const ok = await showConfirm({
+              title: 'Delete Module',
+              html: '<strong>Delete this module?</strong><br/>This action cannot be undone. Modules will be renumbered.',
+              confirmText: 'Delete',
+              confirmBtnClass: 'btn btn-danger'
+            });
+            if (!ok) return;
+          }
+
+          // 3) Proceed with deletion
           const btn = delBtn;
           const prevHTML = btn.innerHTML; btn.disabled = true;
           btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
@@ -658,6 +783,12 @@
       }
     });
 
+    // Load data
+    document.addEventListener('DOMContentLoaded', () => {
+      const search = document.getElementById('searchBox');
+      if (search) search.addEventListener('input', applyFiltersAndRender);
+    });
+
     function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
@@ -665,5 +796,4 @@
     }
   </script>
 </body>
-
 </html>

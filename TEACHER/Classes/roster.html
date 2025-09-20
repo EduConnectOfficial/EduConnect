@@ -22,7 +22,6 @@
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -86,7 +85,6 @@
                   <th>Name</th>
                   <th>Student ID</th>
                   <th>Email</th>
-                  <th>Last Active</th> <!-- NEW COLUMN -->
                   <th>Status</th>
                   <th class="text-center">Actions</th>
                 </tr>
@@ -99,34 +97,42 @@
     </div>
   </div>
 
-  <!-- Enroll Student Modal -->
-  <div class="modal fade" id="enrollStudentModal" tabindex="-1" aria-labelledby="enrollStudentModalLabel" aria-hidden="true">
+  <!-- Enroll Student Modal (multi-select) -->
+  <div class="modal fade" id="enrollStudentModal" tabindex="-1" aria-labelledby="enrollStudentModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form id="enrollStudentForm">
           <div class="modal-header">
-            <h5 class="modal-title" id="enrollStudentModalLabel">Enroll Student</h5>
+            <h5 class="modal-title" id="enrollStudentModalLabel">Enroll Student(s)</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
 
           <div class="modal-body">
             <div class="mb-3">
-              <label for="studentQueryInput" class="form-label">Search student</label>
+              <label for="studentQueryInput" class="form-label">Search students</label>
               <input type="text" class="form-control" id="studentQueryInput"
-                     placeholder="Type Student ID (e.g., S-2025-00001) or first/last name" required>
+                placeholder="Type Student ID (e.g., S-2025-00001) or first/last name" required>
               <div class="form-text">Search is case-insensitive and matches by ID or name.</div>
             </div>
 
-            <div id="studentLookupState" class="small mb-2" style="min-height:1.25rem;"></div>
+            <div id="studentLookupState" class="small mb-2 d-none" aria-live="polite"></div>
 
             <div id="studentInfoCard" class="d-none">
+              <div class="results-toolbar">
+                <div class="form-check m-0">
+                  <input class="form-check-input" type="checkbox" id="pickAll">
+                  <label class="form-check-label" for="pickAll">Select All</label>
+                </div>
+                <span class="count" id="pickedCount">0 selected</span>
+              </div>
               <div id="searchResults" class="d-grid gap-2"></div>
             </div>
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-amber">Enroll Selected</button>
+            <button type="submit" class="btn btn-amber"><i class="bi bi-person-check me-1"></i> Enroll Selected</button>
           </div>
         </form>
       </div>
@@ -190,10 +196,10 @@
     </div>
   </div>
 
-  <!-- Generic CONFIRM Modal -->
+  <!-- Generic CONFIRM Modal (type-to-delete flows kept) -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <div class="modal-content">
+      <div class="modal-content confirm-no-copy">
         <div class="modal-header">
           <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
@@ -201,7 +207,6 @@
         <div class="modal-body" id="confirmModalBody">Are you sure?</div>
         <div class="modal-footer">
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal" id="confirmCancelBtn">Cancel</button>
-          <!-- This text is fine; class will be enforced to btn-danger in JS every time -->
           <button type="button" class="btn btn-danger" id="confirmOkBtn">Yes, remove</button>
         </div>
       </div>
@@ -213,55 +218,57 @@
 
   <!-- ---- Auth guard + header initials (robust) ---- -->
   <script>
-  (function initHeaderInitials(){
-    try{
-      const raw = localStorage.getItem("user");
-      const stored = raw ? JSON.parse(raw) : {};
-      const u = stored.user || stored;
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
 
-      if (!u?.userId || !u?.isTeacher) {
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
+
+        const initials = getInitials(u);
+
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+          el.textContent = initials;
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
         window.location.href = "/TEACHER/login/login.html";
-        return;
       }
-      window.currentUser = u;
 
-      const initials = getInitials(u);
-
-      window.addEventListener("DOMContentLoaded", () => {
-        const el = document.getElementById("Username");
-        if (!el) return;
-        el.textContent = initials;
-        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                        || u.username || u.email || 'Profile';
-        el.setAttribute('title', fullLabel);
-        el.setAttribute('aria-label', fullLabel);
-      });
-    }catch(e){
-      console.error('initHeaderInitials failed:', e);
-      window.location.href = "/TEACHER/login/login.html";
-    }
-
-    function getInitials(u){
-      const fn = (u.firstName || '').trim();
-      const ln = (u.lastName  || '').trim();
-      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-      const nameish = (u.username || u.displayName || u.name || '').trim();
-      if (nameish){
-        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return parts[0][0].toUpperCase();
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
       }
-      const em = (u.email || '').trim();
-      return em ? em[0].toUpperCase() : 'U';
-    }
-  })();
+    })();
   </script>
 
   <script>
     const API_BASE = 'http://localhost:5000';
     let classId;
     let _lookupTimer = null;
-    let _selectedStudentId = null;
+
+    // track MULTI selection
+    const _selectedStudentIds = new Set();
 
     function escapeHtml(s) {
       return String(s ?? '')
@@ -272,39 +279,32 @@
         .replaceAll("'", "&#39;");
     }
 
-    // --- datetime helpers (handles millis, Firestore Timestamp, ISO) ---
-    function toMillis(v){
+    // --- datetime helpers ---
+    function toMillis(v) {
       if (v == null) return null;
       if (typeof v === 'number') return v;
       if (typeof v === 'string') {
         const t = Date.parse(v); return isNaN(t) ? null : t;
       }
-      if (v && typeof v === 'object'){
+      if (v && typeof v === 'object') {
         if (typeof v.toMillis === 'function') return v.toMillis();
         if (v._seconds != null) return v._seconds * 1000;
-        if (v.seconds != null)  return v.seconds  * 1000;
+        if (v.seconds != null) return v.seconds * 1000;
       }
       return null;
     }
-    function fmtLocal(millis){
-      return millis ? new Date(millis).toLocaleString() : '—';
-    }
-    function getLastActiveMillis(s){
+    function fmtLocal(millis) { return millis ? new Date(millis).toLocaleString() : '—'; }
+    function getLastActiveMillis(s) {
       const cand = s.lastActiveAt ?? s.lastSeenAt ?? s.lastLoginAt ?? s.lastActivityAt ?? s.lastUsedAt ?? s.lastOnlineAt ?? (s.meta && s.meta.lastActiveAt);
       return toMillis(cand);
     }
 
-    // ---------- Modal Helpers ----------
+    // ---------- Info / Confirm helpers ----------
     const infoModalEl = document.getElementById('infoModal');
     const infoModal = new bootstrap.Modal(infoModalEl);
     const infoTitleEl = document.getElementById('infoModalLabel');
     const infoBodyEl = document.getElementById('infoModalBody');
-
-    function showInfo(title = 'Notice', message = '') {
-      infoTitleEl.textContent = title;
-      infoBodyEl.innerHTML = message;
-      infoModal.show();
-    }
+    function showInfo(title = 'Notice', message = '') { infoTitleEl.textContent = title; infoBodyEl.innerHTML = message; infoModal.show(); }
 
     const confirmModalEl = document.getElementById('confirmModal');
     const confirmTitleEl = document.getElementById('confirmModalLabel');
@@ -312,62 +312,127 @@
     const confirmOkBtn = document.getElementById('confirmOkBtn');
     const confirmCancelBtn = document.getElementById('confirmCancelBtn');
     const confirmModal = new bootstrap.Modal(confirmModalEl);
+    function forceDangerOk() { confirmOkBtn.className = 'btn btn-danger'; }
 
-    // Force the OK button to btn-danger every time (prevents theme overrides)
-    function forceDangerOk(){
-      confirmOkBtn.className = 'btn btn-danger';
+    function attachCopyBlockers() {
+      const block = (e) => e.preventDefault();
+      confirmModalEl.addEventListener('copy', block);
+      confirmModalEl.addEventListener('cut', block);
+      confirmModalEl.addEventListener('contextmenu', block);
+      return () => {
+        confirmModalEl.removeEventListener('copy', block);
+        confirmModalEl.removeEventListener('cut', block);
+        confirmModalEl.removeEventListener('contextmenu', block);
+      };
     }
 
-    function showConfirm(title = 'Confirm Action', message = 'Are you sure?') {
+    async function showTypeToConfirm_StudentId(title, expectedId) {
       confirmTitleEl.textContent = title;
-      confirmBodyEl.innerHTML = message;
-      forceDangerOk(); // 👈 ensure red button
+      confirmBodyEl.innerHTML = `
+        <div class="mb-2">
+          Confirm you want to remove this student by typing their <strong>Student ID</strong> (case-sensitive).
+        </div>
+        <div class="alert alert-danger py-2 small mb-2" title="Copy disabled in this area">
+          Type exactly: <code>${escapeHtml(expectedId)}</code>
+        </div>
+        <input type="text" class="form-control" id="typeToConfirmInput" placeholder="Type Student ID here" autocomplete="off" />
+        <div class="invalid-feedback">Input does not match. Please type <strong>${escapeHtml(expectedId)}</strong> to proceed.</div>
+        <div class="valid-feedback">✓ Input matches</div>
+      `;
+      confirmOkBtn.textContent = 'Remove';
+      confirmOkBtn.disabled = true;
+      forceDangerOk();
+
+      const detach = attachCopyBlockers();
+
       return new Promise((resolve) => {
-        const onOk = () => { cleanup(); confirmModal.hide(); resolve(true); };
+        const input = document.getElementById('typeToConfirmInput');
+        const onInput = () => {
+          const match = (input.value.trim() === expectedId);
+          input.classList.toggle('is-valid', match);
+          input.classList.toggle('is-invalid', !match);
+          confirmOkBtn.disabled = !match;
+        };
+        const onOk = () => { if (!confirmOkBtn.disabled) { cleanup(); confirmModal.hide(); resolve(true); } };
         const onCancel = () => { cleanup(); resolve(false); };
         function cleanup() {
           confirmOkBtn.removeEventListener('click', onOk);
           confirmCancelBtn.removeEventListener('click', onCancel);
           confirmModalEl.removeEventListener('hidden.bs.modal', onCancel);
+          input.removeEventListener('input', onInput);
+          detach();
+          confirmOkBtn.disabled = false;
+          confirmOkBtn.textContent = 'Yes, remove';
         }
-        confirmOkBtn.addEventListener('click', onOk, { once: true });
-        confirmCancelBtn.addEventListener('click', onCancel, { once: true });
+        confirmOkBtn.addEventListener('click', onOk);
+        confirmCancelBtn.addEventListener('click', onCancel);
         confirmModalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        input.addEventListener('input', onInput);
         confirmModal.show();
+        setTimeout(() => { input.focus(); onInput(); }, 150);
       });
     }
 
-    // Sidebar
-    async function loadSidebar() {
-      try {
-        const res = await fetch('/components/sidebar.html');
-        const html = await res.text();
-        document.getElementById('sidebar-container').innerHTML = html;
+    async function showTypeToConfirm_BulkRemove(title, count) {
+      const expected = `REMOVE ${count}`;
+      confirmTitleEl.textContent = title;
+      confirmBodyEl.innerHTML = `
+        <div class="mb-2">
+          You are about to remove <strong>${count}</strong> students from this class.
+          To confirm, type <strong>${expected}</strong> exactly (case-sensitive).
+        </div>
+        <div class="alert alert-danger py-2 small mb-2" title="Copy disabled in this area">
+          Type exactly: <code>${expected}</code>
+        </div>
+        <input type="text" class="form-control" id="typeToConfirmInput" placeholder="Type ${expected}" autocomplete="off" />
+        <div class="invalid-feedback">Input does not match. Please type <strong>${expected}</strong> to proceed.</div>
+        <div class="valid-feedback">✓ Input matches</div>
+      `;
+      confirmOkBtn.textContent = 'Remove';
+      confirmOkBtn.disabled = true;
+      forceDangerOk();
+      const detach = attachCopyBlockers();
 
-        const sidebar = document.querySelector('.sidebar');
-        const dashboard = document.querySelector('.dashboard');
-        if (sidebar && dashboard) {
-          sidebar.addEventListener('mouseenter', () => dashboard.classList.add('sidebar-expanded'));
-          sidebar.addEventListener('mouseleave', () => dashboard.classList.remove('sidebar-expanded'));
+      return new Promise((resolve) => {
+        const input = document.getElementById('typeToConfirmInput');
+        const onInput = () => {
+          const match = (input.value.trim() === expected);
+          input.classList.toggle('is-valid', match);
+          input.classList.toggle('is-invalid', !match);
+          confirmOkBtn.disabled = !match;
+        };
+        const onOk = () => { if (!confirmOkBtn.disabled) { cleanup(); confirmModal.hide(); resolve(true); } };
+        const onCancel = () => { cleanup(); resolve(false); };
+        function cleanup() {
+          confirmOkBtn.removeEventListener('click', onOk);
+          confirmCancelBtn.removeEventListener('click', onCancel);
+          confirmModalEl.removeEventListener('hidden.bs.modal', onCancel);
+          input.removeEventListener('input', onInput);
+          detach();
+          confirmOkBtn.disabled = false;
+          confirmOkBtn.textContent = 'Yes, remove';
         }
-
-        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-          toggle.addEventListener('click', e => {
-            e.preventDefault();
-            const parent = toggle.closest('.has-submenu');
-            parent.classList.toggle('open');
-            toggle.setAttribute('aria-expanded', parent.classList.contains('open'));
-          });
-        });
-      } catch (err) {
-        console.error('Failed to load sidebar:', err);
-      }
+        confirmOkBtn.addEventListener('click', onOk);
+        confirmCancelBtn.addEventListener('click', onCancel);
+        confirmModalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        input.addEventListener('input', onInput);
+        confirmModal.show();
+        setTimeout(() => { input.focus(); onInput(); }, 150);
+      });
     }
 
     async function safeJson(res) {
       const ct = (res.headers.get('content-type') || '').toLowerCase();
       if (ct.includes('application/json')) { try { return await res.json(); } catch { } }
       return null;
+    }
+
+    // ===== Lookup state helper (HIDE when empty) =====
+    function setLookupState(msg) {
+      const el = lookupStateEl();
+      if (!el) return;
+      if (!msg) { el.textContent = ''; el.classList.add('d-none'); }
+      else { el.textContent = msg; el.classList.remove('d-none'); }
     }
 
     // Load class + roster
@@ -394,7 +459,11 @@
         students.forEach(s => {
           const tr = document.createElement('tr');
           const fullName = escapeHtml(s.fullName || `${s.firstName || ''} ${s.lastName || ''}`.trim());
-          const sid = escapeHtml(s.studentId || '');
+
+          // IMPORTANT: keep raw vs escaped versions
+          const sidRaw = (s.studentId || '');
+          const sidEsc = escapeHtml(sidRaw);
+
           const email = escapeHtml(s.email || '');
           const emailCell = email ? `<a href="mailto:${email}">${email}</a>` : '—';
           const statusCell = s.active
@@ -404,14 +473,14 @@
           const lastCell = lastMs ? `<span title="${new Date(lastMs).toISOString()}">${fmtLocal(lastMs)}</span>` : '—';
 
           tr.innerHTML = `
-            <td><input type="checkbox" class="row-select form-check-input" data-student-id="${sid}"></td>
+            <td><input type="checkbox" class="row-select form-check-input" data-student-id="${sidRaw}"></td>
             <td>${fullName || '—'}</td>
-            <td>${sid || '—'}</td>
+            <td>${sidEsc || '—'}</td>
             <td>${emailCell}</td>
-            <td>${lastCell}</td>            <!-- NEW CELL -->
+            
             <td>${statusCell}</td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-danger remove-btn" data-student-id="${sid}">Remove</button>
+              <button class="btn btn-sm btn-outline-danger remove-btn" data-student-id="${sidRaw}">Remove</button>
             </td>`;
           tbody.appendChild(tr);
         });
@@ -424,49 +493,44 @@
       }
     }
 
-    // Remove single
+    // Remove single (keeps type-to-delete)
     document.getElementById('rosterBody').addEventListener('click', async (e) => {
       const btn = e.target.closest('.remove-btn');
       if (!btn) return;
-      const sid = btn.dataset.studentId;
+      const sid = btn.dataset.studentId; // RAW
+      if (!sid) return showInfo('Missing ID', 'Could not determine the Student ID for this row.');
       await removeStudent(sid);
     });
 
     async function removeStudent(studentId) {
-      if (!studentId) return;
-      const ok = await showConfirm('Remove Student', 'Remove this student from the class?');
-      if (!ok) return;
+      const okTyped = await showTypeToConfirm_StudentId('Remove Student', studentId);
+      if (!okTyped) return;
       try {
         const res = await fetch(`${API_BASE}/api/classes/${classId}/students/${encodeURIComponent(studentId)}`, { method: 'DELETE' });
         const out = await safeJson(res) || {};
         if (!res.ok || out.success === false) {
-          showInfo('Remove Failed', escapeHtml(out.message || 'Failed to remove student.'));
+          const msg = out.message || `Failed to remove student (HTTP ${res.status}).`;
+          showInfo('Remove Failed', escapeHtml(msg));
           return;
         }
         await loadRoster();
-        showInfo('Removed', 'The student was removed from this class.');
+        showInfo('Removed', `Student <code>${escapeHtml(studentId)}</code> was removed from this class.`);
       } catch (err) {
         console.error('Error removing student:', err);
         showInfo('Network Error', 'Network error while removing the student.');
       }
     }
 
-    // Bulk selection
+    // Bulk selection in table (kept)
     function wireSelectionControls() {
       const selectAll = document.getElementById('selectAll');
       const rowChecks = Array.from(document.querySelectorAll('.row-select'));
       const bulkBtn = document.getElementById('bulkRemoveBtn');
 
-      const refreshBulkBtn = () => {
-        const anyChecked = rowChecks.some(cb => cb.checked);
-        bulkBtn.disabled = !anyChecked;
-      };
+      const refreshBulkBtn = () => { bulkBtn.disabled = !rowChecks.some(cb => cb.checked); };
 
       selectAll.checked = false;
-      selectAll.onchange = () => {
-        rowChecks.forEach(cb => cb.checked = selectAll.checked);
-        refreshBulkBtn();
-      };
+      selectAll.onchange = () => { rowChecks.forEach(cb => cb.checked = selectAll.checked); refreshBulkBtn(); };
       rowChecks.forEach(cb => {
         cb.onchange = () => {
           if (!cb.checked) selectAll.checked = false;
@@ -479,45 +543,73 @@
         const ids = rowChecks.filter(cb => cb.checked).map(cb => cb.dataset.studentId);
         if (!ids.length) return;
 
-        const ok = await showConfirm(
-          'Bulk Remove',
-          `Remove <strong>${ids.length}</strong> selected student(s) from the class?`
-        );
-        if (!ok) return;
+        const okTyped = await showTypeToConfirm_BulkRemove('Bulk Remove', ids.length);
+        if (!okTyped) return;
 
         let removed = 0, failed = 0;
         for (const sid of ids) {
           try {
             const res = await fetch(`${API_BASE}/api/classes/${classId}/students/${encodeURIComponent(sid)}`, { method: 'DELETE' });
             const out = await safeJson(res) || {};
-            if (res.ok && out.success) removed++; else failed++;
+            if (res.ok && out.success !== false) removed++; else failed++;
           } catch { failed++; }
         }
         await loadRoster();
-        showInfo('Bulk Remove Complete', `
-          <div><strong>Removed:</strong> ${removed}</div>
-          <div><strong>Failed:</strong> ${failed}</div>
-        `);
+        showInfo('Bulk Remove Complete', `<div><strong>Removed:</strong> ${removed}</div><div><strong>Failed:</strong> ${failed}</div>`);
       };
 
       bulkBtn.disabled = true;
     }
 
-    // ---------- Enroll modal: SEARCH (STRICT: must have studentId) ----------
+    // ---------- Enroll modal: SEARCH (multi-pick) ----------
     const studentQueryInput = () => document.getElementById('studentQueryInput');
     const studentInfoCard = () => document.getElementById('studentInfoCard');
     const lookupStateEl = () => document.getElementById('studentLookupState');
     const searchResults = () => document.getElementById('searchResults');
+    const pickAllEl = () => document.getElementById('pickAll');
+    const pickedCountEl = () => document.getElementById('pickedCount');
+
+    function updatePickedCount() {
+      const n = _selectedStudentIds.size;
+      pickedCountEl().textContent = `${n} selected`;
+    }
 
     function clearSearchUI() {
-      _selectedStudentId = null;
+      _selectedStudentIds.clear();
+      updatePickedCount();
       searchResults().innerHTML = '';
       studentInfoCard().classList.add('d-none');
+      pickAllEl().checked = false;
+    }
+
+    function renderResults(studentsOnly) {
+      const html = studentsOnly.map(stu => {
+        const idRaw = (stu.studentId || '');
+        const idEsc = escapeHtml(idRaw);
+        const fn = escapeHtml(stu.firstName || '');
+        const ln = escapeHtml(stu.lastName || '');
+        const em = escapeHtml(stu.email || '');
+        const checked = _selectedStudentIds.has(idRaw) ? 'checked' : '';
+        return `
+          <label class="search-result d-flex align-items-center gap-2">
+            <input type="checkbox" class="form-check-input student-pick" value="${idRaw}" ${checked}>
+            <div>
+              <div><strong>${(fn + ' ' + ln).trim()}</strong></div>
+              <div class="text-muted small">ID: ${idEsc}${em ? ' • ' + em : ''}</div>
+            </div>
+          </label>`;
+      }).join('');
+      searchResults().innerHTML = html;
+
+      const allIds = studentsOnly.map(s => s.studentId).filter(Boolean);
+      const allChecked = allIds.length > 0 && allIds.every(id => _selectedStudentIds.has(id));
+      pickAllEl().checked = allChecked;
+      updatePickedCount();
     }
 
     async function searchStudents(q) {
-      if (!q) { clearSearchUI(); lookupStateEl().textContent = ''; return; }
-      lookupStateEl().textContent = 'Searching…';
+      if (!q) { clearSearchUI(); setLookupState(''); return; }
+      setLookupState('Searching…');
       try {
         const res = await fetch(`${API_BASE}/api/students/search?query=${encodeURIComponent(q)}`);
         const data = await safeJson(res) || {};
@@ -527,74 +619,91 @@
           : [];
 
         if (data.success && studentsOnly.length) {
-          searchResults().innerHTML = studentsOnly.map(stu => {
-            const id = escapeHtml(stu.studentId || '');
-            const fn = escapeHtml(stu.firstName || '');
-            const ln = escapeHtml(stu.lastName || '');
-            const em = escapeHtml(stu.email || '');
-            return `
-              <label class="search-result d-flex align-items-center gap-2">
-                <input type="radio" name="studentPick" value="${id}">
-                <div>
-                  <div><strong>${(fn + ' ' + ln).trim()}</strong></div>
-                  <div class="text-muted small">ID: ${id}${em ? ' • ' + em : ''}</div>
-                </div>
-              </label>`;
-          }).join('');
           studentInfoCard().classList.remove('d-none');
-          lookupStateEl().textContent = '';
+          renderResults(studentsOnly);
+          setLookupState('');
         } else {
           clearSearchUI();
-          lookupStateEl().textContent = 'No matching student found.';
+          setLookupState('No matching student found.');
         }
       } catch (e) {
         console.error('Search error:', e);
         clearSearchUI();
-        lookupStateEl().textContent = 'Error while searching.';
+        setLookupState('Error while searching.');
       }
     }
 
     document.getElementById('studentQueryInput').addEventListener('input', () => {
       clearTimeout(_lookupTimer);
       const val = studentQueryInput().value.trim();
-      if (!val) { clearSearchUI(); lookupStateEl().textContent = ''; return; }
-      if (val.length < 2) { clearSearchUI(); lookupStateEl().textContent = 'Type at least 2 characters…'; return; }
+      if (!val) { clearSearchUI(); setLookupState(''); return; }
+      if (val.length < 2) { clearSearchUI(); setLookupState('Type at least 2 characters…'); return; }
       _lookupTimer = setTimeout(() => searchStudents(val), 300);
     });
 
     document.getElementById('studentInfoCard').addEventListener('change', (e) => {
-      if (e.target.name === 'studentPick') _selectedStudentId = e.target.value;
+      if (e.target.classList.contains('student-pick')) {
+        const id = e.target.value; // RAW
+        if (e.target.checked) _selectedStudentIds.add(id);
+        else _selectedStudentIds.delete(id);
+        updatePickedCount();
+        const boxes = Array.from(document.querySelectorAll('#searchResults .student-pick'));
+        pickAllEl().checked = boxes.length > 0 && boxes.every(b => b.checked);
+      }
+      if (e.target.id === 'pickAll') {
+        const check = e.target.checked;
+        const boxes = Array.from(document.querySelectorAll('#searchResults .student-pick'));
+        boxes.forEach(b => {
+          b.checked = check;
+          const id = b.value;
+          if (check) _selectedStudentIds.add(id); else _selectedStudentIds.delete(id);
+        });
+        updatePickedCount();
+      }
     });
 
     document.getElementById('enrollStudentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!_selectedStudentId) {
-        showInfo('Pick a Student', 'Please select a student from the search results first.');
+      if (_selectedStudentIds.size === 0) {
+        showInfo('Pick Students', 'Please select at least one student from the search results first.');
         return;
       }
+      const ids = Array.from(_selectedStudentIds);
+      let ok = 0, failed = 0, already = 0;
+
       try {
-        const res = await fetch(`${API_BASE}/api/classes/${classId}/students`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId: _selectedStudentId })
-        });
-        const out = await safeJson(res) || {};
-        if (!res.ok || !out.success) {
-          showInfo('Enroll Failed', escapeHtml(out.message || 'Failed to enroll student.'));
-          return;
+        for (const sid of ids) {
+          try {
+            const res = await fetch(`${API_BASE}/api/classes/${classId}/students`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ studentId: sid })
+            });
+            const out = await safeJson(res) || {};
+            if (res.ok && out.success) ok++;
+            else if (out.code === 'ALREADY_ENROLLED') already++;
+            else failed++;
+          } catch {
+            failed++;
+          }
         }
-        e.target.reset(); clearSearchUI(); lookupStateEl().textContent = '';
+        e.target.reset(); clearSearchUI(); setLookupState('');
         const modal = bootstrap.Modal.getInstance(document.getElementById('enrollStudentModal'));
         modal && modal.hide();
         await loadRoster();
-        showInfo('Enrolled', 'The student was successfully enrolled in this class.');
+
+        showInfo('Enroll Finished', `
+          <div><strong>Enrolled:</strong> ${ok}</div>
+          <div><strong>Already enrolled:</strong> ${already}</div>
+          <div><strong>Failed:</strong> ${failed}</div>
+        `);
       } catch (err) {
         console.error('Enroll error:', err);
-        showInfo('Network Error', 'There was a problem enrolling the student. Please try again.');
+        showInfo('Network Error', 'There was a problem enrolling the selected students. Please try again.');
       }
     });
 
-    // Bulk enroll
+    // Bulk enroll (file)
     document.getElementById('downloadTemplateBtn')?.addEventListener('click', () => {
       const csv = 'studentId\nS-2025-00001\nS-2025-00002\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -672,7 +781,7 @@
       await loadSidebar();
       await loadRoster();
 
-      // Fixed: wire search to the actual #tableSearch input
+      // Search filter
       document.getElementById('tableSearch').addEventListener('input', e => {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('#rosterBody tr').forEach(tr => {
@@ -681,10 +790,38 @@
       });
     });
 
+    // Sidebar
+    async function loadSidebar() {
+      try {
+        const res = await fetch('/components/sidebar.html');
+        const html = await res.text();
+        document.getElementById('sidebar-container').innerHTML = html;
+
+        const sidebar = document.querySelector('.sidebar');
+        const dashboard = document.querySelector('.dashboard');
+        if (sidebar && dashboard) {
+          sidebar.addEventListener('mouseenter', () => dashboard.classList.add('sidebar-expanded'));
+          sidebar.addEventListener('mouseleave', () => dashboard.classList.remove('sidebar-expanded'));
+        }
+
+        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+          toggle.addEventListener('click', e => {
+            e.preventDefault();
+            const parent = toggle.closest('.has-submenu');
+            parent.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', parent.classList.contains('open'));
+          });
+        });
+      } catch (err) {
+        console.error('Failed to load sidebar:', err);
+      }
+    }
+
     function logoutUser() {
       localStorage.removeItem('user');
       window.location.href = '/TEACHER/login/login.html';
     }
   </script>
 </body>
+
 </html>

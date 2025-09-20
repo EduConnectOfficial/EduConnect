@@ -12,15 +12,15 @@
     --border: #e5e7eb;
 
     /* Brand */
-   /* ColorHunt Blue Palette */
-  --brand-dark-1: #001369;
-  /* deep navy */
-  --brand-dark-2: #1a388a;
-  /* royal / mid blue */
-  --brand-accent-1: #3b6bb4;
-  /* lighter sky blue */
-  --brand-accent-2: #113667;
-  /* darker accent */
+    /* ColorHunt Blue Palette */
+    --brand-dark-1: #001369;
+    /* deep navy */
+    --brand-dark-2: #1a388a;
+    /* royal / mid blue */
+    --brand-accent-1: #3b6bb4;
+    /* lighter sky blue */
+    --brand-accent-2: #113667;
+    /* darker accent */
 
     --card-radius: 14px;
 }
@@ -114,24 +114,25 @@ body {
 
 /* Logos */
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 0px;
-  /* space between the two logos */
-  min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    /* space between the two logos */
+    min-width: 0;
 }
 
 .logo-header {
-  height: 28px;
-  /* smaller to fit both logos */
-  width: auto;
+    height: 28px;
+    /* smaller to fit both logos */
+    width: auto;
 }
 
 .school-logo {
-  height: 55px;
-  width: auto;
-  object-fit: contain;
+    height: 55px;
+    width: auto;
+    object-fit: contain;
 }
+
 .search-box {
     position: relative;
     flex: 1;
@@ -339,32 +340,49 @@ body {
     transform: scale(1.04);
 }
 
+.btn-danger{
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: .5rem 1.2rem !important;
+    font-weight: 500;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    transform: scale(1.04);
+}
+
+
 /* Logout button reveal on sidebar hover (container variant) */
 .logout-btn {
-  background: linear-gradient(to bottom,
-      #6EC9F5 0%,
-      #004891 100%);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 30px;
-  color: #eaf2ff;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: none;
-  white-space: nowrap;
-  display: inline-block;
-  opacity: 0;
-  transition: opacity 0.3s ease, filter 0.3s ease;
-  text-align: center;
+    background: linear-gradient(to bottom,
+            #6EC9F5 0%,
+            #004891 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    text-align: center;
 }
 
 .sidebar:hover .logout-btn {
-  opacity: 1;
+    opacity: 1;
 }
 
 .logout-btn:hover {
-  filter: brightness(1.08);
+    filter: brightness(1.08);
 }
 
 
@@ -705,25 +723,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     color: #000;
 }
 
-/* Brand buttons only */
-.modal-footer .btn-amber,
-#successOkBtn,
-#feedbackModal .btn-amber {
-    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-    border: none;
-    color: #fff;
-    border-radius: 999px;
-    padding: .5rem 1.2rem;
-    font-weight: 500;
-    transition: background .3s ease, transform .2s ease;
-}
-
-.modal-footer .btn-amber:hover,
-#successOkBtn:hover,
-#feedbackModal .btn-amber:hover {
-    background: linear-gradient(to bottom, #ff8533, #cc3300);
-    transform: scale(1.05);
-}
 
 /* Centered modal layout */
 .modal.show {
@@ -859,52 +858,92 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 
 /* Attachments & Rubric rows — fix button alignment */
-.row.g-2.align-items-end.mb-3{
-  align-items: flex-start !important;             /* top-align columns */
+.row.g-2.align-items-end.mb-3 {
+    align-items: flex-start !important;
+    /* top-align columns */
 }
 
 /* LEFT column: input + help stacked */
-.row.g-2.align-items-end.mb-3 > [class*="col-"]:first-child{
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
+.row.g-2.align-items-end.mb-3>[class*="col-"]:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
 }
-.row.g-2.align-items-end.mb-3 .form-help{
-  order: 2;
-  margin-top: .15rem;
+
+.row.g-2.align-items-end.mb-3 .form-help {
+    order: 2;
+    margin-top: .15rem;
 }
 
 /* RIGHT column: two buttons side-by-side (horizontal) */
-.row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child{
-  align-self: center;                          /* line up with input top */
-  display: grid !important;
-  grid-template-columns: auto auto;                /* Preview | Stage */
-  gap: .5rem;
-  justify-content: start;
-  align-items: stretch;
-  margin-top: 20px;
+.row.g-2.align-items-end.mb-3>[class*="col-"]:last-child {
+    align-self: center;
+    /* line up with input top */
+    display: grid !important;
+    grid-template-columns: auto auto;
+    /* Preview | Stage */
+    gap: .5rem;
+    justify-content: start;
+    align-items: stretch;
+    margin-top: 20px;
 }
 
 /* If an inner wrapper (e.g., .d-sm-flex) exists, let buttons join the grid */
-.row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child .d-sm-flex{
-  display: contents !important;
+.row.g-2.align-items-end.mb-3>[class*="col-"]:last-child .d-sm-flex {
+    display: contents !important;
 }
 
 /* Normalize button size to match inputs */
-.row.g-2.align-items-end.mb-3 .btn{
-  height: 40px;                                    /* close to file input height */
-  padding: 0 1rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.2;
+.row.g-2.align-items-end.mb-3 .btn {
+    height: 40px;
+    /* close to file input height */
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
 }
 
+/* Themed type-to-confirm UI (reuses the existing confirm modal) */
+.confirm-themed .modal-header {
+    background: #0D348C;
+    color: #fff;
+    border-top-left-radius: .75rem;
+    border-top-right-radius: .75rem
+}
+
+.confirm-themed .no-copy {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -ms-user-select: none !important;
+    -webkit-touch-callout: none !important;
+}
+
+.confirm-themed .pill-danger {
+    background: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+    border-radius: .5rem;
+    padding: .6rem .75rem;
+    font-size: .9rem
+}
+
+.confirm-themed .valid-msg {
+    color: #198754;
+    font-size: .875rem
+}
+
+.confirm-themed .invalid-msg {
+    color: #dc3545;
+    font-size: .875rem
+}
+
+
 /* Mobile: stack buttons */
-@media (max-width: 576px){
-  .row.g-2.align-items-end.mb-3 > [class*="col-"]:last-child{
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 576px) {
+    .row.g-2.align-items-end.mb-3>[class*="col-"]:last-child {
+        grid-template-columns: 1fr;
+    }
 }
 
 

@@ -12,23 +12,6 @@
 
   <!-- Page theme -->
   <link rel="stylesheet" href="edit_module.css"/>
-  <style>
-    #assignedClassesContainer .card .bi-check2-circle { color: #eaf2ff !important; }
-    .muted { color:#6c757d; }
-    .badge-soft { border-radius: 999px; padding:.25rem .5rem; background: #eef2ff; color:#344767; }
-    .badge-stage { background:#fff3cd; color:#8a6d3b; }
-    .badge-removal { background:#fde2e1; color:#842029; }
-    .file-list { list-style:none; padding-left:0; margin:0; display:flex; flex-direction:column; gap:.5rem; }
-    .file-item { display:flex; align-items:center; gap:.75rem; justify-content:space-between; padding:.5rem .75rem; border:1px dashed #e9ecef; border-radius:.5rem; }
-    .file-item .file-name { flex:1 1 auto; min-width:0; word-break:break-word; }
-    .file-item .btn-icon { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; }
-    .lesson-page.active { outline:2px solid var(--brand-accent-1,#3b6bb4); }
-    .step-dots .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d0d5dd;margin-left:4px}
-    .step-dots .dot.active{background:#3b6bb4}
-    .preview-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #e9ecef;border-radius:.5rem;padding:1rem}
-    .name-removed{ text-decoration: line-through; opacity:.7; }
-    .ctrl-row .form-text{ font-size:.85rem; }
-  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -159,7 +142,6 @@
 
                 <div class="mb-2">
                   <label for="publishAtInput" class="form-label">Publish At (optional)</label>
-                  <!-- REAL calendar time control -->
                   <input type="datetime-local" id="publishAtInput" class="form-control" />
                   <div class="form-text">Set a date & time to schedule. Leave empty to publish immediately.</div>
                 </div>
@@ -238,9 +220,11 @@
       <div class="modal-footer"><button class="btn btn-amber" data-bs-dismiss="modal">OK</button></div>
     </div></div>
   </div>
+
+  <!-- Generic confirm (reused for type-to-confirm) -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-      <div class="modal-header bg-danger text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
+      <div class="modal-header text-white"><h5 class="modal-title" id="confirmTitle">Confirm</h5>
         <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
       <div class="modal-body" id="confirmBody">Are you sure?</div>
       <div class="modal-footer">
@@ -331,6 +315,107 @@
       });
     }
 
+    /* ===== Type-to-confirm helper (blocks copy/paste/drag/contextmenu) ===== */
+    function showTypeToConfirm({ title, expected, placeholder='Type here', primaryText='Delete' }){
+      return new Promise((resolve)=>{
+        const modalEl = document.getElementById('confirmModal');
+        const content = modalEl.querySelector('.modal-content');
+        content.classList.add('confirm-themed');
+
+        document.getElementById('confirmTitle').textContent = title || 'Confirm';
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const body = document.getElementById('confirmBody');
+        body.innerHTML = `
+          <p class="mb-2">
+            Confirm you want to delete this by typing the exact <strong>Module Title</strong> (case-sensitive).
+          </p>
+          <div class="no-copy pill-danger mb-2" id="ttcPill">
+            Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+          </div>
+          <div class="mb-1">
+            <input id="ttcInput" type="text" class="form-control is-invalid"
+                   placeholder="${esc(placeholder)}" autocomplete="off"
+                   autocapitalize="off" spellcheck="false">
+          </div>
+          <div id="ttcBad" class="invalid-msg no-copy">
+            Input does not match. Please type <strong id="ttcBadExpected">${esc(expected||'')}</strong> to proceed.
+          </div>
+          <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+        `;
+
+        const okBtn = document.getElementById('confirmYesBtn');
+        okBtn.textContent = primaryText;
+        okBtn.className = 'btn btn-danger';
+        okBtn.disabled = true;
+
+        const cancelBtn = modalEl.querySelector('.btn-close-footer');
+
+        // Block copy/cut/context menu/drag across pill + invalid box + whole modal
+        const input = body.querySelector('#ttcInput');
+        const badBox = body.querySelector('#ttcBad');
+        const pill = body.querySelector('#ttcPill');
+        const guardRoots = [modalEl, pill, badBox];
+
+        const block = e => e.preventDefault();
+        const blockKeys = e => {
+          const k = (e.key || '').toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && (k === 'v' || k === 'x' || k === 'c' || k === 'a')) {
+            // prevent paste/cut/copy/select all in input context
+            e.preventDefault();
+          }
+        };
+        const blockBeforeInput = e => {
+          if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+        };
+
+        guardRoots.forEach(node=>{
+          ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
+        });
+        input.addEventListener('paste', block);
+        input.addEventListener('keydown', blockKeys);
+        input.addEventListener('beforeinput', blockBeforeInput);
+
+        // Live validation
+        const good = body.querySelector('#ttcGood');
+        const expectedRaw = String(expected||'');
+        function refresh(){
+          const ok = (input.value === expectedRaw);
+          okBtn.disabled = !ok;
+          input.classList.toggle('is-valid', ok);
+          input.classList.toggle('is-invalid', !ok);
+          badBox.classList.toggle('d-none', ok);
+          good.classList.toggle('d-none', !ok);
+        }
+        input.addEventListener('input', refresh);
+        setTimeout(()=> input.focus(), 60);
+
+        let confirmed = false;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
+        const onCancel = () => { modal.hide(); };
+        const onHidden = () => { cleanup(); resolve(confirmed); };
+
+        function cleanup(){
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          modalEl.removeEventListener('hidden.bs.modal', onHidden);
+
+          guardRoots.forEach(node=>{
+            ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
+          });
+          input.removeEventListener('paste', block);
+          input.removeEventListener('keydown', blockKeys);
+          input.removeEventListener('beforeinput', blockBeforeInput);
+          input.removeEventListener('input', refresh);
+        }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        modalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
+        modal.show();
+      });
+    }
+
     // Redirect native alerts to brand modal
     (function attachBrandAlert(){
       const escInline = (s) => String(s ?? '').replace(/[&<>"']/g, m => (
@@ -350,7 +435,6 @@
     }
     function msToLocal(ms){ return ms ? new Date(ms).toLocaleString() : '—'; }
 
-    // Format for <input type="datetime-local"> as "YYYY-MM-DDThh:mm"
     function dateToLocalInputValue(d){
       if(!d) return '';
       const pad = n => String(n).padStart(2,'0');
@@ -359,13 +443,12 @@
     }
     function localInputValueToDate(v){
       if(!v) return null;
-      // v is "YYYY-MM-DDThh:mm"
       const d = new Date(v);
       return isNaN(d.getTime()) ? null : d;
     }
 
     const formatKB = b => `${Math.round(b / 102.4) / 10} KB`;
-    const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const escHtml = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
     // Preview helpers
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
@@ -447,7 +530,6 @@
       currentPreviewRevoke = null; previewStageCtx = null; showStageBtn(false);
     });
 
-    // Stage directly from preview
     stageFromPreviewBtn.addEventListener('click', ()=>{
       if (!previewStageCtx) return;
       const { idx, files } = previewStageCtx;
@@ -597,7 +679,6 @@
       wrap.appendChild(linkRow);
       wrap.appendChild(list);
 
-      // Flip UI based on module type
       function syncLessonTypeUI(){
         const type = document.getElementById('moduleType').value;
         if (type === 'file'){ fileRow.style.display=''; linkRow.style.display='none'; }
@@ -642,7 +723,7 @@
           <button class="btn btn-outline-secondary btn-sm btn-icon" data-act="preview" title="Preview"><i class="bi bi-eye"></i></button>`;
         if (!att.__staged && att.type !== 'link') {
           controls += `
-            <label class="btn btn-outline-secondary btn-sm btn-icon mb-0" title="Stage replace">
+            <label class="btn btn-outline-secondary btn-sm mb-0 btn-icon" title="Stage replace">
               <i class="bi bi-arrow-repeat"></i>
               <input type="file" class="d-none input-replace" data-id="${att.id}">
             </label>`;
@@ -793,10 +874,9 @@
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
-    let selectedClassIds = new Set();     // working selection
-    let initialAssigned = new Set();      // from module load (for dirty tracking)
-
-    let eligibleClassIdSet = new Set();   // derived from course doc and heuristics
+    let selectedClassIds = new Set();
+    let initialAssigned = new Set();
+    let eligibleClassIdSet = new Set();
 
     function escapeHTML(str='') {
       return String(str)
@@ -873,7 +953,6 @@
       assignedEmpty.style.display = "none";
     }
 
-    // ---- Course-linked class filtering helpers ----
     async function fetchCourseObject(courseId) {
       if (!courseId) return null;
       const candidates = [
@@ -1049,7 +1128,6 @@
         document.getElementById('metaUpdated').textContent = msToLocal(tsToMs(m.updatedAt));
         updateStatusBadge(m.archived === true);
 
-        // Publish fields
         const published   = !!m.published;
         const publishAtMs = tsToMs(m.publishAt);
         const publishedAtMs = tsToMs(m.publishedAt);
@@ -1062,7 +1140,6 @@
         document.getElementById('titleInput').value = m.title || '';
         document.getElementById('moduleType').value = (m.type==='textonly'?'textonly':m.type||'file');
 
-        // Build pages based on lessons/attachments
         const subs = Array.isArray(m.moduleSubTitles) ? m.moduleSubTitles : [];
         const descs= Array.isArray(m.moduleSubDescs) ? m.moduleSubDescs : [];
         const maxLessonsFromAttachments = Math.max(0, ...(Array.isArray(m.attachments)?m.attachments.map(a=>(a.lessonIdx??0)+1):[0]));
@@ -1087,7 +1164,6 @@
         }
         pager.pages.forEach((_,i)=>renderLesson(i));
 
-        // Assigned classes prep (preselect)
         selectedClassIds = new Set(Array.isArray(m.assignedClasses) ? m.assignedClasses.filter(Boolean) : []);
         initialAssigned = new Set(selectedClassIds);
 
@@ -1134,12 +1210,10 @@
 
       const { subs, descs, count } = collectLessonsForSave();
 
-      // Publish payload (use proper date!)
       const published = !!publishedSwitch.checked;
-      const publishAtDate = localInputValueToDate(publishAtInput.value); // returns Date or null
+      const publishAtDate = localInputValueToDate(publishAtInput.value);
       const publishAtISO = publishAtDate ? publishAtDate.toISOString() : null;
 
-      // include assignedClasses in PATCH
       const assignedClasses = Array.from(selectedClassIds);
 
       const payload = {
@@ -1150,7 +1224,7 @@
         lessonCount: count,
         assignedClasses,
         published,
-        publishAt: publishAtISO   // ← backend will parse this ISO string into Timestamp
+        publishAt: publishAtISO
       };
 
       const upd = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, {
@@ -1159,7 +1233,6 @@
       const updJs = await upd.json().catch(()=>({}));
       if (!upd.ok || updJs.success===false) throw new Error(updJs.message || 'Failed to save details.');
 
-      // New files (File type only)
       if (document.getElementById('moduleType').value === 'file'){
         const form = new FormData();
         let hasFiles=false;
@@ -1178,7 +1251,6 @@
         }
       }
 
-      // New links (Video URL type only)
       if (document.getElementById('moduleType').value === 'text'){
         const urls=[], descsJson=[], idxs=[];
         pager.pages.forEach((_,idx)=>{
@@ -1196,7 +1268,6 @@
         }
       }
 
-      // Removals (both types)
       for (const idx in stagedByLesson){
         for (const id of stagedByLesson[idx].removeIds){
           const del = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files/${encodeURIComponent(id)}`, { method:'DELETE' });
@@ -1260,10 +1331,34 @@
       if (ok) location.href = computeBackUrl();
     });
 
+    /* ===== Delete with TYPE-TO-CONFIRM (Module Title, with no-copy hints) ===== */
     document.getElementById('btnDelete').addEventListener('click', async ()=>{
       if (!moduleId) return;
-      const ok = await confirmDanger('Delete Module','<strong>Permanently delete</strong> this module? This cannot be undone.');
+
+      // make sure we have the exact title (use cached initialModule if present)
+      let titleToMatch = initialModule?.title || '';
+      if (!titleToMatch) {
+        try {
+          const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`);
+          const j = await r.json();
+          titleToMatch = j?.title || '';
+        } catch {}
+      }
+
+      // If we have a title, require typing it exactly; else fallback to simple confirm
+      let ok = false;
+      if (titleToMatch) {
+        ok = await showTypeToConfirm({
+          title: 'Delete Module',
+          expected: String(titleToMatch),
+          placeholder: 'Type Module Title here',
+          primaryText: 'Delete'
+        });
+      } else {
+        ok = await confirmDanger('Delete Module','<strong>Permanently delete</strong> this module? This cannot be undone.');
+      }
       if (!ok) return;
+
       try{
         const r = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, { method:'DELETE' });
         const js = await r.json().catch(()=>({}));
@@ -1291,7 +1386,7 @@
 
     // Boot
     (function boot(){
-      addLesson(false);       // start with one lesson
+      addLesson(false);
       loadModule();
     })();
   </script>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -70,7 +71,8 @@
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Courses</h2>
-            <div class="ui-subtext">Use filters to narrow results. Scheduled courses are visible to you and labelled.</div>
+            <div class="ui-subtext">Use filters to narrow results. Scheduled courses are visible to you and labelled.
+            </div>
           </div>
 
           <div class="row g-2 align-items-end">
@@ -95,9 +97,9 @@
             <div class="col-12 col-md-5 col-xl-3">
               <label class="form-label">Show</label>
               <div class="segmented" role="tablist" aria-label="Course visibility">
-                <button id="btnActive"   class="seg-btn is-active"   role="tab" aria-selected="true">Active</button>
+                <button id="btnActive" class="seg-btn is-active" role="tab" aria-selected="true">Active</button>
                 <button id="btnArchived" class="seg-btn is-archived" role="tab" aria-selected="false">Archived</button>
-                <button id="btnAll"      class="seg-btn is-all"      role="tab" aria-selected="false">All</button>
+                <button id="btnAll" class="seg-btn is-all" role="tab" aria-selected="false">All</button>
               </div>
             </div>
 
@@ -153,7 +155,8 @@
             <label for="editPublishAt" class="form-label">Publish At (optional)</label>
             <input type="datetime-local" class="form-control" id="editPublishAt" />
             <div class="form-text">
-              Leave blank to publish immediately. Your local time will be saved (Philippines time if that’s your device timezone).
+              Leave blank to publish immediately. Your local time will be saved (Philippines time if that’s your device
+              timezone).
             </div>
           </div>
 
@@ -166,8 +169,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="submit" class="btn btn-amber">Save Changes</button>
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-amber">Save Changes</button>
         </div>
       </form>
     </div>
@@ -189,35 +192,36 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button id="confirmArchiveBtn" type="button" class="btn btn-amber">Yes, proceed</button>
           <button type="button" class="btn-close-footer" data-bs-dismiss="modal">No, cancel</button>
+          <button id="confirmArchiveBtn" type="button" class="btn btn-amber">Yes, proceed</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Delete Modal -->
+  <!-- Delete Modal (Type-to-confirm Course Title) -->
   <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content confirm-no-copy">
         <div class="modal-header">
           <h5 class="modal-title">Delete Course</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <input type="hidden" id="deleteCourseId" />
-          <p class="mb-2">Are you sure you want to <strong>permanently delete</strong> this course? This cannot be undone.</p>
-          <div class="small text-muted">Tip: If you only want to hide the course, use <strong>Archive</strong> instead.</div>
+        <div class="modal-body" id="deleteCourseBody">
+          <!-- filled dynamically -->
         </div>
         <div class="modal-footer">
-          <button id="confirmDeleteBtn" type="button" class="btn btn-danger">
+          <!-- ✅ restore the hidden id holder -->
+          <input type="hidden" id="deleteCourseId" />
+          <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+          <button id="confirmDeleteBtn" type="button" class="btn btn-danger" disabled>
             <i class="bi bi-trash3 me-1"></i>Delete
           </button>
-          <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
         </div>
       </div>
     </div>
   </div>
+
 
   <!-- Generic INFO Modal -->
   <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
@@ -240,8 +244,8 @@
 
   <!-- Header initials -->
   <script>
-    (function initHeaderInitials(){
-      try{
+    (function initHeaderInitials() {
+      try {
         const raw = localStorage.getItem("user");
         const stored = raw ? JSON.parse(raw) : {};
         const u = stored.user || stored;
@@ -251,28 +255,28 @@
         }
         window.currentUser = u;
 
-        const initials = (function(u){
-          const fn=(u.firstName||'').trim(), ln=(u.lastName||'').trim();
-          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
-          const nameish=(u.username||u.displayName||u.name||'').trim();
-          if(nameish){
-            const parts=nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ').split(/[\s._-]+/).filter(Boolean);
-            if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+        const initials = (function (u) {
+          const fn = (u.firstName || '').trim(), ln = (u.lastName || '').trim();
+          if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+          const nameish = (u.username || u.displayName || u.name || '').trim();
+          if (nameish) {
+            const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
             return parts[0][0].toUpperCase();
           }
-          const em=(u.email||'').trim(); return em?em[0].toUpperCase():'U';
+          const em = (u.email || '').trim(); return em ? em[0].toUpperCase() : 'U';
         })(u);
 
-        window.addEventListener("DOMContentLoaded", ()=>{
-          const el=document.getElementById("Username");
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
           if (!el) return;
-          el.textContent=initials;
-          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim()
-                   || u.username || u.email || 'Profile';
+          el.textContent = initials;
+          const full = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
           el.setAttribute('title', full);
           el.setAttribute('aria-label', full);
         });
-      }catch(e){
+      } catch (e) {
         console.error('initHeaderInitials failed:', e);
         window.location.href = "/TEACHER/login/login.html";
       }
@@ -285,8 +289,8 @@
 
     // Info modal helper
     const infoModalEl = document.getElementById('infoModal');
-    const infoModal   = new bootstrap.Modal(infoModalEl);
-    function showInfo(title='Notice', html='') {
+    const infoModal = new bootstrap.Modal(infoModalEl);
+    function showInfo(title = 'Notice', html = '') {
       document.getElementById('infoModalLabel').textContent = title;
       document.getElementById('infoModalBody').innerHTML = html;
       infoModal.show();
@@ -298,21 +302,21 @@
     let currentSort = 'num_asc';
     let currentCategory = '';
 
-    function debounce(fn, delay=200){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
-    function escapeHtml(s){return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-    function tsToDate(ts){
+    function debounce(fn, delay = 200) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); }; }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) }
+    function tsToDate(ts) {
       if (!ts) return null;
-      if (typeof ts.toDate === 'function') { try { return ts.toDate(); } catch {} }
-      if (ts._seconds != null) return new Date(ts._seconds*1000 + (ts._nanoseconds ? Math.floor(ts._nanoseconds/1e6) : 0));
+      if (typeof ts.toDate === 'function') { try { return ts.toDate(); } catch { } }
+      if (ts._seconds != null) return new Date(ts._seconds * 1000 + (ts._nanoseconds ? Math.floor(ts._nanoseconds / 1e6) : 0));
       const d = new Date(ts);
       return isNaN(d.getTime()) ? null : d;
     }
-    function tsToMs(ts){ const d=tsToDate(ts); return d?d.getTime():null; }
+    function tsToMs(ts) { const d = tsToDate(ts); return d ? d.getTime() : null; }
 
-    function buildCategoryOptions(){
+    function buildCategoryOptions() {
       const sel = document.getElementById('categoryFilter');
-      const cats = Array.from(new Set(allCourses.map(c => (c.category||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-      sel.innerHTML = '<option value="">All categories</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      const cats = Array.from(new Set(allCourses.map(c => (c.category || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }
 
     async function refreshCoursePills() {
@@ -323,8 +327,8 @@
         const r = await fetch(url);
         const payload = await r.json();
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
-        const activeCount   = courses.filter(c => !c.archived).length;
-        const archivedCount = courses.filter(c =>  c.archived).length;
+        const activeCount = courses.filter(c => !c.archived).length;
+        const archivedCount = courses.filter(c => c.archived).length;
         document.getElementById('activeCount').textContent = String(activeCount);
         document.getElementById('archivedCount').textContent = String(archivedCount);
       } catch (err) {
@@ -368,9 +372,9 @@
 
       let list = allCourses.filter(c => {
         const matchesSearch = !q ||
-          (c.title||'').toLowerCase().includes(q) ||
-          (c.category||'').toLowerCase().includes(q) ||
-          String(c.courseNumber||'').toLowerCase().includes(q);
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q) ||
+          String(c.courseNumber || '').toLowerCase().includes(q);
 
         const isArchived = !!c.archived;
         const matchesArchive =
@@ -378,23 +382,23 @@
           (archiveFilter === 'active' && !isArchived) ||
           (archiveFilter === 'archived' && isArchived);
 
-        const matchesCategory = !currentCategory || (c.category||'') === currentCategory;
+        const matchesCategory = !currentCategory || (c.category || '') === currentCategory;
 
         return matchesSearch && matchesArchive && matchesCategory;
       });
 
       // Sort
       if (currentSort === 'num_asc') {
-        list.sort((a,b) => (Number(a.courseNumber)||0) - (Number(b.courseNumber)||0));
+        list.sort((a, b) => (Number(a.courseNumber) || 0) - (Number(b.courseNumber) || 0));
       } else if (currentSort === 'num_desc') {
-        list.sort((a,b) => (Number(b.courseNumber)||0) - (Number(a.courseNumber)||0));
+        list.sort((a, b) => (Number(b.courseNumber) || 0) - (Number(a.courseNumber) || 0));
       } else if (currentSort === 'az') {
-        list.sort((a,b) => (a.title||'').localeCompare(b.title||'')); 
+        list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       } else if (currentSort === 'new') {
-        list.sort((a,b) => (tsToMs(b.createdAt) ?? 0) - (tsToMs(a.createdAt) ?? 0));
+        list.sort((a, b) => (tsToMs(b.createdAt) ?? 0) - (tsToMs(a.createdAt) ?? 0));
       } else if (currentSort === 'publishSoon') {
         // Put scheduled first by soonest publishAt; items without publishAt go to the end
-        list.sort((a,b) => {
+        list.sort((a, b) => {
           const am = tsToMs(a.publishAt) ?? Infinity;
           const bm = tsToMs(b.publishAt) ?? Infinity;
           return am - bm;
@@ -478,15 +482,15 @@
       const btnActive = document.getElementById('btnActive');
       const btnArchived = document.getElementById('btnArchived');
       const btnAll = document.getElementById('btnAll');
-      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected','false'); });
-      if (which === 'active')   { btnActive.classList.add('is-active');   btnActive.setAttribute('aria-selected','true'); }
-      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected','true'); }
-      if (which === 'all')      { btnAll.classList.add('is-active');      btnAll.setAttribute('aria-selected','true'); }
+      [btnActive, btnArchived, btnAll].forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+      if (which === 'active') { btnActive.classList.add('is-active'); btnActive.setAttribute('aria-selected', 'true'); }
+      if (which === 'archived') { btnArchived.classList.add('is-active'); btnArchived.setAttribute('aria-selected', 'true'); }
+      if (which === 'all') { btnAll.classList.add('is-active'); btnAll.setAttribute('aria-selected', 'true'); }
       applyFiltersAndRender();
     }
-    document.getElementById('btnActive').addEventListener('click',   () => setSegmentedActive('active'));
+    document.getElementById('btnActive').addEventListener('click', () => setSegmentedActive('active'));
     document.getElementById('btnArchived').addEventListener('click', () => setSegmentedActive('archived'));
-    document.getElementById('btnAll').addEventListener('click',      () => setSegmentedActive('all'));
+    document.getElementById('btnAll').addEventListener('click', () => setSegmentedActive('all'));
 
     // Edit / Archive / Delete interactions
     document.getElementById("courseList").addEventListener("click", async e => {
@@ -512,14 +516,13 @@
 
         // NEW: publishAt -> datetime-local value (local time)
         const pAt = (course.publishAt && (course.publishAt._seconds != null))
-          ? new Date(course.publishAt._seconds*1000 + (course.publishAt._nanoseconds ? Math.floor(course.publishAt._nanoseconds/1e6):0))
+          ? new Date(course.publishAt._seconds * 1000 + (course.publishAt._nanoseconds ? Math.floor(course.publishAt._nanoseconds / 1e6) : 0))
           : (course.publishAt ? new Date(course.publishAt) : null);
 
         const dtInput = document.getElementById('editPublishAt');
         if (pAt && !isNaN(pAt.getTime())) {
-          // format to yyyy-MM-ddTHH:mm (local)
-          const pad = n => String(n).padStart(2,'0');
-          const v = `${pAt.getFullYear()}-${pad(pAt.getMonth()+1)}-${pad(pAt.getDate())}T${pad(pAt.getHours())}:${pad(pAt.getMinutes())}`;
+          const pad = n => String(n).padStart(2, '0');
+          const v = `${pAt.getFullYear()}-${pad(pAt.getMonth() + 1)}-${pad(pAt.getDate())}T${pad(pAt.getHours())}:${pad(pAt.getMinutes())}`;
           dtInput.value = v;
         } else {
           dtInput.value = '';
@@ -543,7 +546,7 @@
 
               const chk = col.querySelector('input');
               if (Array.isArray(course.assignedClasses) &&
-                  course.assignedClasses.map(String).includes(String(cls.id))) {
+                course.assignedClasses.map(String).includes(String(cls.id))) {
                 chk.checked = true;
               }
             });
@@ -555,7 +558,7 @@
         new bootstrap.Modal(document.getElementById("editCourseModal")).show();
       }
 
-      // DELETE (open modal)
+      // DELETE (open modal with type-to-confirm)
       if (btn.classList.contains("delete-btn")) {
         openDeleteModal(id);
       }
@@ -572,12 +575,11 @@
       e.preventDefault();
       const id = document.getElementById("editCourseId").value;
 
-      // Convert datetime-local (local time) to ISO string so backend can store correctly.
       const dtVal = document.getElementById('editPublishAt').value; // "YYYY-MM-DDTHH:mm"
       let publishAt = null;
       if (dtVal) {
         const d = new Date(dtVal);
-        if (!isNaN(d.getTime())) publishAt = d.toISOString(); // send ISO; server converts to Timestamp
+        if (!isNaN(d.getTime())) publishAt = d.toISOString();
       }
 
       const body = {
@@ -586,7 +588,6 @@
         description: document.getElementById("editDescription").value.trim(),
         assignedClasses: Array.from(document.querySelectorAll("#editAssignedClassesContainer input[type=checkbox]:checked"))
           .map(chk => chk.value),
-        // include publishAt (nullable)
         publishAt
       };
 
@@ -646,14 +647,81 @@
       }
     });
 
-    // Delete modal
-    function openDeleteModal(id) {
-      document.getElementById('deleteCourseId').value = id;
-      new bootstrap.Modal(document.getElementById('deleteCourseModal')).show();
+    // ===== Delete Modal (Course Title type-to-confirm) =====
+    function blockCopyHandlers(e) { e.preventDefault(); }
+    function attachCopyBlockers(el) {
+      el.addEventListener('copy', blockCopyHandlers);
+      el.addEventListener('cut', blockCopyHandlers);
+      el.addEventListener('contextmenu', blockCopyHandlers);
+      return () => {
+        el.removeEventListener('copy', blockCopyHandlers);
+        el.removeEventListener('cut', blockCopyHandlers);
+        el.removeEventListener('contextmenu', blockCopyHandlers);
+      };
     }
+
+    function openDeleteModal(id) {
+      const course = allCourses.find(c => String(c.id) === String(id));
+      const expected = course ? String(course.title || '') : '';
+
+      document.getElementById('deleteCourseId').value = id;
+
+      const body = document.getElementById('deleteCourseBody');
+      body.innerHTML = `
+        <p class="mb-2">Are you sure you want to <strong>permanently delete</strong> this course? This cannot be undone.</p>
+        <div class="small text-muted mb-3">Tip: If you only want to hide the course, use <strong>Archive</strong> instead.</div>
+
+        <div class="mb-2">
+          Confirm by typing the <strong>Course Title</strong> exactly (case-sensitive).
+        </div>
+        <div class="alert alert-danger py-2 small mb-2" title="Copy disabled in this area">
+          Type exactly: <code>${escapeHtml(expected)}</code>
+        </div>
+
+        <input type="text" class="form-control" id="deleteConfirmInput"
+               placeholder="Type Course Title here" autocomplete="off" />
+
+        <div class="invalid-feedback">
+          Input does not match. Please type <strong>${escapeHtml(expected)}</strong> to proceed.
+        </div>
+        <div class="valid-feedback">
+          ✓ Input matches
+        </div>
+      `;
+
+      const modalEl = document.getElementById('deleteCourseModal');
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      const input = document.getElementById('deleteConfirmInput');
+
+      confirmBtn.disabled = true; // start disabled
+
+      const detach = attachCopyBlockers(modalEl);
+
+      const onInput = () => {
+        const match = (input.value.trim() === expected);
+        input.classList.toggle('is-valid', match);
+        input.classList.toggle('is-invalid', !match);
+        confirmBtn.disabled = !match;
+      };
+      input.addEventListener('input', onInput);
+
+      // cleanup when modal hides
+      modalEl.addEventListener('hidden.bs.modal', function onHide() {
+        modalEl.removeEventListener('hidden.bs.modal', onHide);
+        input.removeEventListener('input', onInput);
+        detach();
+        confirmBtn.disabled = false; // reset
+      }, { once: true });
+
+      new bootstrap.Modal(modalEl).show();
+      setTimeout(() => { input.focus(); onInput(); }, 120);
+    }
+
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
       const id = document.getElementById('deleteCourseId').value;
       const btn = document.getElementById('confirmDeleteBtn');
+      if (btn.disabled) return; // guard
+
       const prevHTML = btn.innerHTML; btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
 
@@ -671,7 +739,7 @@
         console.error(err);
         showInfo('Server Error', 'A server error occurred while deleting the course.');
       } finally {
-        btn.disabled=false; btn.innerHTML=prevHTML;
+        btn.disabled = false; btn.innerHTML = prevHTML;
       }
     });
 
@@ -687,4 +755,5 @@
     }
   </script>
 </body>
+
 </html>

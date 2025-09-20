@@ -193,25 +193,6 @@ body {
   color: #000;
 }
 
-.modal-footer .btn,
-#successOkBtn,
-#feedbackModal .btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-  border: none;
-  color: #fff;
-  border-radius: 999px;
-  padding: .5rem 1.2rem;
-  font-weight: 500;
-  transition: background .3s ease, transform .2s ease;
-}
-
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
-  transform: scale(1.05);
-}
-
 /* Centered modal layout */
 .modal.show {
   display: flex !important;
@@ -1096,4 +1077,59 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   .lesson-nav .btn {
     min-width: 120px;
   }
+}
+
+ /* Small helpers just to match the screenshot vibe */
+    .small-muted{ color:#6c757d; font-size:.9rem; }
+    .badge-soft{ background:#f2f4f7; padding:.25rem .5rem; border-radius:.375rem; display:inline-flex; align-items:center; gap:.4rem; }
+    .badge-soft i{opacity:.7}
+    .pill{ display:inline-flex; align-items:center; gap:.4rem; padding:.2rem .5rem; border-radius:999px; background:#f8f9fa; border:1px solid #e9ecef; }
+    .pill .pill-text{ white-space:nowrap; }
+    .pill-row{ display:flex; gap:.5rem; margin-bottom:.5rem; }
+    .quiz-card{ background:#fff; border:1px solid #e9ecef; border-radius:.75rem; padding:1rem; height:100%; box-shadow:0 1px 2px rgba(16,24,40,.06); }
+    .segmented{ display:flex; gap:4px; padding:4px; border-radius:999px; }
+    .seg-btn{ border:0; background:transparent; padding:.35rem .75rem; border-radius:999px; }
+    .seg-btn.is-active{ background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.06); }
+    .empty{ padding:2rem; }
+    /* Delete modal look-alike */
+    .modal-header.brandlike{ background:#0d2a7a; color:#fff; }
+    .confirm-pill{ border:1px solid #f1aeb5; background:#fdebed; color:#b02a37; }
+
+    /* ====== COPY-HARDENING UTILITIES ====== */
+    /* Generic no-copy block */
+    .no-copy{
+      user-select:none !important;
+      -webkit-user-select:none !important;
+      -ms-user-select:none !important;
+      -webkit-touch-callout:none !important;
+    }
+    /* Scope-wide hardening for the delete confirm modal: everything unselectable... */
+    #deleteConfirmModal.confirm-hardened .modal-body{
+      user-select:none !important;
+      -webkit-user-select:none !important;
+      -ms-user-select:none !important;
+      -webkit-touch-callout:none !important;
+    }
+    /* ...except interactive fields (keep them usable) */
+    #deleteConfirmModal.confirm-hardened .modal-body input,
+    #deleteConfirmModal.confirm-hardened .modal-body textarea,
+    #deleteConfirmModal.confirm-hardened .modal-body button{
+      user-select:text !important;
+      -webkit-user-select:text !important;
+    }
+
+    .btn-danger{
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: .5rem 1.2rem !important;
+    font-weight: 500;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    transform: scale(1.04);
 }

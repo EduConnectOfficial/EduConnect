@@ -320,6 +320,23 @@ body {
     border-color: #dc3545;
 }
 
+   .btn-danger{
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: .5rem 1.2rem !important;
+    font-weight: 500;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    transform: scale(1.04);
+}
+
+
 /* Neutral secondary button used in modal footers for non-brand actions */
 .btn-close-footer {
     background-color: #6a737d !important;
@@ -1117,3 +1134,31 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     .assign-card.selected { border-color: #001369; box-shadow: 0 0.5rem 1rem rgba(7, 123, 255, 0.15); }
     .assign-card .card-body { padding: 0.9rem 1rem; }
     .small-muted { color: #6c757d; font-size: .875rem; }
+
+     /* Small helpers for the type-to-delete UI */
+    .modal-header.brandlike { background:#0d2a7a; color:#fff; }
+    .confirm-pill{ border:1px solid #f1aeb5; background:#fdebed; color:#b02a37; }
+    .small-muted{ color:#6c757d; font-size:.9rem; }
+    .badge-soft{ background:#f2f4f7; padding:.25rem .5rem; border-radius:.375rem; display:inline-flex; align-items:center; gap:.4rem; }
+
+    /* === copy hardening (for the delete modal hint) === */
+    .no-copy{
+      user-select:none !important;
+      -webkit-user-select:none !important;
+      -ms-user-select:none !important;
+      -webkit-touch-callout:none !important;
+    }
+    /* Scope-wide hardening for the delete confirm modal */
+    #deleteConfirmModal.confirm-hardened .modal-body{
+      user-select:none !important;
+      -webkit-user-select:none !important;
+      -ms-user-select:none !important;
+      -webkit-touch-callout:none !important;
+    }
+    /* Keep inputs/buttons usable inside the modal */
+    #deleteConfirmModal.confirm-hardened .modal-body input,
+    #deleteConfirmModal.confirm-hardened .modal-body textarea,
+    #deleteConfirmModal.confirm-hardened .modal-body button{
+      user-select:text !important;
+      -webkit-user-select:text !important;
+    }

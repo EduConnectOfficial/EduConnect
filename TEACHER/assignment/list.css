@@ -43,6 +43,7 @@ body {
   display: flex;
   min-height: 100vh;
 }
+
 /* Logos */
 .brand {
   display: flex;
@@ -148,7 +149,7 @@ body {
   margin: 4px 0 18px;
 }
 
-.page-title{
+.page-title {
   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -173,40 +174,27 @@ body {
 
 /* Close button inside modal header */
 .modal-header .btn-close {
-  filter: brightness(0) invert(1); /* makes the close icon white */
+  filter: brightness(0) invert(1);
+  /* makes the close icon white */
   opacity: 0.9;
 }
+
 .modal-header .btn-close:hover {
   opacity: 1;
 }
 
-/* Modal CTA buttons (blue) */
-.modal-footer .btn,
-#successOkBtn,
-#feedbackModal .btn {
-  background: linear-gradient(to bottom, #6EC9F5, #004891);
-  border: none;
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.5rem 1.2rem;
-  font-weight: 500;
-  transition: background 0.3s ease, transform 0.2s ease;
+.modal-body {
+  color: black
 }
 
-.modal-footer .btn:hover,
-#successOkBtn:hover,
-#feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #7bd4ff, #0a5fb0);
-  transform: scale(1.05);
-}
-.modal-body {
-  color:black
-}
 .modal.show .modal-content {
-  border: none;                 /* remove default bootstrap border */
-  border-radius: 14px;          /* match your --radius vibe */
-  overflow: hidden;             /* ensures header corners look perfect */
-  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+  border: none;
+  /* remove default bootstrap border */
+  border-radius: 14px;
+  /* match your --radius vibe */
+  overflow: hidden;
+  /* ensures header corners look perfect */
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .25);
 }
 
 @media (max-width: 576px) {
@@ -219,29 +207,64 @@ body {
 /* =======================
    6) Cards
 ======================= */
-.ui-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:16px
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px
 }
-.ui-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.ui-card-title{font-size:1rem;font-weight:700;margin:0;display:flex;gap:8px;align-items:center}
-.ui-subtext{font-size:.9rem;color:var(--muted)}
 
-.ui-card.card-themed{
-  border-radius:var(--card-radius);
-  border:1px solid rgba(0,0,0,.06);
-  box-shadow:0 10px 24px rgba(0,0,0,.10);
-  overflow:hidden;
+.ui-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px
 }
-.ui-card.card-themed .ui-card-head{
-  margin:-16px -16px 12px -16px;padding:12px 16px;
-  background:linear-gradient(90deg,var(--brand-dark-1),var(--brand-dark-2));
-  color:#eaf2ff;border-bottom:1px solid rgba(255,255,255,.1)
+
+.ui-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center
 }
-.ui-card.card-themed .ui-card-title i{color:#eaf2ff}
-.ui-card.card-themed .ui-card-title h2{color:#eaf2ff}
-.ui-card.card-themed .ui-subtext{color:#eaf2ff}
-.ui-card.card-themed > :not(.ui-card-head){color:#1f2328}
+
+.ui-subtext {
+  font-size: .9rem;
+  color: var(--muted)
+}
+
+.ui-card.card-themed {
+  border-radius: var(--card-radius);
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .10);
+  overflow: hidden;
+}
+
+.ui-card.card-themed .ui-card-head {
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  color: #eaf2ff;
+  border-bottom: 1px solid rgba(255, 255, 255, .1)
+}
+
+.ui-card.card-themed .ui-card-title i {
+  color: #eaf2ff
+}
+
+.ui-card.card-themed .ui-card-title h2 {
+  color: #eaf2ff
+}
+
+.ui-card.card-themed .ui-subtext {
+  color: #eaf2ff
+}
+
+.ui-card.card-themed> :not(.ui-card-head) {
+  color: #1f2328
+}
 
 /* =======================
    7) Buttons & Inputs
@@ -284,6 +307,56 @@ body {
 
 .logout-btn:hover {
   filter: brightness(1.08);
+}
+
+.btn-danger {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: .5rem 1.2rem !important;
+  font-weight: 500;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  transform: scale(1.04);
+}
+
+/* Themed type-to-confirm UI (reuses the generic confirm modal) */
+.confirm-themed .modal-header {
+  background: #0D348C;
+  color: #fff;
+  border-top-left-radius: .75rem;
+  border-top-right-radius: .75rem
+}
+
+.confirm-themed .no-copy {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+.confirm-themed .pill-danger {
+  background: #f8d7da;
+  color: #842029;
+  border: 1px solid #f5c2c7;
+  border-radius: .5rem;
+  padding: .6rem .75rem;
+  font-size: .9rem
+}
+
+.confirm-themed .valid-msg {
+  color: #198754;
+  font-size: .875rem
+}
+
+.confirm-themed .invalid-msg {
+  color: #dc3545;
+  font-size: .875rem
 }
 
 .form-select,
