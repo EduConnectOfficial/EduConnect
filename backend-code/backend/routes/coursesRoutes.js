@@ -10,17 +10,41 @@ const { firestore, admin } = require('../config/firebase');
    Helpers
 ---------------------------------------- */
 function tsToMillis(ts) {
-  if (!ts) return 0;
+  if (ts == null) return 0;
+
+  // Firestore Timestamp object
   if (typeof ts.toMillis === 'function') return ts.toMillis();
-  if (ts._seconds) {
-    return ts._seconds * 1000 + (ts._nanoseconds ? Math.floor(ts._nanoseconds / 1e6) : 0);
+
+  // Plain object with seconds/nanoseconds
+  if (typeof ts === 'object') {
+    const s  = ts._seconds ?? ts.seconds;
+    const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+    if (typeof s === 'number') return s * 1000 + Math.floor(ns / 1e6);
   }
+
+  // Number (ms or seconds)
   const n = Number(ts);
-  if (!Number.isNaN(n)) return n;
+  if (!Number.isNaN(n)) {
+    // Heuristic: if looks like seconds (10 digits), convert to ms
+    return n < 1e12 ? n * 1000 : n;
+  }
+
+  // ISO/date string
   const d = new Date(ts);
-  return isNaN(d.getTime()) ? 0 : d.getTime();
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
+function isPublished(course, nowMs) {
+  // No publishAt means visible immediately
+  if (!course || course.publishAt == null) return true;
+  const pubMs = tsToMillis(course.publishAt);
+  if (!pubMs) return true;
+  return pubMs <= nowMs;
+}
+
+/* ---------------------------------------
+   Course numbering
+---------------------------------------- */
 async function getNextCourseNumber(uploadedBy) {
   try {
     const snap = await firestore
@@ -60,6 +84,9 @@ async function renumberUserCourses(uploadedBy) {
   }
 }
 
+/* ---------------------------------------
+   Cleanup helpers
+---------------------------------------- */
 async function maybeDeleteLocalFilesFromDoc(docData) {
   if (!docData || typeof docData !== 'object') return;
   const candidates = [];
@@ -166,7 +193,7 @@ async function splitClassIdsByArchived(classIds) {
 
 // CREATE
 router.post('/upload-course', asyncHandler(async (req, res) => {
-  const { title, category, description, uploadedBy } = req.body;
+  const { title, category, description, uploadedBy, publishAtIso } = req.body;
   let { assignedClasses } = req.body;
 
   if (!title || !category || !description || !uploadedBy) {
@@ -174,8 +201,11 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
   }
 
   if (!Array.isArray(assignedClasses)) assignedClasses = [];
-  assignedClasses = assignedClasses.filter(x => typeof x === 'string' && x.trim() !== '').map(x => x.trim());
+  assignedClasses = assignedClasses
+    .filter(x => typeof x === 'string' && x.trim() !== '')
+    .map(x => x.trim());
 
+  // Filter out archived/missing classes from assignment
   let skipped = { archived: [], missing: [] };
   if (assignedClasses.length) {
     const { activeIds, archivedIds, missingIds } = await splitClassIdsByArchived(assignedClasses);
@@ -186,6 +216,16 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
   const owner = String(uploadedBy).trim();
   const nextCourseNumber = await getNextCourseNumber(owner);
 
+  // NOTE: Client should already convert PH local time -> UTC ISO string.
+  // We simply store as Firestore Timestamp (UTC).
+  let publishAt = null;
+  if (publishAtIso) {
+    const d = new Date(publishAtIso);
+    if (!isNaN(d.getTime())) {
+      publishAt = admin.firestore.Timestamp.fromDate(d);
+    }
+  }
+
   const newCourse = {
     title: String(title).trim(),
     category: String(category).trim(),
@@ -195,7 +235,8 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
     courseNumber: nextCourseNumber,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     archived: false,
-    archivedAt: null
+    archivedAt: null,
+    ...(publishAt ? { publishAt } : {})
   };
 
   const newDoc = await firestore.collection('courses').add(newCourse);
@@ -208,23 +249,32 @@ router.post('/upload-course', asyncHandler(async (req, res) => {
   });
 }));
 
-// LIST (optionally filter by uploadedBy; includeArchived=true to include)
+// LIST
+// - uploadedBy: filter by owner
+// - includeArchived=true to include archived; default hides archived
+// - onlyPublished=true OR visibility=student to hide scheduled (future publishAt)
 router.get('/courses', asyncHandler(async (req, res) => {
   const uploadedBy = String(req.query.uploadedBy || '').trim();
-  const includeArchived = String(req.query.includeArchived || '').toLowerCase() === 'true';
+  const includeArchived =
+    String(req.query.includeArchived || '').toLowerCase() === 'true';
+  const onlyPublished =
+    String(req.query.onlyPublished || '').toLowerCase() === 'true' ||
+    String(req.query.visibility || '').toLowerCase() === 'student';
 
   let q = firestore.collection('courses');
   if (uploadedBy) q = q.where('uploadedBy', '==', uploadedBy);
   q = q.orderBy('createdAt', 'desc');
 
   let snapshot;
-  try { snapshot = await q.get(); }
-  catch {
+  try {
+    snapshot = await q.get();
+  } catch {
     snapshot = uploadedBy
       ? await firestore.collection('courses').where('uploadedBy', '==', uploadedBy).get()
       : await firestore.collection('courses').get();
   }
 
+  const nowMs = Date.now();
   let courses = snapshot.docs.map(doc => {
     const data = doc.data();
     return {
@@ -236,10 +286,14 @@ router.get('/courses', asyncHandler(async (req, res) => {
       assignedClasses: data.assignedClasses || [],
       archived: !!data.archived,
       archivedAt: data.archivedAt || null,
+      publishAt: data.publishAt || null,
+      createdAt: data.createdAt || null,
     };
   });
 
   if (!includeArchived) courses = courses.filter(c => !c.archived);
+  if (onlyPublished)  courses = courses.filter(c => isPublished(c, nowMs));
+
   res.json(courses);
 }));
 
@@ -251,10 +305,10 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
   res.json({ id: doc.id, ...doc.data() });
 }));
 
-// UPDATE (PUT)
+// UPDATE (PUT) — accepts optional publishAtIso to (re)schedule
 router.put('/courses/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { title, category, description, assignedClasses, uploadedBy } = req.body;
+  const { title, category, description, assignedClasses, uploadedBy, publishAtIso } = req.body;
 
   if (uploadedBy != null) {
     return res.status(400).json({ success: false, message: 'uploadedBy cannot be changed.' });
@@ -275,26 +329,55 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       .map(x => x.trim());
   }
 
+  if (publishAtIso !== undefined) {
+    if (publishAtIso === null || publishAtIso === '') {
+      updateData.publishAt = admin.firestore.FieldValue.delete();
+    } else {
+      const d = new Date(publishAtIso);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ success:false, message:'Invalid publishAtIso' });
+      }
+      updateData.publishAt = admin.firestore.Timestamp.fromDate(d);
+    }
+  }
+
   await firestore.collection('courses').doc(id).update(updateData);
   res.json({ success: true });
 }));
 
-// ARCHIVE TOGGLE (PATCH)
+// ARCHIVE TOGGLE (PATCH) — also allows publishAtIso update
 router.patch('/courses/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updates = {};
+
   if (typeof req.body.archived === 'boolean') {
     updates.archived = req.body.archived;
     updates.archivedAt = req.body.archived
       ? admin.firestore.FieldValue.serverTimestamp()
       : null;
   }
+
   ['title', 'category', 'description', 'assignedClasses'].forEach(k => {
     if (k in req.body) updates[k] = req.body[k];
   });
+
+  if ('publishAtIso' in req.body) {
+    const publishAtIso = req.body.publishAtIso;
+    if (!publishAtIso) {
+      updates.publishAt = admin.firestore.FieldValue.delete();
+    } else {
+      const d = new Date(publishAtIso);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ success:false, message:'Invalid publishAtIso' });
+      }
+      updates.publishAt = admin.firestore.Timestamp.fromDate(d);
+    }
+  }
+
   if (!Object.keys(updates).length) {
     return res.status(400).json({ success:false, message:'No updates provided.' });
   }
+
   await firestore.collection('courses').doc(id).update(updates);
   res.json({ success:true });
 }));
@@ -352,10 +435,13 @@ router.delete('/courses/:id', asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Course and all related data deleted. User courses renumbered.' });
 }));
 
-// CLASS → COURSES (hide archived unless ?archived=include)
+// CLASS → COURSES
+// - hide archived unless ?archived=include
+// - hide scheduled (future publishAt) unless ?scheduled=include
 router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
   const classId = req.params.id;
-  const includeArchived = String(req.query.archived || '').toLowerCase() === 'include';
+  const includeArchived  = String(req.query.archived  || '').toLowerCase() === 'include';
+  const includeScheduled = String(req.query.scheduled || '').toLowerCase() === 'include';
 
   const classDoc = await firestore.collection('classes').doc(classId).get();
   if (!classDoc.exists) {
@@ -370,8 +456,11 @@ router.get('/api/classes/:id/courses', asyncHandler(async (req, res) => {
     .where('assignedClasses', 'array-contains', classId)
     .get();
 
+  const nowMs = Date.now();
   let courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  if (!includeArchived) courses = courses.filter(c => !c.archived);
+
+  if (!includeArchived)  courses = courses.filter(c => c.archived !== true);
+  if (!includeScheduled) courses = courses.filter(c => isPublished(c, nowMs));
 
   return res.json({ success: true, courses });
 }));

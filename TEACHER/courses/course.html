@@ -12,6 +12,14 @@
 
   <!-- Your course page css (kept) -->
   <link rel="stylesheet" href="../courses/course.css" />
+  <style>
+    .muted { color: #6c757d; }
+    .form-hint { font-size:.9rem; color:#6c757d; }
+    .radio-row { gap: 1rem; }
+    .publish-row .col-timezone { display:flex; align-items:end; }
+    .assign-card.selected { outline: 2px solid var(--brand-accent-1,#3b6bb4); }
+    .btn-icon { width: 36px; height: 36px; display:inline-flex; align-items:center; justify-content:center; }
+  </style>
 </head>
 
 <body>
@@ -30,7 +38,7 @@
         </div>
         <div class="search-box position-relative">
           <input type="text" id="searchBox" class="form-control" placeholder="Search assignments..." />
-          <i class="fas fa-search position-absolute"></i>
+          <i class="fas fa-search position-absolute" style="top:50%;right:12px;transform:translateY(-50%);"></i>
         </div>
         <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
           <i class="fas fa-user-circle fa-2x"></i>
@@ -46,11 +54,11 @@
         <div class="ui-card card-themed constrain mb-3" style="--ui-card-max: 1120px;">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-easel2"></i> Upload Course</h2>
-            <div class="ui-subtext">Give your course a title & description, then assign it to classes.</div>
+            <div class="ui-subtext">Give your course a title & description, choose publish timing, then assign it to classes.</div>
           </div>
 
           <form id="courseUploadForm" class="px-1" novalidate>
-            <!-- Title -->
+            <!-- Title / Quarter -->
             <div class="row g-3">
               <div class="col-md-8">
                 <label for="courseTitle" class="form-label fw-semibold">Course Title</label>
@@ -66,6 +74,44 @@
             <div class="mt-3">
               <label for="courseDescription" class="form-label fw-semibold">Course Description</label>
               <textarea class="form-control" id="courseDescription" rows="4" placeholder="Write a short course description..." required></textarea>
+            </div>
+
+            <!-- Publish At (NEW) -->
+            <div class="mt-3">
+              <label class="form-label fw-semibold">Visibility & Publish Time</label>
+              <div class="d-flex align-items-center radio-row">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="publishMode" id="pubNow" value="now" checked>
+                  <label class="form-check-label" for="pubNow">Publish now</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="publishMode" id="pubSchedule" value="schedule">
+                  <label class="form-check-label" for="pubSchedule">Schedule</label>
+                </div>
+              </div>
+
+              <div id="scheduleWrap" class="publish-row row g-3 mt-1" style="display:none;">
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label for="publishDate" class="form-label">Date</label>
+                  <input type="date" id="publishDate" class="form-control" />
+                </div>
+                <div class="col-12 col-sm-6 col-md-4">
+                  <label for="publishTime" class="form-label">Time</label>
+                  <input type="time" id="publishTime" class="form-control" />
+                </div>
+                <div class="col-12 col-md-4 col-timezone">
+                  <div>
+                    <div class="form-hint">
+                      <i class="bi bi-globe2 me-1"></i>
+                      Your timezone: <span id="tzLabel">—</span>
+                    </div>
+                    <div class="form-hint">We’ll store this as UTC.</div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div id="publishError" class="text-danger" style="min-height:1rem;"></div>
+                </div>
+              </div>
             </div>
 
             <!-- Assign-to-Classes -->
@@ -84,7 +130,10 @@
 
             <!-- Actions -->
             <div class="d-flex justify-content-end gap-2 mt-4">
-              <button type="submit" class="btn btn-amber"><i class="bi bi-cloud-upload me-1"></i> Upload Course</button>
+              <button type="submit" class="btn btn-amber">
+                <i class="bi bi-cloud-upload me-1"></i>
+                Upload Course
+              </button>
             </div>
           </form>
         </div>
@@ -211,6 +260,75 @@
         infoModal.show();
       }
 
+      // --- Publish UI wiring ---
+      const pubNow = document.getElementById('pubNow');
+      const pubSchedule = document.getElementById('pubSchedule');
+      const scheduleWrap = document.getElementById('scheduleWrap');
+      const publishDate = document.getElementById('publishDate');
+      const publishTime = document.getElementById('publishTime');
+      const publishError = document.getElementById('publishError');
+      const tzLabel = document.getElementById('tzLabel');
+
+      // timezone label
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        tzLabel.textContent = tz ? `${tz} (UTC${offsetToHHMM(new Date())})` : `UTC${offsetToHHMM(new Date())}`;
+      } catch {
+        tzLabel.textContent = 'Local time';
+      }
+      function offsetToHHMM(d){
+        const m = -d.getTimezoneOffset(); // minutes east of UTC
+        const sign = m >= 0 ? '+' : '-';
+        const abs = Math.abs(m);
+        const hh = String(Math.floor(abs/60)).padStart(2,'0');
+        const mm = String(abs%60).padStart(2,'0');
+        return `${sign}${hh}:${mm}`;
+      }
+
+      function setScheduleVisible(vis){
+        scheduleWrap.style.display = vis ? '' : 'none';
+        publishError.textContent = '';
+      }
+      pubNow.addEventListener('change', () => setScheduleVisible(pubSchedule.checked));
+      pubSchedule.addEventListener('change', () => setScheduleVisible(pubSchedule.checked));
+
+      // default: publish now
+      setScheduleVisible(false);
+
+      // Validate schedule in future (>= now)
+      function validateSchedule(){
+        publishError.textContent = '';
+        if (!pubSchedule.checked) return { ok:true, iso:null };
+
+        const d = (publishDate.value || '').trim();
+        const t = (publishTime.value || '').trim();
+        if (!d || !t) {
+          publishError.textContent = 'Choose both a date and time.';
+          return { ok:false, iso:null };
+        }
+
+        // Build local Date from yyyy-mm-dd and HH:MM
+        const [y,m,day] = d.split('-').map(n => parseInt(n,10));
+        const [hh,mm] = t.split(':').map(n => parseInt(n,10));
+        if (![y,m,day,hh,mm].every(Number.isFinite)) {
+          publishError.textContent = 'Invalid date/time.';
+          return { ok:false, iso:null };
+        }
+
+        // Create local time -> convert to UTC ISO
+        const local = new Date(y, m-1, day, hh, mm, 0, 0);
+        if (Number.isNaN(local.getTime())) {
+          publishError.textContent = 'Invalid date/time.';
+          return { ok:false, iso:null };
+        }
+        const now = new Date();
+        if (local.getTime() < now.getTime() - 60*1000) {
+          publishError.textContent = 'Publish time can’t be in the past.';
+          return { ok:false, iso:null };
+        }
+        return { ok:true, iso: new Date(local.getTime() - (local.getTimezoneOffset()*60000)).toISOString() };
+      }
+
       const assignedContainer = document.getElementById("assignedClassesContainer");
       const assignedStatus = document.getElementById("assigned-status");
       const assignedEmpty = document.getElementById("assigned-empty");
@@ -328,9 +446,18 @@
         };
 
         if (!payload.title || !payload.category || !payload.description) {
-          showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Category</strong>, and <strong>Description</strong>.');
+          showInfo('Incomplete', 'Please fill in <strong>Title</strong>, <strong>Quarter</strong>, and <strong>Description</strong>.');
           return;
         }
+
+        // PublishAt handling
+        let publishAtIso = null;
+        if (pubSchedule.checked) {
+          const chk = validateSchedule();
+          if (!chk.ok) return;
+          publishAtIso = chk.iso;
+        }
+        if (publishAtIso) payload.publishAtIso = publishAtIso;
 
         try {
           const res = await fetch(`${API}/upload-course`, {
@@ -341,7 +468,10 @@
           const data = await res.json().catch(() => ({ success: false }));
 
           if (data.success) {
-            showInfo('Success', '✅ Course uploaded!');
+            showInfo('Success', publishAtIso
+              ? '✅ Course scheduled! It will be visible to students at the selected time.'
+              : '✅ Course uploaded!'
+            );
             infoModalEl.addEventListener('hidden.bs.modal', () => {
               window.location.href = "../courses/course_list.html";
             }, { once: true });

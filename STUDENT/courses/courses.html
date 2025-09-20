@@ -22,8 +22,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -31,7 +30,7 @@
           <input type="text" id="courseSearch" placeholder="Search enrolled classes..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn" >
+        <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -109,228 +108,238 @@
     });
   </script>
 
-  <!-- Auth + Data (UPDATED) -->
-<script>
-  const API_BASE = 'http://localhost:5000';
+  <!-- Auth + Data (UPDATED to match backend) -->
+  <script>
+    const API_BASE = 'http://localhost:5000';
 
-  // Require logged-in student
-  const userData = JSON.parse(localStorage.getItem("user") || "{}");
-  if (!userData || !userData.userId || !userData.isStudent) {
-    window.location.href = "/STUDENT/login/login.html";
-  }
- // === Initials-only header name ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
+    // Require logged-in student
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!userData || !userData.userId || !userData.isStudent) {
+      window.location.href = "/STUDENT/login/login.html";
+    }
 
-  // If it's an email, use the local part (e.g., jane.doe -> JD)
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
+    // === Initials-only header name ===
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
+    }
+    (() => {
+      const el = document.getElementById("Username");
+      if (!el) return;
+      const displayName = userData.fullName || userData.username || userData.email || "";
+      const initials = initialsFrom(displayName) || "?";
+      el.textContent = initials;
+      el.title = displayName;
+      el.setAttribute("aria-label", displayName);
+    })();
 
-  // Names/usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
+    // Local state
+    const favKey = 'courseFavs';
+    const favs = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
+    let myCourses = [];
 
-// Apply initials to the header
-(() => {
-  const el = document.getElementById("Username");
-  if (!el) return;
-  const displayName = userData.fullName || userData.username || userData.email || "";
-  const initials = initialsFrom(displayName) || "?";
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-})();
-
-
-  // Local state
-  const favKey  = 'courseFavs';
-  const syncKey = 'courseSync';
-  const favs  = new Set(JSON.parse(localStorage.getItem(favKey)  || '[]'));
-  const syncd = new Set(JSON.parse(localStorage.getItem(syncKey) || '[]'));
-
-  let myCourses = [];   // fetched courses for this student
-
-  // Fetch only the COURSES for the student's enrolled classes
-  async function fetchCoursesForStudent() {
-    const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`;
-    const res = await fetch(url);
-    const js  = await res.json().catch(()=>({}));
-    if (!res.ok || !js.success) throw new Error(js.message || 'Failed to load courses');
-
-    // Normalize
-    myCourses = (js.courses || []).map(c => ({
-      id: c.id,
-      title: c.title || 'Untitled Course',
-      description: c.description || '',
-      category: c.category || 'General',
-      teacherName: c.teacherName || 'Teacher',
-      courseNumber: c.courseNumber || null,
-      createdAt: c.createdAt && c.createdAt._seconds ? new Date(c.createdAt._seconds * 1000) : null
-    }));
-
-    // Populate a simple "schoolYear" filter with categories (keeps your current DOM intact)
-    populateSchoolYearFromCategories(myCourses);
-    renderGrid();
-  }
-
-  // We’ll reuse the School Year select to filter by Category (no HTML change needed)
-  function populateSchoolYearFromCategories(list) {
-    const sel = document.getElementById('filterSchoolYear');
-    const cats = Array.from(new Set(list.map(c => c.category))).sort((a,b)=>a.localeCompare(b));
-    sel.innerHTML = '<option value="All">All School Years</option>'; // label kept as-is
-    cats.forEach(cat => {
-      const o = document.createElement('option');
-      o.value = `cat:${cat}`;
-      o.textContent = cat; // shows category values in that dropdown
-      sel.appendChild(o);
-    });
-
-    // Since we don't use semester here, keep it at "All"
-    const semSel = document.getElementById('filterSemester');
-    if (semSel) semSel.value = 'All';
-  }
-
-  function renderGrid() {
-    const q   = (document.getElementById('searchInput').value || '').toLowerCase();
-    const sy  = document.getElementById('filterSchoolYear').value; // repurposed as category when startsWith('cat:')
-    const sem = document.getElementById('filterSemester').value;   // not used for courses (kept for layout)
-    const sort = document.getElementById('sortBy').value;
-
-    let list = myCourses.slice()
-      .filter(c => {
-        if (sy === 'All') return true;
-        if (sy.startsWith('cat:')) {
-          const cat = sy.slice(4);
-          return c.category === cat;
+    // --- robust timestamp parsing ---
+    function toDateMaybe(v) {
+      if (v == null && v !== 0) return null;
+      if (v && typeof v === 'object') {
+        if (typeof v.toDate === 'function') { try { return v.toDate(); } catch {} }
+        if (v._seconds != null) {
+          return new Date(v._seconds * 1000 + (v._nanoseconds ? Math.floor(v._nanoseconds/1e6) : 0));
         }
-        return true;
-      })
-      .filter(c => (c.title + ' ' + c.description + ' ' + c.teacherName).toLowerCase().includes(q));
-
-    if (sort === 'az') {
-      list.sort((a,b)=> a.title.localeCompare(b.title));
-    } else if (sort === 'sy') {
-      // Use category name for ordering to keep your dropdown behavior
-      list.sort((a,b)=> (a.category || '').localeCompare(b.category || ''));
+        if ('seconds' in v) {
+          return new Date((v.seconds || 0) * 1000 + (v.nanoseconds ? Math.floor(v.nanoseconds/1e6) : 0));
+        }
+      }
+      if (typeof v === 'number') return new Date(v < 1e12 ? v * 1000 : v);
+      const d = new Date(String(v));
+      return isNaN(d.getTime()) ? null : d;
     }
 
-    const grid = document.getElementById('coursesGrid');
-    grid.innerHTML = '';
-
-    if (!list.length) {
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No courses found.</div></div>`;
-      return;
+    // Try multiple publish field names (defensive)
+    function getPublishDate(course) {
+      const fields = [
+        'publishAt','scheduledAt','scheduleAt','startAt','startDate',
+        'goLiveAt','goLiveDate','publishDate','publishOn'
+      ];
+      for (const f of fields) {
+        if (course && course[f] != null) {
+          const d = toDateMaybe(course[f]);
+          if (d) return d;
+        }
+      }
+      return null;
     }
 
-    list.forEach(c => {
-      const isFav  = favs.has(c.id);
-      const isSync = syncd.has(c.id);
+    // Fetch courses (server hides scheduled by default for students)
+    async function fetchCoursesForStudent() {
+      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true&visibility=student&onlyPublished=true`;
+      const res = await fetch(url);
+      const js  = await res.json().catch(() => ({}));
+      if (!res.ok || !js.success) throw new Error(js.message || 'Failed to load courses');
 
-      const col = document.createElement('div');
-      col.className = 'col-12 col-sm-6 col-xl-4 col-xxl-3';
-      col.innerHTML = `
-        <div class="course-card">
-          <div class="course-head">
-            <div class="d-flex align-items-center gap-2">
-              <div class="rounded-circle border d-flex align-items-center justify-content-center" style="width:40px;height:40px;background:#fff;">
-                <i class="bi bi-journal-text"></i>
-              </div>
-              <div>
-                <h3 class="course-title">${escapeHTML(c.title)}</h3>
-                <div class="course-meta">Teacher: ${escapeHTML(c.teacherName)}${c.courseNumber ? ' • #'+c.courseNumber : ''}</div>
-              </div>
-            </div>
-            <button class="favorite ${isFav ? 'active' : ''}" title="Favorite" data-id="${c.id}">
-              <i class="bi ${isFav ? 'bi-star-fill' : 'bi-star'} fs-5"></i>
-            </button>
-          </div>
+      const now = Date.now();
 
-          <p class="mt-2 mb-2">${escapeHTML(c.description)}</p>
+      // Normalize + safeguard (still hide any stray scheduled/archived)
+      myCourses = (js.courses || [])
+        .map(c => {
+          const createdAt = toDateMaybe(c.createdAt);
+          const publishAt = getPublishDate(c);
+          const archived  = !!c.archived;
+          return {
+            id: c.id,
+            title: c.title || 'Untitled Course',
+            description: c.description || '',
+            category: c.category || 'General',
+            teacherName: c.teacherName || 'Teacher',
+            courseNumber: c.courseNumber || null,
+            createdAt,
+            publishAt,
+            archived
+          };
+        })
+        .filter(c => !c.archived && !(c.publishAt && c.publishAt.getTime() > now));
 
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <span class="badge-soft"><i class="bi bi-bookmark"></i>${escapeHTML(c.category)}</span>
-            <span class="text-muted small">${c.createdAt ? 'Added: ' + c.createdAt.toLocaleDateString() : ''}</span>
-          </div>
+      populateSchoolYearFromCategories(myCourses);
+      renderGrid();
+    }
 
-          <div class="d-flex flex-wrap gap-2">
-            <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">Continue</a>
-            <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber-outline">View Course</a>
-           
-          </div>
-        </div>
-      `;
-      grid.appendChild(col);
-    });
-
-    // Favorite + Sync handlers
-    document.querySelectorAll('.favorite').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        if (favs.has(id)) favs.delete(id); else favs.add(id);
-        localStorage.setItem(favKey, JSON.stringify(Array.from(favs)));
-        renderGrid();
+    // Reuse School Year select to filter by Category
+    function populateSchoolYearFromCategories(list) {
+      const sel = document.getElementById('filterSchoolYear');
+      const cats = Array.from(new Set(list.map(c => c.category))).sort((a,b)=>a.localeCompare(b));
+      sel.innerHTML = '<option value="All">All School Years</option>';
+      cats.forEach(cat => {
+        const o = document.createElement('option');
+        o.value = `cat:${cat}`;
+        o.textContent = cat;
+        sel.appendChild(o);
       });
-    });
-    document.querySelectorAll('.sync-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        syncd.add(id);
-        localStorage.setItem(syncKey, JSON.stringify(Array.from(syncd)));
-        renderGrid();
-      });
-    });
-  }
 
-  function escapeHTML(str='') {
-    return String(str)
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'",'&#039;');
-  }
+      const semSel = document.getElementById('filterSemester');
+      if (semSel) semSel.value = 'All';
+    }
 
-  // Boot / Wiring
-  document.addEventListener('DOMContentLoaded', async () => {
-    // Keep your existing header search in sync with internal search
-    const headerSearch = document.getElementById('courseSearch');
-    const bodySearch   = document.getElementById('searchInput');
-    headerSearch.addEventListener('input', (e) => { bodySearch.value = e.target.value; renderGrid(); });
-    bodySearch.addEventListener('input', renderGrid);
+    function renderGrid() {
+      const q   = (document.getElementById('searchInput').value || '').toLowerCase();
+      const sy  = document.getElementById('filterSchoolYear').value;
+      const sort = document.getElementById('sortBy').value;
 
-    document.getElementById('filterSchoolYear').addEventListener('change', renderGrid);
-    document.getElementById('filterSemester').addEventListener('change', renderGrid);
-    document.getElementById('sortBy').addEventListener('change', renderGrid);
+      let list = myCourses.slice()
+        .filter(c => {
+          if (sy === 'All') return true;
+          if (sy.startsWith('cat:')) {
+            const cat = sy.slice(4);
+            return c.category === cat;
+          }
+          return true;
+        })
+        .filter(c => (c.title + ' ' + c.description + ' ' + c.teacherName).toLowerCase().includes(q));
 
+      if (sort === 'az') {
+        list.sort((a,b)=> a.title.localeCompare(b.title));
+      } else if (sort === 'sy') {
+        list.sort((a,b)=> (a.category || '').localeCompare(b.category || ''));
+      }
 
-    try {
-      await fetchCoursesForStudent();
-    } catch (err) {
-      console.error(err);
       const grid = document.getElementById('coursesGrid');
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load your courses.</div></div>`;
+      grid.innerHTML = '';
+
+      if (!list.length) {
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No courses found.</div></div>`;
+        return;
+      }
+
+      list.forEach(c => {
+        const isFav  = favs.has(c.id);
+        const col = document.createElement('div');
+        col.className = 'col-12 col-sm-6 col-xl-4 col-xxl-3';
+        col.innerHTML = `
+          <div class="course-card">
+            <div class="course-head">
+              <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle border d-flex align-items-center justify-content-center" style="width:40px;height:40px;background:#fff;">
+                  <i class="bi bi-journal-text"></i>
+                </div>
+                <div>
+                  <h3 class="course-title">${escapeHTML(c.title)}</h3>
+                  <div class="course-meta">Teacher: ${escapeHTML(c.teacherName)}${c.courseNumber ? ' • #'+c.courseNumber : ''}</div>
+                </div>
+              </div>
+              <button class="favorite ${isFav ? 'active' : ''}" title="Favorite" data-id="${c.id}">
+                <i class="bi ${isFav ? 'bi-star-fill' : 'bi-star'} fs-5"></i>
+              </button>
+            </div>
+
+            <p class="mt-2 mb-2">${escapeHTML(c.description)}</p>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="badge-soft"><i class="bi bi-bookmark"></i>${escapeHTML(c.category)}</span>
+              <span class="text-muted small">${c.createdAt ? 'Added: ' + c.createdAt.toLocaleDateString() : ''}</span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">Continue</a>
+              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber-outline">View Course</a>
+            </div>
+          </div>
+        `;
+        grid.appendChild(col);
+      });
+
+      // Favorite handlers
+      document.querySelectorAll('.favorite').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          if (favs.has(id)) favs.delete(id); else favs.add(id);
+          localStorage.setItem(favKey, JSON.stringify(Array.from(favs)));
+          renderGrid();
+        });
+      });
     }
-  });
 
-  function logoutUser() {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = "/STUDENT/login/login.html";
-  }
-</script>
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
 
+    // Boot / Wiring
+    document.addEventListener('DOMContentLoaded', async () => {
+      const headerSearch = document.getElementById('courseSearch');
+      const bodySearch   = document.getElementById('searchInput');
+      headerSearch.addEventListener('input', (e) => { bodySearch.value = e.target.value; renderGrid(); });
+      bodySearch.addEventListener('input', renderGrid);
+
+      document.getElementById('filterSchoolYear').addEventListener('change', renderGrid);
+      document.getElementById('filterSemester').addEventListener('change', renderGrid);
+      document.getElementById('sortBy').addEventListener('change', renderGrid);
+
+      try {
+        await fetchCoursesForStudent();
+      } catch (err) {
+        console.error(err);
+        const grid = document.getElementById('coursesGrid');
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load your courses.</div></div>`;
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
