@@ -15,8 +15,6 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
- 
 </head>
 <body>
   <div class="dashboard">
@@ -27,8 +25,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -79,6 +76,24 @@
           </div>
         </div>
 
+        <!-- Filters -->
+        <div class="ui-card mb-3">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-8">
+              <label for="courseFilter" class="form-label mb-1">Filter by Course</label>
+              <select id="courseFilter" class="form-select">
+                <option value="__ALL__">All courses</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4 d-grid">
+              <label class="form-label mb-1">&nbsp;</label>
+              <button id="applyFilters" class="btn btn-amber">
+                <i class="bi bi-funnel me-1"></i> Apply
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Charts -->
         <div class="row g-3">
           <div class="col-md-6">
@@ -112,7 +127,7 @@
                 <table class="table table-sm align-middle">
                   <thead>
                     <tr>
-                      <th>Assignment</th><th>Grade</th><th>Graded At</th>
+                      <th>Assignment</th><th>Grade %</th><th>Graded At</th>
                     </tr>
                   </thead>
                   <tbody id="assignTbody">
@@ -222,11 +237,11 @@
   (function setHeaderName(){
     const displayName = USER.fullName || USER.username || USER.email || "Student";
     const initials = initialsFrom(displayName) || "?";
-    const el = document.getElementById("Username");
-    if (el) {
-      el.textContent = initials;   // <-- Initials restored here
-      el.title = displayName;      // tooltip shows the full name
-      el.setAttribute("aria-label", displayName);
+    const elU = document.getElementById("Username");
+    if (elU) {
+      elU.textContent = initials;
+      elU.title = displayName;
+      elU.setAttribute("aria-label", displayName);
     }
     if (!USER.uid) {
       USER.uid = USER.userId || USER.id || USER.email;
@@ -240,12 +255,11 @@
   }
 </script>
 
-  <!-- Bootstrap JS bundle (required for modal) -->
+  <!-- Bootstrap JS bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Modal Helper -->
   <script>
-    // Simple reusable modal alert
     let _feedbackModal;
     document.addEventListener('DOMContentLoaded', () => {
       const el = document.getElementById('feedbackModal');
@@ -253,7 +267,6 @@
       const ok = document.getElementById('successOkBtn');
       if (ok) ok.addEventListener('click', () => _feedbackModal?.hide());
     });
-
     function showModalAlert(title = 'Notice', message = '') {
       const t = document.getElementById('feedbackModalTitle');
       const b = document.getElementById('feedbackModalBody');
@@ -274,6 +287,29 @@
       const ms = ts?._seconds ? ts._seconds * 1000 : (typeof ts === 'number' ? ts : Date.parse(ts));
       return Number.isFinite(ms) ? new Date(ms).toLocaleString() : '—';
     };
+
+    // ---- percent resolver for assignments ----
+    function firstNum(...vals){
+      for (const v of vals) {
+        const n = Number(v);
+        if (Number.isFinite(n)) return n;
+      }
+      return null;
+    }
+    function gradePctFromRow(a = {}) {
+      if (typeof a.gradePercent === 'number') {
+        return Math.max(0, Math.min(100, Math.round(a.gradePercent)));
+      }
+      const raw = firstNum(a.gradeRaw, a.grade);
+      const max = firstNum(a.maxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf);
+      if (Number.isFinite(raw) && Number.isFinite(max) && max > 0) {
+        return Math.max(0, Math.min(100, Math.round((raw / max) * 100)));
+      }
+      if (Number.isFinite(raw)) {
+        return Math.max(0, Math.min(100, Math.round(raw)));
+      }
+      return null;
+    }
 
     let quizChart, assignChart;
     function destroy(c) { try { c && c.destroy && c.destroy(); } catch {} }
@@ -302,7 +338,6 @@
       return u.userId || u.studentId || u.uid || u.id || u.email || '';
     }
 
-    // Endpoint fallback helper
     async function getAnalyticsJson(student) {
       const urls = [
         `${API_BASE}/student-analytics?student=${encodeURIComponent(student)}`,
@@ -315,26 +350,410 @@
       throw new Error('No analytics endpoint responded with 200.');
     }
 
+    // ===== Real courses API =====
+    async function getCoursesForStudent(userId) {
+      const urls = [
+        `${API_BASE}/students/${encodeURIComponent(userId)}/courses?visibility=student&courseArchived=exclude&includeTeacher=true`,
+        `${API_BASE}/api/students/${encodeURIComponent(userId)}/courses?visibility=student&courseArchived=exclude&includeTeacher=true`,
+      ];
+      for (const url of urls) {
+        try {
+          const r = await fetch(url);
+          if (r.ok) return (await r.json())?.courses || [];
+        } catch {}
+      }
+      return [];
+    }
+
+    // ===== Real quiz meta API (forStudent honors publishAt / class targeting) =====
+    async function getQuizMetaForStudent(forStudent) {
+      const urls = [
+        `${API_BASE}/quizzes?forStudent=${encodeURIComponent(forStudent)}`,
+        `${API_BASE}/api/quizzes?forStudent=${encodeURIComponent(forStudent)}`
+      ];
+      for (const url of urls) {
+        try {
+          const r = await fetch(url);
+          if (r.ok) {
+            const payload = await r.json();
+            const arr = payload?.quizzes || [];
+            const map = {};
+            arr.forEach(q => {
+              if (!q || !q.id) return;
+              map[q.id] = {
+                courseId: q.courseId || null,
+                courseTitle: q.courseTitle || null,
+                title: q.title || null
+              };
+            });
+            return map;
+          }
+        } catch {}
+      }
+      return {};
+    }
+
+    // ===== Real assignment meta API (student scoped) =====
+    // Uses your provided route: GET /students/:userId/assignments
+    async function getStudentAssignmentsMeta(userId) {
+      const urls = [
+        `${API_BASE}/students/${encodeURIComponent(userId)}/assignments`,
+        `${API_BASE}/api/students/${encodeURIComponent(userId)}/assignments`,
+      ];
+      for (const url of urls) {
+        try {
+          const r = await fetch(url);
+          if (r.ok) {
+            const data = await r.json();
+            const list = data?.assignments || [];
+            const map = {};
+            list.forEach(a => {
+              if (!a || !a.id) return;
+              map[a.id] = {
+                courseId: a.courseId || null,
+                courseTitle: a.courseTitle || null,
+                title: a.title || a.assignmentTitle || null
+              };
+            });
+            return map;
+          }
+        } catch {}
+      }
+      return {};
+    }
+
+    // ===== Enrich quizzes & assignments with course info BEFORE sorting/filtering =====
+    async function enrichQuizzesWithCourse(qrows, forStudent) {
+      if (!qrows?.length) return qrows || [];
+      const metaMap = await getQuizMetaForStudent(forStudent);
+      return qrows.map(q => {
+        const m = metaMap[q.quizId] || {};
+        return {
+          ...q,
+          title: q.title || m.title || q.quizId,
+          courseId: q.courseId || m.courseId || null,
+          courseTitle: q.courseTitle || m.courseTitle || null
+        };
+      });
+    }
+
+    async function enrichAssignmentsWithCourse(arows, userId) {
+      if (!arows?.length) return arows || [];
+      const metaMap = await getStudentAssignmentsMeta(userId); // single fetch, student-scoped
+      return arows.map(a => {
+        const m = metaMap[a.assignmentId] || {};
+        return {
+          ...a,
+          assignmentTitle: a.assignmentTitle || m.title || a.assignmentId,
+          courseId: a.courseId || m.courseId || null,
+          courseTitle: a.courseTitle || m.courseTitle || null
+        };
+      });
+    }
+
+    // ==== Filtering/sorting state ====
+    let _analyticsData = null;
+    let _assignmentRows = [];
+    let _quizRows = [];
+    let _courseOptions = [];
+
+    function buildCourseOptions(courses) {
+      const set = new Map();
+      (courses || []).forEach(c => {
+        const id = c.id || c.courseId || c.courseRefId;
+        const title = c.title || c.courseTitle || c.name || id;
+        if (id) set.set(id, title);
+      });
+      const arr = Array.from(set.entries()).map(([id, title]) => ({ id, title }));
+      arr.sort((a,b) => String(a.title||'').localeCompare(String(b.title||'')));
+      return arr;
+    }
+
+    function populateCourseDropdown() {
+      const sel = el('courseFilter');
+      const keep = sel.value || '__ALL__';
+      sel.innerHTML = `<option value="__ALL__">All courses</option>`;
+      _courseOptions.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.id; o.textContent = opt.title || opt.id;
+        sel.appendChild(o);
+      });
+      sel.value = (_courseOptions.some(o => o.id === keep) || keep === '__ALL__') ? keep : '__ALL__';
+    }
+
+    function filterByCourse(rows, courseId) {
+      if (!rows?.length) return [];
+      if (!courseId || courseId === '__ALL__') return rows;
+      return rows.filter(r => r.courseId === courseId);
+    }
+
+    // Quizzes: sort by best percent (High → Low)
+    function sortQuizzesByBestPercent(rows) {
+      const p = r => Number.isFinite(+r.bestPercent) ? +r.bestPercent : -1;
+      return [...rows].sort((a, b) => p(b) - p(a) || String(a.title||'').localeCompare(String(b.title||'')));
+    }
+
+    // Assignments: sort by grade % (High → Low), tie-break newer gradedAt
+    function sortAssignmentsByPercentDesc(rows) {
+      const gradeOf = r => {
+        const g = gradePctFromRow(r);
+        return (g == null) ? -1 : g;
+      };
+      const timeOf = r => (r.gradedAt?._seconds ? r.gradedAt._seconds * 1000
+                         : (typeof r.gradedAt === 'number' ? r.gradedAt
+                         : Date.parse(r.gradedAt) || 0));
+      return [...rows].sort((a,b) => gradeOf(b) - gradeOf(a) || timeOf(b) - timeOf(a));
+    }
+
+    function renderQuizzes(qrows) {
+      const rows = sortQuizzesByBestPercent(qrows || []);
+      if (!rows.length) {
+        el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
+        renderBar('quizChart', ['No data'], [0], 'Best %', 'quiz');
+      } else {
+        el('quizTbody').innerHTML = rows.map(r => `
+          <tr>
+            <td>${r.title || r.quizId}</td>
+            <td>${pct(r.bestPercent)}</td>
+            <td>${r.attemptsUsed ?? 0}</td>
+            <td>${dt(r.lastSubmittedAt)}</td>
+          </tr>
+        `).join('');
+        renderBar('quizChart', rows.map(r=>r.title || r.quizId), rows.map(r=>r.bestPercent || 0), 'Best %', 'quiz');
+      }
+    }
+
+    function renderAssignments(arows) {
+      const rows = sortAssignmentsByPercentDesc(arows || []);
+      if (!rows.length) {
+        el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
+        renderBar('assignChart', ['No data'], [0], 'Grade %', 'assign');
+        return;
+      }
+      el('assignTbody').innerHTML = rows.map(a => {
+        const gp = gradePctFromRow(a);
+        const gradeTxt = (gp != null ? `${gp}%` : '—');
+        const rawInfo = (a.gradeRaw != null && a.maxPoints != null)
+          ? `title="Raw: ${a.gradeRaw}/${a.maxPoints}"`
+          : '';
+        return `
+          <tr>
+            <td>${a.assignmentTitle || a.assignmentId}</td>
+            <td ${rawInfo}>${gradeTxt}</td>
+            <td>${dt(a.gradedAt)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const labels = rows.map(a => a.assignmentTitle || a.assignmentId);
+      const values = rows.map(a => gradePctFromRow(a) ?? 0);
+      renderBar('assignChart', labels, values, 'Grade %', 'assign');
+    }
+
+    function applyFiltersAndRender() {
+      const selectedCourse = el('courseFilter').value || '__ALL__';
+
+      // Assignments: filter + sort like quizzes (high→low)
+      const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
+      renderAssignments(aFiltered);
+
+      // Quizzes: filter + built-in sort
+      const qFiltered = filterByCourse(_quizRows, selectedCourse);
+      renderQuizzes(qFiltered);
+    }
+
+    // CSV (respects current course filter; both sorted high→low)
+    async function exportCsv() {
+      try {
+        const student = getStudentKey();
+        const data = _analyticsData || await getAnalyticsJson(student);
+
+        const selectedCourse = el('courseFilter').value || '__ALL__';
+        const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
+        const aSorted = sortAssignmentsByPercentDesc(aFiltered);
+        const qFiltered = filterByCourse(_quizRows, selectedCourse);
+        const qSorted = sortQuizzesByBestPercent(qFiltered);
+
+        let csv = [];
+        csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
+        csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
+
+        csv.push('');
+        csv.push('Quizzes');
+        csv.push('Quiz,Best %,Attempts,Last Attempt');
+        qSorted.forEach(r => {
+          csv.push(`"${r.title || r.quizId}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
+        });
+
+        csv.push('');
+        csv.push('Assignments');
+        csv.push('Assignment,Grade %,Graded At');
+        aSorted.forEach(a => {
+          const gp = gradePctFromRow(a);
+          csv.push(`"${a.assignmentTitle || a.assignmentId}","${gp != null ? gp + '%' : ''}","${dt(a.gradedAt)}"`);
+        });
+
+        csv.push('');
+        csv.push('Essay Submissions');
+        csv.push('Quiz,Question #,Status,Score,Submitted');
+        (data.essays?.submissions || []).forEach(e => {
+          csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
+        });
+
+        csv.push('');
+        csv.push('Completed Modules');
+        csv.push('Course,Module,Percent,Completed At');
+        (data.modules?.completed || []).forEach(m => {
+          csv.push(`"${m.courseTitle}","${m.moduleTitle}","100%","${dt(m.completedAt)}"`);
+        });
+
+        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `student_analytics_${student}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      } catch (e) {
+        console.error(e);
+        showModalAlert('CSV export failed', 'Please check your connection and try again.');
+      }
+    }
+
+    // PDF (respects current course filter; both sorted high→low)
+    async function downloadPdf() {
+      try {
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+          });
+        }
+        if (typeof window.jspdf?.jsPDF === 'undefined') {
+          showModalAlert('PDF download failed', 'Failed to load jsPDF library. Please try again.');
+          return;
+        }
+        if (typeof window.jspdf?.autoTable === 'undefined') {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+          });
+        }
+
+        const student = getStudentKey();
+        const doc = new window.jspdf.jsPDF();
+
+        // Header
+        doc.setFont('times', 'bold'); doc.setFontSize(18);
+        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
+        doc.setFontSize(12); doc.setFont('times', 'normal');
+        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
+        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
+
+        // Summary
+        doc.autoTable({
+          startY: 55,
+          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
+          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 11, halign: 'center' },
+          headStyles: { fillColor: [255,178,0], textColor: 0 },
+        });
+
+        let y = doc.lastAutoTable.finalY + 8;
+
+        // Quizzes
+        doc.setFont('times', 'bold'); doc.text('Quizzes', 20, y);
+        doc.setFont('times', 'normal'); y += 2;
+        const selectedCourse = el('courseFilter').value || '__ALL__';
+        const qFiltered = filterByCourse(_quizRows, selectedCourse);
+        const qSorted = sortQuizzesByBestPercent(qFiltered);
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
+          body: qSorted.map(r => [r.title || r.quizId, pct(r.bestPercent), r.attemptsUsed ?? 0, dt(r.lastSubmittedAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        // Assignments
+        y = doc.lastAutoTable.finalY + 8;
+        doc.setFont('times', 'bold'); doc.text('Assignments', 20, y);
+        doc.setFont('times', 'normal'); y += 2;
+        const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
+        const aSorted = sortAssignmentsByPercentDesc(aFiltered);
+        doc.autoTable({
+          startY: y,
+          head: [['Assignment', 'Grade %', 'Graded At']],
+          body: aSorted.map(a => {
+            const gp = gradePctFromRow(a);
+            return [a.assignmentTitle || a.assignmentId, gp != null ? `${gp}%` : '', dt(a.gradedAt)];
+          }),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        // Essays
+        y = doc.lastAutoTable.finalY + 8;
+        doc.setFont('times', 'bold'); doc.text('Essay Submissions', 20, y);
+        doc.setFont('times', 'normal'); y += 2;
+        const data = _analyticsData || {};
+        doc.autoTable({
+          startY: y,
+          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
+          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex+1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        // Modules
+        y = doc.lastAutoTable.finalY + 8;
+        doc.setFont('times', 'bold'); doc.text('Completed Modules', 20, y);
+        doc.setFont('times', 'normal'); y += 2;
+        doc.autoTable({
+          startY: y,
+          head: [['Course', 'Module', 'Percent', 'Completed At']],
+          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, '100%', dt(m.completedAt)]),
+          theme: 'grid',
+          styles: { font: 'times', fontSize: 10 },
+          headStyles: { fillColor: [240,240,240], textColor: 0 },
+        });
+
+        doc.save(`student_analytics_${student}.pdf`);
+      } catch (e) {
+        console.error(e);
+        showModalAlert('PDF download failed', 'We couldn’t generate your PDF. Ensure libraries loaded and the endpoint is reachable.');
+      }
+    }
+
+    // Initial load
     async function load() {
       const student = getStudentKey();
-      const data = await getAnalyticsJson(student);
+      const [data, courses] = await Promise.all([
+        getAnalyticsJson(student),
+        getCoursesForStudent(student)
+      ]);
+      _analyticsData = data;
 
-      // ---------- Header (prefer decrypted full name from API) ----------
+      // Header
       const first  = (data.profile?.firstName  || '').trim();
       const middle = (data.profile?.middleName || '').trim();
       const last   = (data.profile?.lastName   || '').trim();
       const fullFromApi = [first, middle, last].filter(Boolean).join(' ').trim();
-
       const fullFromLocal =
         [USER.firstName, USER.middleName, USER.lastName].filter(Boolean).join(' ').trim() ||
         (USER.fullName || '').trim();
 
       el('s_name').textContent =
-        fullFromApi ||
-        fullFromLocal ||
-        (data.profile?.name || '').trim() ||
-        (data.profile?.email || '').trim() ||
-        'Student';
+        fullFromApi || fullFromLocal || (data.profile?.name || '').trim() ||
+        (data.profile?.email || '').trim() || 'Student';
 
       el('s_id').textContent = data.profile?.studentId || '—';
       el('s_avg_quiz').textContent = pct(data.summary?.averageQuizScore);
@@ -344,40 +763,21 @@
           ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
           : (data.summary?.modulesCompleted ?? '—');
 
-      /* ----- Quizzes ----- */
-      const qrows = data.quizzes?.perQuiz || [];
-      if (!qrows.length) {
-        el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
-        renderBar('quizChart', ['No data'], [0], 'Best %', 'quiz');
-      } else {
-        el('quizTbody').innerHTML = qrows.map(r => `
-          <tr>
-            <td>${r.title || r.quizId}</td>
-            <td>${pct(r.bestPercent)}</td>
-            <td>${r.attemptsUsed ?? 0}</td>
-            <td>${dt(r.lastSubmittedAt)}</td>
-          </tr>
-        `).join('');
-        renderBar('quizChart', qrows.map(r=>r.title || r.quizId), qrows.map(r=>r.bestPercent || 0), 'Best %', 'quiz');
-      }
+      // Quizzes (course enrichment from real API)
+      _quizRows = await enrichQuizzesWithCourse(data.quizzes?.perQuiz || [], student);
+      renderQuizzes(_quizRows);
 
-      /* ----- Assignments ----- */
-      const arows = data.assignments?.grades || [];
-      if (!arows.length) {
-        el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
-        renderBar('assignChart', ['No data'], [0], 'Grade %', 'assign');
-      } else {
-        el('assignTbody').innerHTML = arows.map(a => `
-          <tr>
-            <td>${a.assignmentTitle || a.assignmentId}</td>
-            <td>${pct(a.grade)}</td>
-            <td>${dt(a.gradedAt)}</td>
-          </tr>
-        `).join('');
-        renderBar('assignChart', arows.map(a=>a.assignmentTitle || a.assignmentId), arows.map(a=>a.grade || 0), 'Grade %', 'assign');
-      }
+      // Assignments (ENRICH with course from /students/:userId/assignments BEFORE filtering/sorting)
+      _assignmentRows = await enrichAssignmentsWithCourse(data.assignments?.grades || [], student);
 
-      /* ----- Essays ----- */
+      // Course dropdown from real API (no Uncategorized)
+      _courseOptions = buildCourseOptions(courses);
+      populateCourseDropdown();
+
+      // Apply filter + sort rendering
+      applyFiltersAndRender();
+
+      // Essays
       const erows = data.essays?.submissions || [];
       el('essayTbody').innerHTML = erows.length
         ? erows.map(e => `
@@ -391,216 +791,29 @@
         `).join('')
         : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
 
-      /* ----- Modules (FORCE 100%) ----- */
+      // Modules
       const mrows = data.modules?.completed || [];
       el('modTbody').innerHTML = mrows.length
         ? mrows.map(m => `
           <tr>
             <td>${m.courseTitle || m.courseId || ''}</td>
             <td>${m.moduleTitle || m.moduleId || ''}</td>
-            <td>100%</td> <!-- completed means 100%, independent of quiz/assignment -->
+            <td>100%</td>
             <td>${dt(m.completedAt)}</td>
           </tr>
         `).join('')
         : '<tr><td colspan="4" class="text-center text-muted">No modules completed</td></tr>';
     }
 
-    // CSV/PDF helpers with fallbacks
-    async function getBlobWithFallback(student, kind /* 'csv' | 'pdf' */) {
-      const urls = [
-        `${API_BASE}/student-analytics/${kind}?student=${encodeURIComponent(student)}`,
-        `${API_BASE}/api/student-analytics/${kind}?student=${encodeURIComponent(student)}`,
-        `${API_BASE}/api/student/analytics/${kind}?student=${encodeURIComponent(student)}`
-      ];
-      for (const url of urls) {
-        try { const res = await fetch(url); if (res.ok) return res.blob(); } catch {}
-      }
-      throw new Error(`${kind.toUpperCase()} endpoint not found or failed`);
-    }
-
-    // --- Formal PDF and CSV Export ---
-    async function exportCsv() {
-      try {
-        const student = getStudentKey();
-        const data = await getAnalyticsJson(student);
-        let csv = [];
-        // Header
-        csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
-        csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
-
-        // Quizzes
-        csv.push('');
-        csv.push('Quizzes');
-        csv.push('Quiz,Best %,Attempts,Last Attempt');
-        (data.quizzes?.perQuiz || []).forEach(r => {
-          csv.push(`"${r.title}","${pct(r.bestPercent)}","${r.attemptsUsed}","${dt(r.lastSubmittedAt)}"`);
-        });
-
-        // Assignments
-        csv.push('');
-        csv.push('Assignments');
-        csv.push('Assignment,Grade,Graded At');
-        (data.assignments?.grades || []).forEach(a => {
-          csv.push(`"${a.assignmentTitle}","${pct(a.grade)}","${dt(a.gradedAt)}"`);
-        });
-
-        // Essays
-        csv.push('');
-        csv.push('Essay Submissions');
-        csv.push('Quiz,Question #,Status,Score,Submitted');
-        (data.essays?.submissions || []).forEach(e => {
-          csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
-        });
-
-        // Modules (FORCE 100%)
-        csv.push('');
-        csv.push('Completed Modules');
-        csv.push('Course,Module,Percent,Completed At');
-        (data.modules?.completed || []).forEach(m => {
-          csv.push(`"${m.courseTitle}","${m.moduleTitle}","100%","${dt(m.completedAt)}"`);
-        });
-
-        // Download
-        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `student_analytics_${student}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      } catch (e) {
-        console.error(e);
-        showModalAlert('CSV export failed', 'Please check your connection and try again. If the CSV endpoint is behind a different path, verify the fallback URLs in <code>getBlobWithFallback</code> or the fetch in <code>exportCsv()</code>.');
-      }
-    }
-
-    async function downloadPdf() {
-      try {
-        // Load jsPDF and autoTable if not present
-        if (typeof window.jspdf === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-        if (typeof window.jspdf?.jsPDF === 'undefined') {
-          showModalAlert('PDF download failed', 'Failed to load jsPDF library. Please try again.');
-          return;
-        }
-        if (typeof window.jspdf?.autoTable === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-
-        const student = getStudentKey();
-        const data = await getAnalyticsJson(student);
-        const doc = new window.jspdf.jsPDF();
-
-        // Formal Header
-        doc.setFont('times', 'bold');
-        doc.setFontSize(18);
-        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('times', 'normal');
-        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
-        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 48);
-
-        // Summary Table
-        doc.autoTable({
-          startY: 55,
-          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
-          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 11, halign: 'center' },
-          headStyles: { fillColor: [255, 178, 0], textColor: 0 },
-        });
-
-        let y = doc.lastAutoTable.finalY + 8;
-
-        // Quizzes Table
-        doc.setFont('times', 'bold');
-        doc.text('Quizzes', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
-          body: (data.quizzes?.perQuiz || []).map(r => [r.title, pct(r.bestPercent), r.attemptsUsed, dt(r.lastSubmittedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Assignments Table
-        doc.setFont('times', 'bold');
-        doc.text('Assignments', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Assignment', 'Grade', 'Graded At']],
-          body: (data.assignments?.grades || []).map(a => [a.assignmentTitle, pct(a.grade), dt(a.gradedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Essays Table
-        doc.setFont('times', 'bold');
-        doc.text('Essay Submissions', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
-          body: (data.essays?.submissions || []).map(e => [e.quizTitle, e.questionIndex != null ? (e.questionIndex+1) : '', e.status, e.score != null ? `${e.score}/${e.maxScore}` : '', dt(e.createdAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        // Modules Table (FORCE 100%)
-        doc.setFont('times', 'bold');
-        doc.text('Completed Modules', 20, y);
-        doc.setFont('times', 'normal');
-        y += 2;
-        doc.autoTable({
-          startY: y,
-          head: [['Course', 'Module', 'Percent', 'Completed At']],
-          body: (data.modules?.completed || []).map(m => [m.courseTitle, m.moduleTitle, '100%', dt(m.completedAt)]),
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240,240,240], textColor: 0 },
-        });
-
-        // Download
-        doc.save(`student_analytics_${student}.pdf`);
-      } catch (e) {
-        console.error(e);
-        showModalAlert('PDF download failed', 'We couldn’t generate your PDF. Ensure jsPDF and AutoTable loaded and the analytics endpoint is reachable, then try again.');
-      }
-    }
-
+    // Wire up UI
     document.getElementById('exportCsv').addEventListener('click', exportCsv);
     document.getElementById('downloadPdf').addEventListener('click', downloadPdf);
+    document.getElementById('applyFilters').addEventListener('click', applyFiltersAndRender);
+    document.getElementById('courseFilter').addEventListener('change', applyFiltersAndRender);
 
-    // Go!
     load().catch(err => {
       console.error(err);
-      showModalAlert('Failed to load analytics', 'The analytics endpoint did not respond. Please refresh the page or try again later.');
+      showModalAlert('Failed to load analytics', 'The analytics endpoint did not respond. Please refresh and try again.');
     });
   </script>
 
