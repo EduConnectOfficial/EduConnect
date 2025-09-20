@@ -12,7 +12,6 @@
 
   <!-- Reuse your student theme -->
   <link rel="stylesheet" href="../modules/list.css" />
- 
 </head>
 <body>
   <div class="dashboard">
@@ -23,7 +22,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-       <div class="brand">
+        <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -170,6 +169,29 @@
         .replaceAll("'",'&#039;');
     }
 
+    // --- Timestamp helpers ---
+    function tsToMs(ts){
+      if (!ts) return null;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts === 'string') {
+        const t = Date.parse(ts);
+        return Number.isFinite(t) ? t : null;
+      }
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      const d = new Date(ts);
+      return Number.isFinite(d.getTime()) ? d.getTime() : null;
+    }
+    function isPublished(m){
+      const at = tsToMs(m.publishAt);
+      // If no publishAt, treat as immediately published
+      return at === null || at <= Date.now();
+    }
+    function isVisibleToStudent(m){
+      return (m.archived !== true) && isPublished(m);
+    }
+
     // ---------- NEW: find all classIds this student is enrolled in ----------
     async function fetchStudentClassIds() {
       try {
@@ -228,6 +250,7 @@
         return;
       }
 
+      // Fetch per enrolled class
       const perClassFetches = studentClassIds.map(async cid => {
         const res = await fetch(
           `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`
@@ -241,10 +264,12 @@
       const byId = new Map();
       results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
 
+      // Hide archived or not-yet-published
+      const visible = Array.from(byId.values()).filter(isVisibleToStudent);
+
       // Compute completion (0%/100% for now)
       const email = user.email;
-      const list = Array.from(byId.values());
-      const checks = list.map(async m => {
+      const checks = visible.map(async m => {
         try {
           const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/isCompleted`);
           const j = await r.json().catch(()=>({completed:false}));
@@ -258,11 +283,8 @@
       renderModules();
     }
 
-    // Progress utility: returns 0 or 100 using completed flag.
-    // Later: replace with fine-grained per-lesson %
-    function moduleProgress(m) {
-      return m.completed ? 100 : 0;
-    }
+    // Progress utility (placeholder logic)
+    function moduleProgress(m) { return m.completed ? 100 : 0; }
 
     function renderProgressPill(m) {
       const pct = moduleProgress(m);

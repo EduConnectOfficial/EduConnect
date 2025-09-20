@@ -1,4 +1,4 @@
-// ==== routes/modulesRoutes.js ==== //
+// ==== routes/modulesRoutes.js ====
 const router = require('express').Router();
 const multer = require('multer');
 
@@ -42,7 +42,7 @@ function genId() {
 }
 
 /* -----------------------------------------------------------
-   GENERAL HELPERS (assigned classes)
+   GENERAL HELPERS (assigned classes + publish fields)
 ----------------------------------------------------------- */
 
 function normalizeToArray(v) {
@@ -97,6 +97,60 @@ async function validateClassIds(classIds) {
 
   const validIds = classIds.filter(id => found.has(id));
   return { ok: true, validIds };
+}
+
+/** Parse publish controls coming from the frontend.
+ *  - published: boolean
+ *  - publishAt: ISO string from <input type="datetime-local"> (local time), or null/'' to clear
+ *  Returns { hasPublished, publishedValue, hasPublishAt, publishAtTimestamp|null, publishNow }
+ */
+function parsePublishFields(body = {}, currentDoc = {}) {
+  // published toggle
+  let hasPublished = false;
+  let publishedValue = undefined;
+  if (typeof body.published === 'boolean') {
+    hasPublished = true;
+    publishedValue = body.published;
+  } else if (typeof body.published === 'string') {
+    // Accept "true"/"false" strings
+    const s = body.published.trim().toLowerCase();
+    if (s === 'true' || s === 'false') {
+      hasPublished = true;
+      publishedValue = (s === 'true');
+    }
+  }
+
+  // publishAt ISO / clear
+  let hasPublishAt = false;
+  let publishAtTimestamp = undefined;
+  if ('publishAt' in body) {
+    hasPublishAt = true;
+    const v = body.publishAt;
+    if (v === null || v === '' || v === 'null') {
+      publishAtTimestamp = null; // explicitly clear
+    } else if (typeof v === 'string') {
+      const dt = new Date(v); // frontend sends ISO with local tz -> JS Date
+      if (!isNaN(dt.getTime())) {
+        publishAtTimestamp = admin.firestore.Timestamp.fromDate(dt);
+      } else {
+        // invalid string -> ignore by not setting hasPublishAt
+        hasPublishAt = false;
+      }
+    }
+  }
+
+  // infer "publish now" event:
+  // If published flips to true and there is no existing publishedAt on the doc, stamp it now.
+  let publishNow = false;
+  if (hasPublished && publishedValue === true) {
+    const curPublished = !!currentDoc.published;
+    const alreadyStamped = !!currentDoc.publishedAt;
+    if (!curPublished && !alreadyStamped) {
+      publishNow = true;
+    }
+  }
+
+  return { hasPublished, publishedValue, hasPublishAt, publishAtTimestamp, publishNow };
 }
 
 async function createClassIndexDocs({ moduleId, title, courseId, moduleNumber, archived, classIds }) {
@@ -259,6 +313,7 @@ async function setArchiveStateForModule(moduleId, archived) {
 
 /* -----------------------------------------------------------
    MODULE: UPLOAD (Cloud Storage + inline previews)
+   + Publish fields (published, publishAt, publishedAt)
 ----------------------------------------------------------- */
 
 // POST /upload-module
@@ -337,20 +392,35 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
   if (typeof moduleSubTitles === 'string') moduleSubTitles = [moduleSubTitles];
   if (typeof moduleSubDescs === 'string') moduleSubDescs = [moduleSubDescs];
 
-  // Create module shell (with assigned classes)
-  const moduleDocRef = await firestore.collection('modules').add({
+  // Publish fields
+  const { hasPublished, publishedValue, hasPublishAt, publishAtTimestamp, publishNow } = parsePublishFields(req.body);
+
+  const baseModuleDoc = {
     title: moduleTitle,
     type: moduleType,
     courseId,
     moduleNumber: nextModuleNumber,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     moduleSubTitles,
     moduleSubDescs,
     archived: false,
     assignedClasses,
-    assignedClassCount: assignedClasses.length
-  });
+    assignedClassCount: assignedClasses.length,
+    // default publish state (overridden below if provided)
+    published: false,
+    publishAt: null,
+    publishedAt: null
+  };
 
+  if (hasPublished) baseModuleDoc.published = !!publishedValue;
+  if (hasPublishAt) baseModuleDoc.publishAt = publishAtTimestamp;
+  if ((hasPublished && publishedValue === true) && publishNow) {
+    baseModuleDoc.publishedAt = admin.firestore.FieldValue.serverTimestamp();
+  }
+
+  // Create module shell (with assigned classes)
+  const moduleDocRef = await firestore.collection('modules').add(baseModuleDoc);
   const moduleId = moduleDocRef.id;
 
   // Create per-class index docs (fast reverse lookups)
@@ -409,7 +479,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
         originalName,
         size: f.size || null,
         mime: f.mimetype || null,
-        createdAt: admin.firestore.Timestamp.now() // ✅ array-safe timestamp
+        createdAt: admin.firestore.Timestamp.now() // array-safe timestamp
       });
     }
 
@@ -451,7 +521,7 @@ router.post('/upload-module', flexibleUpload, asyncHandler(async (req, res) => {
         storagePath: placeholderPath,
         videoDesc: (videoDescs && videoDescs[i]) ? videoDescs[i] : '',
         lessonIdx: i,
-        createdAt: admin.firestore.Timestamp.now() // ✅ array-safe
+        createdAt: admin.firestore.Timestamp.now()
       });
     }
 
@@ -543,11 +613,11 @@ router.get('/courses/:id/modules', asyncHandler(async (req, res) => {
 }));
 
 /* -----------------------------------------------------------
-   MODULE: UPDATE (supports assignedClasses update)
+   MODULE: UPDATE (supports assignedClasses + publish fields)
 ----------------------------------------------------------- */
 
 // PATCH /modules/:id
-// body: { title?, description?, moduleSubTitles?, moduleSubDescs?, lessonCount?, assignedClasses?, assignedClassesJson? }
+// body: { title?, description?, moduleSubTitles?, moduleSubDescs?, lessonCount?, assignedClasses?, assignedClassesJson?, published?, publishAt? }
 router.patch('/modules/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { title, description, moduleSubTitles, moduleSubDescs, lessonCount } = req.body;
@@ -567,6 +637,12 @@ router.patch('/modules/:id', asyncHandler(async (req, res) => {
   if (Array.isArray(moduleSubTitles)) updateObj.moduleSubTitles = moduleSubTitles;
   if (Array.isArray(moduleSubDescs)) updateObj.moduleSubDescs = moduleSubDescs;
   if (typeof lessonCount === 'number') updateObj.lessonCount = lessonCount;
+
+  // Publish changes
+  const { hasPublished, publishedValue, hasPublishAt, publishAtTimestamp, publishNow } = parsePublishFields(req.body, current);
+  if (hasPublished) updateObj.published = !!publishedValue;
+  if (hasPublishAt) updateObj.publishAt = publishAtTimestamp; // can be Timestamp or null to clear
+  if (publishNow) updateObj.publishedAt = admin.firestore.FieldValue.serverTimestamp();
 
   // Assigned classes update (optional)
   const incomingAssigned = readAssignedClasses(req);
@@ -733,7 +809,7 @@ router.post('/modules/:id/files', flexibleUpload, asyncHandler(async (req, res) 
       storagePath: destPath,
       originalName,
       description: descs?.[i] || '',
-      lessonIdx: idx,                           // ✅ tie to lesson
+      lessonIdx: idx,                           // tie to lesson
       size: f.size || null,
       mime: f.mimetype || null,
       createdAt: admin.firestore.Timestamp.now()

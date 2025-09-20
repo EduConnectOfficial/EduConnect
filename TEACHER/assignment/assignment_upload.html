@@ -64,16 +64,16 @@
               </div>
             </div>
 
-            <!-- NEW: Assign to Classes -->
+            <!-- Assign to Classes (filtered by selected Course) -->
             <div class="ui-card mt-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
-                <div class="ui-subtext">Select which of your classes should receive this assignment.</div>
+                <div class="ui-subtext">Only classes enrolled in the selected course will appear here.</div>
               </div>
               <div class="p-3">
                 <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
                 <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
-                  No classes found for your account.
+                  No classes found for the selected course.
                 </div>
                 <div id="assignedClassesContainer" class="row g-3"></div>
                 <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
@@ -114,7 +114,7 @@
               </div>
             </div>
 
-            <!-- MATCH EDIT PAGE: Staging UI -->
+            <!-- Staging UI -->
             <div class="ui-card mt-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-paperclip"></i> Attachments & Rubric</h2>
@@ -311,7 +311,7 @@
     })();
   </script>
 
-  <!-- Page Logic (MATCHES EDIT PAGE BEHAVIOR) -->
+  <!-- Page Logic -->
   <script>
     const API_BASE = "http://localhost:5000";
     const TEACHER_MAX_MB = 300;
@@ -446,16 +446,15 @@
     const filesList      = document.getElementById('filesList');
     const pointsInput    = document.getElementById('points');
 
-    // Auto-correct points to [0..100] when field loses focus/change
+    // Auto-correct points to [0..100]
     if (pointsInput) {
       pointsInput.addEventListener("change", () => {
         const v = pointsInput.value.trim();
-        if (v === "") return; // allow blank (meaning “ungraded”)
+        if (v === "") return;
         const n = parseInt(v, 10);
         if (Number.isNaN(n)) { pointsInput.value = ""; return; }
         pointsInput.value = String(clamp(n, 0, 100));
       });
-      // Clear error styling while typing
       pointsInput.addEventListener("input", () => {
         pointsInput.classList.remove("is-invalid");
         formError.textContent = "";
@@ -678,21 +677,26 @@
       }
     });
 
-    /* ===== Assign-to-Classes (NEW) ===== */
+    /* ===== Assign-to-Classes (FILTERED BY SELECTED COURSE) ===== */
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
     let selectedClassIds = new Set();   // working selection
+
+    // Debug switch to quickly inspect payloads in console
+    const DEBUG_CLASSES = false;
+    const dlog = (...a) => { if (DEBUG_CLASSES) console.log('[classes]', ...a); };
 
     function renderClassCards(classes) {
       assignedContainer.innerHTML = "";
       if (!classes.length) {
         assignedStatus.style.display = "none";
         assignedEmpty.style.display = "block";
+        assignedEmpty.textContent = "No classes found for the selected course.";
         return;
       }
       classes.forEach(c => {
-        const id = c.id || c._id || c.classId || "";
+        const id = String(c.id || c._id || c.classId || "");
         const name = c.name || c.className || "Untitled Class";
         const grade = c.gradeLevel ?? c.grade ?? "—";
         const section = c.section ?? c.sectionName ?? "—";
@@ -747,26 +751,106 @@
       assignedEmpty.style.display = "none";
     }
 
-    async function loadTeacherClassesAndRender() {
+    async function fetchFirst(urls, opts) {
+      for (const u of urls) {
+        try { const res = await fetch(u, opts); if (res.ok) return res; } catch(_) {}
+      }
+      return fetch(urls[0], opts);
+    }
+
+    async function fetchCourseById(courseId) {
+      if (!courseId) return null;
       try {
+        const res = await fetchFirst([
+          `${API_BASE}/courses/${encodeURIComponent(courseId)}`,
+          `${API_BASE}/api/courses/${encodeURIComponent(courseId)}`
+        ], { headers: { Accept: "application/json" }});
+        const js = await res.json().catch(()=>null);
+        return js?.course || js || null;
+      } catch { return null; }
+    }
+
+    // Loader: (teacher's classes) ∩ (selected course's assignedClasses)
+    async function loadTeacherClassesAndRender(courseIdFromSelect) {
+      try {
+        assignedStatus.style.display = "";
+        assignedStatus.classList.remove('text-danger');
+        assignedStatus.classList.add('small-muted');
+        assignedStatus.textContent = "Loading your classes…";
+        assignedEmpty.style.display = "none";
+        assignedContainer.innerHTML = "";
+
         const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
         if (!teacherId) {
           assignedStatus.textContent = "Missing teacher ID in your session.";
-          assignedStatus.classList.remove('small-muted');
-          assignedStatus.classList.add('text-danger');
+          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
           return;
         }
-        const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
-        const json = await res.json().catch(()=>({success:false, classes:[]}));
-        const classes = json?.classes || [];
-        if (!json.success && json.success !== undefined) {
-          assignedStatus.textContent = "Could not load your classes.";
-          assignedStatus.classList.remove('small-muted');
-          assignedStatus.classList.add('text-danger');
+
+        // 1) Teacher classes
+        const res = await fetch(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`, { headers: { "Accept": "application/json" } });
+        const js = await res.json().catch(()=>({ success: false, classes: [] }));
+        const teacherClasses = Array.isArray(js?.classes) ? js.classes : [];
+        dlog('teacherClasses:', teacherClasses.length);
+
+        // If no course chosen yet, show everything and prompt to pick a course
+        const courseId = (courseIdFromSelect || '').trim();
+        if (!courseId) {
+          renderClassCards(teacherClasses);
+          if (teacherClasses.length) {
+            assignedStatus.textContent = "Select a course to filter eligible classes.";
+          } else {
+            assignedStatus.style.display = "none";
+            assignedEmpty.style.display = "block";
+            assignedEmpty.textContent = "No classes found for your account.";
+          }
           return;
         }
-        renderClassCards(classes);
+
+        // 2) Course -> assignedClasses
+        const course = await fetchCourseById(courseId);
+        const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
+        const allowedIds = new Set(assigned.map(x => String(x)));
+        dlog('course.assignedClasses:', assigned);
+
+        // 3) Intersect
+        let filtered = teacherClasses.filter(c => {
+          const id = String(c.id || c._id || c.classId || '');
+          return allowedIds.size ? allowedIds.has(id) : true;
+        });
+        dlog('filtered after intersect:', filtered.length);
+
+        // 4) Optional fallback: /courses/:id/classes
+        if (filtered.length === 0) {
+          try {
+            const r2 = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/classes`, { headers:{Accept:'application/json'} });
+            if (r2.ok) {
+              const j2 = await r2.json().catch(()=>({}));
+              const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
+              filtered = classes2.filter(c => {
+                const id = String(c.id || c._id || c.classId || '');
+                return allowedIds.size ? allowedIds.has(id) : true;
+              });
+              dlog('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
+            }
+          } catch {}
+        }
+
+        // 5) Trim current selections to visible set (avoid submitting illegal IDs)
+        const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || '')));
+        selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
+
+        if (!filtered.length) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No classes enrolled in this course.";
+          assignedStatus.style.display = "none";
+          return;
+        }
+
+        renderClassCards(filtered);
+        assignedStatus.textContent = `${selectedClassIds.size} selected (eligible for this course)`;
+        assignedStatus.style.display = "";
       } catch (e) {
         console.error("Could not load classes:", e);
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
@@ -777,13 +861,6 @@
     }
 
     /* ===== Load courses & modules ===== */
-    async function fetchFirst(urls, opts) {
-      for (const u of urls) {
-        try { const res = await fetch(u, opts); if (res.ok) return res; } catch(_) {}
-      }
-      return fetch(urls[0], opts);
-    }
-
     async function loadCourses() {
       courseSelect.innerHTML = `<option value="">Loading courses…</option>`;
       moduleSelect.innerHTML = `<option value="">Select a course first…</option>`;
@@ -802,7 +879,12 @@
           return;
         }
         courseSelect.innerHTML = `<option value="">Select a course…</option>` +
-          courses.map(c => `<option value="${esc(c.id)}">${esc(c.title || 'Untitled')}${c.courseNumber ? ` (#${esc(c.courseNumber)})` : ''}</option>`).join('');
+          courses.map(c => {
+            const id = c.id || c._id || c.courseId || '';
+            const title = c.title || 'Untitled';
+            const num = c.courseNumber ? ` (#${esc(c.courseNumber)})` : '';
+            return `<option value="${esc(String(id))}">${esc(title)}${num}</option>`;
+          }).join('');
       } catch (err) {
         console.error("loadCourses failed:", err);
         courseSelect.innerHTML = `<option value="" selected disabled>(Failed to load)</option>`;
@@ -831,7 +913,7 @@
         moduleSelect.innerHTML = `<option value="">Select a module…</option>`;
         sorted.forEach(m=>{
           const opt=document.createElement('option');
-          opt.value=m.id;
+          opt.value=m.id || m._id || m.moduleId || '';
           opt.textContent=`Module ${m.moduleNumber ?? ''}: ${m.title || 'Untitled'}`;
           moduleSelect.appendChild(opt);
         });
@@ -843,7 +925,13 @@
       }
     }
 
-    courseSelect.addEventListener("change", (e)=> loadModules(e.target.value));
+    // When course changes: refresh modules and class list (and clear selection)
+    courseSelect.addEventListener("change", async (e)=>{
+      const cid = e.target.value;
+      selectedClassIds = new Set(); // reset selection when switching course
+      await loadModules(cid);
+      await loadTeacherClassesAndRender(cid);
+    });
 
     /* ===== Submit (create) – sends staged items & assignedClasses ===== */
     form.addEventListener("submit", async (e) => {
@@ -855,7 +943,7 @@
       const title    = (document.getElementById("title").value || '').trim();
       const content  = (document.getElementById("content").value || '').trim();
 
-      // Points strict validation (blocks submit if > 100)
+      // Points strict validation
       const pointsV = pointsInput.value.trim();
       let points = null;
       if (pointsV !== "") {
@@ -907,7 +995,7 @@
       if (publishAtVal) fd.append("publishAt", String(toMillis(publishAtVal)));
       if (dueAtVal)     fd.append("dueAt", String(toMillis(dueAtVal)));
 
-      // NEW: assigned classes
+      // assigned classes
       Array.from(selectedClassIds).forEach(id => fd.append("assignedClasses", id));
 
       // staged files
@@ -945,7 +1033,8 @@
     // Boot
     (async function init(){
       await loadCourses();
-      await loadTeacherClassesAndRender();
+      // Initial: show all teacher classes but prompt to select a course; once selected it filters.
+      await loadTeacherClassesAndRender('');
       renderAttachments();
     })();
   </script>

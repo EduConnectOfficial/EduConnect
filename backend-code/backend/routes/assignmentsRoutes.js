@@ -133,6 +133,32 @@ async function getClassLabelsById(ids) {
   return out;
 }
 
+/** Read class sizes in bulk; returns Map<classId, size> */
+async function getClassSizesById(ids = []) {
+  const out = new Map();
+  const todo = Array.from(new Set((ids || []).filter(Boolean)));
+  while (todo.length) {
+    const chunk = todo.splice(0, 10);
+    if (!chunk.length) break;
+    const snap = await firestore.collection('classes').where('__name__', 'in', chunk).get();
+    const found = new Set();
+    snap.forEach(doc => {
+      const c = doc.data() || {};
+      // Prefer explicit counts; fall back to array length if provided
+      const sizeCandidates = [
+        c.studentCount, c.enrolledCount, c.rosterCount,
+        Array.isArray(c.students) ? c.students.length : null
+      ].filter(n => Number.isFinite(n));
+      const size = sizeCandidates.length ? Number(sizeCandidates[0]) : 0;
+      out.set(doc.id, size);
+      found.add(doc.id);
+    });
+    // default 0 for missing
+    chunk.forEach(id => { if (!found.has(id)) out.set(id, 0); });
+  }
+  return out;
+}
+
 /** Try to infer a student's classId for an assignment/course */
 async function inferClassIdForStudent({ assignmentDoc, studentId }) {
   try {
@@ -160,6 +186,31 @@ async function inferClassIdForStudent({ assignmentDoc, studentId }) {
   } catch {
     return null;
   }
+}
+
+/** Compute assigned population (sum of sizes) for an assignment */
+async function computeAssignedPopulationForAssignment(a = {}) {
+  // Prefer assignment.classIds; if absent/empty, fall back to course.assignedClasses
+  let targetIds = Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : [];
+  if (!targetIds.length && a.courseId) {
+    try {
+      const cSnap = await firestore.collection('courses').doc(a.courseId).get();
+      if (cSnap.exists) {
+        const c = cSnap.data() || {};
+        if (Array.isArray(c.assignedClasses)) targetIds = c.assignedClasses.filter(Boolean);
+      }
+    } catch {}
+  }
+  if (!targetIds.length) return { total: 0, perClass: new Map(), activeIds: [] };
+
+  // Respect archived classes: only count active ones
+  const { activeIds } = await splitClassIdsByArchived(targetIds);
+  if (!activeIds.length) return { total: 0, perClass: new Map(), activeIds: [] };
+
+  const sizes = await getClassSizesById(activeIds);
+  const total = Array.from(sizes.values())
+    .reduce((sum, n) => sum + (Number.isFinite(n) ? n : 0), 0);
+  return { total, perClass: sizes, activeIds };
 }
 
 /* --------------- Multer error wrapper (nice messages) --------------- */
@@ -260,6 +311,9 @@ router.post(
       if (missingIds.length) warnings.missingClassIds = missingIds;
     }
 
+    // ---- compute max points and keep a legacy mirror ----
+    const computedMaxPoints = parsePositiveNumberOrNull(maxPoints ?? points);
+
     const payloadBase = {
       title: String(title).trim(),
       content: String(content).trim(),
@@ -267,8 +321,8 @@ router.post(
       courseTitle: courseTitle ? String(courseTitle).trim() : undefined,
       moduleId: moduleId ? String(moduleId).trim() : null,
       moduleNumber,
-      // Teacher-defined maximum points (back-compat: `points` maps to maxPoints)
-      maxPoints: parsePositiveNumberOrNull(maxPoints ?? points),
+      maxPoints: computedMaxPoints,               // canonical
+      points: (computedMaxPoints ?? undefined),   // BACK-COMPAT: mirror to 'points'
       publishAt: toTimestampOrNull(publishAt) || admin.firestore.Timestamp.now(),
       dueAt: toTimestampOrNull(dueAt) || null,
       createdBy: String(teacherId).trim(),
@@ -388,12 +442,24 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   if (req.body.title !== undefined)   updates.title   = String(req.body.title).trim();
   if (req.body.content !== undefined) updates.content = String(req.body.content).trim();
 
+  // ---- points/maxPoints update with back-compat mirror ----
+  let incomingMax = undefined;
   if (req.body.maxPoints !== undefined) {
-    updates.maxPoints = parsePositiveNumberOrNull(req.body.maxPoints);
+    incomingMax = parsePositiveNumberOrNull(req.body.maxPoints);
   }
-  // Back-compat: `points` acts as maxPoints if provided
-  if (req.body.points !== undefined && updates.maxPoints === undefined) {
-    updates.maxPoints = parsePositiveNumberOrNull(req.body.points);
+  // Back-compat: `points` acts as maxPoints if provided and maxPoints not already set this turn
+  if (req.body.points !== undefined && incomingMax === undefined) {
+    incomingMax = parsePositiveNumberOrNull(req.body.points);
+  }
+  if (incomingMax !== undefined) {
+    if (incomingMax === null) {
+      // explicit clear
+      updates.maxPoints = admin.firestore.FieldValue.delete();
+      updates.points    = admin.firestore.FieldValue.delete(); // BACK-COMPAT: clear mirror
+    } else {
+      updates.maxPoints = incomingMax;
+      updates.points    = incomingMax; // BACK-COMPAT: mirror to 'points'
+    }
   }
 
   if (req.body.archived !== undefined) updates.archived = !!req.body.archived;
@@ -774,6 +840,7 @@ router.get('/assignments/:id/submissions/:studentId', asyncHandler(async (req, r
 
 /* ===========================================================
    LIST ALL SUBMISSIONS FOR AN ASSIGNMENT
+   (UPDATED: studentName uses decrypted full name; + meta counts)
 =========================================================== */
 router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
   const assignmentId = req.params.id;
@@ -783,7 +850,7 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
 
   const a = aDoc.data() || {};
   const assigned = Array.isArray(a.classIds) ? a.classIds : [];
-  const singleAssignedClassId = assigned.length === 1 ? assigned[0] : null; // FIXED
+  const singleAssignedClassId = assigned.length === 1 ? assigned[0] : null;
 
   let courseAssigned = [];
   if (a.courseId) {
@@ -829,17 +896,21 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
 
   const submissions = [];
   for (const { sid, data, classId } of raw) {
-    let studentName = sid;
+    // Resolve decrypted full name for display
+    let studentName = sid; // fallback to ID if we can't resolve a user
     try {
-      let userSnap = await firestore.collection('users').doc(sid).get();
-      let user = null;
-      if (userSnap.exists) user = userSnap.data();
-      else {
-        const userQuery = await firestore.collection('users').where('studentId', '==', sid).limit(1).get();
-        if (!userQuery.empty) user = userQuery.docs[0].data();
+      const uRef = await getUserRefByAnyId(sid);
+      if (uRef) {
+        const uSnap = await uRef.get();
+        if (uSnap.exists) {
+          const pretty = fullNameFromUser(uSnap.data() || {});
+          studentName = (pretty && pretty !== 'Student') ? pretty : sid;
+        }
       }
-      if (user) studentName = fullNameFromUser(user);
-    } catch {}
+    } catch {
+      // keep fallback
+    }
+
     submissions.push({
       ...data,
       studentId: sid,
@@ -850,7 +921,28 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
     });
   }
 
-  res.json({ success: true, submissions });
+  // ---------- meta counts ----------
+  const submissionCount = submissions.length;
+  const gradedCount = submissions.reduce((n, s) => {
+    const isGraded = (s.graded === true) || (typeof s.grade === 'number');
+    return n + (isGraded ? 1 : 0);
+  }, 0);
+
+  const { total: assignedPopulation, perClass: perClassSizes } =
+    await computeAssignedPopulationForAssignment(a);
+
+  const classSizesObj = Object.fromEntries(perClassSizes.entries());
+
+  return res.json({
+    success: true,
+    submissions,
+    meta: {
+      submissionCount,           // X
+      gradedCount,               // # graded
+      assignedPopulation,        // Y (enrolled across targeted classes)
+      classSizes: classSizesObj  // breakdown (optional)
+    }
+  });
 }));
 
 /* ===========================================================
@@ -1275,7 +1367,7 @@ async function upsertRubric(req, res) {
 
   await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   const fresh = await ref.get();
-  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
+  return res.json({ success:true, files: ensurePreviewableUrls(ensureAttachmentsArray(fresh)) });
 }
 
 router.post('/assignments/:id/rubric', runMulter(memRubricAny, TEACHER_FILE_LIMIT_MB), asyncHandler(upsertRubric));
@@ -1304,7 +1396,7 @@ router.delete('/assignments/:id/rubric', asyncHandler(async (req, res) => {
   attachments = keep;
   await ref.set({ attachments, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   const fresh = await ref.get();
-  return res.json({ success:true, files: ensureAttachmentsArray(fresh) });
+  return res.json({ success:true, files: ensurePreviewableUrls(ensureAttachmentsArray(fresh)) });
 }));
 
 module.exports = router;

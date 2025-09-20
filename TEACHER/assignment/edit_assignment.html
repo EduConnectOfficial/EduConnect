@@ -96,16 +96,16 @@
               </div>
             </div>
 
-            <!-- Assign to Classes (inserted here, right after Details) -->
+            <!-- Assign to Classes -->
             <div class="ui-card mb-3">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-people"></i> Assign to Classes</h2>
-                <div class="ui-card-title fw-normal">Selected classes will have access to this assignment.</div>
+                <div class="ui-card-title fw-normal">Only classes enrolled in this course can be selected.</div>
               </div>
               <div class="p-3">
                 <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
                 <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
-                  No classes found for your account.
+                  No eligible classes for this course.
                 </div>
                 <div id="assignedClassesContainer" class="row g-3"></div>
                 <div class="small-muted mt-2">Tip: click a card to toggle selection.</div>
@@ -238,7 +238,7 @@
         <div class="modal-footer">
           <div class="text-muted small" id="fileInfoText"></div>
           <div class="ms-auto d-flex gap-2">
-            <!-- NEW: Stage button (shown only for pre-upload blob previews) -->
+            <!-- Stage button (for pre-upload blob previews) -->
             <button id="stageFromPreviewBtn" class="btn btn-amber d-none">
               <i class="bi bi-cloud-plus me-1"></i> Stage this file
             </button>
@@ -921,7 +921,7 @@
       }
     });
     rubricInput.addEventListener('change', ()=>{
-      const f = rubricInput.files && rubricInput.files[0];
+     const f = (rubricInput.files && rubricInput.files[0]) || null;
       if (f) {
         const blobUrl = URL.createObjectURL(f);
         currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
@@ -941,7 +941,7 @@
     }
 
     /* ===========================
-       Assign-to-Classes (NEW)
+       Assign-to-Classes (FILTERED)
        =========================== */
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus    = document.getElementById("assigned-status");
@@ -949,15 +949,20 @@
     let selectedClassIds = new Set(); // working selection
     let initialAssigned  = new Set(); // snapshot from load (for dirty tracking)
 
+    // Debug switch to log filtering details
+    const DEBUG_CLASSES = false;
+    const dlog = (...a) => { if (DEBUG_CLASSES) console.log('[classes]', ...a); };
+
     function renderClassCards(classes) {
       assignedContainer.innerHTML = "";
       if (!classes.length) {
         assignedStatus.style.display = "none";
         assignedEmpty.style.display = "block";
+        assignedEmpty.textContent = "No eligible classes for this course.";
         return;
       }
       classes.forEach(c => {
-        const id = c.id || c._id || c.classId || "";
+        const id = String(c.id || c._id || c.classId || "");
         const name = c.name || c.className || "Untitled Class";
         const grade = c.gradeLevel ?? c.grade ?? "—";
         const section = c.section ?? c.sectionName ?? "—";
@@ -1011,27 +1016,90 @@
       assignedEmpty.style.display = "none";
     }
 
-    async function loadTeacherClassesAndRender() {
+    async function fetchCourseById(cid) {
+      if (!cid) return null;
       try {
+        // Try both shapes in case your API has both
+        const res = await fetch(`${API}/api/courses/${encodeURIComponent(cid)}`);
+        const js  = await res.json().catch(()=>null);
+        return js?.course || js || null;
+      } catch { return null; }
+    }
+
+    // Loader: (teacher's classes) ∩ (this assignment's course.assignedClasses)
+    async function loadTeacherClassesAndRenderFiltered(courseIdForAssignment) {
+      try {
+        assignedStatus.style.display = "";
+        assignedStatus.classList.remove('text-danger');
+        assignedStatus.classList.add('small-muted');
+        assignedStatus.textContent = "Loading your classes…";
+        assignedEmpty.style.display = "none";
+        assignedContainer.innerHTML = "";
+
         const teacherId = window.currentUser?.userId || window.currentUser?.id || window.currentUser?.uid || '';
         if (!teacherId) {
           assignedStatus.textContent = "Missing teacher ID in your session.";
           assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
           return;
         }
+
+        // 1) Teacher classes
         const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`, { headers: { "Accept": "application/json" } });
-        const json = await res.json().catch(()=>({success:false, classes:[]}));
-        const classes = json?.classes || [];
-        if (!json.success && json.success !== undefined) {
-          assignedStatus.textContent = "Could not load your classes.";
-          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+        const js = await res.json().catch(()=>({ success:false, classes:[] }));
+        const teacherClasses = Array.isArray(js?.classes) ? js.classes : [];
+        dlog('teacherClasses:', teacherClasses.length);
+
+        // 2) Course -> assignedClasses
+        let filtered = teacherClasses;
+        if (courseIdForAssignment) {
+          const course = await fetchCourseById(courseIdForAssignment);
+          const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
+          const allowedIds = new Set(assigned.map(x => String(x)));
+          dlog('course.assignedClasses:', assigned);
+          filtered = teacherClasses.filter(c => {
+            const id = String(c.id || c._id || c.classId || '');
+            return allowedIds.size ? allowedIds.has(id) : true;
+          });
+          dlog('filtered after intersect:', filtered.length);
+
+          // Optional fallback: /courses/:id/classes (if you support it)
+          if (filtered.length === 0) {
+            try {
+              const r2 = await fetch(`${API}/courses/${encodeURIComponent(courseIdForAssignment)}/classes`, { headers:{Accept:'application/json'} });
+              if (r2.ok) {
+                const j2 = await r2.json().catch(()=>({}));
+                const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
+                filtered = classes2.filter(c => {
+                  const id = String(c.id || c._id || c.classId || '');
+                  return allowedIds.size ? allowedIds.has(id) : true;
+                });
+                dlog('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
+              }
+            } catch {}
+          }
+        }
+
+        // 3) Trim preselected set to visible/eligible IDs
+        const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || '')));
+        selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
+        initialAssigned  = new Set([...initialAssigned].filter(id => visibleIds.has(String(id))));
+
+        if (!filtered.length) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No eligible classes for this course.";
+          assignedStatus.style.display = "none";
           return;
         }
-        renderClassCards(classes);
+
+        renderClassCards(filtered);
+        assignedStatus.textContent = `${selectedClassIds.size} selected (eligible for this course)`;
+        assignedStatus.style.display = "";
       } catch (e) {
         console.error("Could not load classes:", e);
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
-        assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+        assignedStatus.classList.remove('small-muted');
+        assignedStatus.classList.add('text-danger');
         showInfo('Network Error', 'Could not load your classes. Please refresh and try again.');
       }
     }
@@ -1063,12 +1131,14 @@
         clearDirty();
         renderAttachments();
 
-        // Preselect classes from assignment.classIds
-        selectedClassIds = new Set(Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : []);
+        // Preselect classes from assignment.classIds (we will later trim to eligible set)
+        selectedClassIds = new Set(Array.isArray(a.classIds) ? a.classIds.filter(Boolean).map(String) : []);
         initialAssigned  = new Set(selectedClassIds);
-        await loadTeacherClassesAndRender();
 
+        // Filter and render classes eligible for this course
         const useCourseId = courseId || a.courseId || '';
+        await loadTeacherClassesAndRenderFiltered(useCourseId);
+
         await loadModulesForCourse(useCourseId, a.moduleId || '');
       }catch(e){
         console.error(e);
@@ -1142,7 +1212,7 @@
         currentAttachments = delJs.files || currentAttachments;
       }
 
-      // Optional: surface backend warnings about archived/missing class IDs
+      // Optional: surface backend warnings
       const warnings = (patchJs && patchJs.warnings) || {};
       let warnMsg = '';
       if (warnings.archivedClassIds?.length) {

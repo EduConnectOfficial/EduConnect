@@ -13,7 +13,6 @@
   <!-- Shared styles -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
   <link rel="stylesheet" href="course_list.css" />
-
 </head>
 
 <body>
@@ -50,7 +49,6 @@
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -58,9 +56,9 @@
           <input id="searchBox" type="text" placeholder="Search my courses..." aria-label="Search courses" />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn btn">
+        <button class="profile-btn btn" onclick="logoutUser()">
           <i class="fas fa-user-circle fa-2x"></i>
-          <span id="dashboardUsername" class="username ms-2 fw-semibold"></span>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
         </button>
       </header>
 
@@ -68,15 +66,14 @@
       <section class="content">
         <h1 class="page-title">My Courses</h1>
 
-        <!-- Controls: same ui-card theme -->
+        <!-- Controls -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-journal-text"></i> Your Courses</h2>
-            <div class="ui-subtext">Everything shows up right away. Use filters only if you want to narrow it down.</div>
+            <div class="ui-subtext">Use filters to narrow results. Scheduled courses are visible to you and labelled.</div>
           </div>
 
           <div class="row g-2 align-items-end">
-            <!-- Category filter (auto-populated) -->
             <div class="col-12 col-md-4 col-xl-4">
               <label class="form-label">Category</label>
               <select id="categoryFilter" class="form-select" aria-label="Filter by category">
@@ -84,7 +81,6 @@
               </select>
             </div>
 
-            <!-- Sort -->
             <div class="col-12 col-md-3 col-xl-3">
               <label class="form-label">Sort</label>
               <select id="sortBy" class="form-select" aria-label="Sort courses">
@@ -92,10 +88,10 @@
                 <option value="num_desc">Course # (999 → 1)</option>
                 <option value="az">Title A → Z</option>
                 <option value="new">Newest first</option>
+                <option value="publishSoon">Publish date (soonest)</option>
               </select>
             </div>
 
-            <!-- Active / Archived / All -->
             <div class="col-12 col-md-5 col-xl-3">
               <label class="form-label">Show</label>
               <div class="segmented" role="tablist" aria-label="Course visibility">
@@ -105,7 +101,6 @@
               </div>
             </div>
 
-            <!-- Add Course -->
             <div class="col-12 col-xl-2 d-flex justify-content-xl-end">
               <button class="btn btn-amber w-100 w-xl-auto mt-2 mt-xl-0" onclick="window.location.href='course.html'">
                 <i class="bi bi-plus-lg me-1"></i> Add Course
@@ -114,7 +109,7 @@
           </div>
         </div>
 
-        <!-- ALWAYS-VISIBLE count pills (active & archived) -->
+        <!-- Count pills -->
         <div class="pill-row">
           <span id="activeCountPill" class="badge rounded-pill text-bg-light">
             <i class="bi bi-check-circle me-1"></i><span id="activeCount">0</span> Active
@@ -152,6 +147,16 @@
             <label for="editDescription" class="form-label">Description</label>
             <textarea class="form-control" id="editDescription" rows="3"></textarea>
           </div>
+
+          <!-- NEW: Publish At -->
+          <div class="mb-3">
+            <label for="editPublishAt" class="form-label">Publish At (optional)</label>
+            <input type="datetime-local" class="form-control" id="editPublishAt" />
+            <div class="form-text">
+              Leave blank to publish immediately. Your local time will be saved (Philippines time if that’s your device timezone).
+            </div>
+          </div>
+
           <div class="mb-2">
             <label class="form-label">Assign to Classes</label>
             <div id="editAssignedClassesContainer" class="row g-2"></div>
@@ -232,84 +237,58 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-// ---- Auth guard + header initials (robust) ----
-(function initHeaderInitials(){
-  try{
-    const raw = localStorage.getItem("user");
-    const stored = raw ? JSON.parse(raw) : {};
-    // support both shapes: {user:{...}} or {...}
-    const u = stored.user || stored;
 
-    // teacher gate
-    if (!u?.userId || !u?.isTeacher) {
-      window.location.href = "/TEACHER/login/login.html";
-      return;
-    }
-    window.currentUser = u;
+  <!-- Header initials -->
+  <script>
+    (function initHeaderInitials(){
+      try{
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
 
-    const initials = getInitials(u);
+        const initials = (function(u){
+          const fn=(u.firstName||'').trim(), ln=(u.lastName||'').trim();
+          if(fn&&ln) return (fn[0]+ln[0]).toUpperCase();
+          const nameish=(u.username||u.displayName||u.name||'').trim();
+          if(nameish){
+            const parts=nameish.replace(/[^A-Za-z0-9 _.\-]+/g,' ').split(/[\s._-]+/).filter(Boolean);
+            if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+            return parts[0][0].toUpperCase();
+          }
+          const em=(u.email||'').trim(); return em?em[0].toUpperCase():'U';
+        })(u);
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = initials;                           // 👈 initials only
-      // Helpful tooltip/aria label with full name/username
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-                      || u.username
-                      || u.email
-                      || 'Profile';
-      el.setAttribute('title', fullLabel);
-      el.setAttribute('aria-label', fullLabel);
-    });
-  }catch(e){
-    console.error('initHeaderInitials failed:', e);
-    window.location.href = "/TEACHER/login/login.html";
-  }
-
-  // --- Helpers ---
-  function getInitials(u){
-    const fn = (u.firstName || '').trim();
-    const ln = (u.lastName  || '').trim();
-    if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-    // fall back to username-like fields
-    const nameish = (u.username || u.displayName || u.name || '').trim();
-    if (nameish){
-      // split on space, dot, underscore, or hyphen
-      const parts = nameish
-        .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
-        .split(/[\s._-]+/)
-        .filter(Boolean);
-
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
-
-    // last resort: first letter of email
-    const em = (u.email || '').trim();
-    return em ? em[0].toUpperCase() : 'U';
-  }
-})();
-</script>
+        window.addEventListener("DOMContentLoaded", ()=>{
+          const el=document.getElementById("Username");
+          if (!el) return;
+          el.textContent=initials;
+          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim()
+                   || u.username || u.email || 'Profile';
+          el.setAttribute('title', full);
+          el.setAttribute('aria-label', full);
+        });
+      }catch(e){
+        console.error('initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
+    })();
+  </script>
 
   <!-- Page Script -->
   <script>
     const API = 'http://127.0.0.1:5000/api';
 
-    // Auth / header name
-    const userData = JSON.parse(localStorage.getItem("user") || '{}');
-    if (!userData.username) location.href = "../login/login.html";
-    document.getElementById("dashboardUsername").textContent = userData.username;
-
-    // ===== Info modal helper =====
+    // Info modal helper
     const infoModalEl = document.getElementById('infoModal');
     const infoModal   = new bootstrap.Modal(infoModalEl);
-    const infoTitleEl = document.getElementById('infoModalLabel');
-    const infoBodyEl  = document.getElementById('infoModalBody');
     function showInfo(title='Notice', html='') {
-      infoTitleEl.textContent = title;
-      infoBodyEl.innerHTML = html;
+      document.getElementById('infoModalLabel').textContent = title;
+      document.getElementById('infoModalBody').innerHTML = html;
       infoModal.show();
     }
 
@@ -319,12 +298,16 @@
     let currentSort = 'num_asc';
     let currentCategory = '';
 
-    function debounce(fn, delay = 200) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); }; }
-
-    // Helpers
-    function escapeHtml(s){return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-    function tsToMs(ts){ if(!ts) return null; const s=ts._seconds??ts.seconds; const ns=ts._nanoseconds??ts.nanoseconds??0;
-      if(typeof s==='number') return s*1000+Math.floor(ns/1e6); if(typeof ts==='number') return ts; const d=new Date(ts); return isNaN(d)?null:d.getTime(); }
+    function debounce(fn, delay=200){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),delay); }; }
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+    function tsToDate(ts){
+      if (!ts) return null;
+      if (typeof ts.toDate === 'function') { try { return ts.toDate(); } catch {} }
+      if (ts._seconds != null) return new Date(ts._seconds*1000 + (ts._nanoseconds ? Math.floor(ts._nanoseconds/1e6) : 0));
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function tsToMs(ts){ const d=tsToDate(ts); return d?d.getTime():null; }
 
     function buildCategoryOptions(){
       const sel = document.getElementById('categoryFilter');
@@ -332,11 +315,11 @@
       sel.innerHTML = '<option value="">All categories</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }
 
-    // ALWAYS-visible pills: count active vs archived from full snapshot
     async function refreshCoursePills() {
       try {
-        if (!userData?.userId) return;
-        const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
+        const u = window.currentUser;
+        if (!u?.userId) return;
+        const url = `${API}/courses?uploadedBy=${encodeURIComponent(u.userId)}&includeArchived=true`;
         const r = await fetch(url);
         const payload = await r.json();
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
@@ -351,17 +334,28 @@
       }
     }
 
-    // Load courses (includes archived so we can switch locally)
     async function loadCourses() {
       try {
-        const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
+        const u = window.currentUser;
+        const url = `${API}/courses?uploadedBy=${encodeURIComponent(u.userId)}&includeArchived=true`;
         const res = await fetch(url);
         const payload = await res.json();
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
-        allCourses = courses.slice();
+
+        // normalize + keep publishAt
+        allCourses = courses.map(c => ({
+          id: c.id,
+          title: c.title || 'Untitled',
+          description: c.description || '',
+          category: c.category || '',
+          courseNumber: c.courseNumber || null,
+          archived: !!c.archived,
+          createdAt: c.createdAt || null,
+          publishAt: c.publishAt || null
+        }));
+
         buildCategoryOptions();
         applyFiltersAndRender();
-        // update pills from a fresh snapshot
         refreshCoursePills();
       } catch (e) {
         console.error(e);
@@ -369,7 +363,6 @@
       }
     }
 
-    // Filters + Sort + Render
     function applyFiltersAndRender() {
       const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
 
@@ -379,15 +372,15 @@
           (c.category||'').toLowerCase().includes(q) ||
           String(c.courseNumber||'').toLowerCase().includes(q);
 
-      const isArchived = !!c.archived;
-      const matchesArchive =
-        archiveFilter === 'all' ||
-        (archiveFilter === 'active' && !isArchived) ||
-        (archiveFilter === 'archived' && isArchived);
+        const isArchived = !!c.archived;
+        const matchesArchive =
+          archiveFilter === 'all' ||
+          (archiveFilter === 'active' && !isArchived) ||
+          (archiveFilter === 'archived' && isArchived);
 
-      const matchesCategory = !currentCategory || (c.category||'') === currentCategory;
+        const matchesCategory = !currentCategory || (c.category||'') === currentCategory;
 
-      return matchesSearch && matchesArchive && matchesCategory;
+        return matchesSearch && matchesArchive && matchesCategory;
       });
 
       // Sort
@@ -396,9 +389,16 @@
       } else if (currentSort === 'num_desc') {
         list.sort((a,b) => (Number(b.courseNumber)||0) - (Number(a.courseNumber)||0));
       } else if (currentSort === 'az') {
-        list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+        list.sort((a,b) => (a.title||'').localeCompare(b.title||'')); 
       } else if (currentSort === 'new') {
-        list.sort((a,b) => (tsToMs(b.createdAt) ?? (Number(b.courseNumber)||0)) - (tsToMs(a.createdAt) ?? (Number(a.courseNumber)||0)));
+        list.sort((a,b) => (tsToMs(b.createdAt) ?? 0) - (tsToMs(a.createdAt) ?? 0));
+      } else if (currentSort === 'publishSoon') {
+        // Put scheduled first by soonest publishAt; items without publishAt go to the end
+        list.sort((a,b) => {
+          const am = tsToMs(a.publishAt) ?? Infinity;
+          const bm = tsToMs(b.publishAt) ?? Infinity;
+          return am - bm;
+        });
       }
 
       renderCourses(list);
@@ -420,16 +420,25 @@
         return;
       }
 
-      courses.forEach(c => {
-        const col = document.createElement('div');
-        col.className = 'col-sm-6 col-lg-4 col-xxl-3';
+      const now = Date.now();
 
+      courses.forEach(c => {
         const isArchived = !!c.archived;
+        const pubDate = tsToDate(c.publishAt);
+        const isScheduled = !!(pubDate && pubDate.getTime() > now);
+
         const archivedBadge = isArchived
           ? `<span class="badge-soft ms-2" title="Archived" style="border-color:#999;color:#555;background:linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.06));">
                <i class="bi bi-archive"></i> Archived
              </span>` : '';
 
+        const scheduledBadge = isScheduled
+          ? `<span class="badge-soft ms-2" title="Scheduled publish time">
+               <i class="bi bi-clock-history"></i> Scheduled: ${pubDate.toLocaleString()}
+             </span>` : '';
+
+        const col = document.createElement('div');
+        col.className = 'col-sm-6 col-lg-4 col-xxl-3';
         col.innerHTML = `
           <div class="course-card">
             <div>
@@ -437,6 +446,7 @@
               <div class="mb-2">
                 <span class="badge-soft"><i class="bi bi-collection"></i> Course #${c.courseNumber || '—'}</span>
                 ${archivedBadge}
+                ${scheduledBadge}
               </div>
               <p class="mb-1"><strong>Category:</strong> ${escapeHtml(c.category || '—')}</p>
               <p class="course-meta mb-0">${escapeHtml(c.description || 'No description provided.')}</p>
@@ -460,11 +470,9 @@
 
     // Search (debounced)
     document.getElementById('searchBox').addEventListener('input', debounce(applyFiltersAndRender, 200));
-
     // Controls
     document.getElementById('sortBy').addEventListener('change', e => { currentSort = e.target.value; applyFiltersAndRender(); });
     document.getElementById('categoryFilter').addEventListener('change', e => { currentCategory = e.target.value || ''; applyFiltersAndRender(); });
-
     function setSegmentedActive(which) {
       archiveFilter = which;
       const btnActive = document.getElementById('btnActive');
@@ -502,10 +510,25 @@
         document.getElementById("editCategory").value = course.category || '';
         document.getElementById("editDescription").value = course.description || '';
 
+        // NEW: publishAt -> datetime-local value (local time)
+        const pAt = (course.publishAt && (course.publishAt._seconds != null))
+          ? new Date(course.publishAt._seconds*1000 + (course.publishAt._nanoseconds ? Math.floor(course.publishAt._nanoseconds/1e6):0))
+          : (course.publishAt ? new Date(course.publishAt) : null);
+
+        const dtInput = document.getElementById('editPublishAt');
+        if (pAt && !isNaN(pAt.getTime())) {
+          // format to yyyy-MM-ddTHH:mm (local)
+          const pad = n => String(n).padStart(2,'0');
+          const v = `${pAt.getFullYear()}-${pad(pAt.getMonth()+1)}-${pad(pAt.getDate())}T${pad(pAt.getHours())}:${pad(pAt.getMinutes())}`;
+          dtInput.value = v;
+        } else {
+          dtInput.value = '';
+        }
+
         const cont = document.getElementById("editAssignedClassesContainer");
         cont.innerHTML = '';
         try {
-          const r2 = await fetch(`${API}/classes?teacherId=${encodeURIComponent(userData.userId)}`);
+          const r2 = await fetch(`${API}/classes?teacherId=${encodeURIComponent(window.currentUser.userId)}`);
           const { success, classes } = await r2.json();
           if (success && Array.isArray(classes)) {
             classes.forEach(cls => {
@@ -548,12 +571,23 @@
     document.getElementById("editCourseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = document.getElementById("editCourseId").value;
+
+      // Convert datetime-local (local time) to ISO string so backend can store correctly.
+      const dtVal = document.getElementById('editPublishAt').value; // "YYYY-MM-DDTHH:mm"
+      let publishAt = null;
+      if (dtVal) {
+        const d = new Date(dtVal);
+        if (!isNaN(d.getTime())) publishAt = d.toISOString(); // send ISO; server converts to Timestamp
+      }
+
       const body = {
         title: document.getElementById("editTitle").value.trim(),
         category: document.getElementById("editCategory").value.trim(),
         description: document.getElementById("editDescription").value.trim(),
         assignedClasses: Array.from(document.querySelectorAll("#editAssignedClassesContainer input[type=checkbox]:checked"))
-          .map(chk => chk.value)
+          .map(chk => chk.value),
+        // include publishAt (nullable)
+        publishAt
       };
 
       const btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -562,7 +596,9 @@
 
       try {
         const r = await fetch(`${API}/courses/${id}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
         });
         const j = await r.json();
         if (j.success) {
@@ -610,12 +646,11 @@
       }
     });
 
-    // Delete modal open
+    // Delete modal
     function openDeleteModal(id) {
       document.getElementById('deleteCourseId').value = id;
       new bootstrap.Modal(document.getElementById('deleteCourseModal')).show();
     }
-    // Confirm delete
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
       const id = document.getElementById('deleteCourseId').value;
       const btn = document.getElementById('confirmDeleteBtn');
