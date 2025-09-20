@@ -94,14 +94,19 @@
                 </div>
               </div>
 
-              <!-- Due date & Attempts -->
+              <!-- PUBLISH AT + Due date & Attempts (three columns) -->
               <div class="row g-3 mt-1">
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
+                  <label class="form-label fw-bold">Publish At <span class="text-muted">(optional)</span></label>
+                  <input type="datetime-local" id="publishAtInput" class="form-control">
+                  <div class="hint mt-1">If blank, the quiz publishes immediately after creation.</div>
+                </div>
+                <div class="col-12 col-md-4">
                   <label class="form-label fw-bold">Due Date & Time <span class="text-muted">(optional)</span></label>
                   <input type="datetime-local" id="dueAtInput" class="form-control">
                   <div class="hint mt-1">If set, quiz closes after this time.</div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                   <label class="form-label fw-bold">Attempts Allowed</label>
                   <input type="number" id="attemptsInput" class="form-control" min="0" step="1" value="1" required>
                   <div class="hint mt-1">0 means unlimited attempts.</div>
@@ -1470,6 +1475,9 @@
       const moduleId = document.getElementById("moduleSelect").value;
       const title = document.getElementById("quizTitleInput").value.trim();
       const description = document.getElementById("quizDescInput").value.trim();
+
+      // NEW: capture publishAt
+      const publishAtRaw = document.getElementById("publishAtInput").value;
       const dueAtRaw = document.getElementById("dueAtInput").value;
       const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
 
@@ -1511,6 +1519,7 @@
       }
       if (!quiz.length) { alert("Please add at least one valid question."); return; }
 
+      // Settings
       let settings = {};
       if (enableTimerEl.checked) {
         const mins = parseInt(timerMinutesEl.value, 10);
@@ -1531,7 +1540,25 @@
       settings.pagination = { enabled: pagEnabled, perPage };
       settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
 
+      // Date handling
+      const publishAt = publishAtRaw ? new Date(publishAtRaw).toISOString() : null;
       const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
+
+      // Validate publishAt vs dueAt
+      if (publishAt && dueAt && new Date(publishAt) > new Date(dueAt)) {
+        alert("Publish At must be earlier than or equal to the Due Date.");
+        return;
+      }
+      // Warn if publishAt is in the past (optional, allow proceed)
+      if (publishAt && new Date(publishAt).getTime() < Date.now()) {
+        const proceed = await brandConfirm({
+          title: 'Publish time in the past',
+          message: 'The selected Publish At is in the past. This will make the quiz available immediately. Continue?',
+          confirmText: 'Continue',
+          cancelText: 'Go back'
+        });
+        if (!proceed) return;
+      }
 
       const essayCount = countEssayQuestions();
       const rubricFile = __stagedRubricFile || null;
@@ -1544,7 +1571,9 @@
       const assignedClasses = Array.from(selectedClassIds).slice(0, MAX_ASSIGNED_CLASSES).map(String);
 
       const payload = {
-        courseId, moduleId, title, description, dueAt,
+        courseId, moduleId, title, description,
+        publishAt,     // <<<<<< NEW
+        dueAt,
         attemptsAllowed: attemptsAllowedVal,
         quiz, settings,
         assignedClasses

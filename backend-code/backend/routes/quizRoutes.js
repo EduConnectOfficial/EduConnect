@@ -270,6 +270,7 @@ async function deleteAllAttemptsForQuiz(quizId) {
    QUIZ: UPLOAD (rubric to Cloud Storage)
    Accepts JSON OR multipart with: (rubrics file) + (payload JSON)
    Supports assignedClasses: string[]
+   NEW: supports publishAt (ISO or null)
 =========================================================== */
 router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => {
   let body = req.body || {};
@@ -279,7 +280,7 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
   }
 
   const {
-    courseId, moduleId, quiz, settings, title, description, dueAt, attemptsAllowed,
+    courseId, moduleId, quiz, settings, title, description, dueAt, publishAt, attemptsAllowed,
     assignedClasses: assignedClassesRaw
   } = body || {};
 
@@ -299,6 +300,14 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
   catch (e) { return res.status(400).json({ success:false, message: e.message }); }
 
   const dueAtTs = parseDueAtToTimestamp(dueAt);
+  const publishAtTs = parseDueAtToTimestamp(publishAt); // reuse parser; null ok
+
+  // Validate publishAt <= dueAt when both provided
+  if (publishAtTs && dueAtTs) {
+    if (publishAtTs.toMillis() > dueAtTs.toMillis()) {
+      return res.status(400).json({ success:false, message:'Publish time must be earlier than or equal to Due Date.' });
+    }
+  }
 
   const essayCount = (quiz || []).filter(q =>
     (q && (q.type === 'essay')) ||
@@ -363,9 +372,10 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
     settings: normalizedSettings,
     attemptsAllowed: attempts, // null => unlimited
     dueAt: dueAtTs,
+    publishAt: publishAtTs || null,          // <<< NEW
     archived: false,
     rubricFile: rubricFile || null,
-    assignedClasses,                  // persisted
+    assignedClasses,                          // persisted
     createdAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
@@ -377,6 +387,7 @@ router.post('/upload-quiz', uploadRubricMaybe, asyncHandler(async (req, res) => 
 
 /* ===========================================================
    QUIZ: GET ALL  (assignment-aware via ?forStudent=)
+   NEW: when forStudent is provided, hide quizzes scheduled in the future
 =========================================================== */
 router.get('/quizzes', asyncHandler(async (req, res) => {
   const includeArchived = ['1','true','yes'].includes(String(req.query.includeArchived || '').toLowerCase());
@@ -390,10 +401,20 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
 
   const snapshot = await firestore.collection('quizzes').orderBy('createdAt', 'desc').get();
 
-  // first filter docs (archived + assignedClasses)
+  const nowMs = Date.now();
+
+  // first filter docs (archived + assignedClasses + publishAt for students)
   const docs = snapshot.docs.filter(d => {
     const x = d.data() || {};
     if (!includeArchived && (x.archived === true || x.isArchived === true)) return false;
+
+    // If this request is student-facing, hide future-scheduled quizzes
+    if (forStudent) {
+      const p = x.publishAt;
+      const pMs = p && typeof p.toMillis === 'function' ? p.toMillis() : null;
+      if (pMs && pMs > nowMs) return false;
+    }
+
     if (!forStudent) return true;
 
     const assigned = Array.isArray(x.assignedClasses) ? x.assignedClasses : [];
@@ -413,6 +434,7 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
       id: doc.id,
       title: data.title || '',
       description: data.description || '',
+      publishAt: data.publishAt || null,  // NEW
       dueAt: data.dueAt || null,
       attemptsAllowed: data.attemptsAllowed ?? null,
       courseId: data.courseId,
@@ -433,6 +455,7 @@ router.get('/quizzes', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    QUIZ: GET ONE
+   NEW: returns publishAt
 =========================================================== */
 router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
   const quizRef = firestore.collection('quizzes').doc(req.params.quizId);
@@ -448,6 +471,7 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
       id: snap.id,
       title: d.title || '',
       description: d.description || '',
+      publishAt: d.publishAt || null,   // NEW
       dueAt: d.dueAt || null,
       attemptsAllowed: d.attemptsAllowed ?? null,
       courseId: d.courseId,
@@ -468,9 +492,10 @@ router.get('/quizzes/:quizId', asyncHandler(async (req, res) => {
 /* ===========================================================
    QUIZ: UPDATE (replace questions)
    Allows updating assignedClasses
+   NEW: allows updating publishAt
 =========================================================== */
 router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
-  const { questions, settings, title, description, dueAt, attemptsAllowed, assignedClasses: assignedClassesRaw } = req.body || {};
+  const { questions, settings, title, description, dueAt, publishAt, attemptsAllowed, assignedClasses: assignedClassesRaw } = req.body || {};
   if (!Array.isArray(questions) || !questions.length) {
     return res.status(400).json({ success:false, message:'Invalid or empty question list.' });
   }
@@ -489,6 +514,15 @@ router.put('/quizzes/:quizId', asyncHandler(async (req, res) => {
   if (title        !== undefined) updates.title        = String(title||'').trim();
   if (description  !== undefined) updates.description  = String(description||'').trim();
   if (dueAt        !== undefined) updates.dueAt        = parseDueAtToTimestamp(dueAt);
+  if (publishAt    !== undefined) updates.publishAt    = parseDueAtToTimestamp(publishAt); // NEW
+
+  // Validate publishAt <= dueAt when both present in the update payload
+  if (updates.publishAt && updates.dueAt) {
+    if (updates.publishAt.toMillis() > updates.dueAt.toMillis()) {
+      return res.status(400).json({ success:false, message:'Publish time must be earlier than or equal to Due Date.' });
+    }
+  }
+
   if (attemptsAllowed !== undefined) {
     try { updates.attemptsAllowed = normalizeAttemptsAllowed(attemptsAllowed); }
     catch (e) { return res.status(400).json({ success:false, message:e.message }); }

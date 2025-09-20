@@ -85,6 +85,20 @@
                     <label class="form-label">Due At</label>
                     <input type="datetime-local" id="dueInput" class="form-control" />
                   </div>
+
+                  <!-- NEW: Publish At -->
+                  <div class="col-md-6">
+                    <label class="form-label">Publish At <span class="text-muted">(optional)</span></label>
+                    <div class="input-group">
+                      <input type="datetime-local" id="publishInput" class="form-control" />
+                      <button type="button" id="publishNowBtn" class="btn btn-outline-secondary">Now</button>
+                      <button type="button" id="publishClearBtn" class="btn btn-outline-secondary">Clear</button>
+                    </div>
+                    <div class="form-text small-muted">
+                      If blank, the quiz remains hidden until you set a time (Draft). If set in the future, it’s Scheduled; if in the past/now, it’s Published.
+                    </div>
+                  </div>
+                  <!-- /NEW -->
                 </div>
               </div>
             </div>
@@ -482,6 +496,20 @@
     function showInfo(title, body) { document.getElementById('infoTitle').textContent = title; document.getElementById('infoBody').innerHTML = body; bootstrap.Modal.getOrCreateInstance(document.getElementById('infoModal')).show(); }
     function confirmDanger(title, body) { return new Promise(resolve => { document.getElementById('confirmTitle').textContent = title; document.getElementById('confirmBody').innerHTML = body; const btn = document.getElementById('confirmYesBtn'); const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal')); const onYes = () => { btn.removeEventListener('click', onYes); modal.hide(); resolve(true); }; const onHide = () => { btn.removeEventListener('click', onYes); resolve(false); }; btn.addEventListener('click', onYes, { once: true }); document.getElementById('confirmModal').addEventListener('hidden.bs.modal', onHide, { once: true }); modal.show(); }); }
 
+    // Publish helpers
+    function localNowForInput() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function computePublishStatus({ archived, publishAtMs }) {
+      if (archived) return { label: 'Archived', cls: 'text-bg-secondary' };
+      if (!publishAtMs) return { label: 'Draft', cls: 'text-bg-warning' };
+      return (publishAtMs > Date.now())
+        ? { label: 'Scheduled', cls: 'text-bg-info' }
+        : { label: 'Published', cls: 'text-bg-success' };
+    }
+
     // meta helpers
     async function fetchCourseTitle(courseId) {
       if (!courseId) return '—';
@@ -573,6 +601,11 @@
     const attemptsInput = document.getElementById('attemptsInput');
     const dueInput = document.getElementById('dueInput');
 
+    // NEW: Publish At refs
+    const publishInput = document.getElementById('publishInput');
+    const publishNowBtn = document.getElementById('publishNowBtn');
+    const publishClearBtn = document.getElementById('publishClearBtn');
+
     const timerEnabled = document.getElementById('timerEnabled');
     const timerMinutes = document.getElementById('timerMinutes');
     const graceSeconds = document.getElementById('graceSeconds');
@@ -594,14 +627,14 @@
 
     const btnBack = document.getElementById('btnBack');
     const btnSave = document.getElementById('btnSave');
-    const btnArc = document.getElementById('btnArchive');
-    const btnUnarc = document.getElementById('btnUnarchive');
+    const btnArchive = document.getElementById('btnArchive');
+    const btnUnarchive = document.getElementById('btnUnarchive');
     const btnDel = document.getElementById('btnDelete');
     const saveSpinner = btnSave.querySelector('.spinner-border');
     const saveText = btnSave.querySelector('.save-text');
     const formError = document.getElementById('formError');
 
-    // Assign-to-Classes DOM (ensure these exist in your HTML like the Assignment page)
+    // Assign-to-Classes DOM
     const assignedContainer = document.getElementById("assignedClassesContainer");
     const assignedStatus = document.getElementById("assigned-status");
     const assignedEmpty = document.getElementById("assigned-empty");
@@ -1281,11 +1314,12 @@
        LOAD / SAVE
     ============================= */
     let initialQuiz = null;
-    function updateStatusBadge(archived) {
-      metaStatus.textContent = archived ? 'Archived' : 'Active';
-      metaStatus.className = `badge ${archived ? 'text-bg-secondary' : 'text-bg-success'}`;
-      btnArc.classList.toggle('d-none', archived);
-      btnUnarc.classList.toggle('d-none', !archived);
+    function updateStatusBadge(archived, publishAtMs) {
+      const s = computePublishStatus({ archived, publishAtMs });
+      metaStatus.textContent = s.label;
+      metaStatus.className = `badge ${s.cls}`;
+      btnArchive.classList.toggle('d-none', archived);
+      btnUnarchive.classList.toggle('d-none', !archived);
     }
 
     async function loadQuiz() {
@@ -1300,6 +1334,8 @@
       descInput.value = q.description || '';
       attemptsInput.value = (q.attemptsAllowed == null || q.attemptsAllowed === 0) ? 0 : q.attemptsAllowed;
       dueInput.value = msToLocalInput(tsToMs(q.dueAt));
+      // NEW: hydrate Publish At
+      publishInput.value = msToLocalInput(tsToMs(q.publishAt));
 
       // settings
       const s = q.settings || {};
@@ -1330,7 +1366,8 @@
         metaModule.textContent = labelModule(moduleMeta);
       } catch { }
 
-      updateStatusBadge(q.archived === true);
+      // Status badge (archived vs publishAt)
+      updateStatusBadge(q.archived === true, tsToMs(q.publishAt));
 
       // rubric normalize
       currentRubric = null;
@@ -1358,7 +1395,6 @@
       initialAssigned = new Set(selectedClassIds);
       await loadTeacherClassesAndRender();
 
-
       clearDirty();
     }
 
@@ -1385,12 +1421,22 @@
       e.returnValue = '';
     });
 
-    [titleInput, descInput, attemptsInput, dueInput,
+    [titleInput, descInput, attemptsInput, dueInput, publishInput,
       timerEnabled, timerMinutes, graceSeconds, shuffleQuestions,
       paginationEnabled, perPage, backtrackingAllowed
     ].forEach(el => {
       el?.addEventListener('change', markDirty);
       el?.addEventListener('input', markDirty);
+    });
+
+    // NEW: Publish buttons
+    publishNowBtn?.addEventListener('click', () => {
+      publishInput.value = localNowForInput();
+      markDirty();
+    });
+    publishClearBtn?.addEventListener('click', () => {
+      publishInput.value = '';
+      markDirty();
     });
 
     async function applySave() {
@@ -1399,6 +1445,7 @@
       const description = descInput.value.trim();
       const attemptsAllowed = parseInt(attemptsInput.value || '0', 10);
       const dueAt = dueInput.value;
+      const publishAt = publishInput.value; // NEW
 
       const settings = {};
       if (timerEnabled.checked) {
@@ -1419,11 +1466,11 @@
       const questions = collectQuestions();
       if (!questions.length) { formError.textContent = 'At least one question is required.'; return; }
 
-      // PUT quiz core (+ classIds)
+      // PUT quiz core (+ classIds + publishAt)
       const put = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title, description, dueAt, attemptsAllowed, settings, questions,
+          title, description, dueAt, publishAt, attemptsAllowed, settings, questions,
           assignedClasses: Array.from(selectedClassIds)
         })
 
@@ -1446,7 +1493,7 @@
       }
 
       await loadQuiz();
-      showInfo('Saved', 'Your changes (including rubric and class assignments) have been saved.');
+      showInfo('Saved', 'Your changes (including publish status, rubric, and class assignments) have been saved.');
     }
 
     btnSave.addEventListener('click', async () => {
@@ -1462,14 +1509,16 @@
       try {
         const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}/archive`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: true }) });
         const js = await res.json(); if (!res.ok || js.success === false) throw new Error(js.message || 'Failed to archive.');
-        updateStatusBadge(true); showInfo('Archived', 'The quiz is now hidden from students.');
+        updateStatusBadge(true, tsToMs(initialQuiz?.publishAt)); showInfo('Archived', 'The quiz is now hidden from students.');
       } catch (e) { showInfo('Error', e.message || 'Failed to archive.'); }
     });
     btnUnarchive.addEventListener('click', async () => {
       try {
         const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}/archive`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: false }) });
         const js = await res.json(); if (!res.ok || js.success === false) throw new Error(js.message || 'Failed to unarchive.');
-        updateStatusBadge(false); showInfo('Unarchived', 'Students can see this quiz again.');
+        // Recompute from current publishAt input (user may have changed it)
+        updateStatusBadge(false, new Date(publishInput.value || 0).getTime() || tsToMs(initialQuiz?.publishAt));
+        showInfo('Unarchived', 'Students can see this quiz again if it is Published or becomes Scheduled.');
       } catch (e) { showInfo('Error', e.message || 'Failed to unarchive.'); }
     });
 
