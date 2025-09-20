@@ -30,7 +30,7 @@ console.log('[analytics fns]', {
   assignment: !!buildTeacherAssignmentAnalytics,
 });
 
-/* ========= QUIZ ANALYTICS ========= */
+/* ========= QUIZ ANALYTICS (Teacher Aggregate) ========= */
 
 // JSON
 router.get('/quiz-analytics', asyncHandler(async (req, res) => {
@@ -74,7 +74,7 @@ router.get('/quiz-analytics/csv', asyncHandler(async (req, res) => {
 
   const rows = [];
 
-  // optional summary block at top (comment out if you don’t want it in CSV)
+  // optional summary block at top
   rows.push(['Summary']);
   rows.push(['Total Quizzes', summary.totalQuizzes]);
   rows.push(['Average Quiz Score (%)', summary.averageQuizScore]);
@@ -90,7 +90,7 @@ router.get('/quiz-analytics/csv', asyncHandler(async (req, res) => {
     'On-time (%)','Modules Completed','Total Modules','Status'
   ]);
 
-  progress.forEach(s => rows.push([
+  (progress || []).forEach(s => rows.push([
     s.className || '',
     s.name || '',
     s.studentId || '',
@@ -154,7 +154,7 @@ router.get('/quiz-analytics/pdf', asyncHandler(async (req, res) => {
   doc.fontSize(9).text('Class | Student | ID | Avg% | Taken/Total | On-time% | Modules | Status');
   doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
 
-  progress.slice(0, 150).forEach(s => {
+  (progress || []).slice(0, 150).forEach(s => {
     const qt = `${s.quizzesTaken ?? 0}/${s.totalQuizzes ?? 0}`;
     const mods = `${s.modulesCompleted ?? 0}/${s.totalModules ?? 0}`;
     doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgQuizScore}% | ${qt} | ${s.onTimePct ?? 0}% | ${mods} | ${s.status}`);
@@ -163,7 +163,9 @@ router.get('/quiz-analytics/pdf', asyncHandler(async (req, res) => {
   doc.end();
 }));
 
-/* ========= ASSIGNMENT ANALYTICS: CSV ========= */
+/* ========= ASSIGNMENT ANALYTICS (Teacher Aggregate) ========= */
+
+// CSV (summary + details; keep one canonical version)
 router.get('/assignment-analytics/csv', asyncHandler(async (req, res) => {
   const teacherId = String(req.query.teacherId || '').trim();
   const classId = req.query.classId ? String(req.query.classId) : null;
@@ -189,7 +191,7 @@ router.get('/assignment-analytics/csv', asyncHandler(async (req, res) => {
     'On-time (%)','Modules Completed','Total Modules','Status'
   ]);
 
-  progress.forEach(s => rows.push([
+  (progress || []).forEach(s => rows.push([
     s.className || '',
     s.name || '',
     s.studentId || '',
@@ -212,7 +214,7 @@ router.get('/assignment-analytics/csv', asyncHandler(async (req, res) => {
   return res.send(csv);
 }));
 
-/* ========= ASSIGNMENT ANALYTICS: PDF ========= */
+// PDF
 router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
   const teacherId = String(req.query.teacherId || '').trim();
   const classId = req.query.classId ? String(req.query.classId) : null;
@@ -253,7 +255,7 @@ router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
   doc.fontSize(9).text('Class | Student | ID | Avg% | Submitted/Total | On-time% | Modules | Status');
   doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
 
-  progress.slice(0, 150).forEach(s => {
+  (progress || []).slice(0, 150).forEach(s => {
     const st = `${s.assignmentsSubmitted ?? 0}/${s.totalAssignments ?? 0}`;
     const mods = `${s.modulesCompleted ?? 0}/${s.totalModules ?? 0}`;
     doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgAssignmentScore}% | ${st} | ${s.onTimePct ?? 0}% | ${mods} | ${s.status}`);
@@ -288,7 +290,7 @@ router.get('/analytics/csv', asyncHandler(async (req, res) => {
 
   const rows = [];
   rows.push(['Student','Student ID','Avg Score','Modules Completed','Modules Total','Time on Task (min)','Status']);
-  students.forEach(s => rows.push([
+  (students || []).forEach(s => rows.push([
     s.name,
     s.studentId,
     `${s.avgScore}`,
@@ -346,127 +348,94 @@ router.get('/analytics/pdf', asyncHandler(async (req, res) => {
   doc.fontSize(9).text('Student | ID | Avg | Done/Total | Time (min) | Status');
   doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
 
-  students.slice(0, 150).forEach(s => {
+  (students || []).slice(0, 150).forEach(s => {
     doc.text(`${s.name} | ${s.studentId} | ${s.avgScore}% | ${s.modulesCompleted}/${s.modulesTotal} | ${s.timeOnTaskMin} | ${s.status}`);
   });
 
   doc.end();
 }));
 
-/* ========= ASSIGNMENT ANALYTICS ========= */
-
-// JSON
-router.get('/assignment-analytics', asyncHandler(async (req, res) => {
+/* ========= STUDENT-SPECIFIC QUIZ ANALYTICS (NEW) =========
+   GET /student-quiz-analytics?teacherId=...&student=...&courseId=optional
+   Returns per-quiz rows with best%/attempts/lastSubmittedAt for a single student.
+=========================================================== */
+router.get('/student-quiz-analytics', asyncHandler(async (req, res) => {
   const teacherId = String(req.query.teacherId || '').trim();
-  const classId = req.query.classId ? String(req.query.classId) : null;
+  const studentKey = String(req.query.student || req.query.studentId || req.query.userId || '').trim();
+  const courseIdFilter = req.query.courseId ? String(req.query.courseId) : null;
+
   if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
+  if (!studentKey) return res.status(400).json({ success:false, message:'student (id/email) is required' });
 
-  const data = await buildTeacherAssignmentAnalytics({ teacherId, classId });
+  // resolve user ref from id/email/username/etc.
+  const userRef = await getUserRefByAnyId(studentKey);
+  if (!userRef) return res.status(404).json({ success:false, message:'Student not found' });
 
-  // Decrypt student names if possible
-  if (Array.isArray(data.progress)) {
-    for (const s of data.progress) {
-      if (s.studentId) {
-        try {
-          const userRef = await getUserRefByAnyId(s.studentId);
-          if (userRef) {
-            const userSnap = await userRef.get();
-            const user = userSnap.data() || {};
-            const names = decryptNamesFromUser(user);
-            const fullName = [names.firstName, names.middleName, names.lastName]
-              .filter(Boolean)
-              .join(' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-            if (fullName) s.name = fullName;
-          }
-        } catch {}
-      }
-    }
-  }
-  return res.json(data);
-}));
-
-// CSV
-router.get('/assignment-analytics/csv', asyncHandler(async (req, res) => {
-  const teacherId = String(req.query.teacherId || '').trim();
-  const classId = req.query.classId ? String(req.query.classId) : null;
-  if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
-
-  const { progress } = await buildTeacherAssignmentAnalytics({ teacherId, classId });
+  // fetch quizzes (optionally filter by courseId), hide future-scheduled (publishAt > now)
+  const nowMs = Date.now();
+  const quizzesSnap = await firestore.collection('quizzes').orderBy('createdAt', 'desc').get();
+  const quizzes = quizzesSnap.docs
+    .map(d => ({ id: d.id, ...(d.data() || {}) }))
+    .filter(q => {
+      if (courseIdFilter && String(q.courseId || '') !== courseIdFilter) return false;
+      const pMs = q.publishAt?.toMillis ? q.publishAt.toMillis() : null;
+      if (pMs && pMs > nowMs) return false;
+      return true;
+    });
 
   const rows = [];
-  rows.push([
-  'Class','Student','Student ID','Avg Quiz Score','Quizzes Taken','On-time %','Modules Completed','Total Modules','Status'
-]);
-progress.forEach(s => rows.push([
-  s.className || '',
-  s.name || '',
-  s.studentId || '',
-  `${s.avgQuizScore ?? ''}`,
-  `${s.quizzesTaken ?? ''}`,
-  `${s.onTimePct ?? ''}`,
-  `${s.modulesCompleted ?? ''}`,
-  `${s.totalModules ?? ''}`,
-  s.status || '',
-]));
+  for (const q of quizzes) {
+    const root = userRef.collection('quizAttempts').doc(q.id);
 
+    let attemptsSnap;
+    try {
+      attemptsSnap = await root.collection('attempts').orderBy('submittedAt', 'asc').get();
+    } catch {
+      // fallback if index/field missing
+      attemptsSnap = await root.collection('attempts').get();
+    }
 
-  const csv = rows.map(r => r.map(v => {
-    const val = String(v ?? '');
-    return /[",\n]/.test(val) ? `"${val.replace(/"/g,'""')}"` : val;
-  }).join(',')).join('\n');
+    let attemptsUsed = 0;
+    let bestPercent = null;
+    let lastSubmittedAt = null;
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="assignment_analytics_${teacherId}.csv"`);
-  return res.send(csv);
-}));
+    attemptsSnap.forEach(doc => {
+      attemptsUsed++;
+      const a = doc.data() || {};
+      const combined =
+        (typeof a.percent === 'number' ? a.percent : null) ??
+        (typeof a.gradedPercent === 'number' ? a.gradedPercent : null) ??
+        (typeof a.autoPercent === 'number' ? a.autoPercent : null);
+      if (combined != null && (bestPercent == null || combined > bestPercent)) bestPercent = combined;
+      if (a.submittedAt) lastSubmittedAt = a.submittedAt;
+    });
 
-// PDF
-router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
-  const teacherId = String(req.query.teacherId || '').trim();
-  const classId = req.query.classId ? String(req.query.classId) : null;
-  if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
+    rows.push({
+      quizId: q.id,
+      title: q.title || q.id,
+      courseId: q.courseId || null,
+      bestPercent,
+      attemptsUsed,
+      lastSubmittedAt,
+    });
+  }
 
-  const { summary, progress, byAssignment } = await buildTeacherAssignmentAnalytics({ teacherId, classId });
+  // summary: average best% across quizzes with a score
+  const scored = rows.filter(r => typeof r.bestPercent === 'number');
+  const averageQuizScore = scored.length
+    ? Math.round(scored.reduce((s, r) => s + r.bestPercent, 0) / scored.length)
+    : 0;
 
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="assignment_analytics_${teacherId}.pdf"`);
-
-  const doc = new PDFDocument({ size:'A4', margin: 36 });
-  doc.pipe(res);
-
-  doc.fontSize(18).text('Assignment Analytics Report', { align:'left' });
-  doc.moveDown(0.3).fontSize(10).fillColor('#666').text(`Teacher: ${teacherId}`, { align:'left' });
-  doc.moveDown();
-
-  doc.fillColor('#000').fontSize(12).text('Summary', { underline:true });
-  doc.moveDown(0.3);
-  doc.text(`Total Assignments: ${summary.totalAssignments}`);
-  doc.text(`Average Assignment Score: ${summary.averageAssignmentScore}%`);
-  doc.text(`On-time Submission Rate: ${summary.onTimeRate}%`);
-  doc.text(`Modules Completed: ${summary.modulesCompleted}/${summary.totalModules} (${summary.modulesCompletedPct}%)`);
-  doc.moveDown();
-
-  doc.fontSize(12).text('By Assignment', { underline:true });
-  doc.fontSize(10);
-  (byAssignment.labels || []).forEach((label, i) => {
-    const avg = byAssignment.avgScores?.[i] ?? 0;
-    const subs = byAssignment.submissions?.[i] ?? 0;
-    doc.text(`${label}: Avg ${avg}% | Submissions: ${subs}`);
+  return res.json({
+    success: true,
+    quizzes: {
+      rows,
+      labels: rows.map(r => r.title),
+      bestPercents: rows.map(r => r.bestPercent ?? 0),
+      attempts: rows.map(r => r.attemptsUsed || 0),
+    },
+    summary: { averageQuizScore }
   });
-  doc.moveDown();
-
-  doc.fontSize(12).text('Student Progress', { underline:true });
-  doc.moveDown(0.2);
-  doc.fontSize(9).text('Class | Student | ID | Avg | Submitted | On-time% | Modules | Status');
-  doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
-
-  progress.slice(0, 150).forEach(s => {
-    doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgAssignmentScore}% | ${s.assignmentsSubmitted} | ${s.onTimePct}% | ${s.modulesCompleted}/${s.totalModules} | ${s.status}`);
-  });
-
-  doc.end();
 }));
 
 module.exports = router;

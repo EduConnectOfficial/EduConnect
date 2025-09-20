@@ -12,6 +12,10 @@
 
   <!-- Global & Page CSS -->
   <link rel="stylesheet" href="../dashboard/dashboard.css" />
+  <style>
+    .chart-wrapper{position:relative;height:240px}
+    .metric{font-size:1.05rem;font-weight:600}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -292,492 +296,492 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Page Scripts -->
-  <script>
-    // ===== Config =====
-    const API_BASE = 'http://localhost:5000';
+ <script>
+  // ===== Config =====
+  const API_BASE = 'http://localhost:5000';
 
-    // ---- Auth guard + username display ----
-    (function () {
-      const stored = JSON.parse(localStorage.getItem('user') || '{}');
-      const u = stored.user || stored;
+  // ---- Auth guard + username display ----
+  (function () {
+    const stored = JSON.parse(localStorage.getItem('user') || '{}');
+    const u = stored.user || stored;
 
-      if (!u?.userId || !u?.isTeacher) {
-        window.location.href = "/TEACHER/login/login.html";
-        return;
-      }
-
-      window.currentUser = u;
-
-      const displayName = (u.username || 'Teacher').toString().trim();
-      const nameEl = document.getElementById('Username');
-      if (nameEl) nameEl.textContent = displayName;
-    })();
-
-    // Resolve teacher & student from URL / storage
-    const qs = new URLSearchParams(location.search);
-    const teacherId =
-      qs.get('teacherId') ||
-      (window.currentUser && window.currentUser.userId) ||
-      localStorage.getItem('teacherId') ||
-      '';
-
-    const studentKey =
-      qs.get('student') ||
-      qs.get('studentId') ||
-      qs.get('userId') ||
-      '';
-
-    // ---------- utils ----------
-    async function getJson(url) {
-      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`GET ${url} -> HTTP ${res.status} — ${body.slice(0, 200)}`);
-      }
-      return res.json();
-    }
-    async function tryJson(url) { try { return await getJson(url); } catch { return null; } }
-
-    const el = (id) => document.getElementById(id);
-    const pct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
-    function dt(ts) {
-      if (!ts) return '—';
-      const ms = ts?._seconds ? ts._seconds * 1000 : (typeof ts === 'number' ? ts : Date.parse(ts));
-      if (!Number.isFinite(ms)) return '—';
-      return new Date(ms).toLocaleString();
+    if (!u?.userId || !u?.isTeacher) {
+      window.location.href = "/TEACHER/login/login.html";
+      return;
     }
 
-    // ---------- charts ----------
-    let charts = { quiz: null, assign: null };
-    function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
-    function renderBar(key, canvasId, labels, values, datasetLabel) {
-      const ctx = document.getElementById(canvasId);
-      destroyChart(key);
-      charts[key] = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: datasetLabel, data: values }] },
-        options: {
-          responsive: true, maintainAspectRatio: false, resizeDelay: 150,
-          animation: { duration: 200 }, plugins: { legend: { display: true } },
-          scales: { y: { beginAtZero: true, suggestedMax: 100, ticks: { stepSize: 20 } } }
-        }
-      });
+    window.currentUser = u;
+
+    const displayName = (u.username || 'Teacher').toString().trim();
+    const nameEl = document.getElementById('Username');
+    if (nameEl) nameEl.textContent = displayName;
+  })();
+
+  // Resolve teacher & student from URL / storage
+  const qs = new URLSearchParams(location.search);
+  const teacherId =
+    qs.get('teacherId') ||
+    (window.currentUser && window.currentUser.userId) ||
+    localStorage.getItem('teacherId') ||
+    '';
+
+  const studentKey =
+    qs.get('student') ||
+    qs.get('studentId') ||
+    qs.get('userId') ||
+    '';
+
+  // ---------- utils ----------
+  async function getJson(url) {
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`GET ${url} -> HTTP ${res.status} — ${body.slice(0, 200)}`);
     }
+    return res.json();
+  }
+  async function tryJson(url) { try { return await getJson(url); } catch { return null; } }
 
-    // ---------- id normalization & cache helpers ----------
-    const normId = v => String(v ?? '').trim();
+  const el  = (id) => document.getElementById(id);
+  const pct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
+  const normId = v => String(v ?? '').trim();
+  function dt(ts) {
+    if (!ts) return '—';
+    const ms = ts?._seconds ? ts._seconds * 1000 : (typeof ts === 'number' ? ts : Date.parse(ts));
+    if (!Number.isFinite(ms)) return '—';
+    return new Date(ms).toLocaleString();
+  }
 
-    // Cache for /quizzes/:id details (to get missing courseId)
-    const QUIZ_DETAIL_CACHE = new Map();
-
-    async function getQuizCourseId(q) {
-      const inline = normId(q.courseId);
-      if (inline) return inline;
-
-      const qid = normId(q.id || q.quizId || q.quizID);
-      if (!qid) return '';
-
-      if (QUIZ_DETAIL_CACHE.has(qid)) return QUIZ_DETAIL_CACHE.get(qid);
-
-      try {
-        const detail = await getJson(`${API_BASE}/quizzes/${encodeURIComponent(qid)}`);
-        const cid = normId(detail?.quiz?.courseId);
-        QUIZ_DETAIL_CACHE.set(qid, cid);
-        return cid;
-      } catch {
-        QUIZ_DETAIL_CACHE.set(qid, '');
-        return '';
-      }
-    }
-
-    // ---------- courses ----------
-    let COURSES = [];
-    let TITLE_TO_ID = {}; // <<< FIX: for title→id fallback in filtering
-    let selectedCourseId = '';
-
-    async function loadCourses() {
-      const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`;
-      const arr = await tryJson(url);
-      const sel = el('courseFilter');
-
-      if (!Array.isArray(arr) || !arr.length) {
-        sel.innerHTML = `<option value="">No courses</option>`;
-        sel.disabled = true;
-        return;
-      }
-
-      // Normalize: some APIs return courseId, some id
-      COURSES = arr
-        .map(c => ({
-          _id: normId(c.id || c.courseId || c.courseID),
-          title: c.title || (c.courseNumber ? `Course ${c.courseNumber}` : 'Untitled Course'),
-          courseNumber: c.courseNumber || 0,
-          archived: !!c.archived
-        }))
-        .filter(c => c._id && !c.archived);
-
-      // <<< FIX: build title→id lookup
-      TITLE_TO_ID = {};
-      COURSES.forEach(c => { TITLE_TO_ID[c.title.trim().toLowerCase()] = c._id; });
-
-      sel.innerHTML = [
-        `<option value="">All Courses</option>`,
-        ...COURSES
-          .sort((a, b) => (a.courseNumber - b.courseNumber) || a.title.localeCompare(b.title))
-          .map(c => `<option value="${c._id}">${c.courseNumber ? `#${c.courseNumber} — ` : ''}${c.title}</option>`)
-      ].join('');
-      sel.disabled = false;
-
-      // Preselect via query (?courseId= or ?course=)
-      const qsCourse = qs.get('courseId') || qs.get('course');
-      if (qsCourse) {
-        const chosen = COURSES.find(c => c._id === qsCourse) ||
-                       COURSES.find(c => c.title.trim().toLowerCase() === String(qsCourse).trim().toLowerCase());
-        if (chosen) { selectedCourseId = chosen._id; sel.value = chosen._id; }
-      }
-    }
-
-    // ---------- analytics header/base (summary/assignments/essays/modules) ----------
-    async function fetchHeaderAndBase() {
-      const params = new URLSearchParams({ teacherId, student: studentKey });
-      if (selectedCourseId) params.set('courseId', selectedCourseId);
-      return await tryJson(`${API_BASE}/api/teacher/student-analytics?${params.toString()}`);
-    }
-
-    // ---------- fetch quizzes list + per-quiz results (strict course filtering) ----------
-    async function fetchQuizzesEnriched() {
-      const listUrl = `${API_BASE}/quizzes?forStudent=${encodeURIComponent(studentKey)}&includeArchived=false`;
-      const data = await tryJson(listUrl);
-      const allQuizzes = Array.isArray(data?.quizzes) ? data.quizzes : [];
-
-      const enriched = await Promise.all(allQuizzes.map(async q => {
-        const courseId = await getQuizCourseId(q);
-        return { ...q, courseId };
-      }));
-
-      const wanted = normId(selectedCourseId);
-      const quizzes = wanted
-        ? enriched.filter(q => normId(q.courseId) === wanted) // strict match
-        : enriched;
-
-      if (!quizzes.length) return [];
-
-      const rows = await Promise.all(quizzes.map(async q => {
-        const qid = q.id;
-        const title = q.title || qid;
-        let attempts = 0;
-        let bestPercent = null;
-        let lastSubmittedAt = null;
-
-        try {
-          const r = await getJson(`${API_BASE}/api/students/${encodeURIComponent(studentKey)}/quiz-results?quizId=${encodeURIComponent(qid)}`);
-          const arr = Array.isArray(r?.attempts) ? r.attempts : [];
-          attempts = arr.length;
-          if (r?.best && Number.isFinite(Number(r.best.percent))) bestPercent = Number(r.best.percent);
-          if (r?.latest?.submittedAt) lastSubmittedAt = r.latest.submittedAt;
-        } catch {}
-
-        return {
-          quizId: qid,
-          title,
-          courseId: q.courseId,
-          bestPercent,
-          attemptsUsed: attempts,
-          lastSubmittedAt
-        };
-      }));
-
-      return rows;
-    }
-
-    // ---------- shared course filter for NON-QUIZ rows (assignments/essays/modules) ----------
-    // <<< FIX: strict matching; unknown-course rows are excluded when a specific course is selected
-    function courseIdFromAny(x) {
-      return normId(
-        x?.courseId ||
-        x?.courseID ||
-        x?.quizCourseId ||
-        x?.quiz?.courseId ||
-        x?.assignment?.courseId ||
-        (x?.courseTitle && TITLE_TO_ID[x.courseTitle.trim().toLowerCase()]) ||
-        ''
-      );
-    }
-    function filterBySelectedCourse(rows) {
-      const wanted = normId(selectedCourseId);
-      if (!wanted) return rows || [];
-      return (rows || []).filter(r => courseIdFromAny(r) === wanted);
-    }
-
-    // ---------- renderers ----------
-    function renderHeader(base) {
-      if (base?.profile) {
-        el('s_name').textContent = base.profile?.name || 'Student';
-        el('s_id').textContent = base.profile?.studentId || '—';
-      }
-      el('s_avg_quiz').textContent = pct(base?.summary?.averageQuizScore);
-      el('s_avg_asg').textContent = pct(base?.summary?.averageAssignmentGrade);
-      el('s_modules').textContent =
-        (base?.summary?.modulesCompleted != null && base?.summary?.totalModules != null)
-          ? `${base.summary.modulesCompleted}/${base.summary.totalModules}`
-          : (base?.summary?.modulesCompleted ?? '—');
-    }
-
-    function renderQuizzes(rows) {
-      if (!rows.length) {
-        el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
-        destroyChart('quiz');
-        return;
-      }
-      el('quizTbody').innerHTML = rows.map(r => `
-        <tr>
-          <td>${r.title || r.quizId}</td>
-          <td>${pct(r.bestPercent)}</td>
-          <td>${r.attemptsUsed ?? 0}</td>
-          <td>${dt(r.lastSubmittedAt)}</td>
-        </tr>
-      `).join('');
-
-      renderBar(
-        'quiz',
-        'quizChart',
-        rows.map(r => r.title || r.quizId),
-        rows.map(r => Number(r.bestPercent) || 0),
-        'Best %'
-      );
-    }
-
-    function renderAssignments(base) {
-      // <<< FIX: filter strictly by course
-      const all = base?.assignments?.grades || [];
-      const arows = filterBySelectedCourse(all);
-
-      if (!arows.length) {
-        el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
-        destroyChart('assign');
-        return;
-      }
-      el('assignTbody').innerHTML = arows.map(a => `
-        <tr>
-          <td>${a.assignmentTitle || a.assignmentId}</td>
-          <td>${pct(a.grade)}</td>
-          <td>${dt(a.gradedAt)}</td>
-        </tr>
-      `).join('');
-      renderBar(
-        'assign',
-        'assignChart',
-        arows.map(a => a.assignmentTitle || a.assignmentId),
-        arows.map(a => Number(a.grade) || 0),
-        'Grade %'
-      );
-    }
-
-    function renderEssays(base) {
-      // <<< FIX: filter strictly by course
-      const all = base?.essays?.submissions || [];
-      const erows = filterBySelectedCourse(all);
-
-      el('essayTbody').innerHTML = erows.length
-        ? erows.map(e => `
-          <tr>
-            <td>${e.quizTitle || e.quizId}</td>
-            <td>${e.questionIndex != null ? e.questionIndex + 1 : '—'}</td>
-            <td>${(e.status || 'pending').toUpperCase()}</td>
-            <td>${e.score != null ? (e.score + '/' + (e.maxScore ?? 10)) : '—'}</td>
-            <td>${dt(e.createdAt)}</td>
-          </tr>
-        `).join('')
-        : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
-    }
-
-    function renderModules(base) {
-      // <<< FIX: filter strictly by course
-      const all = base?.modules?.completed || [];
-      const mrows = filterBySelectedCourse(all);
-
-      el('modTbody').innerHTML = mrows.length
-        ? mrows.map(m => `
-          <tr>
-            <td>${m.courseTitle || m.courseId || ''}</td>
-            <td>${m.moduleTitle || m.moduleId || ''}</td>
-            <td>${pct(m.percent)}</td>
-            <td>${dt(m.completedAt)}</td>
-          </tr>
-        `).join('')
-        : '<tr><td colspan="4" class="text-center text-muted">No modules</td></tr>';
-    }
-
-    // ---------- load pipeline ----------
-    async function loadAll() {
-      if (!teacherId || !studentKey) { showAppAlert('Missing teacherId or student id in URL.'); return; }
-
-      // header + non-quiz sections
-      const base = await fetchHeaderAndBase();
-      renderHeader(base || {});
-      renderAssignments(base || {});
-      renderEssays(base || {});
-      renderModules(base || {});
-
-      // quizzes (from /quizzes + /quiz-results) with course filter
-      el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>';
-      const quizRows = await fetchQuizzesEnriched();
-      renderQuizzes(quizRows);
-    }
-
-    // ---------- CSV ----------
-    async function exportCsv() {
-      try {
-        const base = await fetchHeaderAndBase();
-        const quizRows = await fetchQuizzesEnriched();
-
-        // <<< FIX: filter non-quiz sections before exporting
-        const arows = filterBySelectedCourse(base?.assignments?.grades || []);
-        const erows = filterBySelectedCourse(base?.essays?.submissions || []);
-        const mrows = filterBySelectedCourse(base?.modules?.completed || []);
-
-        let csv = [];
-        csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
-        csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
-
-        csv.push('');
-        csv.push('Quizzes');
-        csv.push('Quiz,Best %,Attempts,Last Attempt');
-        (quizRows || []).forEach(r => {
-          csv.push(`"${r.title || r.quizId}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
-        });
-
-        csv.push('');
-        csv.push('Assignments');
-        csv.push('Assignment,Grade,Graded At');
-        arows.forEach(a => csv.push(`"${a.assignmentTitle || a.assignmentId}","${pct(a.grade)}","${dt(a.gradedAt)}"`));
-
-        csv.push('');
-        csv.push('Essay Submissions');
-        csv.push('Quiz,Question #,Status,Score,Submitted');
-        erows.forEach(e => csv.push(`"${e.quizTitle || e.quizId}","${e.questionIndex != null ? (e.questionIndex + 1) : ''}","${(e.status || 'pending').toUpperCase()}","${e.score != null ? `${e.score}/${e.maxScore ?? 10}` : ''}","${dt(e.createdAt)}"`));
-
-        csv.push('');
-        csv.push('Completed Modules');
-        csv.push('Course,Module,Percent,Completed At');
-        mrows.forEach(m => csv.push(`"${m.courseTitle || m.courseId || ''}","${m.moduleTitle || m.moduleId || ''}","${pct(m.percent)}","${dt(m.completedAt)}"`));
-
-        const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.csv`;
-        document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove();
-      } catch (e) { console.error(e); showAppAlert('CSV export failed.'); }
-    }
-
-    // ---------- PDF ----------
-    async function downloadPdf() {
-      try {
-        if (typeof window.jspdf === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
-          });
-        }
-        if (typeof window.jspdf?.jsPDF === 'undefined') { showAppAlert('Failed to load jsPDF.'); return; }
-        if (typeof window.jspdf?.autoTable === 'undefined') {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
-            s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
-          });
-        }
-
-        const base = await fetchHeaderAndBase();
-        const quizRows = await fetchQuizzesEnriched();
-
-        const arows = filterBySelectedCourse(base?.assignments?.grades || []);
-        const erows = filterBySelectedCourse(base?.essays?.submissions || []);
-        const mrows = filterBySelectedCourse(base?.modules?.completed || []);
-
-        const doc = new window.jspdf.jsPDF();
-        doc.setFont('times', 'bold'); doc.setFontSize(18);
-        doc.text('Student Analytics Report', 105, 20, { align: 'center' });
-        doc.setFontSize(12); doc.setFont('times', 'normal');
-        doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
-        doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
-        if (selectedCourseId) doc.text(`Course: ${selectedCourseId}`, 20, 48);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 56);
-
-        doc.autoTable({
-          startY: 63,
-          head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
-          body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
-          theme: 'grid',
-          styles: { font: 'times', fontSize: 11, halign: 'center' },
-          headStyles: { fillColor: [255, 178, 0], textColor: 0 }
-        });
-        let y = doc.lastAutoTable.finalY + 8;
-
-        doc.setFont('times', 'bold'); doc.text('Quizzes', 20, y); y += 2; doc.setFont('times', 'normal');
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
-          body: (quizRows || []).map(r => [r.title || r.quizId, pct(r.bestPercent), r.attemptsUsed ?? 0, dt(r.lastSubmittedAt)]),
-          theme: 'grid', styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        doc.setFont('times', 'bold'); doc.text('Assignments', 20, y); y += 2; doc.setFont('times', 'normal');
-        doc.autoTable({
-          startY: y,
-          head: [['Assignment', 'Grade', 'Graded At']],
-          body: arows.map(a => [a.assignmentTitle || a.assignmentId, pct(a.grade), dt(a.gradedAt)]),
-          theme: 'grid', styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        doc.setFont('times', 'bold'); doc.text('Essay Submissions', 20, y); y += 2; doc.setFont('times', 'normal');
-        doc.autoTable({
-          startY: y,
-          head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
-          body: erows.map(e => [e.quizTitle || e.quizId, e.questionIndex != null ? e.questionIndex + 1 : '', (e.status || 'pending').toUpperCase(), e.score != null ? `${e.score}/${e.maxScore ?? 10}` : '', dt(e.createdAt)]),
-          theme: 'grid', styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
-        });
-        y = doc.lastAutoTable.finalY + 8;
-
-        doc.setFont('times', 'bold'); doc.text('Completed Modules', 20, y); y += 2; doc.setFont('times', 'normal');
-        doc.autoTable({
-          startY: y,
-          head: [['Course', 'Module', 'Percent', 'Completed At']],
-          body: mrows.map(m => [m.courseTitle || m.courseId || '', m.moduleTitle || m.moduleId || '', pct(m.percent), dt(m.completedAt)]),
-          theme: 'grid', styles: { font: 'times', fontSize: 10 },
-          headStyles: { fillColor: [240, 240, 240], textColor: 0 }
-        });
-
-        doc.save(`student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.pdf`);
-      } catch (e) { console.error(e); showAppAlert('PDF download failed.'); }
-    }
-
-    // ---------- events ----------
-    document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv());
-    document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf());
-    document.getElementById('courseFilter').addEventListener('change', async (e) => {
-      selectedCourseId = (e.target.value || '').trim();
-      try { await loadAll(); } catch (err) {
-        console.error(err);
-        showAppAlert('Failed to load student analytics for selected course.');
+  // ---------- charts ----------
+  let charts = { quiz: null, assign: null };
+  function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
+  function renderBar(key, canvasId, labels, values, datasetLabel) {
+    const ctx = document.getElementById(canvasId);
+    destroyChart(key);
+    charts[key] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: datasetLabel, data: values }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, resizeDelay: 150,
+        animation: { duration: 200 }, plugins: { legend: { display: true } },
+        scales: { y: { beginAtZero: true, suggestedMax: 100, ticks: { stepSize: 20 } } }
       }
     });
+  }
 
-    // ---------- boot ----------
-    (async () => {
-      try { await loadCourses(); } catch (e) { console.error('loadCourses failed:', e); }
-      await loadAll().catch(err => { console.error(err); showAppAlert('Failed to load student analytics.'); });
-    })();
+  // ---------- courses ----------
+  let COURSES = [];
+  let TITLE_TO_ID = {};
+  let selectedCourseId = '';
 
-    // ---------- cleanup ----------
-    window.addEventListener('beforeunload', () => { destroyChart('quiz'); destroyChart('assign'); });
-    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
-  </script>
+  async function loadCourses() {
+    const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`;
+    const arr = await tryJson(url);
+    const sel = el('courseFilter');
+
+    if (!Array.isArray(arr) || !arr.length) {
+      sel.innerHTML = `<option value="">No courses</option>`;
+      sel.disabled = true;
+      return;
+    }
+
+    COURSES = arr
+      .map(c => ({
+        _id: normId(c.id || c.courseId || c.courseID),
+        title: c.title || (c.courseNumber ? `Course ${c.courseNumber}` : 'Untitled Course'),
+        courseNumber: c.courseNumber || 0,
+        archived: !!c.archived
+      }))
+      .filter(c => c._id && !c.archived);
+
+    TITLE_TO_ID = {};
+    COURSES.forEach(c => { TITLE_TO_ID[c.title.trim().toLowerCase()] = c._id; });
+
+    sel.innerHTML = [
+      `<option value="">All Courses</option>`,
+      ...COURSES
+        .sort((a, b) => (a.courseNumber - b.courseNumber) || a.title.localeCompare(b.title))
+        .map(c => `<option value="${c._id}">${c.courseNumber ? `#${c.courseNumber} — ` : ''}${c.title}</option>`)
+    ].join('');
+    sel.disabled = false;
+
+    const qsCourse = qs.get('courseId') || qs.get('course');
+    if (qsCourse) {
+      const chosen = COURSES.find(c => c._id === qsCourse) ||
+                     COURSES.find(c => c.title.trim().toLowerCase() === String(qsCourse).trim().toLowerCase());
+      if (chosen) { selectedCourseId = chosen._id; sel.value = chosen._id; }
+    }
+  }
+
+  // ---------- helpers for course filtering ----------
+  function courseIdFromAny(x) {
+    return normId(
+      x?.courseId ||
+      x?.courseID ||
+      x?.quizCourseId ||
+      x?.quiz?.courseId ||
+      x?.assignment?.courseId ||
+      (x?.courseTitle && TITLE_TO_ID[x.courseTitle.trim().toLowerCase()]) ||
+      ''
+    );
+  }
+  function filterBySelectedCourse(rows) {
+    const wanted = normId(selectedCourseId);
+    if (!wanted) return rows || [];
+    return (rows || []).filter(r => courseIdFromAny(r) === wanted);
+  }
+
+  // ---------- BASE analytics (header + assignments/essays/modules) ----------
+  async function fetchHeaderAndBase() {
+    const params = new URLSearchParams({ teacherId, student: studentKey });
+    if (selectedCourseId) params.set('courseId', selectedCourseId);
+    return await tryJson(`${API_BASE}/api/teacher/student-analytics?${params.toString()}`);
+  }
+
+  // ---------- REAL quiz analytics (new API) ----------
+  async function fetchQuizRowsReal() {
+    const params = new URLSearchParams({ teacherId, student: studentKey });
+    if (selectedCourseId) params.set('courseId', selectedCourseId);
+    const data = await tryJson(`${API_BASE}/api/teacher/student-quiz-analytics?${params.toString()}`);
+
+    const rows = Array.isArray(data?.quizzes?.rows) ? data.quizzes.rows : [];
+    // Normalize shape just in case
+    return rows.map(r => ({
+      quizId: normId(r.quizId || r.id),
+      title: r.title || r.quizTitle || r.quizId || 'Quiz',
+      bestPercent: Number(r.bestPercent ?? r.best ?? r.percent ?? r.bestScorePct) || null,
+      attemptsUsed: Number(r.attemptsUsed ?? r.attempts ?? r.count) || 0,
+      lastSubmittedAt: r.lastSubmittedAt || r.submittedAt || r.lastAttemptAt || null,
+      courseId: normId(r.courseId || r.quiz?.courseId || '')
+    }));
+  }
+
+  // ---------- Fallback quiz analytics (legacy flow via /quizzes + /quiz-results) ----------
+  const QUIZ_DETAIL_CACHE = new Map();
+  async function getQuizCourseId(q) {
+    const inline = normId(q.courseId);
+    if (inline) return inline;
+    const qid = normId(q.id || q.quizId || q.quizID);
+    if (!qid) return '';
+    if (QUIZ_DETAIL_CACHE.has(qid)) return QUIZ_DETAIL_CACHE.get(qid);
+    try {
+      const detail = await getJson(`${API_BASE}/quizzes/${encodeURIComponent(qid)}`);
+      const cid = normId(detail?.quiz?.courseId);
+      QUIZ_DETAIL_CACHE.set(qid, cid);
+      return cid;
+    } catch { QUIZ_DETAIL_CACHE.set(qid, ''); return ''; }
+  }
+
+  async function fetchQuizzesEnrichedFallback() {
+    const listUrl = `${API_BASE}/quizzes?forStudent=${encodeURIComponent(studentKey)}&includeArchived=false`;
+    const data = await tryJson(listUrl);
+    const allQuizzes = Array.isArray(data?.quizzes) ? data.quizzes : [];
+    const enriched = await Promise.all(allQuizzes.map(async q => {
+      const courseId = await getQuizCourseId(q);
+      return { ...q, courseId };
+    }));
+
+    const wanted = normId(selectedCourseId);
+    const quizzes = wanted ? enriched.filter(q => normId(q.courseId) === wanted) : enriched;
+
+    if (!quizzes.length) return [];
+
+    const rows = await Promise.all(quizzes.map(async q => {
+      const qid = q.id;
+      const title = q.title || qid;
+      let attempts = 0;
+      let bestPercent = null;
+      let lastSubmittedAt = null;
+
+      try {
+        const r = await getJson(`${API_BASE}/api/students/${encodeURIComponent(studentKey)}/quiz-results?quizId=${encodeURIComponent(qid)}`);
+        const arr = Array.isArray(r?.attempts) ? r.attempts : [];
+        attempts = arr.length;
+        if (r?.best && Number.isFinite(Number(r.best.percent))) bestPercent = Number(r.best.percent);
+        if (r?.latest?.submittedAt) lastSubmittedAt = r.latest.submittedAt;
+      } catch {}
+
+      return { quizId: qid, title, courseId: q.courseId, bestPercent, attemptsUsed: attempts, lastSubmittedAt };
+    }));
+
+    return rows;
+  }
+
+  // ---------- renderers ----------
+  function renderHeader(base) {
+    if (base?.profile) {
+      el('s_name').textContent = base.profile?.name || 'Student';
+      el('s_id').textContent   = base.profile?.studentId || '—';
+    }
+    el('s_avg_quiz').textContent = pct(base?.summary?.averageQuizScore);
+    el('s_avg_asg').textContent  = pct(base?.summary?.averageAssignmentGrade);
+    el('s_modules').textContent =
+      (base?.summary?.modulesCompleted != null && base?.summary?.totalModules != null)
+        ? `${base.summary.modulesCompleted}/${base.summary.totalModules}`
+        : (base?.summary?.modulesCompleted ?? '—');
+  }
+
+  function renderQuizzes(rows) {
+    if (!rows.length) {
+      el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-center text-muted">No quiz data</td></tr>';
+      destroyChart('quiz');
+      return;
+    }
+    el('quizTbody').innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.title || r.quizId}</td>
+        <td>${pct(r.bestPercent)}</td>
+        <td>${r.attemptsUsed ?? 0}</td>
+        <td>${dt(r.lastSubmittedAt)}</td>
+      </tr>
+    `).join('');
+
+    renderBar(
+      'quiz',
+      'quizChart',
+      rows.map(r => r.title || r.quizId),
+      rows.map(r => Number(r.bestPercent) || 0),
+      'Best %'
+    );
+  }
+
+  function renderAssignments(base) {
+    const all = base?.assignments?.grades || [];
+    const arows = filterBySelectedCourse(all);
+
+    if (!arows.length) {
+      el('assignTbody').innerHTML = '<tr><td colspan="3" class="text-center text-muted">No assignments</td></tr>';
+      destroyChart('assign');
+      return;
+    }
+    el('assignTbody').innerHTML = arows.map(a => `
+      <tr>
+        <td>${a.assignmentTitle || a.assignmentId}</td>
+        <td>${pct(a.grade)}</td>
+        <td>${dt(a.gradedAt)}</td>
+      </tr>
+    `).join('');
+    renderBar(
+      'assign',
+      'assignChart',
+      arows.map(a => a.assignmentTitle || a.assignmentId),
+      arows.map(a => Number(a.grade) || 0),
+      'Grade %'
+    );
+  }
+
+  function renderEssays(base) {
+    const all = base?.essays?.submissions || [];
+    const erows = filterBySelectedCourse(all);
+
+    el('essayTbody').innerHTML = erows.length
+      ? erows.map(e => `
+        <tr>
+          <td>${e.quizTitle || e.quizId}</td>
+          <td>${e.questionIndex != null ? e.questionIndex + 1 : '—'}</td>
+          <td>${(e.status || 'pending').toUpperCase()}</td>
+          <td>${e.score != null ? (e.score + '/' + (e.maxScore ?? 10)) : '—'}</td>
+          <td>${dt(e.createdAt)}</td>
+        </tr>
+      `).join('')
+      : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
+  }
+
+  function renderModules(base) {
+    const all = base?.modules?.completed || [];
+    const mrows = filterBySelectedCourse(all);
+
+    el('modTbody').innerHTML = mrows.length
+      ? mrows.map(m => `
+        <tr>
+          <td>${m.courseTitle || m.courseId || ''}</td>
+          <td>${m.moduleTitle || m.moduleId || ''}</td>
+          <td>${pct(m.percent)}</td>
+          <td>${dt(m.completedAt)}</td>
+        </tr>
+      `).join('')
+      : '<tr><td colspan="4" class="text-center text-muted">No modules</td></tr>';
+  }
+
+  // ---------- load pipeline ----------
+  async function loadAll() {
+    if (!teacherId || !studentKey) { showAppAlert('Missing teacherId or student id in URL.'); return; }
+
+    // header + non-quiz sections
+    const base = await fetchHeaderAndBase();
+    renderHeader(base || {});
+    renderAssignments(base || {});
+    renderEssays(base || {});
+    renderModules(base || {});
+
+    // quizzes — try REAL endpoint first, fallback to legacy if needed
+    el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>';
+    let quizRows = await fetchQuizRowsReal();
+    if (!quizRows.length) {
+      quizRows = await fetchQuizzesEnrichedFallback();
+    }
+    renderQuizzes(quizRows);
+  }
+
+  // ---------- CSV ----------
+  async function exportCsv() {
+    try {
+      const base = await fetchHeaderAndBase();
+
+      // Quiz data from REAL endpoint (fallback to legacy if empty)
+      let quizRows = await fetchQuizRowsReal();
+      if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
+
+      const arows = filterBySelectedCourse(base?.assignments?.grades || []);
+      const erows = filterBySelectedCourse(base?.essays?.submissions || []);
+      const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+
+      let csv = [];
+      csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
+      csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
+
+      csv.push('');
+      csv.push('Quizzes');
+      csv.push('Quiz,Best %,Attempts,Last Attempt');
+      (quizRows || []).forEach(r => {
+        csv.push(`"${r.title || r.quizId}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
+      });
+
+      csv.push('');
+      csv.push('Assignments');
+      csv.push('Assignment,Grade,Graded At');
+      arows.forEach(a => csv.push(`"${a.assignmentTitle || a.assignmentId}","${pct(a.grade)}","${dt(a.gradedAt)}"`));
+
+      csv.push('');
+      csv.push('Essay Submissions');
+      csv.push('Quiz,Question #,Status,Score,Submitted');
+      erows.forEach(e => csv.push(`"${e.quizTitle || e.quizId}","${e.questionIndex != null ? (e.questionIndex + 1) : ''}","${(e.status || 'pending').toUpperCase()}","${e.score != null ? `${e.score}/${e.maxScore ?? 10}` : ''}","${dt(e.createdAt)}"`));
+
+      csv.push('');
+      csv.push('Completed Modules');
+      csv.push('Course,Module,Percent,Completed At');
+      mrows.forEach(m => csv.push(`"${m.courseTitle || m.courseId || ''}","${m.moduleTitle || m.moduleId || ''}","${pct(m.percent)}","${dt(m.completedAt)}"`));
+
+      const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.csv`;
+      document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove();
+    } catch (e) { console.error(e); showAppAlert('CSV export failed.'); }
+  }
+
+  // ---------- PDF ----------
+  async function downloadPdf() {
+    try {
+      if (typeof window.jspdf === 'undefined') {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+          s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+        });
+      }
+      if (typeof window.jspdf?.jsPDF === 'undefined') { showAppAlert('Failed to load jsPDF.'); return; }
+      if (typeof window.jspdf?.autoTable === 'undefined') {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.min.js';
+          s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+        });
+      }
+
+      const base = await fetchHeaderAndBase();
+
+      // Quiz data from REAL endpoint (fallback to legacy if empty)
+      let quizRows = await fetchQuizRowsReal();
+      if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
+
+      const arows = filterBySelectedCourse(base?.assignments?.grades || []);
+      const erows = filterBySelectedCourse(base?.essays?.submissions || []);
+      const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+
+      const doc = new window.jspdf.jsPDF();
+      doc.setFont('times', 'bold'); doc.setFontSize(18);
+      doc.text('Student Analytics Report', 105, 20, { align: 'center' });
+      doc.setFontSize(12); doc.setFont('times', 'normal');
+      doc.text(`Name: ${el('s_name').textContent}`, 20, 32);
+      doc.text(`Student ID: ${el('s_id').textContent}`, 20, 40);
+      if (selectedCourseId) doc.text(`Course: ${selectedCourseId}`, 20, 48);
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 56);
+
+      doc.autoTable({
+        startY: 63,
+        head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
+        body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
+        theme: 'grid',
+        styles: { font: 'times', fontSize: 11, halign: 'center' },
+        headStyles: { fillColor: [255, 178, 0], textColor: 0 }
+      });
+      let y = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('times', 'bold'); doc.text('Quizzes', 20, y); y += 2; doc.setFont('times', 'normal');
+      doc.autoTable({
+        startY: y,
+        head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
+        body: (quizRows || []).map(r => [r.title || r.quizId, pct(r.bestPercent), r.attemptsUsed ?? 0, dt(r.lastSubmittedAt)]),
+        theme: 'grid', styles: { font: 'times', fontSize: 10 },
+        headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('times', 'bold'); doc.text('Assignments', 20, y); y += 2; doc.setFont('times', 'normal');
+      doc.autoTable({
+        startY: y,
+        head: [['Assignment', 'Grade', 'Graded At']],
+        body: arows.map(a => [a.assignmentTitle || a.assignmentId, pct(a.grade), dt(a.gradedAt)]),
+        theme: 'grid', styles: { font: 'times', fontSize: 10 },
+        headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('times', 'bold'); doc.text('Essay Submissions', 20, y); y += 2; doc.setFont('times', 'normal');
+      doc.autoTable({
+        startY: y,
+        head: [['Quiz', 'Question #', 'Status', 'Score', 'Submitted']],
+        body: erows.map(e => [e.quizTitle || e.quizId, e.questionIndex != null ? e.questionIndex + 1 : '', (e.status || 'pending').toUpperCase(), e.score != null ? `${e.score}/${e.maxScore ?? 10}` : '', dt(e.createdAt)]),
+        theme: 'grid', styles: { font: 'times', fontSize: 10 },
+        headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      doc.setFont('times', 'bold'); doc.text('Completed Modules', 20, y); y += 2; doc.setFont('times', 'normal');
+      doc.autoTable({
+        startY: y,
+        head: [['Course', 'Module', 'Percent', 'Completed At']],
+        body: mrows.map(m => [m.courseTitle || m.courseId || '', m.moduleTitle || m.moduleId || '', pct(m.percent), dt(m.completedAt)]),
+        theme: 'grid', styles: { font: 'times', fontSize: 10 },
+        headStyles: { fillColor: [240, 240, 240], textColor: 0 }
+      });
+
+      doc.save(`student_analytics_${base?.profile?.studentId || 'student'}${selectedCourseId ? ('_course_' + selectedCourseId) : ''}.pdf`);
+    } catch (e) { console.error(e); showAppAlert('PDF download failed.'); }
+  }
+
+  // ---------- events ----------
+  document.getElementById('exportCsvBtn').addEventListener('click', () => exportCsv());
+  document.getElementById('downloadPdfBtn').addEventListener('click', () => downloadPdf());
+  document.getElementById('courseFilter').addEventListener('change', async (e) => {
+    selectedCourseId = (e.target.value || '').trim();
+    try { await loadAll(); } catch (err) {
+      console.error(err);
+      showAppAlert('Failed to load student analytics for selected course.');
+    }
+  });
+
+  // ---------- boot ----------
+  (async () => {
+    try { await loadCourses(); } catch (e) { console.error('loadCourses failed:', e); }
+    await loadAll().catch(err => { console.error(err); showAppAlert('Failed to load student analytics.'); });
+  })();
+
+  // ---------- cleanup ----------
+  window.addEventListener('beforeunload', () => { destroyChart('quiz'); destroyChart('assign'); });
+  function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/TEACHER/login/login.html"; }
+</script>
+  
 </body>
 </html>
