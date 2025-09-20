@@ -706,7 +706,7 @@
 }
 /* Modal header with gradient background */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom,var(--brand-dark-1),var(--brand-dark-2));
   color: #fff;
   border-bottom: none;
 }
@@ -730,7 +730,7 @@
 .modal-footer .btn,
 #successOkBtn, 
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
   border: none;
   color: #fff;
   border-radius: 999px;
@@ -742,7 +742,7 @@
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom,var(--brand-accent-1),var(--brand-accent-2));
   transform: scale(1.05);
 }
 .modal-body {
