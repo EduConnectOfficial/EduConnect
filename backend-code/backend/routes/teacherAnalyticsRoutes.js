@@ -1,6 +1,6 @@
 // backend/routes/teacherAnalyticsRoutes.js
 const router = require('express').Router();
-const { firestore } = require('../config/firebase');
+const { firestore, admin } = require('../config/firebase');
 const PDFDocument = require('pdfkit');
 const { asyncHandler } = require('../middleware/asyncHandler');
 
@@ -21,6 +21,15 @@ function decryptNamesFromUser(u = {}) {
     middleName: decryptField(u.middleNameEnc || ''),
     lastName: decryptField(u.lastNameEnc || ''),
   };
+}
+function fullNameFromUser(u = {}) {
+  const names = decryptNamesFromUser(u);
+  const full = [names.firstName, names.middleName, names.lastName]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (full) return full;
+  if (u.fullName && String(u.fullName).trim()) return String(u.fullName).trim();
+  if (u.firstName || u.lastName) return `${u.firstName||''} ${u.lastName||''}`.trim();
+  return 'Student';
 }
 
 // (Optional) sanity log
@@ -438,6 +447,117 @@ router.get('/student-quiz-analytics', asyncHandler(async (req, res) => {
   });
 }));
 
+/* ========= STUDENT ANALYTICS (NEW, normalized assignment percent) =========
+   GET /student-analytics?teacherId=...&student=...&courseId=optional
+   Returns profile, summary, assignments.grades with percent normalized.
+=========================================================== */
+router.get('/student-analytics', asyncHandler(async (req, res) => {
+  const teacherId = String(req.query.teacherId || '').trim();
+  const studentKey = String(req.query.student || req.query.studentId || req.query.userId || '').trim();
+  const courseIdFilter = req.query.courseId ? String(req.query.courseId) : null;
+
+  if (!teacherId) return res.status(400).json({ success:false, message:'teacherId is required' });
+  if (!studentKey) return res.status(400).json({ success:false, message:'student (id/email) is required' });
+
+  const userRef = await getUserRefByAnyId(studentKey);
+  if (!userRef) return res.status(404).json({ success:false, message:'Student not found' });
+
+  // Profile
+  const userSnap = await userRef.get();
+  const u = userSnap.exists ? (userSnap.data() || {}) : {};
+  const profile = {
+    studentId: userRef.id,
+    name: fullNameFromUser(u),
+  };
+
+  // Read assignment grades (teacher grading route writes here)
+  let gSnap;
+  try {
+    gSnap = await userRef.collection('assignmentGrades').orderBy('gradedAt','desc').get();
+  } catch {
+    gSnap = await userRef.collection('assignmentGrades').get();
+  }
+
+  const baseGrades = gSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }))
+    .filter(row => (courseIdFilter ? String(row.courseId || '') === courseIdFilter : true));
+
+  // Build map of assignmentId -> maxPoints (for rows missing percent/max)
+  const needMax = baseGrades
+    .filter(r => (typeof r.percent !== 'number' || !Number.isFinite(r.percent)) )
+    .map(r => r.assignmentId || r.id)
+    .filter(Boolean);
+
+  const maxByAssignment = new Map();
+  while (needMax.length) {
+    const chunk = needMax.splice(0, 10);
+    const snap = await firestore.collection('assignments').where('__name__','in', chunk).get();
+    const found = new Set();
+    snap.forEach(doc => {
+      const a = doc.data() || {};
+      const max = Number.isFinite(a.maxPoints) ? Number(a.maxPoints)
+                : (Number.isFinite(a.points) ? Number(a.points) : null);
+      maxByAssignment.set(doc.id, max);
+      found.add(doc.id);
+    });
+    chunk.forEach(id => { if (!found.has(id)) maxByAssignment.set(id, null); });
+  }
+
+  // Normalize: ensure percent is always computed
+  const grades = baseGrades.map(row => {
+    const assignmentId = row.assignmentId || row.id;
+    const maxPoints = Number.isFinite(row.maxPoints) ? Number(row.maxPoints)
+                    : (Number.isFinite(row.points) ? Number(row.points)
+                    : maxByAssignment.get(assignmentId));
+    const raw = Number(row.grade);
+    let percent = Number(row.percent);
+    if (!Number.isFinite(percent)) {
+      if (Number.isFinite(raw) && Number.isFinite(maxPoints) && maxPoints > 0) {
+        percent = (raw / maxPoints) * 100;
+      } else if (Number.isFinite(raw) && raw <= 1) {
+        percent = raw * 100; // fractional legacy
+      } else if (Number.isFinite(raw) && raw <= 100) {
+        // ambiguous legacy: treat as percent (keeps historical behavior)
+        percent = raw;
+      } else {
+        percent = 0;
+      }
+    }
+    return {
+      assignmentId,
+      assignmentTitle: row.assignmentTitle || 'Untitled',
+      courseId: row.courseId || null,
+      gradedAt: row.gradedAt || null,
+      grade: Number.isFinite(raw) ? raw : null,         // raw points (for reference)
+      maxPoints: Number.isFinite(maxPoints) ? maxPoints : null,
+      percent: Math.round(percent * 100) / 100          // normalized percent
+    };
+  });
+
+  // Summary
+  const percentVals = grades.map(g => g.percent).filter(p => Number.isFinite(p));
+  const averageAssignmentGrade = percentVals.length
+    ? Math.round((percentVals.reduce((s, n) => s + n, 0) / percentVals.length) * 100) / 100
+    : 0;
+
+  // Placeholders kept for UI compatibility
+  const essays = { submissions: [] };
+  const modules = { completed: [] };
+
+  return res.json({
+    success: true,
+    profile,
+    summary: {
+      averageQuizScore: null,            // your UI pulls quiz avg from /student-quiz-analytics
+      averageAssignmentGrade,
+      modulesCompleted: null,
+      totalModules: null,
+    },
+    assignments: { grades },
+    essays,
+    modules
+  });
+}));
+
 /* ========= ASSIGNMENT ANALYTICS ========= */
 
 // JSON
@@ -482,20 +602,19 @@ router.get('/assignment-analytics/csv', asyncHandler(async (req, res) => {
 
   const rows = [];
   rows.push([
-  'Class','Student','Student ID','Avg Quiz Score','Quizzes Taken','On-time %','Modules Completed','Total Modules','Status'
-]);
-progress.forEach(s => rows.push([
-  s.className || '',
-  s.name || '',
-  s.studentId || '',
-  `${s.avgQuizScore ?? ''}`,
-  `${s.quizzesTaken ?? ''}`,
-  `${s.onTimePct ?? ''}`,
-  `${s.modulesCompleted ?? ''}`,
-  `${s.totalModules ?? ''}`,
-  s.status || '',
-]));
-
+    'Class','Student','Student ID','Avg Quiz Score','Quizzes Taken','On-time %','Modules Completed','Total Modules','Status'
+  ]);
+  (progress || []).forEach(s => rows.push([
+    s.className || '',
+    s.name || '',
+    s.studentId || '',
+    `${s.avgQuizScore ?? ''}`,
+    `${s.quizzesTaken ?? ''}`,
+    `${s.onTimePct ?? ''}`,
+    `${s.modulesCompleted ?? ''}`,
+    `${s.totalModules ?? ''}`,
+    s.status || '',
+  ]));
 
   const csv = rows.map(r => r.map(v => {
     const val = String(v ?? '');
@@ -547,7 +666,7 @@ router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
   doc.fontSize(9).text('Class | Student | ID | Avg | Submitted | On-time% | Modules | Status');
   doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
 
-  progress.slice(0, 150).forEach(s => {
+  (progress || []).slice(0, 150).forEach(s => {
     doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgAssignmentScore}% | ${s.assignmentsSubmitted} | ${s.onTimePct}% | ${s.modulesCompleted}/${s.totalModules} | ${s.status}`);
   });
 

@@ -352,6 +352,27 @@
     return new Date(ms).toLocaleString();
   }
 
+  // ---- NEW: consistent percent for assignments ----
+  function calcAssignPercent(a) {
+    // Prefer server-computed percent if present
+    const p = Number(a?.percent);
+    if (Number.isFinite(p)) return p;
+
+    // Compute from raw grade + max
+    const grade = Number(a?.grade);
+    const max =
+      Number(a?.maxPoints ?? a?.points ?? a?.assignmentMaxPoints ?? a?.totalPoints);
+
+    if (Number.isFinite(grade) && Number.isFinite(max) && max > 0) {
+      return (grade / max) * 100;
+    }
+
+    // Legacy fallbacks
+    if (Number.isFinite(grade) && grade <= 1) return grade * 100; // fraction
+    if (Number.isFinite(grade) && grade <= 100) return grade;     // already percent
+    return 0;
+  }
+
   // ---------- charts ----------
   let charts = { quiz: null, assign: null };
   function destroyChart(key) { if (charts[key]?.destroy) charts[key].destroy(); charts[key] = null; }
@@ -554,18 +575,22 @@
       destroyChart('assign');
       return;
     }
-    el('assignTbody').innerHTML = arows.map(a => `
+
+    const rows = arows.map(a => ({ ...a, _percent: calcAssignPercent(a) }));
+
+    el('assignTbody').innerHTML = rows.map(a => `
       <tr>
         <td>${a.assignmentTitle || a.assignmentId}</td>
-        <td>${pct(a.grade)}</td>
+        <td>${pct(a._percent)}</td>
         <td>${dt(a.gradedAt)}</td>
       </tr>
     `).join('');
+
     renderBar(
       'assign',
       'assignChart',
-      arows.map(a => a.assignmentTitle || a.assignmentId),
-      arows.map(a => Number(a.grade) || 0),
+      rows.map(a => a.assignmentTitle || a.assignmentId),
+      rows.map(a => Number(a._percent) || 0),
       'Grade %'
     );
   }
@@ -650,7 +675,10 @@
       csv.push('');
       csv.push('Assignments');
       csv.push('Assignment,Grade,Graded At');
-      arows.forEach(a => csv.push(`"${a.assignmentTitle || a.assignmentId}","${pct(a.grade)}","${dt(a.gradedAt)}"`));
+      arows.forEach(a => {
+        const ap = calcAssignPercent(a);
+        csv.push(`"${a.assignmentTitle || a.assignmentId}","${pct(ap)}","${dt(a.gradedAt)}"`);
+      });
 
       csv.push('');
       csv.push('Essay Submissions');
@@ -732,7 +760,7 @@
       doc.autoTable({
         startY: y,
         head: [['Assignment', 'Grade', 'Graded At']],
-        body: arows.map(a => [a.assignmentTitle || a.assignmentId, pct(a.grade), dt(a.gradedAt)]),
+        body: arows.map(a => [a.assignmentTitle || a.assignmentId, pct(calcAssignPercent(a)), dt(a.gradedAt)]),
         theme: 'grid', styles: { font: 'times', fontSize: 10 },
         headStyles: { fillColor: [240, 240, 240], textColor: 0 }
       });
