@@ -32,6 +32,18 @@ function fullNameFromUser(u = {}) {
   return 'Student';
 }
 
+// Prefer the school-facing Student ID over UID
+function getStudentIdFromUser(u = {}, fallbackId = '') {
+  const candidates = [
+    u.studentId, u.studentID,
+    u.schoolId, u.schoolID,
+    u.sid, u.idNumber, u.studentNumber,
+  ]
+    .map(v => (v == null ? '' : String(v).trim()))
+    .filter(Boolean);
+  return candidates[0] || String(fallbackId || '').trim();
+}
+
 // (Optional) sanity log
 console.log('[analytics fns]', {
   legacy: !!buildTeacherAnalytics,
@@ -49,25 +61,24 @@ router.get('/quiz-analytics', asyncHandler(async (req, res) => {
 
   const data = await buildTeacherQuizAnalytics({ teacherId, classId });
 
-  // Decrypt student names if possible
+  // Enrich with decrypted names and display Student ID
   if (Array.isArray(data.progress)) {
     for (const s of data.progress) {
-      if (s.studentId) {
-        try {
-          const userRef = await getUserRefByAnyId(s.studentId);
-          if (userRef) {
-            const userSnap = await userRef.get();
-            const user = userSnap.data() || {};
-            const names = decryptNamesFromUser(user);
-            const fullName = [names.firstName, names.middleName, names.lastName]
-              .filter(Boolean)
-              .join(' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-            if (fullName) s.name = fullName;
-          }
-        } catch {}
-      }
+      if (!s.studentId) continue;
+      try {
+        const userRef = await getUserRefByAnyId(s.studentId);
+        if (!userRef) continue;
+        const userSnap = await userRef.get();
+        const user = userSnap.data() || {};
+
+        const names = decryptNamesFromUser(user);
+        const fullName = [names.firstName, names.middleName, names.lastName]
+          .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        if (fullName) s.name = fullName;
+
+        // IMPORTANT: replace internal ID with display Student ID
+        s.studentId = getStudentIdFromUser(user, userRef.id);
+      } catch {}
     }
   }
   return res.json(data);
@@ -102,7 +113,7 @@ router.get('/quiz-analytics/csv', asyncHandler(async (req, res) => {
   (progress || []).forEach(s => rows.push([
     s.className || '',
     s.name || '',
-    s.studentId || '',
+    s.studentId || '', // Already replaced in JSON route
     (s.avgQuizScore ?? '') + '',
     (s.quizzesTaken ?? '') + '',
     (s.totalQuizzes ?? '') + '',
@@ -466,7 +477,8 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
   const userSnap = await userRef.get();
   const u = userSnap.exists ? (userSnap.data() || {}) : {};
   const profile = {
-    studentId: userRef.id,
+    // Show the human-friendly Student ID (fallback to UID)
+    studentId: getStudentIdFromUser(u, userRef.id),
     name: fullNameFromUser(u),
   };
 
@@ -568,25 +580,24 @@ router.get('/assignment-analytics', asyncHandler(async (req, res) => {
 
   const data = await buildTeacherAssignmentAnalytics({ teacherId, classId });
 
-  // Decrypt student names if possible
+  // Enrich with decrypted names and display Student ID
   if (Array.isArray(data.progress)) {
     for (const s of data.progress) {
-      if (s.studentId) {
-        try {
-          const userRef = await getUserRefByAnyId(s.studentId);
-          if (userRef) {
-            const userSnap = await userRef.get();
-            const user = userSnap.data() || {};
-            const names = decryptNamesFromUser(user);
-            const fullName = [names.firstName, names.middleName, names.lastName]
-              .filter(Boolean)
-              .join(' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-            if (fullName) s.name = fullName;
-          }
-        } catch {}
-      }
+      if (!s.studentId) continue;
+      try {
+        const userRef = await getUserRefByAnyId(s.studentId);
+        if (!userRef) continue;
+        const userSnap = await userRef.get();
+        const user = userSnap.data() || {};
+
+        const names = decryptNamesFromUser(user);
+        const fullName = [names.firstName, names.middleName, names.lastName]
+          .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        if (fullName) s.name = fullName;
+
+        // IMPORTANT: replace internal ID with display Student ID
+        s.studentId = getStudentIdFromUser(user, userRef.id);
+      } catch {}
     }
   }
   return res.json(data);
@@ -663,11 +674,13 @@ router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
 
   doc.fontSize(12).text('Student Progress', { underline:true });
   doc.moveDown(0.2);
-  doc.fontSize(9).text('Class | Student | ID | Avg | Submitted | On-time% | Modules | Status');
+  doc.fontSize(9).text('Class | Student | ID | Avg% | Submitted/Total | On-time% | Modules | Status');
   doc.moveDown(0.2).moveTo(doc.x, doc.y).lineTo(559, doc.y).stroke();
 
   (progress || []).slice(0, 150).forEach(s => {
-    doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgAssignmentScore}% | ${s.assignmentsSubmitted} | ${s.onTimePct}% | ${s.modulesCompleted}/${s.totalModules} | ${s.status}`);
+    const st = `${s.assignmentsSubmitted ?? 0}/${s.totalAssignments ?? 0}`;
+    const mods = `${s.modulesCompleted ?? 0}/${s.totalModules ?? 0}`;
+    doc.text(`${s.className} | ${s.name} | ${s.studentId} | ${s.avgAssignmentScore}% | ${st} | ${s.onTimePct ?? 0}% | ${mods} | ${s.status}`);
   });
 
   doc.end();
