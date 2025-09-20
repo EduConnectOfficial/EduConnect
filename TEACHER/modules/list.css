@@ -310,7 +310,7 @@ body {
 }
 
 .btn-amber:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
   transform: scale(1.05);
   color: #fff;
 }
@@ -452,8 +452,8 @@ body {
 
 .btn-edit:hover {
   color: #fff;
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-  border-color: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: #FF6A00;
+  border-color: #FF6A00;
 }
 
 /* Neutral secondary button used in modal footers for non-brand actions */

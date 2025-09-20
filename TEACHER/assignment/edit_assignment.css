@@ -244,7 +244,7 @@ body {
 }
 
 .btn-amber:hover {
-    background: linear-gradient(to bottom, #ff8533, #cc3300);
+    background: linear-gradient(to bottom, var(--brand-accent-2), var(--brand-accent-1));
     transform: scale(1.05);
     color: #fff;
 }

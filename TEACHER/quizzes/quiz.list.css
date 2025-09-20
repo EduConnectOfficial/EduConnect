@@ -246,7 +246,7 @@ body {
   margin: 4px 0 18px;
 }
 
-.page-title.brand {
+.page-title {
   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
   -webkit-background-clip: text;
   background-clip: text;
