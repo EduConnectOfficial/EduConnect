@@ -356,10 +356,10 @@ body {
 
 
 /* Logout button reveal on sidebar hover (container variant) */
-.logout-btn {
+ .logout-btn {
     background: linear-gradient(to bottom,
-            #6EC9F5 0%,
-            #004891 100%);
+        #6EC9F5 0%,
+        #004891 100%);
     border: none;
     padding: 0.6rem 1.5rem;
     border-radius: 30px;
@@ -373,15 +373,17 @@ body {
     opacity: 0;
     transition: opacity 0.3s ease, filter 0.3s ease;
     text-align: center;
-}
+  }
 
-.sidebar:hover .logout-btn {
-    opacity: 1;
+#sidebar-container:hover .logout-btn {
+  opacity: 1;
 }
 
 .logout-btn:hover {
-    filter: brightness(1.08);
+  opacity: .85;
+  color: var(--brand-dark-1);
 }
+
 
 
 /* =======================

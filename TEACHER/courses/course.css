@@ -493,32 +493,34 @@ background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   }
 }
 
-.logout-btn {
-  background: linear-gradient(to bottom,
-      #6EC9F5 0%,
-      #004891 100%);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 30px;
-  color: #eaf2ff;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: none;
-  white-space: nowrap;
-  display: inline-block;
-  opacity: 0;
-  transition: opacity 0.3s ease, filter 0.3s ease;
-  text-align: center;
-}
+ .logout-btn {
+    background: linear-gradient(to bottom,
+        #6EC9F5 0%,
+        #004891 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    text-align: center;
+  }
 
-.sidebar:hover .logout-btn {
+#sidebar-container:hover .logout-btn {
   opacity: 1;
 }
 
 .logout-btn:hover {
-  filter: brightness(1.08);
+  opacity: .85;
+  color: var(--brand-dark-1);
 }
+
 
 /* Main Content */
 .main {

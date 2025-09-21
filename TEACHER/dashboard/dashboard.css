@@ -171,21 +171,25 @@ body {
   justify-content: center;
 }
 
-.logout-btn {
-  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
-  border: none;
-  padding: .6rem 1.5rem;
-  border-radius: 20px;
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity .3s ease, color .3s;
-  user-select: none;
-  cursor: pointer;
-}
+
+  .logout-btn {
+    background: linear-gradient(to bottom,
+        #6EC9F5 0%,
+        #004891 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    text-align: center;
+  }
 
 #sidebar-container:hover .logout-btn {
   opacity: 1;

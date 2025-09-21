@@ -211,32 +211,34 @@ body {
   filter: brightness(1.06);
   color: #fff;
 }
-
-.logout-btn {
-    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
+ .logout-btn {
+    background: linear-gradient(to bottom,
+        #6EC9F5 0%,
+        #004891 100%);
     border: none;
-    padding: .6rem 1.5rem;
-    border-radius: 20px;
-    color: #fff;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: bold;
     cursor: pointer;
+    text-decoration: none;
     white-space: nowrap;
     display: inline-block;
     opacity: 0;
-    transition: opacity .3s ease, color .3s ease;
-    user-select: none;
+    transition: opacity 0.3s ease, filter 0.3s ease;
     text-align: center;
-}
+  }
 
-.sidebar:hover .logout-btn {
-    opacity: 1;
+#sidebar-container:hover .logout-btn {
+  opacity: 1;
 }
 
 .logout-btn:hover {
-    opacity: .85;
-    color: var(--brand-dark-1);
+  opacity: .85;
+  color: var(--brand-dark-1);
 }
+
 /* ========== 7) Themed Selects / Form Focus ========== */
 .toolbar-label {
   font-weight: 700;

@@ -664,13 +664,15 @@ background:#113667;
     text-align: center;
   }
 
-  .sidebar:hover .logout-btn {
-    opacity: 1;
-  }
+#sidebar-container:hover .logout-btn {
+  opacity: 1;
+}
 
-  .logout-btn:hover {
-    filter: brightness(1.08);
-  }
+.logout-btn:hover {
+  opacity: .85;
+  color: var(--brand-dark-1);
+}
+
 
   /* Main Content */
   .main {
