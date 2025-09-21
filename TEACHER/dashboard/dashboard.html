@@ -144,6 +144,7 @@
     </div>
   </div>
 
+  <!-- Sidebar loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
@@ -218,12 +219,33 @@
 
   <!-- Dashboard logic -->
   <script>
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:5000'
-        : ''; // same-origin on Railway
+    // -------- API base detection + helpers (same pattern as login) ----------
+    (function decideApiBase(){
+      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const manual = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      let base = '';
+      if (manual) {
+        base = manual.replace(/\/+$/,'');
+      } else if (isLocal(location.hostname)) {
+        base = 'http://localhost:5000';
+      } else {
+        base = ''; // same-origin
+      }
+      window.API_BASE = base;
+    })();
 
-    async function fetchJSONFallback(paths, options) {
+    function makeURLs(pathWithQuery) {
+      const clean = (s) => s.replace(/\/+/g,'/');
+      const p = pathWithQuery.replace(/^\/+/,'');
+      const b = window.API_BASE || '';
+      return [
+        clean(`${b}/${p}`),
+        clean(`${b}/api/${p}`)
+      ];
+    }
+
+    async function fetchJSONFallback(pathsOrPath, options) {
+      const paths = Array.isArray(pathsOrPath) ? pathsOrPath : [pathsOrPath];
       for (const p of paths) {
         try {
           const r = await fetch(p, options);
@@ -236,6 +258,7 @@
       throw new Error('All endpoints failed');
     }
 
+    // ---------- DOM refs ----------
     const elStatClasses  = document.getElementById('statClasses');
     const elStatStudents = document.getElementById('statStudents');
     const elStatModules  = document.getElementById('statModules');
@@ -247,7 +270,8 @@
     const ulSchedule   = document.getElementById('upcomingSchedule');
     const ulAnn        = document.getElementById('announcementsSnapshot');
 
-    const charts = {};
+    // ---------- render helpers ----------
+    const chartsMap = {};
     function num(v){ return (typeof v === 'number' && !Number.isNaN(v)) ? v : 0; }
     function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
 
@@ -347,7 +371,6 @@
       }).join('');
     }
 
-    const chartsMap = {};
     function upsertChart(canvasId, type, data, options){
       if (chartsMap[canvasId]) chartsMap[canvasId].destroy();
       const el = document.getElementById(canvasId);
@@ -375,13 +398,9 @@
     async function renderQuizChart(teacherId) {
       const titleEl = document.getElementById('quizPerfTitle');
       try {
-        const { response, json:data } = await fetchJSONFallback(
-          [
-            `${API_BASE}/api/teacher/quiz-analytics?teacherId=${encodeURIComponent(teacherId)}`,
-            `${API_BASE}/teacher/quiz-analytics?teacherId=${encodeURIComponent(teacherId)}`
-          ],
-          { method: 'GET' }
-        );
+        const urls = makeURLs(`teacher/quiz-analytics?teacherId=${encodeURIComponent(teacherId)}`);
+        const { json:data } = await fetchJSONFallback(urls, { method: 'GET' });
+
         const fullLabels = data?.byQuiz?.labels || [];
         const values     = data?.byQuiz?.avgScores || [];
         const displayLabels = fullLabels.map(l => cleanQuizLabel(l));
@@ -449,13 +468,8 @@
       try{
         if (!window.currentUser?.userId) throw new Error("Missing currentUser.userId");
 
-        const { response, json:js } = await fetchJSONFallback(
-          [
-            `${API_BASE}/api/teacher/dashboard-stats?teacherId=${encodeURIComponent(window.currentUser.userId)}`,
-            `${API_BASE}/teacher/dashboard-stats?teacherId=${encodeURIComponent(window.currentUser.userId)}`
-          ],
-          { method: 'GET' }
-        );
+        const urls = makeURLs(`teacher/dashboard-stats?teacherId=${encodeURIComponent(window.currentUser.userId)}`);
+        const { response, json:js } = await fetchJSONFallback(urls, { method: 'GET' });
 
         if (!response.ok || !js.success){
           throw new Error(js.message || 'Failed to load dashboard data');

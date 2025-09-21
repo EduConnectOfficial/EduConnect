@@ -12,10 +12,8 @@
 </head>
 
 <body>
-
   <!-- Top Logo -->
   <div class="top-logo text-center brand">
-    <!-- CSIS logo beside EduConnect -->
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
@@ -61,7 +59,6 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <!-- message gets injected here -->
           <p class="text-dark" id="attemptMessage" class="mb-0"></p>
         </div>
         <div class="modal-footer">
@@ -84,11 +81,26 @@
 
   <!-- Login Logic -->
   <script>
-    // ✅ Only change: dynamic API base. Same-origin on Railway; localhost in dev.
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:5000'
-        : ''; // same-origin in production
+    // -------------------------------
+    // API base detection (in this order):
+    // 1) window.API_URL (optional manual override)
+    // 2) Same-origin (production on Railway)
+    // 3) http://localhost:5000 (dev)
+    // -------------------------------
+    (function decideApiBase(){
+      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const manual = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+
+      let base = '';
+      if (manual) {
+        base = manual.replace(/\/+$/,'');   // no trailing slash
+      } else if (isLocal(location.hostname)) {
+        base = 'http://localhost:5000';
+      } else {
+        base = ''; // same-origin
+      }
+      window.API_BASE = base;
+    })();
 
     const form = document.getElementById("loginForm");
     const btn = document.getElementById("loginBtn");
@@ -98,10 +110,9 @@
     const attemptMessage = document.getElementById("attemptMessage");
 
     let countdownTimer = null;
-    let failedAttempts = 0;           // used by showAttemptNotice()
+    let failedAttempts = 0;
     const MAX_ATTEMPTS = 5;
 
-    // per-username attempts in this session
     const attemptsKey = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
     const getAttempts = (u) => Number(sessionStorage.getItem(attemptsKey(u))) || 0;
     const setAttempts = (u, n) => sessionStorage.setItem(attemptsKey(u), String(n));
@@ -122,38 +133,41 @@
     const normalize = (v) => String(v || "").trim();
     const normalizeUserKey = (v) => normalize(v).toLowerCase();
 
-    // Small helper: try a list of URLs in order until one works (non-404)
+    // Build possible URLs for a given path, trying both root and /api variants.
+    function makeURLs(path) {
+      const clean = (s) => s.replace(/\/+/g,'/'); // collapse duplicate slashes
+      const bases = [window.API_BASE || ''];
+      // try both /path and /api/path
+      return [
+        clean(`${bases[0]}/${path.replace(/^\/+/,'')}`),
+        clean(`${bases[0]}/api/${path.replace(/^\/+/,'')}`),
+      ];
+    }
+
     async function fetchJSONFallback(urls, options) {
       for (const url of urls) {
         try {
           const r = await fetch(url, options);
-          // If 404, try next; otherwise return result (even if 4xx for caller to handle)
-          if (r.status === 404) continue;
+          if (r.status === 404) continue; // try next pattern
           let json = {};
           try { json = await r.json(); } catch { json = {}; }
           return { response: r, json };
         } catch {
-          // network error → try next
-          continue;
+          continue; // network error → try next
         }
       }
-      // nothing worked
       throw new Error('All endpoints failed');
     }
 
     async function usernameExists(username) {
       const q = new URLSearchParams({ username });
-      const urls = [
-        `${API_BASE}/check-username?${q.toString()}`,              // root path
-        `${API_BASE}/api/users/check-username?${q.toString()}`,    // /api path
-      ];
+      const urls = makeURLs(`check-username?${q.toString()}`);
       try {
         const { response, json } = await fetchJSONFallback(urls, { method: 'GET' });
         if (!response.ok) return false;
-        // Expecting something like { taken: true/false } or { exists: true/false }
         return json.taken === true || json.exists === true;
       } catch {
-        // network hiccup: don't block login attempt
+        // If the check is unreachable, don't block login attempt
         return true;
       }
     }
@@ -184,18 +198,16 @@
         errorBox.classList.add("minor");
       };
 
-      btn.disabled = true;  // keep disabled during lock
+      btn.disabled = true;
       update();
       countdownTimer = setInterval(update, 1000);
     }
 
-    // General modal helper
     function showModal(msg) {
       attemptMessage.textContent = msg;
       attemptModal.show();
     }
 
-    // Unified attempt notice
     function showAttemptNotice() {
       let msg = `You have made ${failedAttempts} failed login attempt(s).`;
       if (failedAttempts < MAX_ATTEMPTS) {
@@ -209,13 +221,10 @@
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      if (countdownTimer) return; // prevent submit while locked countdown
+      if (countdownTimer) return;
 
-      const usernameRaw = document.getElementById("username").value;
-      const passwordRaw = document.getElementById("password").value;
-
-      const username = normalize(usernameRaw);
-      const password = normalize(passwordRaw);
+      const username = normalize(document.getElementById("username").value);
+      const password = normalize(document.getElementById("password").value);
 
       if (!username || !password) {
         showModal("Please fill in both fields.");
@@ -227,7 +236,6 @@
       setBtnBusy(true);
 
       try {
-        // Pre-check username exists
         const exists = await usernameExists(username);
         if (!exists) {
           showModal("No account found with that username.");
@@ -235,11 +243,7 @@
           return;
         }
 
-        // Try /login then /api/login
-        const urls = [
-          `${API_BASE}/login`,
-          `${API_BASE}/api/login`,
-        ];
+        const urls = makeURLs('login');
         const { response, json: data } = await fetchJSONFallback(urls, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -247,13 +251,11 @@
         });
 
         if (response.ok && data.user?.isTeacher) {
-          // safety: ensure same username
           if (normalizeUserKey(data.user.username) !== normalizeUserKey(username)) {
             showModal("Login response mismatch. Please try again.");
             setBtnBusy(false);
             return;
           }
-          // success -> reset attempts for this username
           clearAttempts(username);
           failedAttempts = 0;
 
@@ -268,19 +270,15 @@
         }
 
         if (response.status === 423) {
-          // Temporary lock
-          const until = data.lockedUntil || 0;
-          startCountdown(until);
+          startCountdown(data.lockedUntil || 0);
           return;
         }
 
         if (response.status === 403) {
-          // Deactivated
           showModal(data.error || "Account is deactivated due to multiple failed attempts. Please reset your password.");
           return;
         }
 
-        // Invalid credentials or other 4xx: increment attempts + show notice
         failedAttempts = getAttempts(username) + 1;
         setAttempts(username, failedAttempts);
         showAttemptNotice();
