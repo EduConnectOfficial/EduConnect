@@ -46,7 +46,7 @@
     </div>
   </div>
 
-  <!-- Bootstrap Modal for Notices / Attempts -->
+  <!-- Notice Modal -->
   <div class="modal fade" id="attemptModal" tabindex="-1" aria-hidden="true" aria-labelledby="attemptModalLabel">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content text-center">
@@ -64,8 +64,8 @@
     </div>
   </div>
 
-  <!-- Optional manual override (set to your Railway URL if you want to force it)
-       <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
+  <!-- Optional manual override (uncomment and set if you want to force a specific API host)
+  <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
   -->
 
   <!-- Bootstrap JS -->
@@ -81,44 +81,39 @@
 
   <!-- Login Logic -->
   <script>
-    // -------------------------------
-    // API base detection (priority):
-    // 1) window.API_URL (manual override)
-    // 2) Same-origin (production on Railway)
-    // 3) http://localhost:5000 (dev)
-    // -------------------------------
+    // ---------- API base detection ----------
     (function decideApiBase(){
       const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
-      const manual = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
       let base = '';
       if (manual) {
-        base = manual.replace(/\/+$/,'');
+        base = manual.replace(/\/+$/,'');      // no trailing slash
       } else if (isLocal(location.hostname)) {
         base = 'http://localhost:5000';
       } else {
-        base = ''; // same-origin on Railway
+        base = '';                             // same-origin on Railway
       }
       window.API_BASE = base;
-      // console.log('API_BASE', API_BASE);
     })();
 
+    // ---------- DOM refs ----------
     const form     = document.getElementById("loginForm");
     const btn      = document.getElementById("loginBtn");
     const errorBox = document.getElementById("loginError");
-
     const attemptModal   = new bootstrap.Modal(document.getElementById("attemptModal"));
     const attemptMessage = document.getElementById("attemptMessage");
 
+    // ---------- helpers ----------
     let countdownTimer = null;
     let failedAttempts = 0;
     const MAX_ATTEMPTS  = 5;
 
-    const attemptsKey     = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
-    const getAttempts     = (u) => Number(sessionStorage.getItem(attemptsKey(u))) || 0;
-    const setAttempts     = (u, n) => sessionStorage.setItem(attemptsKey(u), String(n));
-    const clearAttempts   = (u) => sessionStorage.removeItem(attemptsKey(u));
-    const normalize       = (v) => String(v || "").trim();
-    const normalizeUserId = (v) => normalize(v).toLowerCase();
+    const attemptsKey   = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
+    const getAttempts   = (u) => Number(sessionStorage.getItem(attemptsKey(u))) || 0;
+    const setAttempts   = (u, n) => sessionStorage.setItem(attemptsKey(u), String(n));
+    const clearAttempts = (u) => sessionStorage.removeItem(attemptsKey(u));
+    const normalize     = (v) => String(v || "").trim();
+    const lower         = (v) => normalize(v).toLowerCase();
 
     function setBtnBusy(busy) {
       if (busy) {
@@ -132,37 +127,36 @@
       }
     }
 
-    // Build ordered candidates for each endpoint
+    // Build ordered candidates for each endpoint to match your backend
     const ENDPOINTS = {
       checkUsername(username) {
         const q = `username=${encodeURIComponent(username)}`;
         return [
-          `${API_BASE}/api/users/check-username?${q}`, // most likely
-          `${API_BASE}/users/check-username?${q}`,
-          `${API_BASE}/api/check-username?${q}`,
-          `${API_BASE}/check-username?${q}`,
+          `${API_BASE}/api/users/check-username?${q}`, // usersRoutes.js (recommended)
+          `${API_BASE}/check-username?${q}`,           // authRoutes fallback (you also have this)
         ];
       },
       login() {
         return [
-          `${API_BASE}/login`,
-          `${API_BASE}/api/login`,
-          `${API_BASE}/auth/login`,
-          `${API_BASE}/api/auth/login`,
+          `${API_BASE}/login`,              // authRoutes.js (mounted at '/')
+          `${API_BASE}/api/login`,          // fallback
+          `${API_BASE}/api/auth/login`,     // fallback
         ];
       }
     };
 
-    // Try a list of URLs in order until one is NOT a 404
+    // Try a list of URLs in order until one is NOT a 404 (or network error)
     async function fetchJSONFallback(urls, options) {
       for (const url of urls) {
         try {
           const r = await fetch(url, options);
-          if (r.status === 404) continue;        // try next pattern
+          if (r.status === 404) continue; // try next variant
           let json = {};
           try { json = await r.json(); } catch {}
           return { response: r, json };
-        } catch { /* network error → try next */ }
+        } catch {
+          // network error → try next
+        }
       }
       throw new Error('All endpoints failed');
     }
@@ -176,7 +170,7 @@
         if (!response.ok) return false;
         return json.taken === true || json.exists === true;
       } catch {
-        // If the check is unreachable, don’t block login attempt
+        // If unreachable (network/CORS), don't block login; let /login tell us
         return true;
       }
     }
@@ -228,6 +222,7 @@
       attemptModal.show();
     }
 
+    // ---------- submit ----------
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
       if (countdownTimer) return;
@@ -245,7 +240,7 @@
       setBtnBusy(true);
 
       try {
-        // Pre-check username exists (non-blocking if unreachable)
+        // Pre-check username exists (fast UX; non-blocking if API down)
         const exists = await usernameExists(username);
         if (!exists) {
           showModal("No account found with that username.");
@@ -265,12 +260,11 @@
 
         if (response.ok && data.user?.isTeacher) {
           // safety: ensure same username
-          if (normalizeUserId(data.user.username) !== normalizeUserId(username)) {
+          if (lower(data.user.username) !== lower(username)) {
             showModal("Login response mismatch. Please try again.");
             setBtnBusy(false);
             return;
           }
-          // success -> reset attempts for this username
           clearAttempts(username);
           failedAttempts = 0;
 
