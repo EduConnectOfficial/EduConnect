@@ -12,6 +12,10 @@
 
   <!-- Sidebar / shared -->
   <link rel="stylesheet" href="../courses/courses.css" />
+  <style>
+    .progress.progress-xs { height: 6px; }
+    .course-progress-wrap .progress-label { font-size: .85rem; }
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -108,7 +112,7 @@
     });
   </script>
 
-  <!-- Auth + Data (UPDATED to match backend) -->
+  <!-- Auth + Data (UPDATED with course progress) -->
   <script>
     const API_BASE = 'http://localhost:5000';
 
@@ -145,6 +149,8 @@
     const favKey = 'courseFavs';
     const favs = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
     let myCourses = [];
+    let studentClassIds = [];
+    const courseProgressCache = new Map(); // courseId -> { pct, completedLessons, totalLessons }
 
     // --- robust timestamp parsing ---
     function toDateMaybe(v) {
@@ -163,6 +169,28 @@
       return isNaN(d.getTime()) ? null : d;
     }
 
+    // Publish helpers for visibility
+    function tsToMs(ts){
+      if (!ts) return null;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts === 'string') {
+        const t = Date.parse(ts);
+        return Number.isFinite(t) ? t : null;
+      }
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      const d = new Date(ts);
+      return Number.isFinite(d.getTime()) ? d.getTime() : null;
+    }
+    function isPublished(m){
+      const at = tsToMs(m.publishAt);
+      return at === null || at <= Date.now();
+    }
+    function isVisibleModule(m){
+      return (m.archived !== true) && isPublished(m);
+    }
+
     // Try multiple publish field names (defensive)
     function getPublishDate(course) {
       const fields = [
@@ -178,7 +206,21 @@
       return null;
     }
 
-    // Fetch courses (server hides scheduled by default for students)
+    // Fetch student's enrolled classIds (used to filter modules)
+    async function fetchStudentClassIds() {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`
+        );
+        const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
+        if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
+        return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    // Fetch courses (server hides scheduled for students by default)
     async function fetchCoursesForStudent() {
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true&visibility=student&onlyPublished=true`;
       const res = await fetch(url);
@@ -186,8 +228,6 @@
       if (!res.ok || !js.success) throw new Error(js.message || 'Failed to load courses');
 
       const now = Date.now();
-
-      // Normalize + safeguard (still hide any stray scheduled/archived)
       myCourses = (js.courses || [])
         .map(c => {
           const createdAt = toDateMaybe(c.createdAt);
@@ -208,7 +248,69 @@
         .filter(c => !c.archived && !(c.publishAt && c.publishAt.getTime() > now));
 
       populateSchoolYearFromCategories(myCourses);
+      await ensureClassIdsLoaded();
+      await prefetchCourseProgress(myCourses); // compute progress per course
       renderGrid();
+    }
+
+    async function ensureClassIdsLoaded() {
+      if (!studentClassIds.length) {
+        studentClassIds = await fetchStudentClassIds();
+      }
+    }
+
+    // Fetch visible modules for a course, filtered by student's classIds
+    async function fetchVisibleModulesForCourse(courseId) {
+      if (!studentClassIds.length) return [];
+      const perClassFetches = studentClassIds.map(async cid => {
+        const res = await fetch(
+          `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`
+        );
+        if (!res.ok) return [];
+        return res.json();
+      });
+      const results = await Promise.all(perClassFetches);
+      const byId = new Map();
+      results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
+      return Array.from(byId.values()).filter(isVisibleModule);
+    }
+
+    // Compute per-course progress by summing per-lesson completion across its modules
+    async function computeCourseProgress(courseId) {
+      const email = userData.email;
+      const modules = await fetchVisibleModulesForCourse(courseId);
+
+      if (!modules.length) {
+        return { pct: 0, completedLessons: 0, totalLessons: 0 };
+      }
+
+      const items = await Promise.all(modules.map(async m => {
+        try {
+          const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/lessons/completion`);
+          const j = await r.json().catch(()=>({completedIdx:[], lessonCount: m.moduleSubTitles?.length || m.lessonCount || 0}));
+          const lessonCount = Number.isFinite(j.lessonCount) ? j.lessonCount : 0;
+          const completedCount = Array.isArray(j.completedIdx) ? j.completedIdx.length : 0;
+          return { completed: completedCount, total: lessonCount };
+        } catch {
+          const lc = m.moduleSubTitles?.length || m.lessonCount || 0;
+          return { completed: 0, total: lc };
+        }
+      }));
+
+      const completedLessons = items.reduce((a,b)=>a+b.completed, 0);
+      const totalLessons     = items.reduce((a,b)=>a+b.total, 0);
+      const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+      return { pct, completedLessons, totalLessons };
+    }
+
+    // Prefetch course progress for all courses (with caching)
+    async function prefetchCourseProgress(courses) {
+      const tasks = courses.map(async c => {
+        const prog = await computeCourseProgress(c.id);
+        courseProgressCache.set(c.id, prog);
+      });
+      await Promise.all(tasks);
     }
 
     // Reuse School Year select to filter by Category
@@ -225,6 +327,43 @@
 
       const semSel = document.getElementById('filterSemester');
       if (semSel) semSel.value = 'All';
+    }
+
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    function progressPillHtml(courseId) {
+      const prog = courseProgressCache.get(courseId);
+      const pct = prog ? prog.pct : 0;
+      const label = (pct === 100) ? 'Completed' : (pct > 0 ? 'In progress' : 'Not started');
+      const stateClass =
+        pct === 100 ? 'text-bg-success' :
+        pct > 0     ? 'text-bg-secondary' : 'text-bg-secondary';
+      const countText = prog ? `${prog.completedLessons}/${prog.totalLessons} lessons` : '—';
+      return `
+        <div class="course-progress-wrap text-end">
+          <div class="progress progress-xs mb-1" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar ${pct===100?'bg-success':''}" style="width:${pct}%"></div>
+          </div>
+          <div class="progress-label text-muted">
+            ${pct}% • ${countText} • <span class="badge ${stateClass}">${label}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function primaryCtaText(courseId) {
+      const prog = courseProgressCache.get(courseId);
+      if (!prog || prog.totalLessons === 0) return 'View Course';
+      if (prog.pct >= 100) return 'Review';
+      if (prog.pct > 0) return 'Continue';
+      return 'Start';
     }
 
     function renderGrid() {
@@ -285,8 +424,15 @@
               <span class="text-muted small">${c.createdAt ? 'Added: ' + c.createdAt.toLocaleDateString() : ''}</span>
             </div>
 
+            <!-- Progress (async) -->
+            <div class="mb-2" id="prog-${c.id}">
+              ${progressPillHtml(c.id)}
+            </div>
+
             <div class="d-flex flex-wrap gap-2">
-              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">Continue</a>
+              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">
+                <i class="bi bi-play-circle me-1"></i> ${primaryCtaText(c.id)}
+              </a>
               <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber-outline">View Course</a>
             </div>
           </div>
@@ -305,15 +451,6 @@
       });
     }
 
-    function escapeHTML(str='') {
-      return String(str)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'",'&#039;');
-    }
-
     // Boot / Wiring
     document.addEventListener('DOMContentLoaded', async () => {
       const headerSearch = document.getElementById('courseSearch');
@@ -326,7 +463,11 @@
       document.getElementById('sortBy').addEventListener('change', renderGrid);
 
       try {
+        // Load courses and initial (cached) progress
         await fetchCoursesForStudent();
+
+        // After progress cache is filled, update visible cards (in case filters changed)
+        renderGrid();
       } catch (err) {
         console.error(err);
         const grid = document.getElementById('coursesGrid');

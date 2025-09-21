@@ -12,6 +12,13 @@
 
   <!-- Reuse student theme -->
   <link rel="stylesheet" href="../modules/list.css" />
+  <style>
+    .attachment-item{padding:.5rem 0;border-bottom:1px dashed rgba(0,0,0,.08)}
+    .attachment-badge{background:var(--brand-accent-1,#3b6bb4);color:#fff}
+    .viewer-card iframe,.viewer-card video,.viewer-card img,.viewer-card audio{width:100%;min-height:360px;border:0;border-radius:12px}
+    .spinner-wrap{display:none; align-items:center; justify-content:center; background:rgba(17,54,103,.5); padding:2rem; border-radius:12px}
+    .safe-pre{white-space:pre-wrap}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -41,13 +48,25 @@
       <div class="content container-fluid">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h1 class="page-title brand mb-0" id="moduleTitle">Module</h1>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 align-items-center">
             <a id="backToCourseBtn" class="btn btn-sm btn-amber-outline" href="#">
               <i class="bi bi-arrow-left"></i> Back to Modules
             </a>
-            <span id="completeBadge" class="badge text-bg-secondary align-self-center" style="display: flex; align-items: center; justify-content: center; min-width: 110px; min-height: 32px;">Not completed</span>
+
+            <!-- NEW: Module-level navigation -->
+            <div class="btn-group" role="group" aria-label="Module navigation">
+              <button id="prevModuleBtn" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-skip-backward"></i> Prev Module
+              </button>
+              <button id="nextModuleBtn" class="btn btn-sm btn-outline-secondary">
+                Next Module <i class="bi bi-skip-forward"></i>
+              </button>
+            </div>
+
+            <span id="progressPill" class="badge text-bg-info d-none"></span>
+            <span id="completeBadge" class="badge text-bg-secondary align-self-center" style="display:flex;align-items:center;justify-content:center;min-width:170px;min-height:32px;">Lesson: Not completed</span>
             <button id="completeBtn" class="btn btn-sm btn-amber">
-              <i class="bi bi-check2-circle me-1"></i> Mark Module Complete
+              <i class="bi bi-check2-circle me-1"></i> Mark Lesson Complete
             </button>
           </div>
         </div>
@@ -109,7 +128,7 @@
     </div>
   </div>
 
-  <!-- ===== File Preview Modal (matches teacher) ===== -->
+  <!-- ===== File Preview Modal ===== -->
   <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
@@ -138,7 +157,7 @@
     </div>
   </div>
 
-  <!-- ===== Success Modal (brand-aligned) ===== -->
+  <!-- ===== Success Modal ===== -->
   <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -280,7 +299,6 @@
       const map = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'Link' };
       document.getElementById('fileTypeText').textContent = map[kind] || 'Link';
       document.getElementById('openInNewTabBtn').href = url || '#';
-      // Put/refresh a badge next to the modal title like teacher
       const titleEl = document.getElementById('filePreviewModalLabel');
       let badge = document.getElementById('fileKindBadge');
       if (!badge) {
@@ -336,7 +354,6 @@
         const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=gview; container.appendChild(i); return;
       }
 
-      // Fallback
       const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=done; container.appendChild(obj);
       setTimeout(done, 1000);
     }
@@ -366,13 +383,12 @@
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
 
-    // ===== Success modal helper (uses your CSS: gradient header + #successOkBtn CTA) =====
+    // ===== Success modal helper =====
     function showSuccessModal(message = 'Done!', opts = {}) {
       const modalEl = document.getElementById('successModal');
       document.getElementById('successMsg').textContent = message;
       document.getElementById('successModalLabel').textContent = opts.title || 'Success';
       const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-      // Optional onOk callback (no listener leak thanks to { once: true })
       const okBtn = document.getElementById('successOkBtn');
       if (opts.onOk) {
         okBtn.addEventListener('click', opts.onOk, { once: true });
@@ -389,6 +405,96 @@
     let currentIdx = 0;
     let lessonCount = 0;
     let courseId = null;
+
+    // NEW: for module-level navigation
+    let courseModules = [];            // visible modules for this course (student-scoped)
+    let currentModuleIndex = -1;       // index in courseModules
+
+    // ---------- Helpers reused from list page ----------
+    function tsToMs(ts){
+      if (!ts) return null;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts === 'string') {
+        const t = Date.parse(ts);
+        return Number.isFinite(t) ? t : null;
+      }
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      const d = new Date(ts);
+      return Number.isFinite(d.getTime()) ? d.getTime() : null;
+    }
+    function isPublished(m){
+      const at = tsToMs(m.publishAt);
+      return at === null || at <= Date.now();
+    }
+    function isVisibleToStudent(m){
+      return (m.archived !== true) && isPublished(m);
+    }
+
+    async function fetchStudentClassIds() {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/students/${encodeURIComponent(user.userId)}/enrollments?includeTeacher=true`
+        );
+        const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
+        if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
+        return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
+
+    async function fetchVisibleModulesForCourse(courseId) {
+      const studentClassIds = await fetchStudentClassIds();
+      if (!studentClassIds.length) return [];
+
+      const perClassFetches = studentClassIds.map(async cid => {
+        const res = await fetch(
+          `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`
+        );
+        if (!res.ok) return [];
+        return res.json();
+      });
+
+      const results = await Promise.all(perClassFetches);
+      const byId = new Map();
+      results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
+      const visible = Array.from(byId.values()).filter(isVisibleToStudent);
+      // sort by moduleNumber ASC for navigation
+      visible.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+      return visible;
+    }
+
+    function updateModuleNavButtons() {
+      const prevBtn = document.getElementById('prevModuleBtn');
+      const nextBtn = document.getElementById('nextModuleBtn');
+
+      const atStart = currentModuleIndex <= 0;
+      const atEnd   = currentModuleIndex >= courseModules.length - 1;
+
+      prevBtn.disabled = atStart;
+      nextBtn.disabled = atEnd;
+
+      // optional: titles for hover
+      prevBtn.title = atStart ? 'No previous module' : `Go to Module #${courseModules[currentModuleIndex-1].moduleNumber || ''}: ${courseModules[currentModuleIndex-1].title || ''}`;
+      nextBtn.title = atEnd   ? 'No next module'     : `Go to Module #${courseModules[currentModuleIndex+1].moduleNumber || ''}: ${courseModules[currentModuleIndex+1].title || ''}`;
+    }
+
+    function goToModuleByOffset(delta) {
+      const target = currentModuleIndex + delta;
+      if (target < 0 || target >= courseModules.length) return;
+      const targetId = courseModules[target].id;
+      // Reset to lesson 0 for new module. If you want to jump to first incomplete, we can add that later.
+      window.location.href = `/STUDENT/modules/view.html?moduleId=${encodeURIComponent(targetId)}&subIdx=0`;
+    }
+
+    async function loadCourseModulesAndWireNav() {
+      if (!courseId) return;
+      courseModules = await fetchVisibleModulesForCourse(courseId);
+      currentModuleIndex = courseModules.findIndex(m => m.id === moduleId);
+      updateModuleNavButtons();
+    }
 
     async function fetchModule() {
       if (!moduleId) {
@@ -451,32 +557,51 @@
         }
       } catch {}
 
-      await refreshCompletion();
+      await refreshProgress(); // overall progress pill
+      await loadCourseModulesAndWireNav(); // NEW: enable prev/next module
       showLesson(startIdx < lessonCount ? startIdx : 0);
     }
 
-    async function refreshCompletion() {
+    async function refreshProgress() {
       try {
-        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(user.email)}/modules/${encodeURIComponent(moduleId)}/isCompleted`);
+        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(user.email)}/modules/${encodeURIComponent(moduleId)}/lessons/completion`);
+        const j = await r.json().catch(()=>({completedIdx:[],lessonCount}));
+        const pill = document.getElementById('progressPill');
+        if (j.lessonCount > 0) {
+          pill.textContent = `Progress: ${j.completedIdx.length}/${j.lessonCount}`;
+          pill.classList.remove('d-none');
+        } else {
+          pill.classList.add('d-none');
+        }
+      } catch {
+        document.getElementById('progressPill').classList.add('d-none');
+      }
+    }
+
+    async function refreshLessonCompletion(idx) {
+      try {
+        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(user.email)}/modules/${encodeURIComponent(moduleId)}/lessons/${idx}/isCompleted`);
         const j = await r.json().catch(()=>({completed:false}));
         const badge = document.getElementById('completeBadge');
         const btn = document.getElementById('completeBtn');
         if (j.completed) {
           badge.className = 'badge text-bg-success';
-          badge.textContent = 'Completed';
+          badge.textContent = 'Lesson: Completed';
           btn.classList.add('btn-success');
           btn.classList.remove('btn-amber');
           btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Completed';
           btn.disabled = true;
         } else {
           badge.className = 'badge text-bg-secondary';
-          badge.textContent = 'Not completed';
+          badge.textContent = 'Lesson: Not completed';
           btn.classList.remove('btn-success');
           btn.classList.add('btn-amber');
-          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Module Complete';
+          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Lesson Complete';
           btn.disabled = false;
         }
-      } catch {}
+      } catch {
+        // leave UI as is
+      }
     }
 
     function showLesson(idx) {
@@ -530,33 +655,41 @@
 
       document.getElementById('prevLesson').disabled = currentIdx <= 0;
       document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
+
+      // 🔁 refresh completion state for the CURRENT LESSON
+      refreshLessonCompletion(currentIdx);
     }
 
-    async function markComplete() {
+    async function markLessonComplete() {
       try {
-        const res = await fetch(`${API_BASE}/mark-module-complete`, {
+        const res = await fetch(`${API_BASE}/mark-lesson-complete`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: user.email, moduleId })
+          body: JSON.stringify({ email: user.email, moduleId, lessonIdx: currentIdx })
         });
         const js = await res.json().catch(()=>({success:false}));
         if (!js.success) throw new Error(js.message || 'Failed to mark complete');
 
-        await refreshCompletion();
+        await refreshLessonCompletion(currentIdx);
+        await refreshProgress();
 
-        // ✅ REPLACED alert() WITH SUCCESS MODAL
-        showSuccessModal('Module marked complete!', { title: 'Great job!' });
+        showSuccessModal('Lesson marked complete!', { title: 'Great job!' });
 
       } catch (e) {
         console.error(e);
-        alert('❌ Could not mark complete.');
+        alert('❌ Could not mark this lesson as complete.');
       }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // Lesson nav
       document.getElementById('prevLesson').addEventListener('click', () => showLesson(currentIdx - 1));
       document.getElementById('nextLesson').addEventListener('click', () => showLesson(currentIdx + 1));
-      document.getElementById('completeBtn').addEventListener('click', markComplete);
+      document.getElementById('completeBtn').addEventListener('click', markLessonComplete);
+
+      // NEW: Module nav
+      document.getElementById('prevModuleBtn').addEventListener('click', () => goToModuleByOffset(-1));
+      document.getElementById('nextModuleBtn').addEventListener('click', () => goToModuleByOffset(1));
 
       const searchTop = document.getElementById('lessonSearch');
       searchTop.addEventListener('input', () => {

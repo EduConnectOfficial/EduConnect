@@ -238,7 +238,7 @@
       document.getElementById('courseMeta').style.display = '';
     }
 
-    // ---------- UPDATED: fetch only modules assigned to the student's classIds ----------
+    // ---------- UPDATED: fetch only modules assigned to the student's classIds AND pull per-lesson progress ----------
     async function fetchModules() {
       if (!studentClassIds.length) {
         studentClassIds = await fetchStudentClassIds();
@@ -267,38 +267,52 @@
       // Hide archived or not-yet-published
       const visible = Array.from(byId.values()).filter(isVisibleToStudent);
 
-      // Compute completion (0%/100% for now)
+      // Pull per-lesson progress for each module
       const email = user.email;
-      const checks = visible.map(async m => {
+      const withProgress = visible.map(async m => {
         try {
-          const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/isCompleted`);
-          const j = await r.json().catch(()=>({completed:false}));
-          return { ...m, completed: !!j.completed };
+          const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/lessons/completion`);
+          const j = await r.json().catch(()=>({completedIdx:[], lessonCount: m.moduleSubTitles?.length || m.lessonCount || 0}));
+          const lessonCount = Number.isFinite(j.lessonCount) ? j.lessonCount : 0;
+          const completedCount = Array.isArray(j.completedIdx) ? j.completedIdx.length : 0;
+          const pct = lessonCount > 0 ? Math.round((completedCount / lessonCount) * 100) : 0;
+          const completed = (lessonCount > 0) && (completedCount === lessonCount);
+          return { ...m, __completedLessons: completedCount, __lessonCount: lessonCount, progressPct: pct, completed };
         } catch {
-          return { ...m, completed: false };
+          // On error, fallback to 0% and not completed
+          const lc = m.moduleSubTitles?.length || m.lessonCount || 0;
+          return { ...m, __completedLessons: 0, __lessonCount: lc, progressPct: 0, completed: false };
         }
       });
 
-      modules = await Promise.all(checks);
+      modules = await Promise.all(withProgress);
       renderModules();
     }
 
-    // Progress utility (placeholder logic)
-    function moduleProgress(m) { return m.completed ? 100 : 0; }
-
     function renderProgressPill(m) {
-      const pct = moduleProgress(m);
+      const pct = Number.isFinite(m.progressPct) ? m.progressPct : 0;
       const label = (pct === 100) ? 'Completed' : 'In progress';
       const stateClass = (pct === 100) ? 'text-bg-success' : 'text-bg-secondary';
+      const countText = (Number.isFinite(m.__completedLessons) && Number.isFinite(m.__lessonCount))
+        ? `${m.__completedLessons}/${m.__lessonCount} lessons`
+        : '';
 
       return `
         <div class="progress-wrap text-end">
           <div class="progress progress-xs mb-1" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" style="height:6px;">
             <div class="progress-bar ${pct===100?'bg-success':''}" style="width:${pct}%"></div>
           </div>
-          <div class="progress-label text-muted">${pct}% • <span class="badge ${stateClass}">${label}</span></div>
+          <div class="progress-label text-muted">
+            ${pct}% • ${countText} • <span class="badge ${stateClass}">${label}</span>
+          </div>
         </div>
       `;
+    }
+
+    function primaryCtaText(m) {
+      if (m.progressPct >= 100) return 'Review';
+      if (m.progressPct > 0) return 'Continue';
+      return 'Start';
     }
 
     function renderModules() {
@@ -340,7 +354,7 @@
               <div class="d-flex flex-column justify-content-between align-items-end ms-md-4 mt-3 mt-md-0">
                 ${renderProgressPill(m)}
                 <a class="btn btn-amber btn-sm mt-2" href="/STUDENT/modules/view.html?moduleId=${encodeURIComponent(m.id)}">
-                  <i class="bi bi-play-circle me-1"></i> ${m.completed ? 'Review' : 'Start'}
+                  <i class="bi bi-play-circle me-1"></i> ${primaryCtaText(m)}
                 </a>
               </div>
             </div>
