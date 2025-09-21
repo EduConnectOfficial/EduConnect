@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/ADMIN/access/access.css" />
 
-  <!-- Prevent copying inside confirm modal (same pattern you used) -->
+  <!-- Prevent copying inside confirm modal -->
   <style>
     .confirm-no-copy,
     .confirm-no-copy * {
@@ -20,6 +20,39 @@
       user-select: none !important;
     }
   </style>
+
+  <script>
+    /* =========================
+       EARLY ADMIN SESSION GUARD
+       ========================= */
+    function _coerceBool(v) {
+      if (v === true || v === 1) return true;
+      if (typeof v === "string") {
+        const s = v.trim().toLowerCase();
+        return s === "true" || s === "1" || s === "yes";
+      }
+      return false;
+    }
+    function _hasAdminRole(u) {
+      if (!u || typeof u !== "object") return false;
+      if (_coerceBool(u.isAdmin)) return true;
+      if (typeof u.role === "string" && u.role.toLowerCase() === "admin") return true;
+      if (Array.isArray(u.roles) && u.roles.map(r => String(r).toLowerCase()).includes("admin")) return true;
+      if (u.claims && (_coerceBool(u.claims.admin) || String(u.claims.role || "").toLowerCase() === "admin")) return true;
+      return false;
+    }
+    (function guard() {
+      let user = null;
+      try { user = JSON.parse(localStorage.getItem("user") || "null"); } catch { user = null; }
+      if (!_hasAdminRole(user)) {
+        localStorage.clear(); sessionStorage.clear();
+        window.location.replace("/ADMIN/login/login.html"); return;
+      }
+      user.isAdmin = true;
+      localStorage.setItem("user", JSON.stringify(user));
+      window.__ADMIN_USER__ = user;
+    })();
+  </script>
 </head>
 
 <body>
@@ -64,7 +97,7 @@
           <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn">
+        <button class="profile-btn" type="button">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -151,7 +184,7 @@
     </div>
   </div>
 
-  <!-- Confirm Delete Modal (will be used for type-to-delete) -->
+  <!-- Confirm Delete Modal (type-to-delete) -->
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -216,12 +249,7 @@
   <script>
     (function populateUsername() {
       try {
-        const rawLocal = localStorage.getItem("user");
-        const rawSession = sessionStorage.getItem("user");
-        let data = null;
-        if (rawLocal) { try { data = JSON.parse(rawLocal); } catch { } }
-        if (!data && rawSession) { try { data = JSON.parse(rawSession); } catch { } }
-
+        const userData = window.__ADMIN_USER__ || JSON.parse(localStorage.getItem("user") || "null") || {};
         const getInitials = (info = {}) => {
           const f = (info.firstName || "").trim();
           const l = (info.lastName || "").trim();
@@ -248,15 +276,12 @@
           return "UU";
         };
 
-        const initials = getInitials(data || {});
+        const initials = getInitials(userData);
         const el = document.getElementById("Username");
         if (el) {
           el.textContent = initials;
-          const full =
-            (data && [data.firstName, data.middleName, data.lastName].filter(Boolean).join(" ").trim()) ||
-            (data && data.username) ||
-            (data && data.email) ||
-            "User";
+          const full = [userData.firstName, userData.middleName, userData.lastName].filter(Boolean).join(" ").trim()
+            || userData.username || userData.email || "User";
           el.title = full;
         }
       } catch (e) {
@@ -269,20 +294,36 @@
 
   <!-- Page logic -->
   <script>
-    const API_BASE = 'http://localhost:5000/api/users';
+    /* =========================
+       API base & auth helpers
+       ========================= */
+    const isDevHost = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
+    const API_ROOT = isDevHost ? "http://localhost:5000/api" : "/api";
+    const USERS_API = `${API_ROOT}/users`;
+
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
 
     async function getJSON(url, options = {}) {
-      const res = await fetch(url, options);
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: { Accept: "application/json", ...(options.headers || {}) },
+        ...options
+      });
       const ct = res.headers.get('content-type') || '';
+      const text = await res.text();
+      let json = {};
+      try { json = JSON.parse(text); } catch { /* not JSON (e.g., HTML error) */ }
       if (!res.ok) {
-        const body = await res.text();
-        throw new Error('HTTP ' + res.status + ': ' + body.slice(0, 120));
+        const msg = json?.message || `HTTP ${res.status}`;
+        throw new Error(`${msg}: ${text.slice(0, 200)}`);
       }
       if (!ct.includes('application/json')) {
-        const body = await res.text();
-        throw new Error('Expected JSON but got "' + ct + '". Body: ' + body.slice(0, 120));
+        throw new Error(`Expected JSON but got "${ct}". Body: ${text.slice(0, 200)}`);
       }
-      return res.json();
+      return json;
     }
 
     const tableBody = document.getElementById('userTableBody');
@@ -350,10 +391,7 @@
     function sortByDropdown(a, b) {
       const mode = elSort.value;
       const aa = isActive(a), bb = isActive(b);
-      if (mode === 'none') {
-        // Default to Student ID ascending
-        return 0;
-      }
+      if (mode === 'none') return 0;
       if (mode === 'nameAsc') return nameKey(a).localeCompare(nameKey(b));
       if (mode === 'nameDesc') return nameKey(b).localeCompare(nameKey(a));
       if (mode === 'statusActiveFirst') return (aa === bb) ? nameKey(a).localeCompare(nameKey(b)) : (aa ? -1 : 1);
@@ -390,14 +428,11 @@
 
       let sorted;
       if (elSort.value === 'none') {
-        // Default sort: Student ID ascending
         sorted = filtered.sort((a, b) => sortByHeader(a, b));
       } else {
-        // Sort by dropdown, then header as tiebreaker
         sorted = filtered.sort((a, b) => {
           const d = sortByDropdown(a, b);
-          if (d !== 0) return d;
-          return sortByHeader(a, b);
+          return d !== 0 ? d : sortByHeader(a, b);
         });
       }
 
@@ -419,7 +454,7 @@
           '<button class="btn btn-sm ' + (active ? 'btn-danger' : 'btn-success') + ' status-btn">' +
           (active ? 'Deactivate' : 'Activate') +
           '</button>' +
-          '<button class="btn btn-sm btn-outline-primary edit-btn">Edit</button>' +
+          '<button class="btn btn-sm btn-outline-primary edit-btn" data-bs-toggle="modal" data-bs-target="#editUserModal">Edit</button>' +
           '<button class="btn btn-sm btn-outline-danger delete-btn">Delete</button>' +
           '</td>';
 
@@ -440,8 +475,12 @@
             try {
               fresh.disabled = true;
               const result = await getJSON(
-                API_BASE + '/' + encodeURIComponent(user.userId) + '/status',
-                { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: nextActive }) }
+                `${USERS_API}/${encodeURIComponent(user.userId)}/status`,
+                {
+                  method: 'PATCH',
+                  headers: authHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify({ active: nextActive })
+                }
               );
 
               if (result && result.success) {
@@ -476,7 +515,17 @@
           new bootstrap.Modal(document.getElementById('statusConfirmModal')).show();
         });
 
-        // ===== TYPE-TO-DELETE (username) with copy/paste blocked =====
+        // Edit (prefill on open)
+        row.querySelector('.edit-btn').addEventListener('click', () => {
+          selectedUser = user;
+          document.getElementById('editUsername').value = user.username || '';
+          document.getElementById('editFirstName').value = user.firstName || '';
+          document.getElementById('editMiddleName').value = user.middleName || '';
+          document.getElementById('editLastName').value = user.lastName || '';
+          document.getElementById('editEmail').value = user.email || '';
+        });
+
+        // TYPE-TO-DELETE (username) with copy/paste blocked
         row.querySelector('.delete-btn').addEventListener('click', async () => {
           selectedUser = user;
           selectedRow = row;
@@ -485,24 +534,24 @@
           const ok = await showTypeToConfirm_DeleteStudent('Confirm Delete', expected);
           if (!ok) return;
 
-          // proceed with actual deletion
           try {
-            const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
-            if (!res.ok) {
-              const txt = await res.text();
-              throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
+            const res = await fetch(`${USERS_API}/${encodeURIComponent(user.userId)}`, {
+              method: 'DELETE',
+              headers: authHeaders()
+            });
+            const txt = await res.text(); let data = {};
+            try { data = JSON.parse(txt); } catch {}
+            if (!res.ok || !data?.success) {
+              throw new Error(data?.message || `HTTP ${res.status}`);
             }
-            const data = await res.json();
-            if (data && data.success) {
-              students = students.filter(u => u.userId !== user.userId);
-              renderTable(students);
 
-              studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
-              studentAlert.classList.remove('d-none');
-              setTimeout(() => studentAlert.classList.add('d-none'), 3000);
-            } else {
-              alert((data && data.message) || 'Delete failed.');
-            }
+            students = students.filter(u => u.userId !== user.userId);
+            renderTable(students);
+
+            studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
+            studentAlert.classList.remove('d-none');
+            setTimeout(() => studentAlert.classList.add('d-none'), 3000);
+
           } catch (err) {
             console.error('Delete failed:', err);
             alert('Server error while deleting user.');
@@ -516,8 +565,8 @@
     async function loadStudents() {
       try {
         let payload;
-        try { payload = await getJSON(API_BASE + '?role=student'); }
-        catch { payload = await getJSON(API_BASE); }
+        try { payload = await getJSON(`${USERS_API}?role=student`, { headers: authHeaders() }); }
+        catch { payload = await getJSON(USERS_API, { headers: authHeaders() }); }
 
         let users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
         students = users
@@ -535,7 +584,7 @@
       }
     }
 
-    // ===== Reusable TYPE-TO-CONFIRM (copies your class_list pattern) =====
+    // Reusable TYPE-TO-CONFIRM
     function showTypeToConfirm_DeleteStudent(title, expectedText) {
       const modalEl = document.getElementById('deleteConfirmModal');
       const modal = new bootstrap.Modal(modalEl);
@@ -545,7 +594,6 @@
 
       titleEl.textContent = title || 'Confirm Delete';
 
-      // Build the body with instructions + input + bootstrap feedback
       bodyEl.innerHTML = `
         <div class="mb-2">
           To permanently delete this student and related records, type the student's <strong>exact username</strong>.
@@ -566,7 +614,7 @@
       okBtn.textContent = 'Delete';
       okBtn.disabled = true;
 
-      // Block copy/cut/context menu inside this modal (cannot copy/paste)
+      // Block copy/cut/context menu inside this modal
       const block = (e) => e.preventDefault();
       modalEl.addEventListener('copy', block);
       modalEl.addEventListener('cut', block);
@@ -614,7 +662,6 @@
         setTimeout(() => { input.focus(); onInput(); }, 150);
       });
     }
-    // ===== End reusable type-to-confirm =====
 
     // Header sorting & filter wiring
     document.addEventListener('DOMContentLoaded', () => {
@@ -661,8 +708,8 @@
           };
 
           const result = await getJSON(
-            API_BASE + '/' + encodeURIComponent(selectedUser.userId) + '/edit',
-            { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+            `${USERS_API}/${encodeURIComponent(selectedUser.userId)}/edit`,
+            { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload) }
           );
 
           if (result?.success && result.user) {
