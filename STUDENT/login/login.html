@@ -13,13 +13,12 @@
 
 <body>
 
- <!-- Top Logo -->
+  <!-- Top Logo -->
   <div class="top-logo text-center brand">
     <!-- CSIS logo beside EduConnect -->
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
-
 
   <!-- Login Container -->
   <div class="login-container">
@@ -83,7 +82,7 @@
     });
   </script>
 
-  <!-- Login Logic -->
+  <!-- Login + Session Guard Logic -->
   <script>
     const API_BASE = "http://localhost:5000";
     const form = document.getElementById("loginForm");
@@ -96,6 +95,35 @@
     let countdownTimer = null;
     let failedAttempts = 0;          // unified counter used by showAttemptNotice()
     const MAX_ATTEMPTS = 5;
+
+    // ===== Session Guard helpers (S- only) =====
+    function isValidStudentSession(u) {
+      if (!u) return false;
+      // Must be a student and must have studentId starting with S-
+      if (u.isStudent !== true) return false;
+      const sid = String(u.studentId || "");
+      return /^S-/.test(sid);
+    }
+    function clearSession() {
+      try { localStorage.removeItem("user"); } catch { }
+    }
+
+    // Guard on load: if there's a session but it isn't S- student, drop it
+    (function guardExistingSession() {
+      try {
+        const raw = localStorage.getItem("user");
+        if (!raw) return;
+        const u = JSON.parse(raw);
+        if (!isValidStudentSession(u)) {
+          clearSession();
+        } else {
+          // Optional: if already valid S- student, you can auto-redirect
+          // window.location.href = "/STUDENT/dashboard/dashboard.html";
+        }
+      } catch {
+        clearSession();
+      }
+    })();
 
     // per-username attempts in this session
     const attemptsKey = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
@@ -213,23 +241,28 @@
         let data = {};
         try { data = await response.json(); } catch { data = {}; }
 
-        if (response.ok && data.user?.isUser) {
-          // safety: ensure we logged in as the same username
-          if (normalizeUserKey(data.user.username) !== normalizeUserKey(username)) {
+        // ===== Session Guard: Only S- students can pass =====
+        if (response.ok) {
+          const u = data.user || {};
+          // Safety: username mismatch?
+          if (normalizeUserKey(u.username) !== normalizeUserKey(username)) {
             showModal("Login response mismatch. Please try again.");
             setBtnBusy(false);
             return;
           }
-          // success -> reset attempts for this username
+
+          if (!isValidStudentSession(u)) {
+            // Not an S- student => deny login, do not store session
+            showModal("This portal is for students only. A valid Student ID (starting with S-) is required.");
+            setBtnBusy(false);
+            return;
+          }
+
+          // success -> reset attempts for this username and store session
           clearAttempts(username);
           failedAttempts = 0;
-          localStorage.setItem("user", JSON.stringify(data.user));
+          localStorage.setItem("user", JSON.stringify(u));
           window.location.href = "/STUDENT/dashboard/dashboard.html";
-          return;
-        }
-
-        if (response.ok) {
-          showModal("Access denied. Students only.");
           return;
         }
 
