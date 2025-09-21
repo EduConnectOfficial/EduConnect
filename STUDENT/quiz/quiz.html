@@ -189,21 +189,31 @@
     });
   </script>
 
-  <!-- Auth / Setup -->
+  <!-- Auth / Setup (Students-only S- guard + initials) -->
   <script>
     const API_BASE = "http://localhost:5000";
 
-    function logoutUser() {
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href = "/STUDENT/login/login.html";
-    }
+    (function guardStudentSession() {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
 
-    // ---- Single source of truth for userData + initials ----
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!userData?.userId || !userData?.isStudent) {
-      window.location.href = "/STUDENT/login/login.html";
-    } else {
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
+
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch {}
+        // This page is under /STUDENT/quiz/, so ../login/login.html is correct
+        window.location.replace("../login/login.html");
+        return;
+      }
+
+      // Expose globally for other scripts
+      window.currentUser = u;
+      window.userData = u;
+
+      // Header initials
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
@@ -211,31 +221,41 @@
         if (s.includes("@")) {
           const local = s.split("@")[0];
           const parts = local.split(/[.\-_]+/).filter(Boolean);
-          return (parts.length >= 2
-            ? parts[0][0] + parts[parts.length - 1][0]
-            : local.slice(0, 2)
-          ).toUpperCase();
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
         }
         const parts = s.split(/[\s\-]+/).filter(Boolean);
-        return (parts.length >= 2
-          ? parts[0][0] + parts[parts.length - 1][0]
-          : parts[0].slice(0, 2)
-        ).toUpperCase();
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
       }
-
-      const userId = userData.userId || userData.uid || userData.id || userData.email;
-      const displayName = userData.fullName || userData.username || userData.email || "Student";
-      const initials = initialsFrom(displayName) || "?";
       const el = document.getElementById("Username");
       if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
         el.textContent = initials;
         el.title = displayName;
         el.setAttribute("aria-label", displayName);
       }
-      if (!userData.uid) {
-        userData.uid = userId;
-        localStorage.setItem("user", JSON.stringify(userData));
-      }
+
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace("../login/login.html");
+          } catch {
+            window.location.replace("../login/login.html");
+          }
+        }
+      });
+    })();
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
     }
   </script>
 
@@ -365,16 +385,11 @@
       const courseOk = q.courseId ? studentCourseIds.has(String(q.courseId)) : false;
       const arr = Array.isArray(q.assignedClasses) ? q.assignedClasses : [];
 
-      // If no classes explicitly assigned: treat as course-wide
-      // Show it if (a) we know courses and it's in one of the student's courses, OR
-      // (b) courses haven't loaded yet — be permissive so we don't hide valid quizzes by accident.
       if (arr.length === 0) {
         if (coursesLoadedOk && q.courseId) return courseOk;
-        return true; // permissive fallback
+        return true;
       }
-
-      // If classes are specified: require intersection, but only if we actually know student's classes.
-      if (!classesLoadedOk) return false; // can't verify yet; avoid showing incorrectly
+      if (!classesLoadedOk) return false;
       for (const cid of arr) if (studentClassIds.has(String(cid))) return true;
       return false;
     }
@@ -386,7 +401,6 @@
       studentCourseIds.clear();
       coursesLoadedOk = false;
 
-      // Try multiple shapes/endpoints
       const tryEndpoints = [
         `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`,
         `${API_BASE}/students/${encodeURIComponent(userData.userId)}/courses`,
@@ -422,7 +436,6 @@
         } catch {}
       }
 
-      // if we reach here, none succeeded
       coursesLoadedOk = false;
     }
 
@@ -436,7 +449,6 @@
         const js = await res.json();
         const modules = Array.isArray(js?.modules) ? js.modules : (Array.isArray(js) ? js : []);
 
-        // cache modules by course
         const map = new Map();
         modules.forEach(m => { const mid = m?.id ?? m?._id ?? m?.moduleId; if (mid) map.set(String(mid), m); });
         modulesByCourse.set(String(courseId), map);
@@ -469,7 +481,7 @@
         modules.forEach(m => { const mid = m?.id ?? m?._id ?? m?.moduleId; if (mid) map.set(String(mid), m); });
         modulesByCourse.set(String(courseId), map);
       } catch (e) {
-        modulesByCourse.set(String(courseId), new Map()); // avoid refetch loop
+        modulesByCourse.set(String(courseId), new Map());
       }
     }
 
@@ -478,7 +490,6 @@
       await Promise.all(uniq.map(ensureModulesForCourse));
     }
 
-    // fetch student's classes (try a few endpoints)
     async function loadStudentClasses() {
       classesLoadedOk = false;
       studentClassIds.clear();
@@ -506,7 +517,6 @@
       classesLoadedOk = false;
     }
 
-    // Assignment-aware quiz fetch with multiple fallbacks + normalization
     async function loadQuizzes() {
       const uid = encodeURIComponent(userData.userId);
       const params = new URLSearchParams({ forStudent: uid });
@@ -514,10 +524,10 @@
       if (currentModuleId) params.set('moduleId', currentModuleId);
 
       const endpoints = [
-        `${API_BASE}/api/students/${uid}/quizzes`,                 // preferred: student-scoped
-        `${API_BASE}/quizzes?${params.toString()}`,                // supports forStudent
-        `${API_BASE}/api/quizzes?${params.toString()}`,            // alt path
-        `${API_BASE}/quizzes`                                      // last resort
+        `${API_BASE}/api/students/${uid}/quizzes`,
+        `${API_BASE}/quizzes?${params.toString()}`,
+        `${API_BASE}/api/quizzes?${params.toString()}`,
+        `${API_BASE}/quizzes`
       ];
 
       let raw = [];
@@ -531,15 +541,11 @@
                       : Array.isArray(js) ? js
                       : []);
           if (list.length) { raw = list; break; }
-          // even if empty, accept it (could be none). break after first success.
           if ('success' in js) { raw = list; break; }
         } catch {}
       }
 
-      // normalize
       const normalized = raw.map(normalizeQuiz);
-
-      // client-side visibility filter (course + assigned classes)
       allQuizzes = normalized.filter(isQuizVisibleToStudent);
     }
 
@@ -993,13 +999,12 @@
     // ---------- Boot ----------
     document.addEventListener("DOMContentLoaded", async () => {
       try {
-        await loadCourses();         // populates studentCourseIds (maybe)
-        await loadStudentClasses();  // populates studentClassIds (maybe)
-        await loadQuizzes();         // server + client filtering, normalized
+        await loadCourses();
+        await loadStudentClasses();
+        await loadQuizzes();
         renderQuizzes();
-        // if nothing, relax class guard once more (courses-only)
+
         if (!quizCards.children.length && allQuizzes.length === 0) {
-          // final fallback: fetch raw quizzes and show course-wide ones
           await loadQuizzes();
           renderQuizzes();
         }

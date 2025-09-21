@@ -1,35 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>EduConnect Student – Assignment</title>
 
   <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 
-  <!-- Keep your theme -->
-  <link rel="stylesheet" href="../assignment/assignment.css" />
+  <!-- Theme -->
+  <link rel="stylesheet" href="../assignment/assignment.css"/>
 
+  <style>
+    /* File preview modal tweaks to ensure consistent sizing */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
+    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
+    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
+    }
+    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
+    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
 
+    /* Long token wrapping */
+    .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+
+    /* Drag & drop uploader */
+    .dropzone {
+      border: 2px dashed #d0d7de;
+      border-radius: .75rem;
+      padding: 1rem;
+      background: #fafbfc;
+      transition: background .2s, border-color .2s;
+    }
+    .dropzone.dragover {
+      background: #fff7ed;
+      border-color: #ffbf69;
+    }
+    .file-list { display: grid; gap: .5rem; }
+    .file-pill {
+      border: 1px solid #e5e7eb; border-radius: .75rem; padding: .5rem .75rem;
+      display: flex; justify-content: space-between; align-items: center; background: #fff;
+    }
+    .file-pill.bad { border-color: #fecaca; background: #fff1f2; }
+    .file-pill .meta { font-size: .85rem; color: #6b7280; }
+    .file-pill .actions .btn-icon { border: none; background: transparent; padding: .25rem .4rem; cursor: pointer; }
+    .file-pill .actions .btn-icon:hover { opacity: .8; }
+  </style>
 </head>
-
 <body>
   <div class="dashboard">
+    <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
+    <!-- Main -->
     <div class="main">
+      <!-- Header -->
       <header class="header-top">
- <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
-          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        <div class="brand">
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
         </div>
         <div class="search-box">
-          <input type="text" placeholder="Search…" />
+          <input type="text" placeholder="Search…"/>
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn">
@@ -38,6 +74,7 @@
         </button>
       </header>
 
+      <!-- Content -->
       <div class="content container-fluid">
         <nav aria-label="breadcrumb" class="mb-2">
           <ol class="breadcrumb wrap-anywhere">
@@ -47,6 +84,8 @@
         </nav>
 
         <h1 class="page-title"><span class="brand-grad wrap-anywhere" id="pageTitle">Assignment</span></h1>
+
+        <!-- Assignment meta + instructions -->
         <div class="ui-card mb-3">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div class="wrap-anywhere">
@@ -68,7 +107,8 @@
               </div>
             </div>
           </div>
-          <hr class="my-3" />
+
+          <hr class="my-3"/>
           <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Instructions</h6>
           <div id="assignContent" class="wrap-anywhere">Loading content…</div>
 
@@ -87,16 +127,29 @@
           </div>
 
           <form id="submitForm" class="d-grid gap-3" novalidate>
+            <!-- Dropzone + file input -->
             <div>
               <label class="form-label">File(s)</label>
-              <input class="form-control" type="file" id="fileInput" name="files" multiple />
-              <div id="fileHint" class="form-text">Supported: documents, images, PDFs, etc.</div>
+
+              <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Drop files here or click to browse">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-cloud-arrow-up fs-5"></i>
+                  <div>
+                    <div><strong>Drag & drop</strong> files here, or click to browse.</div>
+                    <div class="text-muted small">Accepted: documents, images, PDFs, audio/video (where allowed).</div>
+                  </div>
+                </div>
+                <input class="visually-hidden" type="file" id="fileInput" name="files" multiple aria-hidden="true"/>
+              </div>
+
+              <div id="fileHint" class="form-text mt-2">No files selected.</div>
               <div id="filePreview" class="file-list mt-2 wrap-anywhere"></div>
             </div>
 
             <div>
               <label class="form-label">Note (optional)</label>
               <textarea class="form-control wrap-anywhere" id="noteInput" name="text" rows="3" placeholder="e.g., 'Please see attached. https://…'"></textarea>
+              <div id="autosaveHint" class="form-text">Draft autosaves locally.</div>
             </div>
 
             <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -192,41 +245,61 @@
 
   <!-- Page Logic -->
   <script>
-    // ====== Config ======
+    /* =========================
+       Config & auth guard
+    ========================== */
     const API_BASE = "http://localhost:5000";
     const STUDENT_MAX_MB = 100;
     const STUDENT_MAX_BYTES = STUDENT_MAX_MB * 1024 * 1024;
 
-    // ====== Auth guard ======
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!userData?.userId || !userData?.isStudent) {
-      window.location.href = "/STUDENT/login/login.html";
-    }
-
-    // Header initials
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0,2)).toUpperCase();
+    (function guardStudentSession() {
+      const raw = JSON.parse(localStorage.getItem("user") || "{}");
+      const u = raw.user || raw;
+      const ok = !!u?.userId && u?.isStudent === true;
+      if (!ok) {
+        try { localStorage.removeItem("user"); } catch {}
+        window.location.replace("/STUDENT/login/login.html");
+        return;
       }
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0,2)).toUpperCase();
-    }
-    (() => {
+      window.userData = u;
+
+      // Header initials
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim(); if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
+      }
       const el = document.getElementById("Username");
-      if (!el) return;
-      const displayName = userData.fullName || userData.username || userData.email || "";
-      const initials = initialsFrom(displayName) || "?";
-      el.textContent = initials;
-      el.title = displayName;
-      el.setAttribute("aria-label", displayName);
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials; el.title = displayName; el.setAttribute("aria-label", displayName);
+      }
+
+      // Cross-tab guard: if user flips to non-student elsewhere, bounce
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok2 = !!nu?.userId && nu?.isStudent === true;
+            if (!ok2) window.location.replace("/STUDENT/login/login.html");
+          } catch {
+            window.location.replace("/STUDENT/login/login.html");
+          }
+        }
+      });
     })();
 
-    // ====== Helpers ======
+    /* =========================
+       Helpers
+    ========================== */
     const qs = new URLSearchParams(location.search);
     const assignmentId = qs.get("id");
 
@@ -234,18 +307,15 @@
       .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
       .replaceAll('"','&quot;').replaceAll("'",'&#039;');
 
-    function softWrap(s, limit = 40) {
+    function softWrap(s, limit = 40){
       if (!s) return s;
       return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
     }
     const fmtDateTime = (ms) => {
-      if (!ms) return '—';
+      if (!ms) return 'No due date';
       try { return new Date(ms).toLocaleString(); } catch { return '—'; }
     };
-    function toApiUrl(pathOrUrl){
-      return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API_BASE + String(pathOrUrl || "");
-    }
-    function bytesKB(b){ return Math.round((b || 0)/102.4)/10; } // 1 decimal
+    function bytesKB(b){ return Math.round((b || 0)/102.4)/10; }
     function human(bytes){
       if (!Number.isFinite(bytes)) return '';
       const mb = bytes / (1024 * 1024);
@@ -262,12 +332,10 @@
       const d = new Date(v);
       return Number.isNaN(d.getTime()) ? null : d.getTime();
     }
-
-    // Cloud-safe URL pickers
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
              (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
-             (obj.filePath ? toApiUrl(obj.filePath) : '');
+             (obj.filePath ? (API_BASE + String(obj.filePath)) : '');
     }
     function pickName(obj = {}) {
       const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
@@ -279,7 +347,6 @@
       const n = (obj.originalName || '').toLowerCase();
       return /rubric/.test(n);
     }
-    // Extract Storage path for signing
     function extractStoragePath(obj = {}) {
       if (obj.storagePath) return String(obj.storagePath);
       if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
@@ -293,8 +360,20 @@
       }
       return '';
     }
+    async function getSignedViewUrlIfNeeded(obj) {
+      const direct = pickHref(obj);
+      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
+      const storagePath = extractStoragePath(obj);
+      if (!storagePath) return direct || null;
+      try {
+        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
+        const js = await r.json().catch(()=>null);
+        if (r.ok && js?.success && js?.url) return js.url;
+      } catch {}
+      return direct || null;
+    }
 
-    // ====== MODAL PREVIEW HELPERS ======
+    // Preview helpers
     function isYouTubeUrl(url = '') {
       try {
         const u = new URL(url);
@@ -334,7 +413,6 @@
     function setFileInfoUI(kind, url) {
       const info = document.getElementById('fileInfoText');
       const hdr  = document.getElementById('filePreviewModalLabel');
-      const badgeId = 'fileKindBadge';
       const labelMap = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File' };
       const colorMap = {
         youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
@@ -342,8 +420,8 @@
         pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
         office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
       };
-      let badge = document.getElementById(badgeId);
-      if (!badge){ badge = document.createElement('span'); badge.id = badgeId; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
+      let badge = document.getElementById('fileKindBadge');
+      if (!badge){ badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
       badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
       badge.textContent = labelMap[kind] || 'File';
       info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
@@ -405,7 +483,7 @@
         return;
       }
 
-      if (['mp4','webm','ogg'].includes(ext)) {
+      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) {
         const video = document.createElement('video');
         video.controls = true;
         video.onloadeddata = done;
@@ -419,7 +497,7 @@
         return;
       }
 
-      if (['mp3','wav','m4a','ogg'].includes(ext)) {
+      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) {
         const audio = document.createElement('audio');
         audio.controls = true;
         audio.onloadeddata = done;
@@ -474,20 +552,9 @@
       setTimeout(done, 1200);
     }
 
-    async function getSignedViewUrlIfNeeded(obj) {
-      const direct = pickHref(obj);
-      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
-      const storagePath = extractStoragePath(obj);
-      if (!storagePath) return direct || null;
-      try {
-        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
-        const js = await r.json().catch(()=>null);
-        if (r.ok && js?.success && js?.url) return js.url;
-      } catch {}
-      return direct || null;
-    }
-
-    // ====== DOM ======
+    /* =========================
+       DOM refs
+    ========================== */
     const bcTitle = document.getElementById("bcTitle");
     const pageTitle = document.getElementById("pageTitle");
     const courseBadge = document.getElementById("courseBadge");
@@ -501,7 +568,9 @@
     const submitForm = document.getElementById("submitForm");
     const submitBtn = document.getElementById("submitBtn");
     const submitStatus = document.getElementById("submitStatus");
+    const autosaveHint = document.getElementById("autosaveHint");
     const noteInput = document.getElementById("noteInput");
+    const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
     const fileHint = document.getElementById("fileHint");
     const filePreview = document.getElementById("filePreview");
@@ -515,10 +584,11 @@
     const submissionNote = document.getElementById("submissionNote");
     const submissionGrade = document.getElementById("submissionGrade");
 
-    // ====== Status ======
     let currentStatus = 'Open';
 
-    // ====== Data fetchers ======
+    /* =========================
+       Data fetchers
+    ========================== */
     async function fetchAssignment(id){
       const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`);
       if (!res.ok) return null;
@@ -569,7 +639,9 @@
       statusPill.innerHTML = `<span class="${map[status] || 'badge bg-secondary'}">${status}</span>`;
     }
 
-    // ====== Renderers ======
+    /* =========================
+       Renderers
+    ========================== */
     function renderAssignment(a){
       bcTitle.innerText = softWrap(a.title);
       pageTitle.innerText = softWrap(a.title);
@@ -583,8 +655,10 @@
       pointsLine.innerText = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
       dueAtEl.innerText = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
 
+      // Instructions: keep text only (server may contain HTML — if trusted, you can set innerHTML)
       assignContent.innerText = softWrap(a.content || "");
 
+      // Attachments (rubrics prioritized)
       const atts = Array.isArray(a.attachments) ? a.attachments : [];
       const rubricFiles = atts.filter(x => !x.url && isRubricAttachment(x));
       const otherFiles  = atts.filter(x => !x.url && !isRubricAttachment(x));
@@ -592,7 +666,6 @@
 
       let html = '';
 
-      // Rubric box (preview-enabled)
       if (rubricFiles.length) {
         const items = rubricFiles.map(f => {
           const name = softWrap(pickName(f));
@@ -622,7 +695,6 @@
           </div>`;
       }
 
-      // Other uploaded files (preview-enabled)
       const fileItems = otherFiles.map(f => {
         const name = softWrap(pickName(f));
         const payload = {
@@ -643,7 +715,6 @@
                 </li>`;
       }).join('');
 
-      // External links (preview-enabled; YouTube embeds, etc.)
       const linkItems = links.map(x => {
         const href = x.url || pickHref(x);
         const display = softWrap(x.url || pickName(x));
@@ -668,11 +739,10 @@
 
       attachmentsWrap.innerHTML = html || '';
 
-      // Wire preview buttons (delegated)
+      // Wire previews
       attachmentsWrap.onclick = async (ev) => {
         const btn = ev.target.closest('.att-preview-btn');
         if (!btn) return;
-
         let viewUrl = '';
         let fileName = '';
         if (btn.dataset.externalUrl) {
@@ -686,13 +756,9 @@
           } catch {}
         }
         if (!viewUrl) return;
-
         document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
         setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
-
-        const content = document.getElementById("filePreviewContent");
-        renderFilePreviewInto(content, viewUrl);
-
+        renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
         new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
       };
     }
@@ -752,7 +818,7 @@
         submissionGrade.innerHTML = '';
       }
 
-      // Re-wire preview inside submission area as well
+      // Preview inside submission area
       submissionFiles.onclick = async (ev) => {
         const btn = ev.target.closest('.att-preview-btn');
         if (!btn) return;
@@ -773,19 +839,20 @@
       };
     }
 
-    // Locker
     function lockSubmissionUI(reason = 'You have already submitted this assignment. Resubmission is disabled.') {
-      [fileInput, noteInput].forEach(el => { if (!el) return; el.disabled = true; el.classList.add('disabled'); });
+      if (noteInput) noteInput.disabled = true;
       if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = `<i class="bi bi-lock-fill me-1"></i> Submission Locked`;
-        submitBtn.classList.add('disabled');
       }
+      dropzone.classList.add('disabled');
       alreadySubmitted.classList.remove('d-none');
       alreadySubmitted.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${escapeHTML(softWrap(reason))}`;
     }
 
-    // ====== Load ======
+    /* =========================
+       Load page
+    ========================== */
     async function loadPage(){
       if (!assignmentId){
         assignContent.textContent = "Invalid assignment id.";
@@ -812,20 +879,26 @@
       }
     }
 
-    // ====== File preview/validation ======
-    function summarizeSelection(files){
-      if (!files.length) return '';
+    /* =========================
+       File selection (with remove)
+    ========================== */
+    const selectedFiles = []; // keep our own list so we can remove items
+
+    function refreshFileHint() {
+      if (!selectedFiles.length) {
+        fileHint.textContent = 'No files selected.';
+        return;
+      }
       let total = 0, max = 0;
-      for (const f of files) { total += f.size; if (f.size > max) max = f.size; }
-      return `${files.length} file(s) • total ${human(total)} • largest ${human(max)}`;
+      selectedFiles.forEach(f => { total += f.size; if (f.size > max) max = f.size; });
+      fileHint.textContent = `${selectedFiles.length} file(s) • total ${human(total)} • largest ${human(max)}`;
     }
 
     function renderFilePreview(){
       filePreview.innerHTML = '';
-      const files = Array.from(fileInput.files || []);
       let anyTooLarge = false;
 
-      files.forEach(f => {
+      selectedFiles.forEach((f, idx) => {
         const tooBig = f.size > STUDENT_MAX_BYTES;
         if (tooBig) anyTooLarge = true;
 
@@ -836,21 +909,110 @@
             <i class="bi bi-file-earmark${tooBig ? '-x text-danger' : ''}"></i>
             <div>
               <div class="fw-semibold wrap-anywhere">${escapeHTML(softWrap(f.name))}</div>
-              <div class="size">${human(f.size)}${tooBig ? ` <span class="warn">(exceeds ${STUDENT_MAX_MB} MB)</span>` : ''}</div>
+              <div class="meta">${human(f.size)}${tooBig ? ` <span class="text-danger">(exceeds ${STUDENT_MAX_MB} MB)</span>` : ''}</div>
             </div>
+          </div>
+          <div class="actions">
+            <button class="btn-icon" aria-label="Remove file" data-remove="${idx}" title="Remove">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>`;
         filePreview.appendChild(row);
       });
 
-      if (files.length) fileHint.textContent = summarizeSelection(files);
-      else fileHint.textContent = 'Supported: documents, images, PDFs, etc.';
+      refreshFileHint();
 
-      submitBtn.disabled = (currentStatus !== 'Open') || anyTooLarge;
+      // Remove handlers
+      filePreview.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.getAttribute('data-remove'), 10);
+          if (!Number.isNaN(i)) {
+            selectedFiles.splice(i, 1);
+            renderFilePreview();
+            updateSubmitEnabled();
+          }
+        });
+      });
+
+      updateSubmitEnabled(anyTooLarge);
+    }
+
+    function addFiles(files) {
+      for (const f of files) selectedFiles.push(f);
+      renderFilePreview();
+    }
+
+    function updateSubmitEnabled(anyTooLarge = false){
+      const hasFile = selectedFiles.length > 0;
+      const hasNote = !!noteInput.value.trim();
+      submitBtn.disabled = (currentStatus !== 'Open') || (anyTooLarge || (!hasFile && !hasNote));
       submitStatus.textContent = anyTooLarge ? `One or more files exceed the ${STUDENT_MAX_MB} MB limit.` : '';
     }
-    fileInput.addEventListener('change', renderFilePreview);
 
-    // ====== Submit handler ======
+    // Clicking the dropzone opens input
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    });
+
+    // Drag & drop
+    ;['dragenter','dragover'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
+    ;['dragleave','drop'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
+    dropzone.addEventListener('drop', (e) => {
+      if (currentStatus !== 'Open') return;
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length) addFiles(files);
+    });
+
+    // Traditional file input
+    fileInput.addEventListener('change', () => {
+      if (currentStatus !== 'Open') return;
+      const files = Array.from(fileInput.files || []);
+      if (files.length) addFiles(files);
+      fileInput.value = ""; // allow re-adding same file later
+    });
+
+    // Note input: autosave + enable submit
+    const draftKey = `assignDraft:${assignmentId}:${userData.userId}`;
+    function loadDraft(){
+      try {
+        const s = localStorage.getItem(draftKey);
+        if (!s) return;
+        const js = JSON.parse(s);
+        if (js && typeof js.note === 'string') {
+          noteInput.value = js.note;
+        }
+      } catch {}
+    }
+    function saveDraft(){
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ note: noteInput.value }));
+        autosaveHint.textContent = 'Draft saved locally.';
+      } catch {}
+    }
+    loadDraft();
+    let autosaveTimer=null;
+    noteInput.addEventListener('input', () => {
+      updateSubmitEnabled();
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(saveDraft, 400);
+    });
+
+    // Warn before leaving with unsent work
+    window.addEventListener('beforeunload', (e) => {
+      const hasFile = selectedFiles.length > 0;
+      const hasNote = !!noteInput.value.trim();
+      if (currentStatus === 'Open' && (hasFile || hasNote)) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    /* =========================
+       Submit handler
+    ========================== */
     async function submitAssignment(e){
       e.preventDefault();
       if (!assignmentId) return;
@@ -862,15 +1024,15 @@
         return;
       }
 
-      const files = Array.from(fileInput.files || []);
-      const tooLarge = files.find(f => f.size > STUDENT_MAX_BYTES);
+      // Validate sizes
+      const tooLarge = selectedFiles.find(f => f.size > STUDENT_MAX_BYTES);
       if (tooLarge){
         submitStatus.textContent = `“${tooLarge.name}” is ${human(tooLarge.size)} and exceeds the ${STUDENT_MAX_MB} MB limit. Please compress or choose a smaller file.`;
         renderFilePreview();
         return;
       }
 
-      const hasFile = files.length > 0;
+      const hasFile = selectedFiles.length > 0;
       const hasNote = !!noteInput.value.trim();
       if (!hasFile && !hasNote){
         submitStatus.textContent = "Please add at least one file or a note.";
@@ -879,7 +1041,7 @@
 
       const formData = new FormData();
       formData.append("studentId", userData.userId);
-      files.forEach(f => formData.append("files", f));
+      selectedFiles.forEach(f => formData.append("files", f));
       if (hasNote) formData.append("text", noteInput.value.trim());
 
       submitStatus.textContent = "Submitting…";
@@ -902,15 +1064,19 @@
         return;
       }
 
+      // Clean up local draft on success
+      try { localStorage.removeItem(draftKey); } catch {}
+
       lockSubmissionUI();
       const localSub = {
         text: noteInput.value.trim(),
-        files: files.map(f => ({ filePath: '', originalName: f.name, size: f.size })), // local receipt only
+        files: selectedFiles.map(f => ({ filePath: '', originalName: f.name, size: f.size })),
         graded: false, grade: null, feedback: null,
         submittedAt: Date.now()
       };
       renderSubmission(localSub);
 
+      // Redirect back with success toast
       window.location.href = "/STUDENT/assignment/assignment.html?submitted=1";
     }
 
@@ -921,9 +1087,10 @@
     }
 
     (async function init(){
-      try{ await loadPage(); }
-      catch(e){ console.error(e); assignContent.textContent = "Failed to load assignment details."; }
+      try { await loadPage(); }
+      catch (e) { console.error(e); assignContent.textContent = "Failed to load assignment details."; }
       submitForm.addEventListener("submit", submitAssignment);
+      updateSubmitEnabled();
     })();
   </script>
 

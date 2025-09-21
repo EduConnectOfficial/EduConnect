@@ -237,6 +237,73 @@
 
   <div id="antiCheatBanner" class="anti-cheat-banner"></div>
 
+  <!-- Students-only auth guard + header initials -->
+  <script>
+    (function guardStudentSession() {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
+
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
+
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch {}
+        window.location.replace("../login/login.html"); // this page is /STUDENT/quiz/take_quiz.html
+        return;
+      }
+
+      // Expose for other scripts
+      window.currentUser = u;
+      window.userData = u;
+
+      // Header initials
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+      }
+      const el = document.getElementById("Username");
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace("../login/login.html");
+          } catch {
+            window.location.replace("../login/login.html");
+          }
+        }
+      });
+    })();
+
+    function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+
   <script>
     /* ===== Config & helpers ===== */
     const API = "http://localhost:5000";
@@ -276,7 +343,7 @@
       if(s.includes("@")){
         const local=s.split("@")[0];
         const parts=local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+        return (parts.length>=2?parts[0][0]+parts[parts-1][0]:local.slice(0,2)).toUpperCase();
       }
       const parts=splitName(s);
       return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
@@ -284,7 +351,7 @@
     function splitName(s){return s.split(/[\s\-]+/).filter(Boolean);}
 
     const UsernameEl=document.getElementById("Username");
-    const userData=JSON.parse(localStorage.getItem("user")||"{}");
+    const userData=window.userData || JSON.parse(localStorage.getItem("user")||"{}");
     if(UsernameEl){
       const displayName=userData.fullName||userData.username||userData.email||"Student";
       const initials=initialsFrom(displayName)||"?";
@@ -364,7 +431,7 @@
       if(!q) return '';
       if(isEssayQuestion(q)){
         const ta=document.querySelector(`textarea[name='essay_${origIdx}']`);
-        return ta?ta.value.trim():'';
+        return ta?ta.value.trim():''; 
       }
       const radios=document.querySelectorAll(`input[type='radio'][name='q_${origIdx}']`);
       const checked=[...radios].find(r=>r.checked);

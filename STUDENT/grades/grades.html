@@ -15,6 +15,16 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* tiny QoL additions (consistent with other updated pages) */
+    .wrap-anywhere{overflow-wrap:anywhere}
+    .table-clean thead th{border-bottom:1px solid #e9ecef}
+    .table-clean tbody td{border-top:1px solid #f1f3f5}
+    .skeleton{position:relative;border-radius:.5rem;background:#eef2f7;overflow:hidden}
+    .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shimmer 1.3s infinite;transform:translateX(-100%)}
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -101,9 +111,9 @@
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-bar-chart"></i>Quizzes (Best % per Quiz)</h2>
               </div>
-              <div class="chart-wrap"><canvas id="quizChart"></canvas></div>
+              <div class="chart-wrap" style="min-height:280px"><canvas id="quizChart"></canvas></div>
               <div class="table-responsive mt-3">
-                <table class="table table-sm align-middle">
+                <table class="table table-sm table-clean align-middle">
                   <thead>
                     <tr>
                       <th>Quiz</th><th>Best %</th><th>Attempts</th><th>Last Attempt</th>
@@ -122,9 +132,9 @@
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-clipboard2-check"></i>Assignments</h2>
               </div>
-              <div class="chart-wrap"><canvas id="assignChart"></canvas></div>
+              <div class="chart-wrap" style="min-height:280px"><canvas id="assignChart"></canvas></div>
               <div class="table-responsive mt-3">
-                <table class="table table-sm align-middle">
+                <table class="table table-sm table-clean align-middle">
                   <thead>
                     <tr>
                       <th>Assignment</th><th>Grade %</th><th>Graded At</th>
@@ -145,7 +155,7 @@
             <h2 class="ui-card-title"><i class="bi bi-journals"></i>Essay Submissions</h2>
           </div>
           <div class="table-responsive">
-            <table class="table table-sm align-middle">
+            <table class="table table-sm table-clean align-middle">
               <thead>
                 <tr>
                   <th>Quiz</th><th>Question #</th><th>Status</th><th>Score</th><th>Submitted</th>
@@ -164,7 +174,7 @@
             <h2 class="ui-card-title"><i class="bi bi-mortarboard"></i>Completed Modules</h2>
           </div>
           <div class="table-responsive">
-            <table class="table table-sm align-middle">
+            <table class="table table-sm table-clean align-middle">
               <thead>
                 <tr>
                   <th>Course</th><th>Module</th><th>Percent</th><th>Completed At</th>
@@ -209,51 +219,45 @@
     });
   </script>
 
-<script>
-  const USER = JSON.parse(localStorage.getItem("user") || "{}");
-  if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
-    window.location.href = "../login/login.html";
-  }
+  <!-- Auth + header initials -->
+  <script>
+    (function guardAndHeader(){
+      const raw = JSON.parse(localStorage.getItem("user") || "{}");
+      const USER = raw.user || raw;
+      if (!USER || (!USER.email && !USER.userId && !USER.uid)) {
+        window.location.href = "../login/login.html";
+        return;
+      }
+      function initialsFrom(str){
+        if(!str) return "";
+        const s=String(str).trim(); if(!s) return "";
+        if(s.includes("@")){
+          const local=s.split("@")[0];
+          const parts=local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+        }
+        const parts=s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
+      }
+      const displayName = USER.fullName || USER.username || USER.email || "Student";
+      const elU = document.getElementById("Username");
+      if (elU) {
+        elU.textContent = initialsFrom(displayName) || "?";
+        elU.title = displayName;
+        elU.setAttribute("aria-label", displayName);
+      }
+      if (!USER.uid) {
+        USER.uid = USER.userId || USER.id || USER.email;
+        localStorage.setItem("user", JSON.stringify(USER));
+      }
+      window.USER = USER; // expose to page
+    })();
 
-  function initialsFrom(str) {
-    if (!str) return "";
-    const s = String(str).trim();
-    if (!s) return "";
-    if (s.includes("@")) {
-      const local = s.split("@")[0];
-      const parts = local.split(/[.\-_]+/).filter(Boolean);
-      return (parts.length >= 2
-        ? parts[0][0] + parts[parts.length - 1][0]
-        : local.slice(0, 2)
-      ).toUpperCase();
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
     }
-    const parts = s.split(/[\s\-]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : parts[0].slice(0, 2)
-    ).toUpperCase();
-  }
-
-  (function setHeaderName(){
-    const displayName = USER.fullName || USER.username || USER.email || "Student";
-    const initials = initialsFrom(displayName) || "?";
-    const elU = document.getElementById("Username");
-    if (elU) {
-      elU.textContent = initials;
-      elU.title = displayName;
-      elU.setAttribute("aria-label", displayName);
-    }
-    if (!USER.uid) {
-      USER.uid = USER.userId || USER.id || USER.email;
-      localStorage.setItem("user", JSON.stringify(USER));
-    }
-  })();
-
-  function logoutUser() {
-    localStorage.clear(); sessionStorage.clear();
-    window.location.href = "/STUDENT/login/login.html";
-  }
-</script>
+  </script>
 
   <!-- Bootstrap JS bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -289,7 +293,7 @@
     };
 
     /* =======================
-       FIXED: Percent resolver
+       Robust percent resolver
        ======================= */
     function clamp01pct(n) {
       const x = Number(n);
@@ -304,25 +308,14 @@
       return null;
     }
     function gradePctFromRow(a = {}) {
-      // Prefer server/computed percent fields if present
       const pre = firstNum(a.percent, a.gradedPercent, a.autoPercent, a.gradePercent);
       if (pre != null) return clamp01pct(pre);
 
-      // Compute from raw + any max we can find
       const raw = firstNum(a.gradeRaw, a.grade, a.score, a.obtained);
-      const max = firstNum(
-        a.maxPoints, a.assignmentMaxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf
-      );
-      if (raw != null && max != null && max > 0) {
-        return clamp01pct((raw / max) * 100);
-      }
-
-      // Legacy: fractional raw (e.g. 0.92)
+      const max = firstNum(a.maxPoints, a.assignmentMaxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf);
+      if (raw != null && max != null && max > 0) return clamp01pct((raw / max) * 100);
       if (raw != null && raw <= 1) return clamp01pct(raw * 100);
-
-      // Last resort: treat raw as percent if plausible
       if (raw != null && raw <= 100) return clamp01pct(raw);
-
       return null;
     }
 
@@ -340,7 +333,8 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+          scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+          plugins: { legend: { display: false } }
         }
       });
 
@@ -365,7 +359,7 @@
       throw new Error('No analytics endpoint responded with 200.');
     }
 
-    // ===== Real courses API =====
+    // Real courses API
     async function getCoursesForStudent(userId) {
       const urls = [
         `${API_BASE}/students/${encodeURIComponent(userId)}/courses?visibility=student&courseArchived=exclude&includeTeacher=true`,
@@ -380,7 +374,7 @@
       return [];
     }
 
-    // ===== Real quiz meta API =====
+    // Quiz meta (to enrich with titles/course)
     async function getQuizMetaForStudent(forStudent) {
       const urls = [
         `${API_BASE}/quizzes?forStudent=${encodeURIComponent(forStudent)}`,
@@ -408,7 +402,7 @@
       return {};
     }
 
-    // ===== Real assignment meta API =====
+    // Assignment meta (to enrich with titles/course)
     async function getStudentAssignmentsMeta(userId) {
       const urls = [
         `${API_BASE}/students/${encodeURIComponent(userId)}/assignments`,
@@ -436,7 +430,7 @@
       return {};
     }
 
-    // ===== Enrich with course info BEFORE sort/filter =====
+    // Enrich before sort/filter
     async function enrichQuizzesWithCourse(qrows, forStudent) {
       if (!qrows?.length) return qrows || [];
       const metaMap = await getQuizMetaForStudent(forStudent);
@@ -465,7 +459,7 @@
       });
     }
 
-    // ==== Filtering/sorting state ====
+    // Filtering/sorting state
     let _analyticsData = null;
     let _assignmentRows = [];
     let _quizRows = [];
@@ -501,13 +495,11 @@
       return rows.filter(r => r.courseId === courseId);
     }
 
-    // Quizzes: sort by best percent (High → Low)
+    // Sorters
     function sortQuizzesByBestPercent(rows) {
       const p = r => Number.isFinite(+r.bestPercent) ? +r.bestPercent : -1;
       return [...rows].sort((a, b) => p(b) - p(a) || String(a.title||'').localeCompare(String(b.title||'')));
     }
-
-    // Assignments: sort by grade % (High → Low), tie-break newer gradedAt
     function sortAssignmentsByPercentDesc(rows) {
       const gradeOf = r => {
         const g = gradePctFromRow(r);
@@ -519,6 +511,7 @@
       return [...rows].sort((a,b) => gradeOf(b) - gradeOf(a) || timeOf(b) - timeOf(a));
     }
 
+    // Renderers
     function renderQuizzes(qrows) {
       const rows = sortQuizzesByBestPercent(qrows || []);
       if (!rows.length) {
@@ -527,7 +520,7 @@
       } else {
         el('quizTbody').innerHTML = rows.map(r => `
           <tr>
-            <td>${r.title || r.quizId}</td>
+            <td class="wrap-anywhere">${r.title || r.quizId}</td>
             <td>${pct(r.bestPercent)}</td>
             <td>${r.attemptsUsed ?? 0}</td>
             <td>${dt(r.lastSubmittedAt)}</td>
@@ -553,7 +546,7 @@
           : '';
         return `
           <tr>
-            <td>${a.assignmentTitle || a.assignmentId}</td>
+            <td class="wrap-anywhere">${a.assignmentTitle || a.assignmentId}</td>
             <td ${rawInfo}>${gp != null ? gp + '%' : '—'}</td>
             <td>${dt(a.gradedAt)}</td>
           </tr>
@@ -567,25 +560,19 @@
 
     function applyFiltersAndRender() {
       const selectedCourse = el('courseFilter').value || '__ALL__';
-
-      const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
-      renderAssignments(aFiltered);
-
-      const qFiltered = filterByCourse(_quizRows, selectedCourse);
-      renderQuizzes(qFiltered);
+      renderAssignments(filterByCourse(_assignmentRows, selectedCourse));
+      renderQuizzes(filterByCourse(_quizRows, selectedCourse));
     }
 
-    // CSV (respects current course filter)
+    // CSV (respects filter)
     async function exportCsv() {
       try {
         const student = getStudentKey();
         const data = _analyticsData || await getAnalyticsJson(student);
 
         const selectedCourse = el('courseFilter').value || '__ALL__';
-        const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
-        const aSorted = sortAssignmentsByPercentDesc(aFiltered);
-        const qFiltered = filterByCourse(_quizRows, selectedCourse);
-        const qSorted = sortQuizzesByBestPercent(qFiltered);
+        const aSorted = sortAssignmentsByPercentDesc(filterByCourse(_assignmentRows, selectedCourse));
+        const qSorted = sortQuizzesByBestPercent(filterByCourse(_quizRows, selectedCourse));
 
         let csv = [];
         csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
@@ -595,7 +582,7 @@
         csv.push('Quizzes');
         csv.push('Quiz,Best %,Attempts,Last Attempt');
         qSorted.forEach(r => {
-          csv.push(`"${r.title || r.quizId}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
+          csv.push(`"${(r.title || r.quizId).replace(/"/g,'""')}","${pct(r.bestPercent)}","${r.attemptsUsed ?? 0}","${dt(r.lastSubmittedAt)}"`);
         });
 
         csv.push('');
@@ -603,21 +590,21 @@
         csv.push('Assignment,Grade %,Graded At');
         aSorted.forEach(a => {
           const gp = gradePctFromRow(a);
-          csv.push(`"${a.assignmentTitle || a.assignmentId}","${gp != null ? gp + '%' : ''}","${dt(a.gradedAt)}"`);
+          csv.push(`"${(a.assignmentTitle || a.assignmentId).replace(/"/g,'""')}","${gp != null ? gp + '%' : ''}","${dt(a.gradedAt)}"`);
         });
 
         csv.push('');
         csv.push('Essay Submissions');
         csv.push('Quiz,Question #,Status,Score,Submitted');
         (data.essays?.submissions || []).forEach(e => {
-          csv.push(`"${e.quizTitle}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
+          csv.push(`"${(e.quizTitle||'').replace(/"/g,'""')}","${e.questionIndex != null ? (e.questionIndex+1) : ''}","${e.status}","${e.score != null ? `${e.score}/${e.maxScore}` : ''}","${dt(e.createdAt)}"`);
         });
 
         csv.push('');
         csv.push('Completed Modules');
         csv.push('Course,Module,Percent,Completed At');
         (data.modules?.completed || []).forEach(m => {
-          csv.push(`"${m.courseTitle}","${m.moduleTitle}","100%","${dt(m.completedAt)}"`);
+          csv.push(`"${(m.courseTitle||'').replace(/"/g,'""')}","${(m.moduleTitle||'').replace(/"/g,'""')}","100%","${dt(m.completedAt)}"`);
         });
 
         const blob = new Blob([csv.join('\r\n')], { type: 'text/csv' });
@@ -634,7 +621,7 @@
       }
     }
 
-    // PDF (respects current course filter)
+    // PDF (respects filter)
     async function downloadPdf() {
       try {
         if (typeof window.jspdf === 'undefined') {
@@ -683,8 +670,7 @@
         doc.setFont('times', 'bold'); doc.text('Quizzes', 20, y);
         doc.setFont('times', 'normal'); y += 2;
         const selectedCourse = el('courseFilter').value || '__ALL__';
-        const qFiltered = filterByCourse(_quizRows, selectedCourse);
-        const qSorted = sortQuizzesByBestPercent(qFiltered);
+        const qSorted = sortQuizzesByBestPercent(filterByCourse(_quizRows, selectedCourse));
         doc.autoTable({
           startY: y,
           head: [['Quiz', 'Best %', 'Attempts', 'Last Attempt']],
@@ -698,8 +684,7 @@
         y = doc.lastAutoTable.finalY + 8;
         doc.setFont('times', 'bold'); doc.text('Assignments', 20, y);
         doc.setFont('times', 'normal'); y += 2;
-        const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
-        const aSorted = sortAssignmentsByPercentDesc(aFiltered);
+        const aSorted = sortAssignmentsByPercentDesc(filterByCourse(_assignmentRows, selectedCourse));
         doc.autoTable({
           startY: y,
           head: [['Assignment', 'Grade %', 'Graded At']],
@@ -749,6 +734,13 @@
     // Initial load
     async function load() {
       const student = getStudentKey();
+
+      // show quick skeletons
+      el('quizTbody').innerHTML =
+        '<tr><td colspan="4"><div class="skeleton" style="height:22px"></div></td></tr>';
+      el('assignTbody').innerHTML =
+        '<tr><td colspan="3"><div class="skeleton" style="height:22px"></div></td></tr>';
+
       const [data, courses] = await Promise.all([
         getAnalyticsJson(student),
         getCoursesForStudent(student)
@@ -780,7 +772,7 @@
       _quizRows = await enrichQuizzesWithCourse(data.quizzes?.perQuiz || [], student);
       renderQuizzes(_quizRows);
 
-      // Assignments (enrich with course, render with fixed percent)
+      // Assignments (enrich with course)
       _assignmentRows = await enrichAssignmentsWithCourse(data.assignments?.grades || [], student);
 
       // Course dropdown
@@ -795,9 +787,9 @@
       el('essayTbody').innerHTML = erows.length
         ? erows.map(e => `
           <tr>
-            <td>${e.quizTitle || e.quizId || ''}</td>
+            <td class="wrap-anywhere">${e.quizTitle || e.quizId || ''}</td>
             <td>${e.questionIndex != null ? (e.questionIndex + 1) : '—'}</td>
-            <td><span class="badge ${e.status === 'graded' || e.status === 'GRADED' ? 'bg-success' : 'bg-secondary'} badge-pill">${(e.status || 'pending').toUpperCase()}</span></td>
+            <td><span class="badge ${e.status?.toLowerCase() === 'graded' ? 'bg-success' : 'bg-secondary'}">${(e.status || 'pending').toUpperCase()}</span></td>
             <td>${e.score != null ? `${e.score}/${e.maxScore ?? 10}` : '—'}</td>
             <td>${dt(e.createdAt)}</td>
           </tr>
@@ -809,8 +801,8 @@
       el('modTbody').innerHTML = mrows.length
         ? mrows.map(m => `
           <tr>
-            <td>${m.courseTitle || m.courseId || ''}</td>
-            <td>${m.moduleTitle || m.moduleId || ''}</td>
+            <td class="wrap-anywhere">${m.courseTitle || m.courseId || ''}</td>
+            <td class="wrap-anywhere">${m.moduleTitle || m.moduleId || ''}</td>
             <td>100%</td>
             <td>${dt(m.completedAt)}</td>
           </tr>

@@ -12,6 +12,16 @@
 
   <!-- Sidebar / shared styles -->
   <link rel="stylesheet" href="../forum/forum.css" />
+
+  <style>
+    /* Small, shared quality-of-life styles added across pages */
+    .wrap-anywhere{overflow-wrap:anywhere}
+    .thread + .thread{margin-top:.75rem}
+    .skeleton{position:relative;border-radius:.5rem;background:#eef2f7;overflow:hidden;min-height:56px}
+    .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:shimmer 1.2s infinite}
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+    .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -22,13 +32,12 @@
     <div class="main">
       <!-- HEADER -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
-          <input type="text" placeholder="Search..." aria-label="Search site"/>
+          <input id="globalSearch" type="text" placeholder="Search..." aria-label="Search site"/>
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn" aria-label="Open profile menu">
@@ -46,25 +55,30 @@
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-question-circle"></i> Ask a Question</h2>
           </div>
-          <form id="questionForm" class="px-3 pb-3">
+          <form id="questionForm" class="px-3 pb-3" novalidate>
             <div class="row g-3">
               <div class="col-12 col-md-4">
                 <label for="moduleSelect" class="form-label">Course</label>
                 <select id="moduleSelect" class="form-select" required>
                   <option value="">-- Choose Course --</option>
                 </select>
+                <div class="invalid-feedback">Please choose a course you’re enrolled in.</div>
               </div>
               <div class="col-12 col-md-8">
                 <label for="questionTitle" class="form-label">Question Title</label>
-                <input id="questionTitle" class="form-control" type="text" placeholder="e.g., Confused about Big-O notation" required />
+                <input id="questionTitle" class="form-control" type="text" placeholder="e.g., Confused about Big-O notation" required minlength="3" />
+                <div class="invalid-feedback">Title must be at least 3 characters.</div>
               </div>
               <div class="col-12">
                 <label for="questionBody" class="form-label">Body</label>
-                <textarea id="questionBody" class="form-control" rows="4" placeholder="Describe your question in detail…" required></textarea>
+                <textarea id="questionBody" class="form-control" rows="4" placeholder="Describe your question in detail…" required minlength="5"></textarea>
                 <div class="form-text">Be clear and include what you’ve tried.</div>
+                <div class="invalid-feedback">Body must be at least 5 characters.</div>
               </div>
               <div class="col-12 d-flex justify-content-end">
-                <button type="submit" class="btn btn-amber">Post Question</button>
+                <button id="postBtn" type="submit" class="btn btn-amber">
+                  <i class="bi bi-send me-1"></i> Post Question
+                </button>
               </div>
             </div>
           </form>
@@ -76,8 +90,10 @@
             <div class="col-12 col-md-6">
               <label class="form-label" for="threadSearch">Search Threads</label>
               <div class="input-group">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input id="threadSearch" type="search" class="form-control border-start-0" placeholder="Search by title or content..." />
+                <span class="input-group-text bg-white border-end-0">
+                  <i class="bi bi-search text-muted"></i>
+                </span>
+                <input id="threadSearch" type="search" class="form-control border-start-0" placeholder="Search by title..." />
               </div>
             </div>
             <div class="col-6 col-md-3">
@@ -100,9 +116,13 @@
         <div class="ui-card card-themed">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-chat-dots"></i> Recent Threads</h2>
-            <div class="ui-subtext" id="threadCount"></div>
+            <div class="ui-subtext" id="threadCount">Loading…</div>
           </div>
-          <div id="forumThreads" class="px-3 pb-3"></div>
+          <div id="forumThreads" class="px-3 pb-3">
+            <div class="skeleton rounded-3"></div>
+            <div class="skeleton rounded-3 mt-2"></div>
+            <div class="skeleton rounded-3 mt-2"></div>
+          </div>
         </div>
       </div> <!-- /content -->
     </div>
@@ -137,291 +157,312 @@
     });
   </script>
 
-<script>
-  // API bases
-  const FORUM_API = (location.port === '5501')
-    ? 'http://localhost:5000/api/forum'
-    : '/api/forum';
+  <!-- Page Logic -->
+  <script>
+    // API bases
+    const FORUM_API = (location.port === '5501')
+      ? 'http://localhost:5000/api/forum'
+      : '/api/forum';
 
-  // Core API (for student enrollments, same endpoint your quiz page uses)
-  const CORE_API = (location.port === '5501')
-    ? 'http://localhost:5000'
-    : '';
+    // Core API (student enrollments, same convention as other pages)
+    const CORE_API = (location.port === '5501')
+      ? 'http://localhost:5000'
+      : '';
 
-  // Helpers
-  const qs = sel => document.querySelector(sel);
+    // Helpers
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
 
-  function escapeHtml(str='') {
-    return String(str).replace(/[&<>"']/g, s => (
-      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]
-    ));
-  }
-
-  function toLocal(dt) {
-    if (!dt) return '';
-    if (dt._seconds) return new Date(dt._seconds * 1000).toLocaleString();
-    return new Date(dt).toLocaleString();
-  }
-
-  // Robust fetch that throws if response isn't JSON
-  async function fetchJSON(url, opts) {
-    const res = await fetch(url, opts);
-    const ct = res.headers.get('content-type') || '';
-    const text = await res.text();
-    if (!ct.includes('application/json')) {
-      throw new Error(`Expected JSON, got ${res.status} ${res.statusText}. Body starts with: ${text.slice(0,120)}`);
+    function escapeHtml(str='') {
+      return String(str).replace(/[&<>"']/g, s => (
+        {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]
+      ));
     }
-    const json = JSON.parse(text || '{}');
-    if (!res.ok || json.success === false) {
-      throw new Error(json.message || `HTTP ${res.status}`);
+    function toLocal(dt) {
+      if (!dt) return '';
+      if (dt._seconds) return new Date(dt._seconds * 1000).toLocaleString();
+      return new Date(dt).toLocaleString();
     }
-    return json;
-  }
-
-  // Auth (match quiz page style)
-  const userData = JSON.parse(localStorage.getItem("user") || "{}");
-  const userId = userData.userId || userData.uid || userData.id || userData.email;
-  if (!userId) {
-    window.location.href = "../login/login.html";
-  } else {
-    // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
-
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
-
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
-
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
-
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
-    if (!userData.uid) {
-      userData.uid = userId; // follow/favorite uses uid
-      localStorage.setItem("user", JSON.stringify(userData));
+    function debounce(fn, ms=300){
+      let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
     }
-  }
 
-  // State
-  let courses = [];
-  const coursesById = new Map();
-  const enrolledCourseIds = new Set();
-  let threads = [];
-
-  // Load ONLY enrolled courses
-  async function loadCourses() {
-    const j = await fetchJSON(`${CORE_API}/api/students/${encodeURIComponent(userId)}/courses?includeTeacher=true`);
-    const list = Array.isArray(j?.courses) ? j.courses
-               : Array.isArray(j?.data)     ? j.data
-               : Array.isArray(j)           ? j
-               : [];
-
-    courses = list;
-    coursesById.clear();
-    enrolledCourseIds.clear();
-
-    const moduleSelect = qs("#moduleSelect");
-    const courseFilter = qs("#courseFilter");
-
-    moduleSelect.innerHTML = `<option value="">-- Choose Course --</option>`;
-    courseFilter.innerHTML = `<option value="All">All</option>`;
-
-    list.forEach(c => {
-      if (!c?.id) return;
-      enrolledCourseIds.add(c.id);
-      coursesById.set(c.id, c);
-
-      const title = c.title || c.name || "Untitled Course";
-      moduleSelect.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escapeHtml(title)}</option>`);
-      courseFilter.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escapeHtml(title)}</option>`);
-    });
-
-    if (list.length === 0) {
-      moduleSelect.disabled = true;
-      qs('#questionForm .btn').disabled = true;
-    }
-  }
-
-  // Load threads and filter to enrolled courses
-  async function loadThreads() {
-    const filterVal = qs('#courseFilter').value;
-    const courseId = (filterVal && filterVal !== 'All') ? filterVal : '';
-    const q = qs('#threadSearch').value || '';
-    const sort = qs('#sortThreads').value || 'newest';
-
-    const params = new URLSearchParams({ courseId, q, sort, limit: '50' });
-    const j = await fetchJSON(`${FORUM_API}/threads?${params.toString()}`);
-
-    let arr = j.data || [];
-    // Ensure we only show threads from courses the student is enrolled in
-    arr = arr.filter(t => enrolledCourseIds.has(t.courseId));
-    if (courseId) arr = arr.filter(t => t.courseId === courseId);
-
-    threads = arr;
-    renderThreads();
-  }
-
-function renderThreads() {
-  const wrap = qs('#forumThreads');
-  const count = qs('#threadCount');
-  wrap.innerHTML = '';
-  count.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''}`;
-
-  threads.forEach(t => {
-    const followed = Array.isArray(t.followers) && userData?.uid ? t.followers.includes(userData.uid) : false;
-
-    const courseTitle = t.courseTitle
-      || coursesById.get(t.courseId)?.title
-      || coursesById.get(t.courseId)?.name
-      || '';
-
-    const div = document.createElement('div');
-    div.className = 'thread thread-themed';
-    div.innerHTML = `
-      <div class="d-flex justify-content-between align-items-start mb-1">
-        <h3 class="thread-title">${escapeHtml(t.title || '')}</h3>
-        <div class="d-flex gap-2">
-          <button class="btn btn-amber view-btn" data-id="${t.id}">
-            <i class="bi bi-eye"></i> View
-          </button>
-          <button class="btn btn-sm btn-amber-outline follow-btn ${followed ? 'active' : ''}" data-id="${t.id}">
-            <i class="bi ${followed ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>
-            ${followed ? 'Following' : 'Follow'}
-          </button>
-        </div>
-      </div>
-      <!-- Removed thread body text -->
-      <div class="thread-meta mb-2">
-        Course: <strong>${escapeHtml(courseTitle)}</strong> •
-        Replies: ${t.repliesCount || 0} •
-        Posted: ${toLocal(t.createdAt)}
-      </div>
-    `;
-
-    wrap.appendChild(div);
-  });
-
-  // follow toggle
-  wrap.querySelectorAll('.follow-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-id');
-      try {
-        await fetchJSON(`${FORUM_API}/threads/${id}/follow`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: userData.uid }),
-        });
-        await loadThreads();
-      } catch (err) {
-        console.error(err);
-        alert('Could not update follow state.');
+    // Robust fetch that verifies JSON
+    async function fetchJSON(url, opts) {
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      const ct = res.headers.get('content-type') || '';
+      let json = {};
+      if (ct.includes('application/json')) {
+        try { json = JSON.parse(text || '{}'); } catch {}
       }
-    });
-  });
-
-  // view button redirect
-  wrap.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-id');
-      window.location.href = `forum_view.html?id=${id}`;
-    });
-  });
-}
-
-
-  async function postThread({ courseId, title, body }) {
-    if (!enrolledCourseIds.has(courseId)) {
-      alert('Please select a course you are enrolled in.');
-      return;
+      if (!res.ok || json.success === false) {
+        const msg = json.message || `${res.status} ${res.statusText}`;
+        throw new Error(msg);
+      }
+      return json;
     }
 
-    await fetchJSON(`${FORUM_API}/threads`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: title.trim(),
-        text: body.trim(),           // backend expects 'text' for the body
-        courseId,
-        author: {
-          uid: userData.uid,
-          username: userData.username,
-          email: userData.email
+    // Auth + header initials (consistent with other pages)
+    (function authGuard(){
+      const u = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = u.userId || u.uid || u.id || u.email;
+      if (!userId) {
+        window.location.href = "../login/login.html";
+        return;
+      }
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim(); if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length >= 2 ? parts[0][0] + parts[parts.length-1][0] : local.slice(0,2)).toUpperCase();
         }
-      }),
-    });
-  }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length-1][0] : parts[0].slice(0,2)).toUpperCase();
+      }
+      const elU = document.getElementById("Username");
+      const displayName = u.fullName || u.username || u.email || "Student";
+      elU.textContent = initialsFrom(displayName) || "?";
+      elU.title = displayName;
+      elU.setAttribute("aria-label", displayName);
+      if (!u.uid) {
+        u.uid = userId;
+        localStorage.setItem("user", JSON.stringify(u));
+      }
+      window.__user = u; // expose to rest of page
+    })();
 
-  // Boot
-  document.addEventListener('DOMContentLoaded', async () => {
-    try {
-      await loadCourses();   // enrolled only
-      await loadThreads();   // filtered to enrolled
-    } catch (e) {
-      console.error(e);
-      qs('#forumThreads').innerHTML = `<div class="alert alert-warning">Forum API unreachable.</div>`;
-      qs('#threadCount').textContent = `0 threads`;
+    // State
+    let courses = [];
+    const coursesById = new Map();
+    const enrolledCourseIds = new Set();
+    let threads = [];
+    let lastQuery = { courseId:'', q:'', sort:'newest' };
+
+    // Load ONLY enrolled courses
+    async function loadCourses() {
+      const userId = __user.uid || __user.userId || __user.email;
+      const j = await fetchJSON(`${CORE_API}/api/students/${encodeURIComponent(userId)}/courses?includeTeacher=true`);
+      const list = Array.isArray(j?.courses) ? j.courses
+                 : Array.isArray(j?.data)     ? j.data
+                 : Array.isArray(j)           ? j
+                 : [];
+
+      courses = list;
+      coursesById.clear();
+      enrolledCourseIds.clear();
+
+      const moduleSelect = $("#moduleSelect");
+      const courseFilter = $("#courseFilter");
+      moduleSelect.innerHTML = `<option value="">-- Choose Course --</option>`;
+      courseFilter.innerHTML = `<option value="All">All</option>`;
+
+      list.forEach(c => {
+        if (!c?.id) return;
+        enrolledCourseIds.add(c.id);
+        coursesById.set(c.id, c);
+        const title = c.title || c.name || "Untitled Course";
+        moduleSelect.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escapeHtml(title)}</option>`);
+        courseFilter.insertAdjacentHTML('beforeend', `<option value="${c.id}">${escapeHtml(title)}</option>`);
+      });
+
+      if (list.length === 0) {
+        moduleSelect.disabled = true;
+        $("#postBtn").disabled = true;
+      }
     }
 
-    qs('#threadSearch').addEventListener('input', loadThreads);
-    qs('#courseFilter').addEventListener('change', loadThreads);
-    qs('#sortThreads').addEventListener('change', loadThreads);
+    // Load threads (server search), then hard-filter to enrolled
+    async function loadThreads() {
+      const filterVal = $('#courseFilter').value;
+      const courseId = (filterVal && filterVal !== 'All') ? filterVal : '';
+      const q = $('#threadSearch').value.trim();
+      const sort = $('#sortThreads').value || 'newest';
 
-    qs('#questionForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const courseId = qs("#moduleSelect").value;
-      const title = (qs("#questionTitle").value || '').trim();
-      const body  = (qs("#questionBody").value  || '').trim();
+      // Avoid reloading if nothing changed
+      const sig = JSON.stringify({ courseId, q, sort });
+      if (sig === JSON.stringify(lastQuery) && threads.length) return;
+      lastQuery = { courseId, q, sort };
 
-      if (!courseId) return alert('Please choose a course.');
-      if (title.length < 3) return alert('Please enter a longer title (at least 3 characters).');
-      if (body.length < 5) return alert('Please add more details to the body (at least 5 characters).');
+      const params = new URLSearchParams({
+        courseId, q, sort, limit: '50'
+      });
+      // skeleton
+      const wrap = $('#forumThreads');
+      wrap.innerHTML = `<div class="skeleton rounded-3"></div>
+                        <div class="skeleton rounded-3 mt-2"></div>`;
 
       try {
-        await postThread({ courseId, title, body });
-        e.target.reset();
-        await loadThreads();
-      } catch (err) {
-        console.error(err);
-        alert('Could not post your question.');
+        const j = await fetchJSON(`${FORUM_API}/threads?${params.toString()}`);
+        let arr = j.data || [];
+        arr = arr.filter(t => enrolledCourseIds.has(t.courseId));
+        if (courseId) arr = arr.filter(t => t.courseId === courseId);
+        threads = arr;
+        renderThreads();
+      } catch (e) {
+        console.error(e);
+        $('#threadCount').textContent = '0 threads';
+        wrap.innerHTML = `<div class="empty-state">Forum API unreachable or returned an error.</div>`;
       }
+    }
+
+    function renderThreads() {
+      const wrap = $('#forumThreads');
+      const count = $('#threadCount');
+      wrap.innerHTML = '';
+      count.textContent = `${threads.length} thread${threads.length !== 1 ? 's' : ''}`;
+
+      if (!threads.length) {
+        wrap.innerHTML = `<div class="empty-state">No threads match your filters yet. Be the first to ask a question!</div>`;
+        return;
+      }
+
+      threads.forEach(t => {
+        const followed = Array.isArray(t.followers) && __user?.uid
+          ? t.followers.includes(__user.uid) : false;
+
+        const courseTitle = t.courseTitle
+          || coursesById.get(t.courseId)?.title
+          || coursesById.get(t.courseId)?.name
+          || '';
+
+        const div = document.createElement('div');
+        div.className = 'thread thread-themed';
+        div.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h3 class="thread-title wrap-anywhere">${escapeHtml(t.title || '')}</h3>
+            <div class="d-flex gap-2">
+              <button class="btn btn-amber view-btn" data-id="${t.id}">
+                <i class="bi bi-eye"></i> View
+              </button>
+              <button class="btn btn-sm btn-amber-outline follow-btn ${followed ? 'active' : ''}" data-id="${t.id}">
+                <i class="bi ${followed ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>
+                ${followed ? 'Following' : 'Follow'}
+              </button>
+            </div>
+          </div>
+          <div class="thread-meta mb-2">
+            Course: <strong class="wrap-anywhere">${escapeHtml(courseTitle)}</strong> •
+            Replies: ${t.repliesCount || 0} •
+            Posted: ${toLocal(t.createdAt)}
+          </div>
+        `;
+        wrap.appendChild(div);
+      });
+
+      // follow toggle
+      wrap.querySelectorAll('.follow-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const wasActive = btn.classList.contains('active');
+
+          // optimistic UI
+          btn.disabled = true;
+          btn.classList.toggle('active', !wasActive);
+          btn.innerHTML = `<i class="bi ${!wasActive ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>${!wasActive ? 'Following' : 'Follow'}`;
+
+          try {
+            await fetchJSON(`${FORUM_API}/threads/${id}/follow`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uid: __user.uid }),
+            });
+          } catch (err) {
+            // revert on error
+            btn.classList.toggle('active', wasActive);
+            btn.innerHTML = `<i class="bi ${wasActive ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>${wasActive ? 'Following' : 'Follow'}`;
+            alert('Could not update follow state.');
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // view button redirect
+      wrap.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          window.location.href = `forum_view.html?id=${encodeURIComponent(id)}`;
+        });
+      });
+    }
+
+    async function postThread({ courseId, title, body }) {
+      if (!enrolledCourseIds.has(courseId)) {
+        throw new Error('Please select a course you are enrolled in.');
+      }
+      await fetchJSON(`${FORUM_API}/threads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          text: body.trim(),           // backend expects 'text'
+          courseId,
+          author: {
+            uid: __user.uid,
+            username: __user.username,
+            email: __user.email
+          }
+        }),
+      });
+    }
+
+    // Boot
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await loadCourses();   // enrolled only
+        await loadThreads();   // filtered to enrolled
+      } catch (e) {
+        console.error(e);
+        $('#forumThreads').innerHTML = `<div class="empty-state">Forum API unreachable.</div>`;
+        $('#threadCount').textContent = `0 threads`;
+      }
+
+      const debouncedLoad = debounce(loadThreads, 300);
+      $('#threadSearch').addEventListener('input', debouncedLoad);
+      $('#courseFilter').addEventListener('change', loadThreads);
+      $('#sortThreads').addEventListener('change', loadThreads);
+
+      // Ask form
+      $('#questionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        form.classList.add('was-validated');
+
+        const courseId = $("#moduleSelect").value;
+        const title = ($("#questionTitle").value || '').trim();
+        const body  = ($("#questionBody").value  || '').trim();
+
+        if (!courseId || title.length < 3 || body.length < 5) return;
+
+        const btn = $('#postBtn');
+        const prevHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Posting…`;
+
+        try {
+          await postThread({ courseId, title, body });
+          form.reset();
+          form.classList.remove('was-validated');
+          await loadThreads();
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Could not post your question.');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = prevHTML;
+        }
+      });
     });
-  });
-  function logoutUser() {
+
+    // Optional logout hook
+    function logoutUser() {
       localStorage.clear(); sessionStorage.clear();
       window.location.href = "/STUDENT/login/login.html";
     }
-</script>
+  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
