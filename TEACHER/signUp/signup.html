@@ -113,15 +113,28 @@
     </div>
   </div>
 
+  <!-- Optional manual override (uncomment and set a full origin, no trailing slash)
+  <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
+  -->
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    /* ===== API base (dev vs Railway) ===== */
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:5000'
-        : ''; // same-origin in production
+    /* ===== API base detection (mirrors Teacher Login) ===== */
+    (function decideApiBase(){
+      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      let base = '';
+      if (manual) {
+        base = manual.replace(/\/+$/, '');
+      } else if (isLocal(location.hostname)) {
+        base = 'http://localhost:5000';
+      } else {
+        base = ''; // same-origin on Railway
+      }
+      window.API_BASE = base;
+    })();
 
     /* ===== Elements ===== */
     const usernameInput = document.getElementById("username");
@@ -185,7 +198,31 @@
     const normalizeEmail = v => trimmed(v).toLowerCase();
     function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
-    // Try endpoints in order until one isn't 404/network-error
+    /* ===== Endpoints (ordered fallbacks) ===== */
+    const ENDPOINTS = {
+      checkUsername(u) {
+        const q = `username=${encodeURIComponent(u)}`;
+        return [
+          `${API_BASE}/api/users/check-username?${q}`, // usersRoutes.js (preferred)
+          `${API_BASE}/check-username?${q}`,           // legacy/fallback
+        ];
+      },
+      checkEmail(e) {
+        const q = `email=${encodeURIComponent(e)}`;
+        return [
+          `${API_BASE}/api/users/check-email?${q}`,    // usersRoutes.js (preferred)
+          `${API_BASE}/check-email?${q}`,              // legacy/fallback
+        ];
+      },
+      signup() {
+        return [
+          `${API_BASE}/signup`,        // authRoutes.js (mounted at '/')
+          `${API_BASE}/api/signup`,    // fallback
+        ];
+      }
+    };
+
+    /* ===== Resilient fetch (skips 404/network and tries next) ===== */
     async function fetchJSONFallback(urls, options) {
       for (const url of urls) {
         try {
@@ -194,7 +231,7 @@
           let js = {};
           try { js = await r.json(); } catch { js = {}; }
           return { response: r, json: js };
-        } catch { continue; }
+        } catch { /* try next */ }
       }
       throw new Error('All endpoints failed');
     }
@@ -210,11 +247,10 @@
 
       try {
         setStatus(usernameTakenDiv, { text: "Checking...", ok: null });
-        const urls = [
-          `${API_BASE}/check-username?username=${encodeURIComponent(u)}`,
-          `${API_BASE}/api/users/check-username?username=${encodeURIComponent(u)}`,
-        ];
-        const { response, json } = await fetchJSONFallback(urls, { signal: usernameController.signal });
+        const { response, json } = await fetchJSONFallback(
+          ENDPOINTS.checkUsername(u),
+          { signal: usernameController.signal }
+        );
         if (!response.ok) {
           isUsernameOk = false;
           setStatus(usernameTakenDiv, { text: "Couldn’t verify username right now.", ok: false });
@@ -246,11 +282,10 @@
 
       try {
         setStatus(emailTakenDiv, { text: "Checking...", ok: null });
-        const urls = [
-          `${API_BASE}/check-email?email=${encodeURIComponent(e)}`,
-          `${API_BASE}/api/users/check-email?email=${encodeURIComponent(e)}`,
-        ];
-        const { response, json } = await fetchJSONFallback(urls, { signal: emailController.signal });
+        const { response, json } = await fetchJSONFallback(
+          ENDPOINTS.checkEmail(e),
+          { signal: emailController.signal }
+        );
         if (!response.ok) {
           isEmailOk = false;
           setStatus(emailTakenDiv, { text: "Couldn’t verify email right now.", ok: false });
@@ -333,7 +368,7 @@
       submitBtn.disabled = !(allRequiredFilled() && isUsernameOk && isEmailOk && pwOk);
     }
 
-    // submit
+    // Submit
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       signupErrorDiv.textContent = "";
@@ -373,15 +408,14 @@
       submitBtn.textContent = "Submitting...";
 
       try {
-        const urls = [
-          `${API_BASE}/signup`,
-          `${API_BASE}/api/signup`,
-        ];
-        const { response, json: js } = await fetchJSONFallback(urls, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        const { response, json: js } = await fetchJSONFallback(
+          ENDPOINTS.signup(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
 
         if (!response.ok) {
           signupErrorDiv.textContent = js.error || "Signup failed.";
@@ -390,6 +424,7 @@
           return;
         }
 
+        // Persist for the verification step
         sessionStorage.setItem("pendingEmail", payload.email);
         sessionStorage.setItem("pendingUserData", JSON.stringify({
           firstName: payload.firstName,

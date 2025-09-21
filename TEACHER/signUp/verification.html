@@ -88,17 +88,46 @@
     </div>
   </div>
 
+  <!-- Optional manual override (uncomment and set a full origin, no trailing slash)
+  <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
+  -->
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    /* ===== API base (dev vs Railway) ===== */
-    const API_BASE =
-      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-        ? 'http://localhost:5000'
-        : ''; // same-origin in production
+    /* ===== API base detection (mirrors login/signup) ===== */
+    (function decideApiBase(){
+      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      let base = '';
+      if (manual) {
+        base = manual.replace(/\/+$/, '');
+      } else if (isLocal(location.hostname)) {
+        base = 'http://localhost:5000';
+      } else {
+        base = ''; // same-origin on Railway
+      }
+      window.API_BASE = base;
+    })();
 
-    // Helper to try multiple endpoint paths (plain and /api/*)
+    /* ===== Endpoint fallbacks ===== */
+    const ENDPOINTS = {
+      verifyCode() {
+        return [
+          `${API_BASE}/verify-code`,      // authRoutes or dedicated route
+          `${API_BASE}/api/verify-code`,  // fallback
+        ];
+      },
+      resendCode() {
+        return [
+          `${API_BASE}/resend-code`,
+          `${API_BASE}/api/resend-code`,
+        ];
+      }
+    };
+
+    /* ===== Resilient fetch (skip 404/network, try next) ===== */
     async function fetchJSONFallback(urls, options) {
       for (const url of urls) {
         try {
@@ -107,11 +136,14 @@
           let js = {};
           try { js = await r.json(); } catch { js = {}; }
           return { response: r, json: js };
-        } catch { /* network fail: try next */ }
+        } catch {
+          // network fail: try next
+        }
       }
       throw new Error('All endpoints failed');
     }
 
+    /* ===== Elements ===== */
     const inputs = Array.from(document.querySelectorAll(".otp-input"));
     const verifyForm = document.getElementById("verifyCodeForm");
     const verifyBtn = document.getElementById("verifyBtn");
@@ -120,18 +152,21 @@
     const resendTimer = document.getElementById("resendTimer");
     const sentTo = document.getElementById("sentTo");
 
+    /* ===== Email from previous step ===== */
     const email = sessionStorage.getItem("pendingEmail");
-
-    if (email) {
-      const masked = email.replace(/(^.).*(@.*$)/, (_, a, b) => a + "••••" + b);
-      sentTo.textContent = `We sent a 6-digit code to ${masked}. Please enter it below.`;
-    } else {
-      sentTo.textContent = "We sent a 6-digit code to your email. Please enter it below.";
+    function maskEmail(email) {
+      if (!email || !email.includes("@")) return email || "";
+      const [local, domain] = email.split("@");
+      if (local.length <= 2) return local[0] + "•••@" + domain;
+      return local.slice(0, 2) + "•••@" + domain;
     }
+    sentTo.textContent = email
+      ? `We sent a 6-digit code to ${maskEmail(email)}. Please enter it below.`
+      : "We sent a 6-digit code to your email. Please enter it below.";
 
     const joinCode = () => inputs.map(i => i.value.trim()).join("");
 
-    // OTP behaviour
+    /* ===== OTP behaviour ===== */
     inputs.forEach((input, i) => {
       input.addEventListener("beforeinput", (e) => {
         if (e.inputType === "insertText" && !/^\d$/.test(e.data)) e.preventDefault();
@@ -156,7 +191,7 @@
       });
     });
 
-    // Resend cooldown
+    /* ===== Resend cooldown ===== */
     let cooldown = 0;
     let timerId = null;
     function setResendState(active) {
@@ -186,6 +221,7 @@
       cooldown -= 1;
     }
 
+    /* ===== Modals ===== */
     function showSuccessModal({ userId = null, teacherId = null, redirectTo = null, autoCloseMs = null }) {
       const el = document.getElementById("successModal");
       const m  = new bootstrap.Modal(el);
@@ -215,7 +251,7 @@
       new bootstrap.Modal(document.getElementById("feedbackModal")).show();
     }
 
-    // Submit verification
+    /* ===== Submit verification ===== */
     verifyForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const code = joinCode();
@@ -237,10 +273,7 @@
 
       try {
         const { response, json:data } = await fetchJSONFallback(
-          [
-            `${API_BASE}/verify-code`,
-            `${API_BASE}/api/verify-code`,
-          ],
+          ENDPOINTS.verifyCode(),
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -279,7 +312,7 @@
       }
     });
 
-    // Resend code
+    /* ===== Resend code ===== */
     resendLink.addEventListener("click", async (e) => {
       e.preventDefault();
       if (resendLink.classList.contains("disabled-link")) return;
@@ -290,10 +323,7 @@
       try {
         setResendState(false);
         const { response, json:data } = await fetchJSONFallback(
-          [
-            `${API_BASE}/resend-code`,
-            `${API_BASE}/api/resend-code`,
-          ],
+          ENDPOINTS.resendCode(),
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
