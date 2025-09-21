@@ -79,7 +79,7 @@
     });
   </script>
 
-  <!-- Login Logic (authRoutes only) -->
+  <!-- Login Logic -->
   <script>
     // ---------- API base detection ----------
     (function decideApiBase(){
@@ -91,7 +91,7 @@
       } else if (isLocal(location.hostname)) {
         base = 'http://localhost:5000';
       } else {
-        base = '';                             // same-origin on Railway / prod
+        base = '';                             // same-origin on Railway
       }
       window.API_BASE = base;
     })();
@@ -127,23 +127,30 @@
       }
     }
 
-    // ---------- authRoutes endpoints only ----------
+    // Build ordered candidates for each endpoint to match your backend
     const ENDPOINTS = {
       checkUsername(username) {
         const q = `username=${encodeURIComponent(username)}`;
-        return [`${API_BASE}/check-username?${q}`];
+        return [
+          `${API_BASE}/api/users/check-username?${q}`, // usersRoutes.js (recommended)
+          `${API_BASE}/check-username?${q}`,           // authRoutes fallback (you also have this)
+        ];
       },
       login() {
-        return [`${API_BASE}/login`];
+        return [
+          `${API_BASE}/login`,              // authRoutes.js (mounted at '/')
+          `${API_BASE}/api/login`,          // fallback
+          `${API_BASE}/api/auth/login`,     // fallback
+        ];
       }
     };
 
-    // Try a list of URLs in order until one is NOT a 404 (should be 1 item now)
+    // Try a list of URLs in order until one is NOT a 404 (or network error)
     async function fetchJSONFallback(urls, options) {
       for (const url of urls) {
         try {
           const r = await fetch(url, options);
-          if (r.status === 404) continue; // try next variant (if any)
+          if (r.status === 404) continue; // try next variant
           let json = {};
           try { json = await r.json(); } catch {}
           return { response: r, json };
@@ -241,7 +248,7 @@
           return;
         }
 
-        // Auth via authRoutes (/login)
+        // Try common login paths in order
         const { response, json: data } = await fetchJSONFallback(
           ENDPOINTS.login(),
           {
@@ -252,6 +259,7 @@
         );
 
         if (response.ok && data.user?.isTeacher) {
+          // safety: ensure same username
           if (lower(data.user.username) !== lower(username)) {
             showModal("Login response mismatch. Please try again.");
             setBtnBusy(false);
