@@ -1,10 +1,8 @@
 [build]
 builder = "NIXPACKS"
-# run npm ci in the backend subfolder
-buildCommand = "cd backend-code/backend && npm ci"
+buildCommand = "cd backend-code/backend && npm install --omit=dev"
 
 [deploy]
-# start the app from the backend subfolder
 startCommand = "cd backend-code/backend && npm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
