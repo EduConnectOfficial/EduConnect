@@ -44,7 +44,7 @@ app.use('/assets',      express.static(path.join(repoRoot, 'assets')));
 app.use('/components',  express.static(path.join(repoRoot, 'components')));
 
 /* Optional: send site root to Admin login (adjust if you prefer another page) */
-app.get('/', (_req, res) => res.redirect('/ADMIN/login/login.html'));
+app.get('/', (_req, res) => res.redirect('/TEACHER/login/login.html'));
 
 /* ---------- Static uploads ---------- */
 app.use('/uploads', staticUploads(path.join(__dirname, 'uploads')));
