@@ -44,6 +44,25 @@ function getStudentIdFromUser(u = {}, fallbackId = '') {
   return candidates[0] || String(fallbackId || '').trim();
 }
 
+// tiny helpers
+const chunk = (arr, size = 10) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
+const toMillis = (ts) => {
+  if (!ts) return null;
+  if (ts._seconds) return ts._seconds * 1000;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts === 'number') return ts;
+  const t = Date.parse(ts);
+  return Number.isFinite(t) ? t : null;
+};
+const iso = (ts) => {
+  const ms = toMillis(ts);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+};
+
 // (Optional) sanity log
 console.log('[analytics fns]', {
   legacy: !!buildTeacherAnalytics,
@@ -249,8 +268,7 @@ router.get('/assignment-analytics/pdf', asyncHandler(async (req, res) => {
   doc.pipe(res);
 
   doc.fontSize(18).text('Assignment Analytics Report', { align:'left' });
-  doc.moveDown(0.3).fontSize(10).fillColor('#666')
-    .text(`Teacher: ${teacherId}${classId ? ' | Class: ' + classId : ''}`, { align:'left' });
+  doc.moveDown(0.3).fontSize(10).fillColor('#666').text(`Teacher: ${teacherId}${classId ? ' | Class: ' + classId : ''}`, { align:'left' });
   doc.moveDown();
 
   doc.fillColor('#000').fontSize(12).text('Summary', { underline:true });
@@ -460,7 +478,7 @@ router.get('/student-quiz-analytics', asyncHandler(async (req, res) => {
 
 /* ========= STUDENT ANALYTICS (NEW, normalized assignment percent) =========
    GET /student-analytics?teacherId=...&student=...&courseId=optional
-   Returns profile, summary, assignments.grades with percent normalized.
+   Returns profile, summary (incl. modules), assignments.grades with percent normalized.
 =========================================================== */
 router.get('/student-analytics', asyncHandler(async (req, res) => {
   const teacherId = String(req.query.teacherId || '').trim();
@@ -482,7 +500,7 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
     name: fullNameFromUser(u),
   };
 
-  // Read assignment grades (teacher grading route writes here)
+  // ===== Assignments (normalized percent) =====
   let gSnap;
   try {
     gSnap = await userRef.collection('assignmentGrades').orderBy('gradedAt','desc').get();
@@ -500,9 +518,9 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
     .filter(Boolean);
 
   const maxByAssignment = new Map();
-  while (needMax.length) {
-    const chunk = needMax.splice(0, 10);
-    const snap = await firestore.collection('assignments').where('__name__','in', chunk).get();
+  for (const ids of chunk(needMax, 10)) {
+    if (!ids.length) continue;
+    const snap = await firestore.collection('assignments').where('__name__','in', ids).get();
     const found = new Set();
     snap.forEach(doc => {
       const a = doc.data() || {};
@@ -511,10 +529,9 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
       maxByAssignment.set(doc.id, max);
       found.add(doc.id);
     });
-    chunk.forEach(id => { if (!found.has(id)) maxByAssignment.set(id, null); });
+    ids.forEach(id => { if (!found.has(id)) maxByAssignment.set(id, null); });
   }
 
-  // Normalize: ensure percent is always computed
   const grades = baseGrades.map(row => {
     const assignmentId = row.assignmentId || row.id;
     const maxPoints = Number.isFinite(row.maxPoints) ? Number(row.maxPoints)
@@ -528,8 +545,7 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
       } else if (Number.isFinite(raw) && raw <= 1) {
         percent = raw * 100; // fractional legacy
       } else if (Number.isFinite(raw) && raw <= 100) {
-        // ambiguous legacy: treat as percent (keeps historical behavior)
-        percent = raw;
+        percent = raw;       // already a percent
       } else {
         percent = 0;
       }
@@ -539,34 +555,109 @@ router.get('/student-analytics', asyncHandler(async (req, res) => {
       assignmentTitle: row.assignmentTitle || 'Untitled',
       courseId: row.courseId || null,
       gradedAt: row.gradedAt || null,
-      grade: Number.isFinite(raw) ? raw : null,         // raw points (for reference)
+      grade: Number.isFinite(raw) ? raw : null,
       maxPoints: Number.isFinite(maxPoints) ? maxPoints : null,
-      percent: Math.round(percent * 100) / 100          // normalized percent
+      percent: Math.round(percent * 100) / 100
     };
   });
 
-  // Summary
   const percentVals = grades.map(g => g.percent).filter(p => Number.isFinite(p));
   const averageAssignmentGrade = percentVals.length
     ? Math.round((percentVals.reduce((s, n) => s + n, 0) / percentVals.length) * 100) / 100
     : 0;
 
-  // Placeholders kept for UI compatibility
+  // ===== Modules (completed list + totals) =====
+  const cmSnap = await userRef.collection('completedModules').get();
+  let completedRaw = cmSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+
+  if (courseIdFilter) {
+    completedRaw = completedRaw.filter(m => String(m.courseId || '') === courseIdFilter);
+  }
+
+  const courseIds = Array.from(new Set(completedRaw.map(m => m.courseId).filter(Boolean)));
+  const moduleIds = Array.from(new Set(completedRaw.map(m => m.moduleId).filter(Boolean)));
+
+  const courseTitleById = {};
+  const moduleTitleById = {};
+
+  for (const ids of chunk(courseIds, 10)) {
+    if (!ids.length) continue;
+    const snap = await firestore.collection('courses').where('__name__','in', ids).get();
+    snap.forEach(doc => {
+      const c = doc.data() || {};
+      courseTitleById[doc.id] = c.title || c.name || `Course ${doc.id.slice(0,6)}`;
+    });
+  }
+  for (const ids of chunk(moduleIds, 10)) {
+    if (!ids.length) continue;
+    const snap = await firestore.collection('modules').where('__name__','in', ids).get();
+    snap.forEach(doc => {
+      const m = doc.data() || {};
+      moduleTitleById[doc.id] = m.title || m.name || `Module ${doc.id.slice(0,6)}`;
+    });
+  }
+
+  const modulesCompleted = completedRaw.map(m => ({
+    courseId: m.courseId || null,
+    courseTitle: m.courseTitle || courseTitleById[m.courseId] || null,
+    moduleId: m.moduleId || null,
+    moduleTitle: m.moduleTitle || moduleTitleById[m.moduleId] || null,
+    percent: (typeof m.percent === 'number') ? Math.round(m.percent) : 100,
+    completedAt: m.completedAt || null
+  }));
+
+  // Compute totalModules:
+  // - If courseId filter provided -> count modules in that course only.
+  // - Else -> count modules across courses assigned to student's enrolled classes.
+  let totalModules = 0;
+
+  if (courseIdFilter) {
+    // all modules for this course
+    const q = await firestore.collection('modules').where('courseId', '==', courseIdFilter).get();
+    totalModules = q.size;
+  } else {
+    // 1) enrollments (classIds)
+    const enrollSnap = await userRef.collection('enrollments').get();
+    const classIds = enrollSnap.docs.map(d => d.id);
+
+    // 2) courses for those classes (courses.assignedClasses array-contains-any classId)
+    const courseSet = new Set();
+    for (const ids of chunk(classIds, 10)) {
+      if (!ids.length) continue;
+      const snap = await firestore
+        .collection('courses')
+        .where('assignedClasses', 'array-contains-any', ids)
+        .get();
+      snap.forEach(doc => courseSet.add(doc.id));
+    }
+    const assignedCourseIds = Array.from(courseSet);
+
+    // 3) count modules across those courses
+    for (const ids of chunk(assignedCourseIds, 10)) {
+      if (!ids.length) continue;
+      const snap = await firestore.collection('modules').where('courseId', 'in', ids).get();
+      totalModules += snap.size;
+    }
+  }
+
+  // final summary
+  const summary = {
+    averageQuizScore: null, // UI derives from /student-quiz-analytics
+    averageAssignmentGrade,
+    modulesCompleted: modulesCompleted.length,
+    totalModules
+  };
+
+  // Placeholders for essays (unchanged)
   const essays = { submissions: [] };
-  const modules = { completed: [] };
 
   return res.json({
     success: true,
     profile,
-    summary: {
-      averageQuizScore: null,            // your UI pulls quiz avg from /student-quiz-analytics
-      averageAssignmentGrade,
-      modulesCompleted: null,
-      totalModules: null,
-    },
-    assignments: { grades },
+    summary,
+    assignments: { grades: grades.sort((a,b) => (iso(b.gradedAt)||'').localeCompare(iso(a.gradedAt)||'')) },
     essays,
-    modules
+    modules: { completed: modulesCompleted }
   });
 }));
 

@@ -288,7 +288,14 @@
       return Number.isFinite(ms) ? new Date(ms).toLocaleString() : '—';
     };
 
-    // ---- percent resolver for assignments ----
+    /* =======================
+       FIXED: Percent resolver
+       ======================= */
+    function clamp01pct(n) {
+      const x = Number(n);
+      if (!Number.isFinite(x)) return null;
+      return Math.max(0, Math.min(100, Math.round(x)));
+    }
     function firstNum(...vals){
       for (const v of vals) {
         const n = Number(v);
@@ -297,17 +304,25 @@
       return null;
     }
     function gradePctFromRow(a = {}) {
-      if (typeof a.gradePercent === 'number') {
-        return Math.max(0, Math.min(100, Math.round(a.gradePercent)));
+      // Prefer server/computed percent fields if present
+      const pre = firstNum(a.percent, a.gradedPercent, a.autoPercent, a.gradePercent);
+      if (pre != null) return clamp01pct(pre);
+
+      // Compute from raw + any max we can find
+      const raw = firstNum(a.gradeRaw, a.grade, a.score, a.obtained);
+      const max = firstNum(
+        a.maxPoints, a.assignmentMaxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf
+      );
+      if (raw != null && max != null && max > 0) {
+        return clamp01pct((raw / max) * 100);
       }
-      const raw = firstNum(a.gradeRaw, a.grade);
-      const max = firstNum(a.maxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf);
-      if (Number.isFinite(raw) && Number.isFinite(max) && max > 0) {
-        return Math.max(0, Math.min(100, Math.round((raw / max) * 100)));
-      }
-      if (Number.isFinite(raw)) {
-        return Math.max(0, Math.min(100, Math.round(raw)));
-      }
+
+      // Legacy: fractional raw (e.g. 0.92)
+      if (raw != null && raw <= 1) return clamp01pct(raw * 100);
+
+      // Last resort: treat raw as percent if plausible
+      if (raw != null && raw <= 100) return clamp01pct(raw);
+
       return null;
     }
 
@@ -365,7 +380,7 @@
       return [];
     }
 
-    // ===== Real quiz meta API (forStudent honors publishAt / class targeting) =====
+    // ===== Real quiz meta API =====
     async function getQuizMetaForStudent(forStudent) {
       const urls = [
         `${API_BASE}/quizzes?forStudent=${encodeURIComponent(forStudent)}`,
@@ -393,8 +408,7 @@
       return {};
     }
 
-    // ===== Real assignment meta API (student scoped) =====
-    // Uses your provided route: GET /students/:userId/assignments
+    // ===== Real assignment meta API =====
     async function getStudentAssignmentsMeta(userId) {
       const urls = [
         `${API_BASE}/students/${encodeURIComponent(userId)}/assignments`,
@@ -422,7 +436,7 @@
       return {};
     }
 
-    // ===== Enrich quizzes & assignments with course info BEFORE sorting/filtering =====
+    // ===== Enrich with course info BEFORE sort/filter =====
     async function enrichQuizzesWithCourse(qrows, forStudent) {
       if (!qrows?.length) return qrows || [];
       const metaMap = await getQuizMetaForStudent(forStudent);
@@ -439,7 +453,7 @@
 
     async function enrichAssignmentsWithCourse(arows, userId) {
       if (!arows?.length) return arows || [];
-      const metaMap = await getStudentAssignmentsMeta(userId); // single fetch, student-scoped
+      const metaMap = await getStudentAssignmentsMeta(userId);
       return arows.map(a => {
         const m = metaMap[a.assignmentId] || {};
         return {
@@ -532,14 +546,15 @@
       }
       el('assignTbody').innerHTML = rows.map(a => {
         const gp = gradePctFromRow(a);
-        const gradeTxt = (gp != null ? `${gp}%` : '—');
-        const rawInfo = (a.gradeRaw != null && a.maxPoints != null)
-          ? `title="Raw: ${a.gradeRaw}/${a.maxPoints}"`
+        const raw = firstNum(a.gradeRaw, a.grade, a.score, a.obtained);
+        const max = firstNum(a.maxPoints, a.assignmentMaxPoints, a.max, a.maxScore, a.totalPoints, a.points, a.denominator, a.outOf);
+        const rawInfo = (raw != null && max != null)
+          ? `title="Raw: ${raw}/${max}"`
           : '';
         return `
           <tr>
             <td>${a.assignmentTitle || a.assignmentId}</td>
-            <td ${rawInfo}>${gradeTxt}</td>
+            <td ${rawInfo}>${gp != null ? gp + '%' : '—'}</td>
             <td>${dt(a.gradedAt)}</td>
           </tr>
         `;
@@ -553,16 +568,14 @@
     function applyFiltersAndRender() {
       const selectedCourse = el('courseFilter').value || '__ALL__';
 
-      // Assignments: filter + sort like quizzes (high→low)
       const aFiltered = filterByCourse(_assignmentRows, selectedCourse);
       renderAssignments(aFiltered);
 
-      // Quizzes: filter + built-in sort
       const qFiltered = filterByCourse(_quizRows, selectedCourse);
       renderQuizzes(qFiltered);
     }
 
-    // CSV (respects current course filter; both sorted high→low)
+    // CSV (respects current course filter)
     async function exportCsv() {
       try {
         const student = getStudentKey();
@@ -621,7 +634,7 @@
       }
     }
 
-    // PDF (respects current course filter; both sorted high→low)
+    // PDF (respects current course filter)
     async function downloadPdf() {
       try {
         if (typeof window.jspdf === 'undefined') {
@@ -763,18 +776,18 @@
           ? `${data.summary.modulesCompleted}/${data.summary.totalModules}`
           : (data.summary?.modulesCompleted ?? '—');
 
-      // Quizzes (course enrichment from real API)
+      // Quizzes (enrich with course)
       _quizRows = await enrichQuizzesWithCourse(data.quizzes?.perQuiz || [], student);
       renderQuizzes(_quizRows);
 
-      // Assignments (ENRICH with course from /students/:userId/assignments BEFORE filtering/sorting)
+      // Assignments (enrich with course, render with fixed percent)
       _assignmentRows = await enrichAssignmentsWithCourse(data.assignments?.grades || [], student);
 
-      // Course dropdown from real API (no Uncategorized)
+      // Course dropdown
       _courseOptions = buildCourseOptions(courses);
       populateCourseDropdown();
 
-      // Apply filter + sort rendering
+      // Apply filter + render
       applyFiltersAndRender();
 
       // Essays

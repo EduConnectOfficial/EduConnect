@@ -40,17 +40,33 @@ const iso = (ts) => {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 };
 
+const firstNum = (...vals) => {
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+};
+const clampPct = (n) => {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return null;
+  return Math.max(0, Math.min(100, Math.round(x)));
+};
+const normalizePercent = ({ percent, gradedPercent, autoPercent, gradePercent, grade, score, obtained, maxPoints, points, max, maxScore, totalPoints, denominator, outOf }) => {
+  // Prefer precomputed percent-like fields
+  const pre = firstNum(percent, gradedPercent, autoPercent, gradePercent);
+  if (pre != null) return clampPct(pre);
+
+  const raw = firstNum(grade, score, obtained);
+  const mx = firstNum(maxPoints, points, max, maxScore, totalPoints, denominator, outOf);
+  if (raw != null && mx != null && mx > 0) return clampPct((raw / mx) * 100);
+  if (raw != null && raw <= 1) return clampPct(raw * 100);     // fractional legacy
+  if (raw != null && raw <= 100) return clampPct(raw);         // already percent
+  return null;
+};
+
 /* ============================================================
    GET /api/student/analytics?student=STUDENT_ID_OR_USERID
-   Returns the SAME payload shape as the teacher’s student view:
-   {
-     profile: { name, studentId },
-     summary: { averageQuizScore, averageAssignmentGrade, modulesCompleted, totalModules },
-     quizzes: { perQuiz:[{quizId,title,bestPercent,attemptsUsed,lastSubmittedAt}] },
-     assignments: { grades:[{assignmentId,assignmentTitle,grade,gradedAt}] },
-     essays: { submissions:[{quizId,quizTitle,questionIndex,status,score,maxScore,createdAt}] },
-     modules: { completed:[{courseId,courseTitle,moduleId,moduleTitle,percent,completedAt}] }
-   }
 ============================================================ */
 router.get('/student/analytics', asyncHandler(async (req, res) => {
   const studentKey = String(req.query.student || '').trim();
@@ -99,39 +115,82 @@ router.get('/student/analytics', asyncHandler(async (req, res) => {
     };
   });
 
-  const avgQuiz =
-    perQuiz.length
-      ? Math.round(
-          perQuiz
-            .map(x => x.bestPercent)
-            .filter(n => typeof n === 'number')
-            .reduce((a,b) => a + b, 0) /
-          Math.max(1, perQuiz.filter(x => typeof x.bestPercent === 'number').length)
-        )
-      : 0;
+  const quizPercents = perQuiz.map(x => x.bestPercent).filter(n => typeof n === 'number');
+  const avgQuiz = quizPercents.length
+    ? Math.round(quizPercents.reduce((a,b) => a + b, 0) / quizPercents.length)
+    : 0;
 
   /* ------------------------ Assignments ------------------------- */
-  const agSnap = await userRef.collection('assignmentGrades').get();
-  const grades = agSnap.docs.map(d => {
-    const a = d.data() || {};
+  // Read student assignment grades
+  let agSnap;
+  try {
+    agSnap = await userRef.collection('assignmentGrades').orderBy('gradedAt','desc').get();
+  } catch {
+    agSnap = await userRef.collection('assignmentGrades').get();
+  }
+
+  const baseGrades = agSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+
+  // Find which need a maxPoints lookup
+  const needMaxIds = baseGrades
+    .filter(r => normalizePercent(r) == null)   // if cannot resolve from in-row fields
+    .map(r => r.assignmentId || r.id)
+    .filter(Boolean);
+
+  // Build a map of assignmentId -> maxPoints from assignments collection
+  const maxByAssignment = new Map();
+  for (const ids of chunk(needMaxIds, 10)) {
+    if (!ids.length) continue;
+    const snap = await firestore.collection('assignments').where('__name__','in', ids).get();
+    const found = new Set();
+    snap.forEach(doc => {
+      const a = doc.data() || {};
+      const max = firstNum(a.maxPoints, a.points, a.totalPoints, a.max, a.maxScore);
+      maxByAssignment.set(doc.id, Number.isFinite(max) ? Number(max) : null);
+      found.add(doc.id);
+    });
+    ids.forEach(id => { if (!found.has(id)) maxByAssignment.set(id, null); });
+  }
+
+  // Normalize assignment rows
+  const grades = baseGrades.map(row => {
+    const assignmentId = row.assignmentId || row.id;
+    const maxInline = firstNum(row.maxPoints, row.points, row.totalPoints, row.max, row.maxScore);
+    const maxPoints = Number.isFinite(maxInline) ? Number(maxInline) : maxByAssignment.get(assignmentId);
+
+    const percent = normalizePercent({
+      percent: row.percent,
+      gradedPercent: row.gradedPercent,
+      autoPercent: row.autoPercent,
+      gradePercent: row.gradePercent,
+      grade: row.grade,
+      score: row.score,
+      obtained: row.obtained,
+      maxPoints,
+      points: row.points,
+      max: row.max,
+      maxScore: row.maxScore,
+      totalPoints: row.totalPoints,
+      denominator: row.denominator,
+      outOf: row.outOf
+    });
+
+    // Keep a rounded raw grade if present (for reference/tooltips)
+    const raw = firstNum(row.grade, row.score, row.obtained);
     return {
-      assignmentId: d.id,
-      assignmentTitle: a.assignmentTitle || `Assignment ${d.id.slice(0,6)}`,
-      grade: (typeof a.grade === 'number') ? Math.round(a.grade) : null,
-      gradedAt: a.gradedAt || a.updatedAt || a.submittedAt || null,
+      assignmentId,
+      assignmentTitle: row.assignmentTitle || `Assignment ${assignmentId.slice(0,6)}`,
+      grade: Number.isFinite(raw) ? Number(raw) : null,     // raw points (for reference)
+      maxPoints: Number.isFinite(maxPoints) ? Number(maxPoints) : null,
+      percent: Number.isFinite(percent) ? Number(percent) : null,
+      gradedAt: row.gradedAt || row.updatedAt || row.submittedAt || null,
     };
   });
 
-  const avgAsg =
-    grades.length
-      ? Math.round(
-          grades
-            .map(g => g.grade)
-            .filter(n => typeof n === 'number')
-            .reduce((a,b) => a + b, 0) /
-          Math.max(1, grades.filter(g => typeof g.grade === 'number').length)
-        )
-      : 0;
+  const asgPercents = grades.map(g => g.percent).filter(n => typeof n === 'number');
+  const avgAsg = asgPercents.length
+    ? Math.round(asgPercents.reduce((a,b) => a + b, 0) / asgPercents.length)
+    : 0;
 
   /* -------------------------- Essays --------------------------- */
   const essaySnap = await firestore
@@ -233,7 +292,8 @@ router.get('/student/analytics', asyncHandler(async (req, res) => {
     success: true,
     profile,
     summary,
-    quizzes: { perQuiz: perQuiz.sort((a,b) => (a.title||'').localeCompare(b.title||'')) },
+    quizzes: { perQuiz: perQuiz.sort((a,b) => (a.title||'').localeCompare((b.title||''))) },
+    // sort assignments by gradedAt desc
     assignments: { grades: grades.sort((a,b) => (iso(b.gradedAt)||'').localeCompare(iso(a.gradedAt)||'')) },
     essays: { submissions },
     modules: { completed: modulesCompleted }
@@ -269,13 +329,16 @@ router.get('/student/analytics/csv', asyncHandler(async (req, res) => {
     ]);
   });
 
-  // assignments
+  // assignments (now include raw + max + normalized percent)
   (data.assignments?.grades || []).forEach(a => {
     rows.push([
       'Assignment',
       a.assignmentTitle || a.assignmentId,
       a.gradedAt ? new Date(toMillis(a.gradedAt)).toLocaleString() : '',
-      (a.grade != null ? a.grade : ''), 100, (a.grade != null ? a.grade : ''), ''
+      (a.grade != null ? a.grade : ''),
+      (a.maxPoints != null ? a.maxPoints : ''),
+      (a.percent != null ? a.percent : ''),
+      ''
     ]);
   });
 
@@ -357,7 +420,9 @@ router.get('/student/analytics/pdf', asyncHandler(async (req, res) => {
   doc.fontSize(9);
   (data.assignments?.grades || []).slice(0,150).forEach(a => {
     const dt = a.gradedAt ? new Date(toMillis(a.gradedAt)).toLocaleString() : '';
-    doc.text(`${a.assignmentTitle || a.assignmentId}: ${a.grade ?? '—'}% | Graded: ${dt}`);
+    const extra = (a.grade != null && a.maxPoints != null) ? ` (Raw: ${a.grade}/${a.maxPoints})` : '';
+    const pct = (a.percent != null) ? `${a.percent}%` : '—';
+    doc.text(`${a.assignmentTitle || a.assignmentId}: ${pct}${extra} | Graded: ${dt}`);
   });
   doc.moveDown();
 
@@ -380,7 +445,5 @@ router.get('/student/analytics/pdf', asyncHandler(async (req, res) => {
 
   doc.end();
 }));
-
-
 
 module.exports = router;
