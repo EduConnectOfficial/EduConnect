@@ -125,7 +125,7 @@
   .page-title {
     font-weight: 700;
     font-size: 1.6rem;
-    text-align: center;
+    text-align: center !important;
     margin: 4px 0 18px;
   }
 
