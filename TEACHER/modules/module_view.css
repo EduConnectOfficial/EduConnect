@@ -116,17 +116,15 @@ body {
 
 /* ========== 3) Header ========== */
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
-  border-bottom: 1px solid rgba(255, 255, 255, .08);
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0 !important;
 }
 
 /* Logos */
@@ -204,7 +202,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+background:#113667;
     color: #eaf2ff;
     padding: 12px 16px;
 }
@@ -227,7 +225,7 @@ body {
 }
 
 .page-title.brand {
-    background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    background: #152238;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -248,13 +246,13 @@ body {
 }
 
 .btn-amber:hover {
-    background: linear-gradient(to bottom, #ff8533, #cc3300);
+    background: linear-gradient(to bottom, var(--brand-accent-2), var(--brand-accent-1));
     transform: scale(1.05);
     color: #fff;
 }
 
 .btn-amber:focus-visible {
-    outline: 2px solid #ffc299;
+    outline: 2px solid #eaf2ff;
     outline-offset: 2px;
     box-shadow: 0 0 0 .15rem rgba(255, 106, 0, .25);
 }
@@ -425,7 +423,7 @@ body {
 }
 
 .ui-card.card-themed .ui-card-head {
-    background: #001369;
+   background:#113667;
     color: #eaf2ff;
     padding: 10px 14px;
     display: flex;
@@ -515,7 +513,7 @@ body {
    (These repeat earlier selectors intentionally)
 ======================= */
 .btn-amber {
-    background: linear-gradient(to bottom, #FF6A00, #B03C10);
+    background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
     color: #fff;
     border: none;
 }
@@ -546,4 +544,55 @@ body {
 /* Ensure dashboard still fills the viewport */
 .dashboard {
     min-height: 100vh;
+}
+.modal-header {
+ background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #eaf2ff;
+  border-bottom: none;
+}
+.modal-header .modal-title { font-weight: 600; color: #fff; }
+.modal-header .btn-close { filter: brightness(0) invert(1); opacity: 0.9; }
+.modal-header .btn-close:hover { opacity: 1; }
+
+.modal-content {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.modal-footer { border-top: 1px solid var(--border); }
+
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  --bs-modal-margin: 0;
+  padding: 0 !important;
+}
+.modal.show .modal-dialog {
+  margin: 0 !important;
+  max-width: 640px;
+  width: calc(100% - 2rem);
+}
+.modal.show .modal-content {
+  max-height: min(90vh, 800px);
+  overflow: auto;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.25);
+}
+
+/* Close button (footer variant) */
+.btn-close-footer {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.2rem !important;
+  font-weight: 500;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.btn-close-footer:hover,
+.btn-close-footer:focus {
+  background-color: #6a737d !important;
+  color: #fff !important;
+  transform: scale(1.04);
 }

@@ -80,16 +80,15 @@ html, body {
    Header
 ======================= */
 .header-top {
+  width: 100%;
+  padding: 1rem 2rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0 !important;
 }
 
 .header-top--light {
@@ -200,7 +199,7 @@ html, body {
 .ui-card.card-themed .ui-card-head {
   margin: -16px -16px 12px -16px;
   padding: 12px 16px;
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  background:#113667;
   color: #eaf2ff;
   border-bottom: 1px solid rgba(255,255,255,.1);
 }
@@ -225,7 +224,7 @@ html, body {
 }
 
 .page-title {
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+  background: #152238;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -244,11 +243,11 @@ html, body {
   transition: background .3s ease, transform .2s ease, box-shadow .2s ease;
 }
 .btn-amber:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom, var(--brand-accent-1), var(--brand-accent-2));
   transform: scale(1.05);
 }
 .btn-amber:focus-visible {
-  outline: 2px solid #ffc299;
+  outline: 2px solid #eaf2ff;
   outline-offset: 2px;
   box-shadow: 0 0 0 .15rem rgba(255,106,0,.25);
 }
@@ -317,7 +316,7 @@ html, body {
    Modals (Bootstrap 5)
 ======================= */
 .modal-header {
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
   border-bottom: none;
 }
