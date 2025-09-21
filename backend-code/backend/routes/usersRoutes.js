@@ -94,6 +94,48 @@ function maybeRunUploadSingle(field) {
   };
 }
 
+// --- availability checks MUST come before "/:userId" so they aren't shadowed ---
+
+/**
+ * GET /api/users/check-username?username=foo
+ * Returns { taken: boolean }
+ */
+router.get('/check-username', asyncHandler(async (req, res) => {
+  const username = String((req.query || {}).username || '').trim();
+  if (!username) return res.status(400).json({ error: 'Username is required' });
+
+  try {
+    const snap = await firestore.collection(USERS_COL)
+      .where('username', '==', username)
+      .limit(1).get();
+    return res.json({ taken: !snap.empty });
+  } catch (err) {
+    console.error('check-username failed:', err?.message || err);
+    // soft-fail so frontend can proceed or fall back
+    return res.json({ taken: false, _softFail: true });
+  }
+}));
+
+/**
+ * GET /api/users/check-email?email=foo@bar
+ * Returns { taken: boolean }
+ */
+router.get('/check-email', asyncHandler(async (req, res) => {
+  const emailLower = normalizeEmail((req.query || {}).email);
+  if (!emailLower) return res.status(400).json({ error: 'Email is required' });
+
+  try {
+    const snap = await firestore.collection(USERS_COL)
+      .where('email', '==', emailLower)
+      .limit(1).get();
+    return res.json({ taken: !snap.empty });
+  } catch (err) {
+    console.error('check-email failed:', err?.message || err);
+    return res.json({ taken: false, _softFail: true });
+  }
+}));
+
+
 // ---------- ROUTES ----------
 
 /**
