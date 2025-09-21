@@ -6,4 +6,4 @@ buildCommand = "echo 'no build step'"
 rootDirectory = "backend-code/backend"
 startCommand = "npm start"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 10
+healthcheckTimeout = 30
