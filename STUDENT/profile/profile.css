@@ -53,15 +53,16 @@ body {
 
 /* Header */
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2), var(--accent-1));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0 !important;
 }
-
 /* Logos */
 .brand {
   display: flex;
@@ -83,7 +84,7 @@ body {
   object-fit: contain;
 }
 
-.logo-header { height: 45px; }
+
 
 .search-box { position: relative; flex: 1; max-width: 500px; margin: 0 20px; }
 .search-box input { width: 100%; padding: 10px 14px; border-radius: 30px; border: none; outline: none; }
@@ -230,30 +231,31 @@ body {
   margin-top: auto;
 }
 .logout-btn {
-  background: linear-gradient(to bottom,
-      #6EC9F5 0%,
-      #004891 100%);
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 30px;
-  color: #eaf2ff;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: none;
-  white-space: nowrap;
-  display: inline-block;
-  opacity: 0;
-  transition: opacity 0.3s ease, filter 0.3s ease;
-  text-align: center;
-}
+    background: linear-gradient(to bottom,
+        #6EC9F5 0%,
+        #004891 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    text-align: center;
+  }
 
-.sidebar:hover .logout-btn {
+#sidebar-container:hover .logout-btn {
   opacity: 1;
 }
 
 .logout-btn:hover {
-  filter: brightness(1.08);
+  opacity: .85;
+  color: var(--brand-dark-1);
 }
 
 /* ===== Button (login) ===== */
@@ -313,7 +315,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
 .sidebar:hover ~ .main { margin-left: 220px; width: calc(100% - 220px); }
 .dashboard.sidebar-expanded .main { margin-left: 220px; width: calc(100% - 220px); }
 
-.logo-header { height: 44px; }
+
 .search-box { position: relative; flex: 1; max-width: 520px; margin: 0 10px; }
 .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100%; }
 .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf; }
