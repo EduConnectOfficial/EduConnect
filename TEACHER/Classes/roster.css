@@ -31,13 +31,15 @@ body {
 
 /* ========== 2) Header ========== */
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0 !important;
 }
 
 /* Logos */
@@ -246,8 +248,7 @@ body {
   font-size: 1.5rem;
 }
 
-.page-title.brand {
-  background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+.page-title.brand { background: #152238;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -521,7 +522,7 @@ body {
 
 /* ========== 8) Modals (Bootstrap 5 theme) ========== */
 .modal-header {
-  background: linear-gradient(to bottom, var(--brand-dark-1), var(--brand-dark-2));
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
   border-bottom: none;
 }

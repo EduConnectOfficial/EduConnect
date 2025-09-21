@@ -10,6 +10,16 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/ADMIN/access/access.css" />
 
+  <!-- Prevent copying inside confirm modal (same pattern you used) -->
+  <style>
+    .confirm-no-copy,
+    .confirm-no-copy * {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+    }
+  </style>
 </head>
 
 <body>
@@ -141,11 +151,11 @@
     </div>
   </div>
 
-  <!-- Confirm Delete Modal -->
+  <!-- Confirm Delete Modal (will be used for type-to-delete) -->
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content confirm-no-copy">
         <div class="modal-header">
           <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -466,58 +476,37 @@
           new bootstrap.Modal(document.getElementById('statusConfirmModal')).show();
         });
 
-        // Edit
-        row.querySelector('.edit-btn').addEventListener('click', () => {
-          selectedUser = user;
-          document.getElementById('editUsername').value = user.username || '';
-          document.getElementById('editFirstName').value = user.firstName || '';
-          document.getElementById('editMiddleName').value = user.middleName || '';
-          document.getElementById('editLastName').value = user.lastName || '';
-          document.getElementById('editEmail').value = user.email || '';
-          new bootstrap.Modal(document.getElementById('editUserModal')).show();
-        });
-
-        // Delete
-        row.querySelector('.delete-btn').addEventListener('click', () => {
+        // ===== TYPE-TO-DELETE (username) with copy/paste blocked =====
+        row.querySelector('.delete-btn').addEventListener('click', async () => {
           selectedUser = user;
           selectedRow = row;
-          document.getElementById('deleteModalBody').textContent =
-            'This will permanently delete "' + (user.username || 'user') + '". Continue?';
 
-          const old = document.getElementById('confirmDeleteBtn');
-          const fresh = old.cloneNode(true);
-          old.parentNode.replaceChild(fresh, old);
+          const expected = (user.username || '').trim();
+          const ok = await showTypeToConfirm_DeleteStudent('Confirm Delete', expected);
+          if (!ok) return;
 
-          fresh.addEventListener('click', async () => {
-            try {
-              fresh.disabled = true;
-              const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
-              if (!res.ok) {
-                const txt = await res.text();
-                throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
-              }
-              const data = await res.json();
-              if (data && data.success) {
-                students = students.filter(u => u.userId !== user.userId);
-                renderTable(students);
-
-                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
-
-                studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
-                studentAlert.classList.remove('d-none');
-                setTimeout(() => studentAlert.classList.add('d-none'), 3000);
-              } else {
-                alert((data && data.message) || 'Delete failed.');
-              }
-            } catch (err) {
-              console.error('Delete failed:', err);
-              alert('Server error while deleting user.');
-            } finally {
-              fresh.disabled = false;
+          // proceed with actual deletion
+          try {
+            const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
+            if (!res.ok) {
+              const txt = await res.text();
+              throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
             }
-          });
+            const data = await res.json();
+            if (data && data.success) {
+              students = students.filter(u => u.userId !== user.userId);
+              renderTable(students);
 
-          new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+              studentAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
+              studentAlert.classList.remove('d-none');
+              setTimeout(() => studentAlert.classList.add('d-none'), 3000);
+            } else {
+              alert((data && data.message) || 'Delete failed.');
+            }
+          } catch (err) {
+            console.error('Delete failed:', err);
+            alert('Server error while deleting user.');
+          }
         });
 
         tableBody.appendChild(row);
@@ -545,6 +534,87 @@
         tableBody.innerHTML = '<tr><td colspan="9">Error loading students.</td></tr>';
       }
     }
+
+    // ===== Reusable TYPE-TO-CONFIRM (copies your class_list pattern) =====
+    function showTypeToConfirm_DeleteStudent(title, expectedText) {
+      const modalEl = document.getElementById('deleteConfirmModal');
+      const modal = new bootstrap.Modal(modalEl);
+      const titleEl = document.getElementById('deleteConfirmModalLabel');
+      const bodyEl = document.getElementById('deleteModalBody');
+      const okBtn = document.getElementById('confirmDeleteBtn');
+
+      titleEl.textContent = title || 'Confirm Delete';
+
+      // Build the body with instructions + input + bootstrap feedback
+      bodyEl.innerHTML = `
+        <div class="mb-2">
+          To permanently delete this student and related records, type the student's <strong>exact username</strong>.
+        </div>
+        <div class="alert alert-danger py-2 small mb-2 confirm-no-copy" title="Copy is disabled in this area">
+          Type exactly: <code>${expectedText || '(no username)'}</code>
+        </div>
+        <input type="text" class="form-control" id="typeToConfirmInput"
+               placeholder="Type the exact username here" autocomplete="off" />
+        <div class="invalid-feedback" id="typeToConfirmError">
+          Input does not match. Please type <strong>${expectedText || '(no username)'}</strong> to proceed.
+        </div>
+        <div class="valid-feedback" id="typeToConfirmOk">
+          ✓ Input matches
+        </div>
+      `;
+
+      okBtn.textContent = 'Delete';
+      okBtn.disabled = true;
+
+      // Block copy/cut/context menu inside this modal (cannot copy/paste)
+      const block = (e) => e.preventDefault();
+      modalEl.addEventListener('copy', block);
+      modalEl.addEventListener('cut', block);
+      modalEl.addEventListener('paste', block);
+      modalEl.addEventListener('contextmenu', block);
+
+      return new Promise((resolve) => {
+        const input = document.getElementById('typeToConfirmInput');
+
+        const onInput = () => {
+          const match = (input.value.trim() === (expectedText || '').trim());
+          input.classList.toggle('is-valid', match);
+          input.classList.toggle('is-invalid', !match);
+          okBtn.disabled = !match;
+        };
+
+        const onOk = () => {
+          if (!okBtn.disabled) {
+            cleanup();
+            modal.hide();
+            resolve(true);
+          }
+        };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        function cleanup() {
+          okBtn.removeEventListener('click', onOk);
+          modalEl.removeEventListener('hidden.bs.modal', onCancel);
+          input.removeEventListener('input', onInput);
+
+          modalEl.removeEventListener('copy', block);
+          modalEl.removeEventListener('cut', block);
+          modalEl.removeEventListener('paste', block);
+          modalEl.removeEventListener('contextmenu', block);
+
+          okBtn.disabled = false;
+          okBtn.textContent = 'Delete';
+        }
+
+        okBtn.addEventListener('click', onOk);
+        modalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        input.addEventListener('input', onInput);
+
+        modal.show();
+        setTimeout(() => { input.focus(); onInput(); }, 150);
+      });
+    }
+    // ===== End reusable type-to-confirm =====
 
     // Header sorting & filter wiring
     document.addEventListener('DOMContentLoaded', () => {

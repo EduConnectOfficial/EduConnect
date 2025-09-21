@@ -48,7 +48,7 @@
 
 /* Modal header with gradient background */
 .modal-header {
-  background: linear-gradient(to bottom, #4A1A0C, #7A2810);
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
   color: #fff;
   border-bottom: none;
 }
@@ -72,7 +72,7 @@
 .modal-footer .btn,
 #successOkBtn, 
 #feedbackModal .btn {
-  background: linear-gradient(to bottom, #FF6A00, #B03C10);
+  background: linear-gradient(to bottom,var(--brand-accent-1), var(--brand-accent-2));
   border: none;
   color: #fff;
   border-radius: 999px;
@@ -84,26 +84,25 @@
 .modal-footer .btn:hover,
 #successOkBtn:hover,
 #feedbackModal .btn:hover {
-  background: linear-gradient(to bottom, #ff8533, #cc3300);
+  background: linear-gradient(to bottom,var(--brand-accent-2), var(--brand-accent-1));
   transform: scale(1.05);
 }
 .modal-body {
   color:black
 }
  /* Header */
- .header-top {
-   width: 100%;
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   padding: 1rem 2rem;
-   background: linear-gradient(to bottom, #4A1A0C, #7A2810);
-   color: #fff;
-   box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
-   position: sticky;
-   top: 0;
-   z-index: 10;
- }
+.header-top {
+  width: 100%;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, #001369, #1a388a, #3b6bb4);
+  color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0 !important;
+}
+
 
  .logo-header {
    height: 45px;
@@ -159,7 +158,7 @@
  }
 
  .page-title.brand {
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
+    background: #152238;
    -webkit-background-clip: text;
    background-clip: text;
    color: transparent;
@@ -190,8 +189,8 @@
  .ui-card.card-themed .ui-card-head {
    margin: -16px -16px 12px -16px;
    padding: 12px 16px;
-   background: linear-gradient(90deg, var(--brand-dark-1), var(--brand-dark-2));
-   color: #FFD8A9;
+background:#113667;
+   color: #eaf2ff;
    border-bottom: 1px solid rgba(255, 255, 255, .1);
  }
 
@@ -205,7 +204,7 @@
  }
 
  .ui-card.card-themed .ui-card-title i {
-   color: #FFD8A9;
+   color: #eaf2ff;
  }
 
  .ui-card.card-themed> :not(.ui-card-head) {

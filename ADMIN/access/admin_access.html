@@ -10,6 +10,16 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/ADMIN/access/access.css" />
 
+  <!-- Block selection/copy inside confirm modal (same pattern as your other page) -->
+  <style>
+    .confirm-no-copy,
+    .confirm-no-copy * {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+    }
+  </style>
 </head>
 
 <body>
@@ -46,7 +56,6 @@
     <div class="main">
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -141,16 +150,18 @@
     </div>
   </div>
 
-  <!-- Delete Confirm Modal -->
+  <!-- Delete Confirm Modal (used by type-to-delete) -->
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content confirm-no-copy">
         <div class="modal-header">
           <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="deleteModalBody">This will permanently delete the user. Continue?</div>
+        <div class="modal-body" id="deleteModalBody">
+          <!-- body is populated dynamically by type-to-confirm -->
+        </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button id="confirmDeleteBtn" type="button" class="btn btn-danger">Delete</button>
@@ -220,7 +231,6 @@
           const u = (info.username || "").trim();
           const e = (info.email || "").trim();
 
-          // Prefer First + Last initials when available
           if (f || l) {
             let letters = "";
             if (f) letters += f[0];
@@ -230,19 +240,14 @@
             if (letters.length >= 2) return letters.slice(0, 2);
             return (letters + "U").slice(0, 2);
           }
-
-          // Fallback: username first 2 alphanumerics
           if (u) {
             const cleaned = u.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
             if (cleaned) return (cleaned + "U").slice(0, 2);
           }
-
-          // Fallback: email local-part first 2 alphanumerics
           if (e && e.includes("@")) {
             const local = e.split("@")[0].replace(/[^A-Za-z0-9]/g, "").toUpperCase();
             if (local) return (local + "U").slice(0, 2);
           }
-
           return "UU";
         };
 
@@ -250,7 +255,6 @@
         const el = document.getElementById("Username");
         if (el) {
           el.textContent = initials;
-          // Title/tooltip shows best available full identifier
           const full =
             (data && [data.firstName, data.middleName, data.lastName].filter(Boolean).join(" ").trim()) ||
             (data && data.username) ||
@@ -306,9 +310,9 @@
       const parts = domain.split('.');
       const maskedLocal = local[0] + '*'.repeat(Math.max(local.length - 1, 0));
       const dn = parts.slice(0, -1).join('.');
-      const maskedDn = dn ? (dn[0] + '*'.repeat(Math.max(dn.length - 1, 0))) : '';
+      theMaskedDn = dn ? (dn[0] + '*'.repeat(Math.max(dn.length - 1, 0))) : '';
       const tld = parts[parts.length - 1] || '';
-      return maskedLocal + '@' + (maskedDn ? maskedDn + '.' : '') + tld;
+      return maskedLocal + '@' + (theMaskedDn ? theMaskedDn + '.' : '') + tld;
     }
 
     const norm = v => (v ?? '').toString().toLowerCase().trim();
@@ -384,6 +388,86 @@
       triggers.forEach(el => new bootstrap.Tooltip(el));
     }
 
+    /* ========= TYPE-TO-CONFIRM (username) with copy/paste blocked ========= */
+    function showTypeToConfirm_DeleteAdmin(title, expectedText) {
+      const modalEl = document.getElementById('deleteConfirmModal');
+      const modal = new bootstrap.Modal(modalEl);
+      const titleEl = document.getElementById('deleteConfirmModalLabel');
+      const bodyEl = document.getElementById('deleteModalBody');
+      const okBtn = document.getElementById('confirmDeleteBtn');
+
+      titleEl.textContent = title || 'Confirm Delete';
+
+      bodyEl.innerHTML = `
+        <div class="mb-2">
+          To permanently delete this Super Admin (and related admin records), type the exact <strong>username</strong>.
+        </div>
+        <div class="alert alert-danger py-2 small mb-2 confirm-no-copy" title="Copy is disabled in this area">
+          Type exactly: <code>${expectedText || '(no username)'}</code>
+        </div>
+        <input type="text" class="form-control" id="typeToConfirmInput"
+               placeholder="Type the exact username here" autocomplete="off" />
+        <div class="invalid-feedback" id="typeToConfirmError">
+          Input does not match. Please type <strong>${expectedText || '(no username)'}</strong> to proceed.
+        </div>
+        <div class="valid-feedback" id="typeToConfirmOk">
+          ✓ Input matches
+        </div>
+      `;
+
+      okBtn.textContent = 'Delete';
+      okBtn.disabled = true;
+
+      // Block copy/cut/paste/context menu inside this modal
+      const block = (e) => e.preventDefault();
+      modalEl.addEventListener('copy', block);
+      modalEl.addEventListener('cut', block);
+      modalEl.addEventListener('paste', block);
+      modalEl.addEventListener('contextmenu', block);
+
+      return new Promise((resolve) => {
+        const input = document.getElementById('typeToConfirmInput');
+
+        const onInput = () => {
+          const match = (input.value.trim() === (expectedText || '').trim());
+          input.classList.toggle('is-valid', match);
+          input.classList.toggle('is-invalid', !match);
+          okBtn.disabled = !match;
+        };
+
+        const onOk = () => {
+          if (!okBtn.disabled) {
+            cleanup();
+            modal.hide();
+            resolve(true);
+          }
+        };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        function cleanup() {
+          okBtn.removeEventListener('click', onOk);
+          modalEl.removeEventListener('hidden.bs.modal', onCancel);
+          input.removeEventListener('input', onInput);
+
+          modalEl.removeEventListener('copy', block);
+          modalEl.removeEventListener('cut', block);
+          modalEl.removeEventListener('paste', block);
+          modalEl.removeEventListener('contextmenu', block);
+
+          okBtn.disabled = false;
+          okBtn.textContent = 'Delete';
+        }
+
+        okBtn.addEventListener('click', onOk);
+        modalEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        input.addEventListener('input', onInput);
+
+        modal.show();
+        setTimeout(() => { input.focus(); onInput(); }, 150);
+      });
+    }
+    /* =================== END TYPE-TO-CONFIRM =================== */
+
     function renderTable(list) {
       tableBody.innerHTML = '';
       const filtered = applyFilters(list);
@@ -394,10 +478,8 @@
 
       let sorted;
       if (elSort.value === 'none') {
-        // Default sort: Admin ID ascending
         sorted = filtered.sort((a, b) => sortByHeader(a, b));
       } else {
-        // Sort by dropdown, then header as tiebreaker
         sorted = filtered.sort((a, b) => {
           const d = sortByDropdown(a, b);
           if (d !== 0) return d;
@@ -512,8 +594,8 @@
           new bootstrap.Modal(document.getElementById('editUserModal')).show();
         });
 
-        // Delete
-        deleteBtn.addEventListener('click', () => {
+        // Delete (type-to-confirm, exact username)
+        deleteBtn.addEventListener('click', async () => {
           const total = supers.length;
           const lastRemaining = total <= 1;
           if (deleteBtn.disabled || (CURRENT_USER_ID && user.userId === CURRENT_USER_ID) || lastRemaining) {
@@ -522,43 +604,33 @@
 
           selectedUser = user;
           selectedRow = row;
-          document.getElementById('deleteModalBody').textContent =
-            'This will permanently delete "' + (user.username || 'user') + '". Continue?';
 
-          const old = document.getElementById('confirmDeleteBtn');
-          const fresh = old.cloneNode(true);
-          old.parentNode.replaceChild(fresh, old);
+          const expected = (user.username || '').trim();
+          const ok = await showTypeToConfirm_DeleteAdmin('Confirm Delete', expected);
+          if (!ok) return;
 
-          fresh.addEventListener('click', async () => {
-            try {
-              fresh.disabled = true;
-              const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
-              if (!res.ok) {
-                const txt = await res.text();
-                throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
-              }
-              const data = await res.json();
-              if (data && data.success) {
-                supers = supers.filter(u => u.userId !== user.userId);
-                renderTable(supers);
-
-                bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
-
-                adminAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
-                adminAlert.classList.remove('d-none');
-                setTimeout(() => adminAlert.classList.add('d-none'), 3000);
-              } else {
-                alert((data && data.message) || 'Delete failed.');
-              }
-            } catch (err) {
-              console.error('Delete failed:', err);
-              alert('Server error while deleting user.');
-            } finally {
-              fresh.disabled = false;
+          // proceed with actual deletion
+          try {
+            const res = await fetch(API_BASE + '/' + encodeURIComponent(user.userId), { method: 'DELETE' });
+            if (!res.ok) {
+              const txt = await res.text();
+              throw new Error('HTTP ' + res.status + ': ' + txt.slice(0, 120));
             }
-          });
+            const data = await res.json();
+            if (data && data.success) {
+              supers = supers.filter(u => u.userId !== user.userId);
+              renderTable(supers);
 
-          new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+              adminAlert.textContent = 'Deleted "' + (user.username || 'user') + '".';
+              adminAlert.classList.remove('d-none');
+              setTimeout(() => adminAlert.classList.add('d-none'), 3000);
+            } else {
+              alert((data && data.message) || 'Delete failed.');
+            }
+          } catch (err) {
+            console.error('Delete failed:', err);
+            alert('Server error while deleting user.');
+          }
         });
 
         tableBody.appendChild(row);
