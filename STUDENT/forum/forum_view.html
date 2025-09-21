@@ -4,33 +4,47 @@
   <meta charset="UTF-8" />
   <title>EduConnect Student - View Thread (with Modals)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <!-- Page styles -->
   <link rel="stylesheet" href="../forum/forum.css" />
 
-
+  <style>
+    .wrap-anywhere{overflow-wrap:anywhere}
+    .skeleton{position:relative;border-radius:.5rem;background:#eef2f7;overflow:hidden;min-height:56px}
+    .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:shimmer 1.2s infinite}
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+    .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
+    .btn-close-footer{background:#f1f3f5;border:1px solid #dee2e6;border-radius:.5rem;padding:.375rem .75rem}
+  </style>
 </head>
 <body>
   <div class="dashboard">
+    <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
+    <!-- Main -->
     <div class="main">
+      <!-- Header -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
-          <input type="text" placeholder="Search..." />
+          <input type="text" placeholder="Search..." aria-label="Search site" />
           <i class="bi bi-search"></i>
         </div>
-        <button class="profile-btn">
+        <button class="profile-btn" aria-label="Open profile menu">
           <i class="bi bi-person-circle"></i>
-          <span id="Username" class="username" style="font-size: 14px;"></span>
+          <span id="Username" class="username" style="font-size:14px;"></span>
         </button>
       </header>
 
+      <!-- Content -->
       <div class="content container-fluid">
         <div class="row justify-content-center">
           <div class="col-12 col-lg-10 col-xxl-8">
@@ -38,7 +52,8 @@
             <!-- THREAD -->
             <div class="ui-card card-themed mb-4" id="threadContainer">
               <div class="p-3 border-bottom" id="threadDetails">
-                <div class="alert alert-info">Loading thread...</div>
+                <div class="skeleton rounded-3 mb-2"></div>
+                <div class="skeleton rounded-3"></div>
               </div>
             </div>
 
@@ -46,21 +61,24 @@
             <div class="ui-card card-themed">
               <div class="ui-card-head d-flex justify-content-between align-items-center">
                 <h2 class="ui-card-title m-0"><i class="bi bi-chat-text"></i> Comments</h2>
-                <span class="ui-subtext" id="replyCount"></span>
+                <span class="ui-subtext" id="replyCount">Loading…</span>
               </div>
 
               <!-- Top-level Comment Form -->
-              <form id="replyForm" class="p-3 border-bottom">
+              <form id="replyForm" class="p-3 border-bottom" novalidate>
                 <div class="fb-composer">
-                  <div class="fb-avatar" id="meAvatar">ME</div>
+                  <div class="fb-avatar" id="meAvatar" aria-hidden="true">ME</div>
                   <div class="flex-grow-1">
                     <div class="composer-box">
                       <textarea id="replyText" class="form-control border-0 bg-transparent p-0"
                                 rows="1" placeholder="Write a comment..." required
                                 style="resize:none"></textarea>
+                      <div class="invalid-feedback">Please enter a comment.</div>
                     </div>
                     <div class="composer-actions">
-                      <button type="submit" class="btn btn-amber btn-sm mt-2">Comment</button>
+                      <button type="submit" class="btn btn-amber btn-sm mt-2">
+                        <i class="bi bi-send me-1"></i> Comment
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -68,13 +86,14 @@
 
               <!-- Replies -->
               <div id="repliesList" class="p-3">
-                <div class="text-muted">No comments yet.</div>
+                <div class="skeleton rounded-3"></div>
+                <div class="skeleton rounded-3 mt-2"></div>
               </div>
             </div>
 
           </div>
         </div>
-      </div>
+      </div> <!-- /content -->
     </div>
   </div>
 
@@ -110,14 +129,16 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="threadEditForm">
+          <form id="threadEditForm" novalidate>
             <div class="mb-3">
               <label class="form-label">Title</label>
-              <input type="text" class="form-control" id="editThreadTitle" required />
+              <input type="text" class="form-control" id="editThreadTitle" required minlength="3" />
+              <div class="invalid-feedback">Please enter a title (min 3 characters).</div>
             </div>
             <div class="mb-0">
               <label class="form-label">Text</label>
-              <textarea class="form-control" id="editThreadText" rows="4" required></textarea>
+              <textarea class="form-control" id="editThreadText" rows="4" required minlength="5"></textarea>
+              <div class="invalid-feedback">Please enter some details (min 5 characters).</div>
             </div>
           </form>
         </div>
@@ -157,10 +178,11 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="replyEditForm">
+          <form id="replyEditForm" novalidate>
             <div class="mb-0">
               <label class="form-label">Comment</label>
-              <textarea class="form-control" id="editReplyText" rows="3" required></textarea>
+              <textarea class="form-control" id="editReplyText" rows="3" required minlength="1"></textarea>
+              <div class="invalid-feedback">Comment can’t be empty.</div>
             </div>
           </form>
         </div>
@@ -172,7 +194,7 @@
     </div>
   </div>
 
-  <!-- Sidebar Logic -->
+  <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/STUDENT/components/sidebar.html")
@@ -201,48 +223,73 @@
     });
   </script>
 
+  <!-- Page Logic -->
   <script>
     const API_BASE = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
     const qs = sel => document.querySelector(sel);
 
-    function escapeHtml(str=''){return String(str).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));}
-    function toLocal(dt){if(!dt)return'';if(dt._seconds)return new Date(dt._seconds*1000).toLocaleString();return new Date(dt).toLocaleString();}
-    async function fetchJSON(url,opts){const res=await fetch(url,opts);let json;try{json=await res.json();}catch{json={};}if(!res.ok)throw new Error(json.message||`HTTP ${res.status}`);return json;}
-
-    // Auth
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    const userId = userData.userId || userData.uid || userData.id || userData.email;
-    if (!userId) {
-      window.location.href = "../login/login.html";
-    } else {
-      const displayName = userData.fullName || userData.username || userData.email || "Student";
-      const initials = (n=>{if(!n)return"?";const p=String(n).trim().split(/\s+/).filter(Boolean);const a=p[0]?.[0]||"";const b=(p.length>1?p[p.length-1][0]:(p[0]?.[1]||""));return(a+b).toUpperCase();})(displayName);
-      const el = document.getElementById("Username"); el.textContent = initials; el.title = displayName; el.setAttribute("aria-label", displayName);
-      if (!userData.uid) { userData.uid = userId; localStorage.setItem("user", JSON.stringify(userData)); }
-      const meAvatarEl = document.getElementById("meAvatar"); if (meAvatarEl) meAvatarEl.textContent = initials;
+    // Safe helpers
+    function escapeHtml(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])).replace(/'/g,'&#39;');}
+    function toLocal(dt){ if(!dt) return ''; if(dt._seconds) return new Date(dt._seconds*1000).toLocaleString(); const t=Date.parse(dt); return Number.isFinite(t)?new Date(t).toLocaleString():''; }
+    function initialsFrom(str){
+      if(!str) return "?";
+      const s=String(str).trim();
+      if(!s) return "?";
+      if(s.includes("@")){
+        const local=s.split("@")[0];
+        const parts=local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length>=2?(parts[0][0]+parts[parts.length-1][0]):local.slice(0,2)).toUpperCase();
+      }
+      const parts=s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length>=2?(parts[0][0]+parts[parts.length-1][0]):parts[0].slice(0,2)).toUpperCase();
     }
 
-    // Helpers
-    function initialsFromName(n){if(!n)return"?";const parts=String(n).trim().split(/\s+/).filter(Boolean);if(!parts.length)return"?";const a=parts[0][0]||"";const b=(parts.length>1?parts[parts.length-1][0]:(parts[0][1]||""));return(a+b).toUpperCase();}
-    function authorDisplayName(obj){return obj?.author?.fullName || obj?.authorFullName || "User";}
-    function timeHtml(dt){const t=toLocal(dt);return `<span class="time" title="${escapeHtml(t)}">${escapeHtml(t)}</span>`;}
+    // Robust JSON fetch (handles non-JSON gracefully)
+    async function fetchJSON(url, opts){
+      const res = await fetch(url, opts);
+      const ct = res.headers.get('content-type') || '';
+      const text = await res.text();
+      let json = {};
+      if (ct.includes('application/json')) { try{ json = JSON.parse(text || '{}'); }catch{} }
+      if (!res.ok || json.success === false) {
+        const msg = json.message || `${res.status} ${res.statusText}`;
+        throw new Error(msg);
+      }
+      return json;
+    }
 
-    const threadId = new URLSearchParams(window.location.search).get("id");
-    let thread=null;
+    // Auth + header initials
+    (function auth(){
+      const userData = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = userData.userId || userData.uid || userData.id || userData.email;
+      if (!userId) { window.location.href = "../login/login.html"; return; }
+      const displayName = userData.fullName || userData.username || userData.email || "Student";
+      const init = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      el.textContent = init; el.title = displayName; el.setAttribute("aria-label", displayName);
+      if (!userData.uid) { userData.uid = userId; localStorage.setItem("user", JSON.stringify(userData)); }
+      const meAvatarEl = document.getElementById("meAvatar"); if (meAvatarEl) meAvatarEl.textContent = init;
+      window.__user = userData;
+    })();
 
-    // Global modal state
-    let currentReply = null; // stores the full reply object when editing
-    let currentReplyId = null; // stores the reply id when deleting
+    // Utilities
+    const threadId = new URLSearchParams(location.search).get("id");
+    const authorDisplayName = o => o?.author?.fullName || o?.authorFullName || o?.author?.username || o?.author?.email || "User";
+    const timeHtml = dt => {
+      const t = toLocal(dt);
+      return `<span class="time" title="${escapeHtml(t)}">${escapeHtml(t)}</span>`;
+    };
 
-    // Bootstrap modal refs
+    // Modal refs + state
     let threadDeleteModal, threadEditModal, replyDeleteModal, replyEditModal;
+    let thread = null, currentReply = null, currentReplyId = null;
+
     document.addEventListener('DOMContentLoaded', () => {
       threadDeleteModal = new bootstrap.Modal(document.getElementById('threadDeleteModal'));
       threadEditModal   = new bootstrap.Modal(document.getElementById('threadEditModal'));
       replyDeleteModal  = new bootstrap.Modal(document.getElementById('replyDeleteModal'));
       replyEditModal    = new bootstrap.Modal(document.getElementById('replyEditModal'));
 
-      // Wire modal action buttons
       document.getElementById('confirmThreadDeleteBtn')?.addEventListener('click', confirmThreadDelete);
       document.getElementById('saveThreadEditBtn')?.addEventListener('click', saveThreadEdit);
       document.getElementById('confirmReplyDeleteBtn')?.addEventListener('click', confirmReplyDelete);
@@ -251,11 +298,11 @@
 
     async function loadThread(){
       try{
-        const j=await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`);
-        thread=j.data;
-        const threadAuthorName=authorDisplayName(thread);
-        const isOwner = userData?.uid && (String(thread.author?.uid) === String(userData.uid));
-        const initials=initialsFromName(threadAuthorName);
+        const j = await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`);
+        thread = j.data;
+        const tAuthorName = authorDisplayName(thread);
+        const isOwner = __user?.uid && (String(thread.author?.uid) === String(__user.uid));
+        const inits = initialsFrom(tAuthorName);
 
         const actionHtml = isOwner ? `
           <div class="dropdown ms-2">
@@ -268,54 +315,58 @@
             </ul>
           </div>` : ``;
 
-        qs("#threadDetails").innerHTML=`
+        qs("#threadDetails").innerHTML = `
           <div class="thread-head">
-            <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+            <div class="fb-avatar" aria-hidden="true">${escapeHtml(inits)}</div>
             <div class="title-wrap flex-grow-1">
-              <h3 class="mb-1">${escapeHtml(thread.title || '')}</h3>
+              <h3 class="mb-1 wrap-anywhere">${escapeHtml(thread.title || '')}</h3>
               <div class="meta">
-                <strong>${escapeHtml(threadAuthorName)}</strong>
-                • ${escapeHtml(thread.courseTitle || '')}
+                <strong class="wrap-anywhere">${escapeHtml(tAuthorName)}</strong>
+                • <span class="wrap-anywhere">${escapeHtml(thread.courseTitle || '')}</span>
                 • ${timeHtml(thread.createdAt)}
               </div>
-              <p class="mt-2 mb-0" style="overflow-wrap:anywhere">${escapeHtml(thread.text || '')}</p>
+              <p class="mt-2 mb-0 wrap-anywhere">${escapeHtml(thread.text || '')}</p>
             </div>
             ${actionHtml}
           </div>`;
 
         if (isOwner) {
-          qs(".action-delete-thread")?.addEventListener("click", openThreadDeleteModal);
+          qs(".action-delete-thread")?.addEventListener("click", () => threadDeleteModal?.show());
           qs(".action-edit-thread")?.addEventListener("click", openThreadEditModal);
         }
 
-        loadReplies();
+        await loadReplies();
       }catch(err){
         console.error(err);
-        qs("#threadDetails").innerHTML=`<div class="alert alert-danger">Failed to load thread.</div>`;
+        qs("#threadDetails").innerHTML = `<div class="alert alert-danger">Failed to load thread.</div>`;
       }
     }
 
     function buildReplyTree(flat){
-      const map={}; flat.forEach(r=>{r.children=[];map[r.id]=r;});
-      const roots=[];
-      flat.forEach(r=>{ if(r.parentId && map[r.parentId]) map[r.parentId].children.push(r); else roots.push(r); });
-      roots.sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
-      (function sortChildren(arr){ arr.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)); arr.forEach(c=>sortChildren(c.children)); })(roots);
+      const map = Object.create(null);
+      flat.forEach(r => { r.children = []; map[r.id] = r; });
+      const roots = [];
+      flat.forEach(r => {
+        if (r.parentId && map[r.parentId]) map[r.parentId].children.push(r);
+        else roots.push(r);
+      });
+      roots.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+      (function sortKids(list){ list.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)); list.forEach(x=>sortKids(x.children)); })(roots);
       return roots;
     }
 
-    function renderRepliesRecursive(replies, container, level=0, parentName=null){
-      replies.forEach(r=>{
-        const wrap=document.createElement("div");
-        wrap.className="fb-comment";
-        const name=authorDisplayName(r);
-        const initials=initialsFromName(name);
-        const isOwn = userData?.uid && (String(r.author?.uid) === String(userData.uid));
-        const hasChildren=(r.children&&r.children.length)?r.children.length:0;
-        const collapseId=`replies-${r.id}`;
+    function renderRepliesRecursive(list, container, parentName=null){
+      list.forEach(r => {
+        const name = authorDisplayName(r);
+        const inits = initialsFrom(name);
+        const isOwn = __user?.uid && (String(r.author?.uid) === String(__user.uid));
+        const childCount = r.children?.length || 0;
+        const collapseId = `replies-${r.id}`;
 
-        wrap.innerHTML=`
-          <div class="fb-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+        const wrap = document.createElement('div');
+        wrap.className = 'fb-comment';
+        wrap.innerHTML = `
+          <div class="fb-avatar" aria-hidden="true">${escapeHtml(inits)}</div>
           <div class="fb-body">
             <div class="fb-bubble">
               ${isOwn ? `
@@ -329,171 +380,217 @@
                 </ul>
               </div>` : ``}
               <div class="name-line">${escapeHtml(name)} ${timeHtml(r.createdAt)}</div>
-              <div class="fb-text">${escapeHtml(r.text || '')}</div>
-              ${parentName ? `<div class="small text-muted mt-1">↪ Replying to <strong>${escapeHtml(parentName)}</strong></div>` : ""}
+              <div class="fb-text wrap-anywhere">${escapeHtml(r.text || '')}</div>
+              ${parentName ? `<div class="small text-muted mt-1">↪ Replying to <strong>${escapeHtml(parentName)}</strong></div>` : ``}
             </div>
             <div class="fb-actions">
               <span class="fb-action reply-btn"><i class="bi bi-reply"></i> Reply</span>
-              ${hasChildren ? `<button class="btn btn-sm btn-link p-0 fb-toggle" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}</button>` : ""}
+              ${childCount ? `<button class="btn btn-sm btn-link p-0 fb-toggle" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false"><i class="bi bi-chevron-down"></i> View ${childCount} repl${childCount>1?'ies':'y'}</button>` : ``}
             </div>
-            ${hasChildren ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
+            ${childCount ? `<div class="collapse fb-children" id="${collapseId}"><div class="children-container"></div></div>` : ``}
           </div>`;
 
         container.appendChild(wrap);
 
-        if(isOwn){
+        if (isOwn) {
           wrap.querySelector(".action-delete-reply")?.addEventListener("click", ()=> openReplyDeleteModal(r.id));
           wrap.querySelector(".action-edit-reply")?.addEventListener("click", ()=> openReplyEditModal(r));
         }
 
-        wrap.querySelector(".reply-btn").addEventListener("click", ()=> showReplyForm(r.id, wrap));
+        wrap.querySelector(".reply-btn").addEventListener("click", ()=> showInlineReplyForm(r.id, wrap));
 
-        if(hasChildren){
-          const childWrap=wrap.querySelector(".children-container");
-          renderRepliesRecursive(r.children, childWrap, level+1, name);
-          const toggleBtn=wrap.querySelector(`[data-bs-target="#${collapseId}"]`);
-          const collapseEl=wrap.querySelector(`#${collapseId}`);
-          collapseEl.addEventListener("show.bs.collapse", ()=>{ toggleBtn.innerHTML=`<i class="bi bi-chevron-up"></i> Hide replies`; });
-          collapseEl.addEventListener("hide.bs.collapse", ()=>{ toggleBtn.innerHTML=`<i class="bi bi-chevron-down"></i> View ${hasChildren} repl${hasChildren>1?"ies":"y"}`; });
+        if (childCount) {
+          const childWrap = wrap.querySelector(".children-container");
+          renderRepliesRecursive(r.children, childWrap, name);
+          const toggleBtn = wrap.querySelector(`[data-bs-target="#${collapseId}"]`);
+          const collapseEl = wrap.querySelector(`#${collapseId}`);
+          collapseEl.addEventListener("show.bs.collapse", ()=>{ toggleBtn.innerHTML = `<i class="bi bi-chevron-up"></i> Hide replies`; });
+          collapseEl.addEventListener("hide.bs.collapse", ()=>{ toggleBtn.innerHTML = `<i class="bi bi-chevron-down"></i> View ${childCount} repl${childCount>1?'ies':'y'}`; });
         }
       });
     }
 
     async function loadReplies(){
       try{
-        const j=await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`);
-        const flatReplies=j.data||[];
-        const tree=buildReplyTree(flatReplies);
-        const wrap=qs("#repliesList"); const count=qs("#replyCount");
-        wrap.innerHTML=''; count.textContent=`${flatReplies.length} comment${flatReplies.length===1?'':'s'}`;
-        if(!flatReplies.length){ wrap.innerHTML=`<div class="text-muted">No comments yet.</div>`; return; }
+        const j = await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`);
+        const flat = j.data || [];
+        const tree = buildReplyTree(flat);
+        const wrap = qs("#repliesList");
+        const count = qs("#replyCount");
+        wrap.innerHTML = '';
+        count.textContent = `${flat.length} comment${flat.length===1?'':'s'}`;
+
+        if (!flat.length) {
+          wrap.innerHTML = `<div class="empty-state">No comments yet. Be the first to comment!</div>`;
+          return;
+        }
         renderRepliesRecursive(tree, wrap);
-      }catch(err){ console.error(err); qs("#repliesList").innerHTML=`<div class="alert alert-danger">Failed to load comments.</div>`; }
+      } catch (e) {
+        console.error(e);
+        qs("#repliesList").innerHTML = `<div class="alert alert-danger">Failed to load comments.</div>`;
+        qs("#replyCount").textContent = '0 comments';
+      }
     }
 
-    function showReplyForm(parentId, replyDiv){
-      const container = replyDiv.querySelector(".reply-form-container") || (function(){
-        const c=document.createElement("div"); c.className="reply-form-container mt-2"; replyDiv.querySelector(".fb-body").appendChild(c); return c;
+    function showInlineReplyForm(parentId, replyDiv){
+      const host = replyDiv.querySelector(".reply-form-container") || (() => {
+        const c = document.createElement("div");
+        c.className = "reply-form-container mt-2";
+        replyDiv.querySelector(".fb-body").appendChild(c);
+        return c;
       })();
-      if (container.querySelector("form")) { container.innerHTML=""; return; }
 
-      const meName = userData.fullName || userData.username || userData.email || "Me";
-      const meInitials = initialsFromName(meName);
+      // toggle off if already visible
+      if (host.querySelector("form")) { host.innerHTML = ""; return; }
 
-      container.innerHTML = `
-        <div class="fb-composer mt-2">
-          <div class="fb-avatar">${escapeHtml(meInitials)}</div>
-          <div class="flex-grow-1">
-            <div class="composer-box">
-              <textarea class="form-control form-control-sm border-0 bg-transparent p-0" rows="2" placeholder="Write a reply..." required></textarea>
-            </div>
-            <div class="composer-actions">
-              <button type="submit" class="btn btn-sm btn-amber mt-2">Reply</button>
+      const meName = __user.fullName || __user.username || __user.email || "Me";
+      const meInit = initialsFrom(meName);
+
+      host.innerHTML = `
+        <form class="reply-inline-form" novalidate>
+          <div class="fb-composer mt-2">
+            <div class="fb-avatar" aria-hidden="true">${escapeHtml(meInit)}</div>
+            <div class="flex-grow-1">
+              <div class="composer-box">
+                <textarea class="form-control form-control-sm border-0 bg-transparent p-0" rows="2" placeholder="Write a reply..." required></textarea>
+                <div class="invalid-feedback">Please enter a reply.</div>
+              </div>
+              <div class="composer-actions">
+                <button type="submit" class="btn btn-sm btn-amber mt-2">
+                  <i class="bi bi-reply-fill me-1"></i> Reply
+                </button>
+              </div>
             </div>
           </div>
-        </div>`;
+        </form>`;
 
-      container.querySelector(".btn-amber").addEventListener("click", async (e)=>{
+      host.querySelector("form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const ta=container.querySelector("textarea");
-        const text=ta.value.trim(); if(!text) return;
-        try{
-          await postReply(text, parentId); await loadReplies();
-          const collapse=replyDiv.querySelector(".collapse");
-          if(collapse && !collapse.classList.contains("show")){ new bootstrap.Collapse(collapse,{show:true}); }
-        }catch(err){ console.error(err); alert("Could not post reply."); }
+        const ta = host.querySelector("textarea");
+        if (!ta.value.trim()) { ta.classList.add('is-invalid'); return; }
+        try {
+          await postReply(ta.value.trim(), parentId);
+          await loadReplies();
+          const collapse = replyDiv.querySelector(".collapse");
+          if (collapse && !collapse.classList.contains("show")) { new bootstrap.Collapse(collapse, { show: true }); }
+        } catch (err) {
+          console.error(err);
+          alert("Could not post reply.");
+        }
       });
     }
 
     async function postReply(text, parentId=null){
       await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies`,{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ text, parentId, author:{ uid:userData.uid } })
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ text, parentId, author:{ uid:__user.uid } })
       });
     }
 
-    // =============================
-    // Thread modal handlers
-    // =============================
-    function openThreadDeleteModal(){
-      threadDeleteModal?.show();
-    }
-    async function confirmThreadDelete(){
-      try{
-        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{method:'DELETE'});
-        threadDeleteModal?.hide();
-        window.location.href='forum.html';
-      }catch(err){ console.error(err); alert('Failed to delete thread.'); }
-    }
-
+    // ===== Thread modal handlers =====
     function openThreadEditModal(){
-      // Prefill
+      qs('#threadEditForm').classList.remove('was-validated');
       qs('#editThreadTitle').value = thread?.title || '';
       qs('#editThreadText').value  = thread?.text  || '';
       threadEditModal?.show();
     }
     async function saveThreadEdit(){
-      const newTitle = qs('#editThreadTitle').value.trim();
-      const newText  = qs('#editThreadText').value.trim();
-      if(!newTitle || !newText) return;
+      const form = qs('#threadEditForm');
+      form.classList.add('was-validated');
+      const title = qs('#editThreadTitle').value.trim();
+      const text  = qs('#editThreadText').value.trim();
+      if (!title || title.length < 3 || !text || text.length < 5) return;
+
       try{
         await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
-          method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:newTitle,text:newText})
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ title, text })
         });
         threadEditModal?.hide();
         await loadThread();
-      }catch(err){ console.error(err); alert('Editing thread requires a PATCH /api/forum/threads/:id route on the backend.'); }
+      }catch(err){
+        console.error(err);
+        alert('Failed to save changes.');
+      }
     }
 
-    // =============================
-    // Reply modal handlers
-    // =============================
-    function openReplyDeleteModal(replyId){
-      currentReplyId = replyId;
-      replyDeleteModal?.show();
-    }
-    async function confirmReplyDelete(){
-      if(!currentReplyId) return;
+    async function confirmThreadDelete(){
       try{
-        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReplyId)}`,{method:'DELETE'});
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{ method:'DELETE' });
+        threadDeleteModal?.hide();
+        window.location.href='forum.html';
+      }catch(err){
+        console.error(err);
+        alert('Failed to delete thread.');
+      }
+    }
+
+    // ===== Reply modal handlers =====
+    function openReplyDeleteModal(replyId){ currentReplyId = replyId; replyDeleteModal?.show(); }
+    async function confirmReplyDelete(){
+      if (!currentReplyId) return;
+      try{
+        await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReplyId)}`,{ method:'DELETE' });
         replyDeleteModal?.hide();
-        currentReplyId=null;
+        currentReplyId = null;
         await loadReplies();
-      }catch(err){ console.error(err); alert('Failed to delete comment.'); }
+      }catch(err){
+        console.error(err);
+        alert('Failed to delete comment.');
+      }
     }
 
     function openReplyEditModal(reply){
-      currentReply = reply; // store full object
+      currentReply = reply;
+      qs('#replyEditForm').classList.remove('was-validated');
       qs('#editReplyText').value = reply?.text || '';
       replyEditModal?.show();
     }
     async function saveReplyEdit(){
+      const form = qs('#replyEditForm');
+      form.classList.add('was-validated');
       const updated = qs('#editReplyText').value.trim();
-      if(!updated || !currentReply) return;
+      if (!updated) return;
+
       try{
         await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReply.id)}`,{
-          method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:updated})
+          method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: updated })
         });
         replyEditModal?.hide();
-        currentReply=null;
+        currentReply = null;
         await loadReplies();
-      }catch(err){ console.error(err); alert('Editing comments requires a PATCH /api/forum/threads/:threadId/replies/:replyId route on the backend.'); }
+      }catch(err){
+        console.error(err);
+        alert('Failed to save comment.');
+      }
     }
 
+    // Boot
     document.addEventListener("DOMContentLoaded", ()=>{
-      if(!threadId){ alert('Missing thread ID.'); return; }
+      if (!threadId) { alert('Missing thread ID.'); return; }
       loadThread();
+
       qs("#replyForm").addEventListener("submit", async (e)=>{
         e.preventDefault();
-        const text=qs("#replyText").value.trim(); if(!text) return;
-        try{ await postReply(text); e.target.reset(); await loadReplies(); }
-        catch(err){ console.error(err); alert("Could not post comment."); }
+        const ta = qs("#replyText");
+        if (!ta.value.trim()) { ta.classList.add('is-invalid'); return; }
+        try {
+          await postReply(ta.value.trim(), null);
+          e.target.reset();
+          ta.classList.remove('is-invalid');
+          await loadReplies();
+        } catch (err) {
+          console.error(err);
+          alert("Could not post comment.");
+        }
       });
     });
 
-    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/STUDENT/login/login.html"; }
+    function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href = "/STUDENT/login/login.html"; }
   </script>
 
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

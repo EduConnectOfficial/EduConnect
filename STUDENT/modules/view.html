@@ -12,6 +12,13 @@
 
   <!-- Reuse student theme -->
   <link rel="stylesheet" href="../modules/list.css" />
+  <style>
+    .attachment-item{padding:.5rem 0;border-bottom:1px dashed rgba(0,0,0,.08)}
+    .attachment-badge{background:var(--brand-accent-1,#3b6bb4);color:#fff}
+    .viewer-card iframe,.viewer-card video,.viewer-card img,.viewer-card audio{width:100%;min-height:360px;border:0;border-radius:12px}
+    .spinner-wrap{display:none; align-items:center; justify-content:center; background:rgba(17,54,103,.5); padding:2rem; border-radius:12px}
+    .safe-pre{white-space:pre-wrap}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -22,8 +29,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
+        <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -41,13 +47,25 @@
       <div class="content container-fluid">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h1 class="page-title brand mb-0" id="moduleTitle">Module</h1>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 align-items-center">
             <a id="backToCourseBtn" class="btn btn-sm btn-amber-outline" href="#">
               <i class="bi bi-arrow-left"></i> Back to Modules
             </a>
-            <span id="completeBadge" class="badge text-bg-secondary align-self-center" style="display: flex; align-items: center; justify-content: center; min-width: 110px; min-height: 32px;">Not completed</span>
+
+            <!-- Module-level navigation -->
+            <div class="btn-group" role="group" aria-label="Module navigation">
+              <button id="prevModuleBtn" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-skip-backward"></i> Prev Module
+              </button>
+              <button id="nextModuleBtn" class="btn btn-sm btn-outline-secondary">
+                Next Module <i class="bi bi-skip-forward"></i>
+              </button>
+            </div>
+
+            <span id="progressPill" class="badge text-bg-info d-none"></span>
+            <span id="completeBadge" class="badge text-bg-secondary align-self-center" style="display:flex;align-items:center;justify-content:center;min-width:170px;min-height:32px;">Lesson: Not completed</span>
             <button id="completeBtn" class="btn btn-sm btn-amber">
-              <i class="bi bi-check2-circle me-1"></i> Mark Module Complete
+              <i class="bi bi-check2-circle me-1"></i> Mark Lesson Complete
             </button>
           </div>
         </div>
@@ -109,7 +127,7 @@
     </div>
   </div>
 
-  <!-- ===== File Preview Modal (matches teacher) ===== -->
+  <!-- ===== File Preview Modal ===== -->
   <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
@@ -138,7 +156,7 @@
     </div>
   </div>
 
-  <!-- ===== Success Modal (brand-aligned) ===== -->
+  <!-- ===== Success Modal ===== -->
   <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -191,38 +209,65 @@
   <!-- Page Logic -->
   <script>
     const API_BASE = 'http://localhost:5000';
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!user || !user.userId || !user.isStudent) {
-      window.location.href = "/STUDENT/login/login.html";
-    }
 
-    // === Initials-only header display ===
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+    /* ===== Students-only guard (requires isStudent and S- studentId) + header initials ===== */
+    (function guardStudentSession() {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
+
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
+
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch {}
+        // view.html lives under /STUDENT/modules/
+        window.location.replace('../login/login.html');
+        return;
       }
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
-    }
-    (function setUserHeader(){
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      const userId = userData.userId || userData.uid || userData.id || userData.email;
-      if (!userId) { window.location.href = "../login/login.html"; return; }
-      const displayName = userData.fullName || userData.username || userData.email || "Student";
-      const initials = initialsFrom(displayName) || "?";
+
+      // Expose session globally
+      window.currentUser = u;
+      window.userData = u;
+
+      // Header initials
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+      }
       const el = document.getElementById("Username");
-      el.textContent = initials;
-      el.title = displayName;
-      el.setAttribute("aria-label", displayName);
-      if (!userData.uid) {
-        userData.uid = userId;
-        localStorage.setItem("user", JSON.stringify(userData));
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
       }
+
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace('../login/login.html');
+          } catch {
+            window.location.replace('../login/login.html');
+          }
+        }
+      });
     })();
 
     // === Escape HTML helper ===
@@ -235,7 +280,7 @@
         .replaceAll("'",'&#039;');
     }
 
-    // === URL / Preview helpers (MATCH TEACHER MODAL) ===
+    // === URL / Preview helpers
     function isYouTube(url='') {
       try {
         const u = new URL(url);
@@ -275,12 +320,10 @@
       if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
       return 'other';
     }
-
     function setFileInfoUI(kind, url){
       const map = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'Link' };
       document.getElementById('fileTypeText').textContent = map[kind] || 'Link';
       document.getElementById('openInNewTabBtn').href = url || '#';
-      // Put/refresh a badge next to the modal title like teacher
       const titleEl = document.getElementById('filePreviewModalLabel');
       let badge = document.getElementById('fileKindBadge');
       if (!badge) {
@@ -292,7 +335,6 @@
       badge.textContent = map[kind] || 'Link';
     }
     function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
-
     function renderFilePreviewInto(container, url){
       container.innerHTML=''; showSpinner(true);
       const done = ()=>showSpinner(false);
@@ -314,40 +356,18 @@
           return done();
         }
       }
+      if (kind === 'image') { const img = new Image(); img.onload = done; img.onerror = done; img.src = url; container.appendChild(img); return; }
+      if (kind === 'pdf')   { const i = document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return; }
+      if (kind === 'video') { const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=done; v.src=url; container.appendChild(v); return; }
+      if (kind === 'audio') { const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=done; a.src=url; container.appendChild(a); return; }
+      if (kind === 'text')  { const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return; }
+      if (kind === 'office'){ const g=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=g; container.appendChild(i); return; }
 
-      if (kind === 'image') {
-        const img = new Image();
-        img.onload = done; img.onerror = done; img.src = url; container.appendChild(img); return;
-      }
-      if (kind === 'pdf') {
-        const iframe = document.createElement('iframe'); iframe.onload=done; iframe.onerror=done; iframe.src=url; container.appendChild(iframe); return;
-      }
-      if (kind === 'video') {
-        const v=document.createElement('video'); v.controls=true; v.onloadeddata=done; v.onerror=done; v.src=url; container.appendChild(v); return;
-      }
-      if (kind === 'audio') {
-        const a=document.createElement('audio'); a.controls=true; a.onloadeddata=done; a.onerror=done; a.src=url; container.appendChild(a); return;
-      }
-      if (kind === 'text') {
-        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=url; container.appendChild(i); return;
-      }
-      if (kind === 'office') {
-        const gview=`https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
-        const i=document.createElement('iframe'); i.onload=done; i.onerror=done; i.src=gview; container.appendChild(i); return;
-      }
-
-      // Fallback
       const obj=document.createElement('object'); obj.data=url; obj.type='application/octet-stream'; obj.onload=done; obj.onerror=done; container.appendChild(obj);
       setTimeout(done, 1000);
     }
-
-    // For storage/external precedence when choosing URL
-    function isStorageDomain(u='') {
-      return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(u);
-    }
-    function isExternalHttp(u='') {
-      return /^https?:\/\//i.test(u) && !isStorageDomain(u) && !/localhost|127\.0\.0\.1:5000/i.test(u);
-    }
+    function isStorageDomain(u='') { return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(u); }
+    function isExternalHttp(u='') { return /^https?:\/\//i.test(u) && !isStorageDomain(u) && !/localhost|127\.0\.0\.1:5000/i.test(u); }
     function bestFileUrl(att) {
       if (att.url && isExternalHttp(att.url)) return att.url;
       if (att.previewUrl) return att.previewUrl;
@@ -356,7 +376,6 @@
       if (att.filePath)  return `http://127.0.0.1:5000${att.filePath}`;
       return '';
     }
-
     function openFilePreview(title, url){
       const kind = kindFromUrl(url);
       const titleEl = document.getElementById("filePreviewModalLabel");
@@ -366,17 +385,14 @@
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     }
 
-    // ===== Success modal helper (uses your CSS: gradient header + #successOkBtn CTA) =====
+    // Success modal
     function showSuccessModal(message = 'Done!', opts = {}) {
       const modalEl = document.getElementById('successModal');
       document.getElementById('successMsg').textContent = message;
       document.getElementById('successModalLabel').textContent = opts.title || 'Success';
       const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-      // Optional onOk callback (no listener leak thanks to { once: true })
       const okBtn = document.getElementById('successOkBtn');
-      if (opts.onOk) {
-        okBtn.addEventListener('click', opts.onOk, { once: true });
-      }
+      if (opts.onOk) okBtn.addEventListener('click', opts.onOk, { once: true });
       bsModal.show();
     }
 
@@ -390,15 +406,79 @@
     let lessonCount = 0;
     let courseId = null;
 
-    async function fetchModule() {
-      if (!moduleId) {
-        alert('No moduleId provided.');
-        window.location.href = '/STUDENT/courses/courses.html';
-        return;
+    // For module-level navigation
+    let courseModules = [];
+    let currentModuleIndex = -1;
+
+    // Timestamp helpers (dup-safe)
+    function tsToMs(ts){
+      if (!ts) return null;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts === 'string') {
+        const t = Date.parse(ts);
+        return Number.isFinite(t) ? t : null;
       }
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      const d = new Date(ts);
+      return Number.isFinite(d.getTime()) ? d.getTime() : null;
+    }
+    function isPublished(m){ const at = tsToMs(m.publishAt); return at === null || at <= Date.now(); }
+    function isVisibleToStudent(m){ return (m.archived !== true) && isPublished(m); }
+
+    async function fetchStudentClassIds() {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`
+        );
+        const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
+        if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
+        return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
+      } catch { return []; }
+    }
+    async function fetchVisibleModulesForCourse(courseId) {
+      const classIds = await fetchStudentClassIds();
+      if (!classIds.length) return [];
+      const perClass = classIds.map(async cid => {
+        const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`);
+        if (!res.ok) return [];
+        return res.json();
+      });
+      const results = await Promise.all(perClass);
+      const byId = new Map();
+      results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
+      const visible = Array.from(byId.values()).filter(isVisibleToStudent);
+      visible.sort((a,b)=>(a.moduleNumber||0)-(b.moduleNumber||0));
+      return visible;
+    }
+    function updateModuleNavButtons() {
+      const prevBtn = document.getElementById('prevModuleBtn');
+      const nextBtn = document.getElementById('nextModuleBtn');
+      const atStart = currentModuleIndex <= 0;
+      const atEnd   = currentModuleIndex >= courseModules.length - 1;
+      prevBtn.disabled = atStart;
+      nextBtn.disabled = atEnd;
+      prevBtn.title = atStart ? 'No previous module' : `Go to Module #${courseModules[currentModuleIndex-1].moduleNumber || ''}: ${courseModules[currentModuleIndex-1].title || ''}`;
+      nextBtn.title = atEnd   ? 'No next module'     : `Go to Module #${courseModules[currentModuleIndex+1].moduleNumber || ''}: ${courseModules[currentModuleIndex+1].title || ''}`;
+    }
+    function goToModuleByOffset(delta) {
+      const target = currentModuleIndex + delta;
+      if (target < 0 || target >= courseModules.length) return;
+      const targetId = courseModules[target].id;
+      window.location.href = `/STUDENT/modules/view.html?moduleId=${encodeURIComponent(targetId)}&subIdx=0`;
+    }
+    async function loadCourseModulesAndWireNav() {
+      if (!courseId) return;
+      courseModules = await fetchVisibleModulesForCourse(courseId);
+      currentModuleIndex = courseModules.findIndex(m => m.id === moduleId);
+      updateModuleNavButtons();
+    }
+
+    async function fetchModule() {
+      if (!moduleId) { alert('No moduleId provided.'); window.location.href = '/STUDENT/courses/courses.html'; return; }
       const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load module');
-
       moduleDoc = await res.json();
       courseId = moduleDoc.courseId || null;
 
@@ -407,8 +487,7 @@
       document.getElementById('moduleNumberBadge').textContent = `Module #${moduleDoc.moduleNumber || ''}`;
 
       const back = document.getElementById('backToCourseBtn');
-      if (courseId) back.href = `/STUDENT/modules/list.html?id=${encodeURIComponent(courseId)}`;
-      else back.href = '/STUDENT/courses/courses.html';
+      back.href = courseId ? `/STUDENT/modules/list.html?id=${encodeURIComponent(courseId)}` : '/STUDENT/courses/courses.html';
 
       const subs = Array.isArray(moduleDoc.moduleSubTitles) ? moduleDoc.moduleSubTitles : [];
       const descs = Array.isArray(moduleDoc.moduleSubDescs) ? moduleDoc.moduleSubDescs : [];
@@ -451,29 +530,46 @@
         }
       } catch {}
 
-      await refreshCompletion();
+      await refreshProgress();
+      await loadCourseModulesAndWireNav();
       showLesson(startIdx < lessonCount ? startIdx : 0);
     }
 
-    async function refreshCompletion() {
+    async function refreshProgress() {
       try {
-        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(user.email)}/modules/${encodeURIComponent(moduleId)}/isCompleted`);
+        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/completion`);
+        const j = await r.json().catch(()=>({completedIdx:[],lessonCount}));
+        const pill = document.getElementById('progressPill');
+        if (j.lessonCount > 0) {
+          pill.textContent = `Progress: ${j.completedIdx.length}/${j.lessonCount}`;
+          pill.classList.remove('d-none');
+        } else {
+          pill.classList.add('d-none');
+        }
+      } catch {
+        document.getElementById('progressPill').classList.add('d-none');
+      }
+    }
+
+    async function refreshLessonCompletion(idx) {
+      try {
+        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/${idx}/isCompleted`);
         const j = await r.json().catch(()=>({completed:false}));
         const badge = document.getElementById('completeBadge');
         const btn = document.getElementById('completeBtn');
         if (j.completed) {
           badge.className = 'badge text-bg-success';
-          badge.textContent = 'Completed';
+          badge.textContent = 'Lesson: Completed';
           btn.classList.add('btn-success');
           btn.classList.remove('btn-amber');
           btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Completed';
           btn.disabled = true;
         } else {
           badge.className = 'badge text-bg-secondary';
-          badge.textContent = 'Not completed';
+          badge.textContent = 'Lesson: Not completed';
           btn.classList.remove('btn-success');
           btn.classList.add('btn-amber');
-          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Module Complete';
+          btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Mark Lesson Complete';
           btn.disabled = false;
         }
       } catch {}
@@ -530,33 +626,36 @@
 
       document.getElementById('prevLesson').disabled = currentIdx <= 0;
       document.getElementById('nextLesson').disabled = currentIdx >= lessonCount - 1;
+
+      refreshLessonCompletion(currentIdx);
     }
 
-    async function markComplete() {
+    async function markLessonComplete() {
       try {
-        const res = await fetch(`${API_BASE}/mark-module-complete`, {
+        const res = await fetch(`${API_BASE}/mark-lesson-complete`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: user.email, moduleId })
+          body: JSON.stringify({ email: userData.email, moduleId, lessonIdx: currentIdx })
         });
         const js = await res.json().catch(()=>({success:false}));
         if (!js.success) throw new Error(js.message || 'Failed to mark complete');
 
-        await refreshCompletion();
-
-        // ✅ REPLACED alert() WITH SUCCESS MODAL
-        showSuccessModal('Module marked complete!', { title: 'Great job!' });
-
+        await refreshLessonCompletion(currentIdx);
+        await refreshProgress();
+        showSuccessModal('Lesson marked complete!', { title: 'Great job!' });
       } catch (e) {
         console.error(e);
-        alert('❌ Could not mark complete.');
+        alert('❌ Could not mark this lesson as complete.');
       }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('prevLesson').addEventListener('click', () => showLesson(currentIdx - 1));
       document.getElementById('nextLesson').addEventListener('click', () => showLesson(currentIdx + 1));
-      document.getElementById('completeBtn').addEventListener('click', markComplete);
+      document.getElementById('completeBtn').addEventListener('click', markLessonComplete);
+
+      document.getElementById('prevModuleBtn').addEventListener('click', () => goToModuleByOffset(-1));
+      document.getElementById('nextModuleBtn').addEventListener('click', () => goToModuleByOffset(1));
 
       const searchTop = document.getElementById('lessonSearch');
       searchTop.addEventListener('input', () => {

@@ -55,7 +55,7 @@ body, html {
 .sidebar-logo {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #f8e7d0;
+  color: #EAF2FF;
   margin-bottom: 2rem;
   text-align: center;
   white-space: nowrap;
@@ -81,7 +81,7 @@ body, html {
 }
 
 .sidebar-links a {
-  color: #fff6dd;
+  color: #EAF2FF;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -126,7 +126,7 @@ body, html {
   justify-content: space-between;
   align-items: center;
   padding: 0.6rem 0.8rem;
-  color: #fff6dd;
+  color: #EAF2FF;
   border-radius: 10px;
   text-decoration: none;
   transition: background-color 0.3s;
@@ -182,14 +182,14 @@ body, html {
   align-items: center;
   gap: 10px;
   border-radius: 8px;
-  color: #fff6dd;
+  color: #EAF2FF;
   text-decoration: none;
   transition: background-color 0.3s;
 }
 
 .submenu a:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  color: #FFD580;
+  color: #EAF2FF;
 }
 
 /* ===== Footer / Logout Button ===== */
@@ -249,7 +249,7 @@ body, html {
   align-items: center;
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
-  color: #fff6dd;
+  color: #EAF2FF;
   text-decoration: none;
   gap: 10px;
   transition: background-color 0.3s, color 0.3s;

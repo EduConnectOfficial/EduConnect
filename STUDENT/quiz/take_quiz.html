@@ -31,6 +31,38 @@
     .answer-ok{color:#198754;font-weight:600}
     .answer-missing{color:#b91c1c;font-weight:600}
     .review-row-flagged{background:#fff5f5}
+
+    /* === Anti-cheat UX helpers === */
+    .noselect, .noselect * { -webkit-user-select:none!important; user-select:none!important; }
+    .disable-drag img, .disable-drag a, .disable-drag * { -webkit-user-drag:none; }
+    .watermark {
+      position: fixed; inset: 0; pointer-events: none; opacity: .08; z-index: 2147483000;
+      display: none; place-items: center;
+      background-image:
+        repeating-linear-gradient(45deg, transparent 0 80px, rgba(0,0,0,.75) 80px 81px),
+        repeating-linear-gradient(-45deg, transparent 0 80px, rgba(0,0,0,.75) 80px 81px);
+      mix-blend-mode: multiply;
+    }
+    .watermark > div {
+      font-size: 3.5rem; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; text-align: center;
+    }
+    .fullscreen-veil {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65); color: #fff;
+      display: none; z-index: 2147483647; align-items: center; justify-content: center; padding: 2rem;
+    }
+    .fullscreen-veil .card {
+      background: white; border-radius: 16px; padding: 1.5rem; max-width: 520px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    }
+    .fullscreen-veil .card h3 { margin: 0 0 .75rem; }
+    .fullscreen-veil .card p { opacity: .9; }
+    .anti-cheat-banner {
+      position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+      z-index: 2147483650; padding: .4rem .8rem; border-radius: 999px;
+      background: #fff3cd; color: #664d03; border: 1px solid #ffe69c; font-size: .9rem;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -184,6 +216,94 @@
     </div>
   </div>
 
+  <!-- Anti-cheat watermark + banners -->
+  <div id="wm" class="watermark" aria-hidden="true" style="display:none">
+    <div id="wmText"></div>
+  </div>
+
+  <div id="fsVeil" class="fullscreen-veil" role="dialog" aria-modal="true" aria-labelledby="fsTitle">
+    <div class="card">
+      <h3 id="fsTitle">Start Secure Quiz Mode</h3>
+      <p>We’ll enter fullscreen and monitor for tab/app switching. Leaving fullscreen or switching away may submit your quiz.</p>
+      <div class="d-flex gap-2 mt-3">
+        <button id="startSecureBtn" class="btn btn-amber flex-grow-1">
+          <i class="bi bi-arrows-fullscreen me-1"></i> Start Attempt
+        </button>
+        <button id="cancelSecureBtn" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+      </div>
+      <div class="small mt-3 text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i> Note: Screenshots cannot be fully prevented on all devices.</div>
+    </div>
+  </div>
+
+  <div id="antiCheatBanner" class="anti-cheat-banner"></div>
+
+  <!-- Students-only auth guard + header initials -->
+  <script>
+    (function guardStudentSession() {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
+
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
+
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch {}
+        window.location.replace("../login/login.html"); // this page is /STUDENT/quiz/take_quiz.html
+        return;
+      }
+
+      // Expose for other scripts
+      window.currentUser = u;
+      window.userData = u;
+
+      // Header initials
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+      }
+      const el = document.getElementById("Username");
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace("../login/login.html");
+          } catch {
+            window.location.replace("../login/login.html");
+          }
+        }
+      });
+    })();
+
+    function logoutUser(){
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
+
   <script>
     /* ===== Config & helpers ===== */
     const API = "http://localhost:5000";
@@ -223,7 +343,7 @@
       if(s.includes("@")){
         const local=s.split("@")[0];
         const parts=local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+        return (parts.length>=2?parts[0][0]+parts[parts-1][0]:local.slice(0,2)).toUpperCase();
       }
       const parts=splitName(s);
       return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
@@ -231,7 +351,7 @@
     function splitName(s){return s.split(/[\s\-]+/).filter(Boolean);}
 
     const UsernameEl=document.getElementById("Username");
-    const userData=JSON.parse(localStorage.getItem("user")||"{}");
+    const userData=window.userData || JSON.parse(localStorage.getItem("user")||"{}");
     if(UsernameEl){
       const displayName=userData.fullName||userData.username||userData.email||"Student";
       const initials=initialsFrom(displayName)||"?";
@@ -311,7 +431,7 @@
       if(!q) return '';
       if(isEssayQuestion(q)){
         const ta=document.querySelector(`textarea[name='essay_${origIdx}']`);
-        return ta?ta.value.trim():'';
+        return ta?ta.value.trim():''; 
       }
       const radios=document.querySelectorAll(`input[type='radio'][name='q_${origIdx}']`);
       const checked=[...radios].find(r=>r.checked);
@@ -577,6 +697,9 @@
         renderVisiblePage();
         updateNavigator();
 
+        // === Anti-cheat: notify ready so the fullscreen veil can prompt ===
+        document.dispatchEvent(new Event('quiz:ready'));
+
       }catch(err){
         console.error(err);
         document.getElementById('noQuiz').classList.remove('d-none');
@@ -772,6 +895,7 @@
         localStorage.removeItem(storageKey(':startedAt'));
         localStorage.removeItem(storageKey(':recoveredTimer'));
         localStorage.removeItem(storageKey(':flags'));
+        localStorage.removeItem(`ac:${(userData.email||'guest')}:${quizId}:v`);
       }
     }
 
@@ -840,6 +964,216 @@
 
     /* ===== Boot ===== */
     document.addEventListener('DOMContentLoaded', loadQuiz);
+  </script>
+
+  <!-- Anti-Cheat script (after your main quiz script) -->
+  <script>
+  /* =========================
+     Anti-Cheat: client-side deterrents
+     ========================= */
+  (() => {
+    const ANTI = {
+      enabled: true,
+      requireFullscreen: true,        // ask for fullscreen before starting
+      showWatermark: false,            // overlay email/initials/time
+      blockClipboard: true,           // disable copy/cut/paste/contextmenu/drag
+      blockInspect: true,             // block F12/Ctrl+Shift+I/J/U (best-effort)
+      monitorVisibility: true,        // detect tab/app switches & fullscreen exits
+      autosubmitOn: '3',              // 'off' | '1' | '2' | '3' (violations before auto-submit)
+      warnOnViolation: true,          // show a small banner
+      clearClipboardOnPrintScreen: true, // best-effort; not guaranteed
+      multiTabGuard: true,            // detect second tab of same quiz
+      bannerMs: 1800
+    };
+
+    if (!ANTI.enabled) return;
+
+    const API_BANNER = document.getElementById('antiCheatBanner');
+    function showBanner(msg) {
+      if (!ANTI.warnOnViolation) return;
+      API_BANNER.textContent = msg;
+      API_BANNER.style.display = 'inline-block';
+      clearTimeout(showBanner._t);
+      showBanner._t = setTimeout(() => API_BANNER.style.display = 'none', ANTI.bannerMs);
+    }
+
+    // violation counter persisted per quiz+user
+    const vKey = (extra='') => `ac:${(JSON.parse(localStorage.getItem("user")||"{}").email||'guest')}:${getParam("id")}${extra}`;
+    function getViolations() { return parseInt(localStorage.getItem(vKey(':v'))||'0',10)||0; }
+    function addViolation(kind) {
+      const cur = getViolations()+1;
+      localStorage.setItem(vKey(':v'), String(cur));
+      console.warn('[anti-cheat] violation', kind, cur);
+
+      if (ANTI.warnOnViolation) showBanner(`Anti-cheat notice: ${kind} (${cur}${ANTI.autosubmitOn!=='off'?'/'+ANTI.autosubmitOn:''})`);
+
+      if (ANTI.autosubmitOn !== 'off' && cur >= Number(ANTI.autosubmitOn)) {
+        try { showBanner('Too many violations. Submitting…'); } catch {}
+        if (typeof submitAndStore === 'function') {
+          submitAndStore('anti-cheat');
+        } else {
+          document.querySelectorAll("input, textarea, button").forEach(el => { el.disabled = true; });
+        }
+      }
+    }
+
+    /* ---------- Fullscreen gating ---------- */
+    const fsVeil = document.getElementById('fsVeil');
+    const startSecureBtn = document.getElementById('startSecureBtn');
+    const cancelSecureBtn = document.getElementById('cancelSecureBtn');
+
+    async function enterFullscreen() {
+      if (!ANTI.requireFullscreen) return true;
+      if (document.fullscreenElement) return true;
+      try {
+        await document.documentElement.requestFullscreen();
+        return true;
+      } catch (e) {
+        console.warn('Fullscreen denied', e);
+        return false;
+      }
+    }
+    function exitFullscreenDetected() {
+      if (!ANTI.requireFullscreen) return;
+      if (!document.fullscreenElement) addViolation('Exited fullscreen');
+    }
+
+    /* ---------- Watermark ---------- */
+    const wm = document.getElementById('wm');
+    const wmText = document.getElementById('wmText');
+    function startWatermark() {
+      if (!ANTI.showWatermark) return;
+      const u = JSON.parse(localStorage.getItem("user")||"{}");
+      const who = (u.fullName || u.email || 'Student').toUpperCase();
+      function tick() {
+        const now = new Date();
+        const stamp = now.toLocaleString(undefined, { hour12:false });
+        wmText.textContent = `${who} • ${stamp} • QUIZ ${getParam("id")||''}`;
+      }
+      wm.style.display = 'grid';
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    /* ---------- Clipboard & context menu ---------- */
+    function blockClipboard() {
+      if (!ANTI.blockClipboard) return;
+      document.addEventListener('contextmenu', (e) => {
+        const tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'textarea' || (tag === 'input' && e.target.type === 'text')) return; // allow essay context menu; remove to block
+        e.preventDefault();
+      }, { capture: true });
+
+      ['copy','cut','paste','dragstart','drop'].forEach(evt => {
+        document.addEventListener(evt, (e) => {
+          e.preventDefault();
+          showBanner(`Clipboard ${evt} blocked`);
+        }, { capture: true });
+      });
+
+      const shell = document.querySelector('.quiz-shell') || document.body;
+      shell.classList.add('noselect', 'disable-drag');
+    }
+
+    /* ---------- Block inspect shortcuts (best-effort) ---------- */
+    function blockInspectKeys() {
+      if (!ANTI.blockInspect) return;
+      document.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        const ctrl = e.ctrlKey || e.metaKey;
+
+        if (k === 'f12' || (ctrl && (k === 'u' || k === 'p' || k === 's')) || (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(k))) {
+          e.preventDefault(); e.stopPropagation();
+          addViolation('DevTools/Print blocked');
+        }
+        if (ctrl && (k === 't' || k === 'n' || k === 'w')) {
+          e.preventDefault(); e.stopPropagation();
+          addViolation('Tab/window shortcut');
+        }
+        if (ctrl && ['a','c','x','v'].includes(k)) {
+          e.preventDefault(); e.stopPropagation();
+          addViolation('Clipboard shortcut');
+        }
+        if (ANTI.clearClipboardOnPrintScreen && (k === 'printscreen' || e.keyCode === 44)) {
+          try { navigator.clipboard.writeText(''); } catch {}
+          addViolation('Print Screen key');
+        }
+      }, { capture: true });
+    }
+
+    /* ---------- Visibility / blur monitoring ---------- */
+    function monitorVisibility() {
+      if (!ANTI.monitorVisibility) return;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') addViolation('Left tab/app');
+      });
+      window.addEventListener('blur', () => addViolation('Window blur'));
+      document.addEventListener('fullscreenchange', exitFullscreenDetected);
+    }
+
+    /* ---------- Multi-tab guard ---------- */
+    function multiTabGuard() {
+      if (!ANTI.multiTabGuard) return;
+      const key = vKey(':heartbeat');
+      setInterval(() => {
+        try { localStorage.setItem(key, String(Date.now())); } catch {}
+      }, 1000);
+      window.addEventListener('storage', (e) => {
+        if (e.key === key && e.newValue && document.visibilityState === 'visible') {
+          addViolation('Another tab detected');
+        }
+      });
+    }
+
+    /* ---------- beforeunload warning ---------- */
+    window.addEventListener('beforeunload', (e) => {
+      if (!window.hasSubmitted) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    /* ---------- Kickoff: show fullscreen gate then start ---------- */
+    async function startSecureMode() {
+      startWatermark();
+      blockClipboard();
+      blockInspectKeys();
+      monitorVisibility();
+      multiTabGuard();
+
+      if (!ANTI.requireFullscreen) return;
+      const ok = await enterFullscreen();
+      if (!ok) addViolation('Fullscreen refused');
+    }
+
+    function showFSVeil() { document.getElementById('fsVeil').style.display = 'flex'; }
+    function hideFSVeil() { document.getElementById('fsVeil').style.display = 'none'; }
+
+    document.addEventListener('quiz:ready', () => {
+      if (!ANTI.enabled) return;
+      showFSVeil();
+    });
+
+    document.getElementById('startSecureBtn')?.addEventListener('click', async () => {
+      const ok = await enterFullscreen();
+      if (ok) {
+        hideFSVeil();
+        startSecureMode();
+      } else {
+        addViolation('Fullscreen refused');
+        showBanner('Please allow fullscreen to continue.');
+      }
+    });
+    document.getElementById('cancelSecureBtn')?.addEventListener('click', () => {
+      window.location.href = '/STUDENT/quiz/quiz.html';
+    });
+
+    try {
+      const u = JSON.parse(localStorage.getItem("user")||"{}");
+      const who = (u.fullName || u.email || 'Student').toUpperCase();
+      if (document.getElementById('wmText')) document.getElementById('wmText').textContent = who;
+    } catch {}
+
+    // Helper: getParam defined above in main script
+    function getParam(name){const url=new URL(location.href);return url.searchParams.get(name);}
+  })();
   </script>
 
   <!-- Sidebar Logic -->

@@ -452,11 +452,17 @@
     return (rows || []).filter(r => courseIdFromAny(r) === wanted);
   }
 
-  // ---------- BASE analytics (header + assignments/essays/modules) ----------
+  // ---------- BASE analytics (teacher) ----------
   async function fetchHeaderAndBase() {
     const params = new URLSearchParams({ teacherId, student: studentKey });
     if (selectedCourseId) params.set('courseId', selectedCourseId);
     return await tryJson(`${API_BASE}/api/teacher/student-analytics?${params.toString()}`);
+  }
+
+  // ---------- Student analytics fallback (for essays/modules & missing summary) ----------
+  async function fetchStudentAnalyticsFallback() {
+    const url = `${API_BASE}/api/student/analytics?student=${encodeURIComponent(studentKey)}`;
+    return await tryJson(url);
   }
 
   // ---------- REAL quiz analytics (new API) ----------
@@ -595,8 +601,8 @@
     );
   }
 
-  function renderEssays(base) {
-    const all = base?.essays?.submissions || [];
+  function renderEssaysFrom(baseLike) {
+    const all = baseLike?.essays?.submissions || [];
     const erows = filterBySelectedCourse(all);
 
     el('essayTbody').innerHTML = erows.length
@@ -612,8 +618,8 @@
       : '<tr><td colspan="5" class="text-center text-muted">No essay submissions</td></tr>';
   }
 
-  function renderModules(base) {
-    const all = base?.modules?.completed || [];
+  function renderModulesFrom(baseLike) {
+    const all = baseLike?.modules?.completed || [];
     const mrows = filterBySelectedCourse(all);
 
     el('modTbody').innerHTML = mrows.length
@@ -628,24 +634,73 @@
       : '<tr><td colspan="4" class="text-center text-muted">No modules</td></tr>';
   }
 
+  // ---------- helpers ----------
+  function computeAvgQuizFromRows(rows) {
+    const vals = (rows || []).map(r => Number(r.bestPercent)).filter(n => Number.isFinite(n));
+    if (!vals.length) return null;
+    const avg = Math.round(vals.reduce((s,n)=>s+n,0) / vals.length);
+    return avg;
+  }
+
   // ---------- load pipeline ----------
   async function loadAll() {
     if (!teacherId || !studentKey) { showAppAlert('Missing teacherId or student id in URL.'); return; }
 
-    // header + non-quiz sections
+    // 1) Teacher base (profile, assignments, summary has avgAssignment; avgQuiz may be null; essays/modules often empty)
     const base = await fetchHeaderAndBase();
     renderHeader(base || {});
     renderAssignments(base || {});
-    renderEssays(base || {});
-    renderModules(base || {});
+    renderEssaysFrom(base || {});
+    renderModulesFrom(base || {});
 
-    // quizzes — try REAL endpoint first, fallback to legacy if needed
+    // 2) Quizzes — try REAL endpoint first, fallback to legacy if needed
     el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>';
     let quizRows = await fetchQuizRowsReal();
     if (!quizRows.length) {
       quizRows = await fetchQuizzesEnrichedFallback();
     }
     renderQuizzes(quizRows);
+
+    // 2a) Fix the "Avg Quiz" metric using quiz rows
+    const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
+    if (computedAvgQuiz != null) {
+      el('s_avg_quiz').textContent = pct(computedAvgQuiz);
+    }
+
+    // 3) Fallback for essays/modules & modulesCompleted header if teacher API lacks them
+    const needFallbackEssays = !(base?.essays?.submissions && base.essays.submissions.length);
+    const needFallbackModules = !(base?.modules?.completed && base.modules.completed.length);
+    const missingModulesSummary = !(Number.isFinite(+base?.summary?.modulesCompleted) && Number.isFinite(+base?.summary?.totalModules));
+
+    if (needFallbackEssays || needFallbackModules || missingModulesSummary) {
+      const studentData = await fetchStudentAnalyticsFallback();
+
+      if (studentData) {
+        if (needFallbackEssays) {
+          renderEssaysFrom(studentData);
+        }
+        if (needFallbackModules) {
+          renderModulesFrom(studentData);
+        }
+        if (missingModulesSummary) {
+          const mc = studentData?.summary?.modulesCompleted;
+          const tm = studentData?.summary?.totalModules;
+          if (mc != null && tm != null) {
+            el('s_modules').textContent = `${mc}/${tm}`;
+          } else if (mc != null) {
+            el('s_modules').textContent = `${mc}`;
+          }
+        }
+        // If avg assignment missing for any reason, also patch it
+        if (!Number.isFinite(+base?.summary?.averageAssignmentGrade) && Number.isFinite(+studentData?.summary?.averageAssignmentGrade)) {
+          el('s_avg_asg').textContent = pct(studentData.summary.averageAssignmentGrade);
+        }
+        // If avg quiz still missing and student endpoint has it, use it
+        if ((el('s_avg_quiz').textContent || '—') === '—' && Number.isFinite(+studentData?.summary?.averageQuizScore)) {
+          el('s_avg_quiz').textContent = pct(studentData.summary.averageQuizScore);
+        }
+      }
+    }
   }
 
   // ---------- CSV ----------
@@ -657,13 +712,34 @@
       let quizRows = await fetchQuizRowsReal();
       if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
 
+      // Fallback student data if teacher base lacks essays/modules
+      let studentData = null;
+      if (!(base?.essays?.submissions?.length) || !(base?.modules?.completed?.length)) {
+        studentData = await fetchStudentAnalyticsFallback();
+      }
+
       const arows = filterBySelectedCourse(base?.assignments?.grades || []);
-      const erows = filterBySelectedCourse(base?.essays?.submissions || []);
-      const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+      const erows = filterBySelectedCourse(
+        (base?.essays?.submissions?.length ? base.essays.submissions : (studentData?.essays?.submissions || []))
+      );
+      const mrows = filterBySelectedCourse(
+        (base?.modules?.completed?.length ? base.modules.completed : (studentData?.modules?.completed || []))
+      );
 
       let csv = [];
+      // Header metrics (patch in computed avg quiz if base is null)
+      const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
+      const avgQuizText = pct( (Number.isFinite(+base?.summary?.averageQuizScore) ? base.summary.averageQuizScore : computedAvgQuiz) );
+      const avgAsgText  = pct(base?.summary?.averageAssignmentGrade);
+      const modulesText =
+        (base?.summary?.modulesCompleted != null && base?.summary?.totalModules != null)
+          ? `${base.summary.modulesCompleted}/${base.summary.totalModules}`
+          : (studentData?.summary?.modulesCompleted != null && studentData?.summary?.totalModules != null)
+            ? `${studentData.summary.modulesCompleted}/${studentData.summary.totalModules}`
+            : '—';
+
       csv.push('Student Name,Student ID,Avg Quiz %,Avg Assignment %,Modules Completed');
-      csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${el('s_avg_quiz').textContent}","${el('s_avg_asg').textContent}","${el('s_modules').textContent}"`);
+      csv.push(`"${el('s_name').textContent}","${el('s_id').textContent}","${avgQuizText}","${avgAsgText}","${modulesText}"`);
 
       csv.push('');
       csv.push('Quizzes');
@@ -723,9 +799,21 @@
       let quizRows = await fetchQuizRowsReal();
       if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
 
+      // Fallback student data if needed
+      let studentData = null;
+      const needFallbackEssays = !(base?.essays?.submissions && base.essays.submissions.length);
+      const needFallbackModules = !(base?.modules?.completed && base.modules.completed.length);
+      if (needFallbackEssays || needFallbackModules) {
+        studentData = await fetchStudentAnalyticsFallback();
+      }
+
       const arows = filterBySelectedCourse(base?.assignments?.grades || []);
-      const erows = filterBySelectedCourse(base?.essays?.submissions || []);
-      const mrows = filterBySelectedCourse(base?.modules?.completed || []);
+      const erows = filterBySelectedCourse(
+        (base?.essays?.submissions?.length ? base.essays.submissions : (studentData?.essays?.submissions || []))
+      );
+      const mrows = filterBySelectedCourse(
+        (base?.modules?.completed?.length ? base.modules.completed : (studentData?.modules?.completed || []))
+      );
 
       const doc = new window.jspdf.jsPDF();
       doc.setFont('times', 'bold'); doc.setFontSize(18);
@@ -736,10 +824,19 @@
       if (selectedCourseId) doc.text(`Course: ${selectedCourseId}`, 20, 48);
       doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 56);
 
+      // Summary block uses computed/fallback avg quiz & modules
+      const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
+      const avgQuizVal = Number.isFinite(+base?.summary?.averageQuizScore) ? base.summary.averageQuizScore
+                       : (Number.isFinite(+computedAvgQuiz) ? computedAvgQuiz : null);
+      const avgAsgVal  = Number.isFinite(+base?.summary?.averageAssignmentGrade) ? base.summary.averageAssignmentGrade : null;
+
+      const mc = (base?.summary?.modulesCompleted != null ? base.summary.modulesCompleted : studentData?.summary?.modulesCompleted);
+      const tm = (base?.summary?.totalModules != null ? base.summary.totalModules : studentData?.summary?.totalModules);
+
       doc.autoTable({
         startY: 63,
         head: [['Avg Quiz %', 'Avg Assignment %', 'Modules Completed']],
-        body: [[el('s_avg_quiz').textContent, el('s_avg_asg').textContent, el('s_modules').textContent]],
+        body: [[pct(avgQuizVal), pct(avgAsgVal), (mc != null && tm != null) ? `${mc}/${tm}` : '—']],
         theme: 'grid',
         styles: { font: 'times', fontSize: 11, halign: 'center' },
         headStyles: { fillColor: [255, 178, 0], textColor: 0 }

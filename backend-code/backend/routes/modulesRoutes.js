@@ -1,4 +1,6 @@
 // ==== routes/modulesRoutes.js ====
+'use strict';
+
 const router = require('express').Router();
 const multer = require('multer');
 
@@ -309,6 +311,24 @@ async function setArchiveStateForModule(moduleId, archived) {
     assignedClasses: data.assignedClasses || []
   });
   return { ok: true };
+}
+
+/* -----------------------------------------------------------
+   LESSON HELPERS (for per-lesson completion)
+----------------------------------------------------------- */
+
+// Compute total lesson count just like the frontend does
+function computeLessonCount(mod = {}) {
+  const subs  = Array.isArray(mod.moduleSubTitles) ? mod.moduleSubTitles.length : 0;
+  const descs = Array.isArray(mod.moduleSubDescs) ? mod.moduleSubDescs.length : 0;
+  const lc = Number.isFinite(mod.lessonCount) ? mod.lessonCount : 0;
+  return Math.max(lc, subs, descs);
+}
+
+async function _getUserIdByEmail(email) {
+  const snap = await firestore.collection('users').where('email', '==', email).limit(1).get();
+  if (snap.empty) return null;
+  return snap.docs[0].id;
 }
 
 /* -----------------------------------------------------------
@@ -689,7 +709,7 @@ router.patch('/modules/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST /modules/:id/files
-// - multipart/form-data with field 'attachmentFiles' (+ 'attachmentLessonIdx', 'attachmentDescs')
+// - multipart/form-data with field 'attachmentFiles' (+ 'attachmentDescs', 'attachmentLessonIdx')
 // - application/json with body { links:[...]} OR { videoUrls:[...], videoDesc:[...], attachmentLessonIdx:[...] }
 router.post('/modules/:id/files', flexibleUpload, asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -947,102 +967,192 @@ router.delete('/modules/:id', asyncHandler(async (req, res) => {
 }));
 
 /* -----------------------------------------------------------
-   COMPLETIONS ENDPOINTS (unchanged)
+   COMPLETIONS ENDPOINTS (UPGRADED: per-lesson + auto-promotion)
 ----------------------------------------------------------- */
 
-// ==== MODULE: CHECK IF SPECIFIC MODULE IS COMPLETED ====
+// ==== LESSON: IS COMPLETED ====
+// GET /users/:email/modules/:moduleId/lessons/:lessonIdx/isCompleted
+router.get('/users/:email/modules/:moduleId/lessons/:lessonIdx/isCompleted', asyncHandler(async (req, res) => {
+  const email = decodeURIComponent(req.params.email);
+  const moduleId = req.params.moduleId;
+  const lessonIdx = parseInt(req.params.lessonIdx, 10);
+
+  if (!Number.isFinite(lessonIdx) || lessonIdx < 0) {
+    return res.status(400).json({ completed: false, message: 'Invalid lessonIdx' });
+  }
+
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.json({ completed: false });
+
+  const doc = await firestore
+    .collection('users').doc(userId)
+    .collection('completedLessons')
+    .doc(`${moduleId}_${lessonIdx}`)
+    .get();
+
+  res.json({ completed: doc.exists });
+}));
+
+// ==== LESSON: COMPLETE ====
+// POST /mark-lesson-complete   body: { email, moduleId, lessonIdx }
+router.post('/mark-lesson-complete', asyncHandler(async (req, res) => {
+  const { email, moduleId, lessonIdx } = req.body;
+
+  if (!email || !moduleId || !Number.isFinite(Number(lessonIdx)) || Number(lessonIdx) < 0) {
+    return res.status(400).json({ success: false, message: 'Missing or invalid email/moduleId/lessonIdx.' });
+  }
+  const _lessonIdx = Number(lessonIdx);
+
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.status(404).json({ success: false, message: 'User not found.' });
+
+  // Ensure the module exists and figure out lessonCount
+  const modSnap = await firestore.collection('modules').doc(moduleId).get();
+  if (!modSnap.exists) return res.status(404).json({ success: false, message: 'Module not found.' });
+
+  const mod = modSnap.data() || {};
+  const lessonCount = computeLessonCount(mod);
+  if (_lessonIdx >= lessonCount) {
+    return res.status(400).json({ success: false, message: 'lessonIdx out of range for this module.' });
+  }
+
+  const userRef = firestore.collection('users').doc(userId);
+  const lessonsRef = userRef.collection('completedLessons');
+
+  // Mark the lesson complete (id: `${moduleId}_${lessonIdx}`)
+  await lessonsRef.doc(`${moduleId}_${_lessonIdx}`).set({
+    moduleId,
+    lessonIdx: _lessonIdx,
+    courseId: mod.courseId || null,
+    completedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  // Check if ALL lessons are completed; if so, mark the module complete too (backward compatibility)
+  const lessonDocs = await lessonsRef
+    .where('moduleId', '==', moduleId)
+    .get();
+
+  const completedSet = new Set(
+    lessonDocs.docs.map(d => (d.data()?.lessonIdx)).filter(n => Number.isFinite(n))
+  );
+
+  const allCompleted = lessonCount > 0 && [...Array(lessonCount).keys()].every(i => completedSet.has(i));
+
+  if (allCompleted) {
+    const completedModulesRef = userRef.collection('completedModules');
+    const modDone = await completedModulesRef.doc(moduleId).get();
+    if (!modDone.exists) {
+      await completedModulesRef.doc(moduleId).set({
+        moduleId,
+        courseId: mod.courseId || null,
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      // optionally: also check whether all modules in the course are complete (existing logic)
+      if (mod.courseId) {
+        const allModulesSnap = await firestore.collection('modules')
+          .where('courseId', '==', mod.courseId)
+          .get();
+        const allModuleIds = allModulesSnap.docs.map(d => d.id);
+
+        const completedSnap = await completedModulesRef.where('courseId', '==', mod.courseId).get();
+        const completedIds = completedSnap.docs.map(d => d.id);
+
+        const courseAllDone = allModuleIds.every(id => completedIds.includes(id));
+        if (courseAllDone) {
+          await userRef.collection('completedCourses').doc(mod.courseId).set({
+            courseId: mod.courseId,
+            completedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+    }
+  }
+
+  res.json({ success: true, message: 'Lesson marked complete.', allLessonsCompleted: allCompleted });
+}));
+
+// ==== LESSON: BULK STATUS (for current module) ====
+// GET /users/:email/modules/:moduleId/lessons/completion
+// Returns: { completedIdx: number[], lessonCount: number }
+router.get('/users/:email/modules/:moduleId/lessons/completion', asyncHandler(async (req, res) => {
+  const email = decodeURIComponent(req.params.email);
+  const moduleId = req.params.moduleId;
+
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.json({ completedIdx: [], lessonCount: 0 });
+
+  const modSnap = await firestore.collection('modules').doc(moduleId).get();
+  if (!modSnap.exists) return res.json({ completedIdx: [], lessonCount: 0 });
+
+  const mod = modSnap.data() || {};
+  const lessonCount = computeLessonCount(mod);
+
+  const userRef = firestore.collection('users').doc(userId);
+  const q = await userRef.collection('completedLessons')
+    .where('moduleId', '==', moduleId)
+    .get();
+
+  const completedIdx = q.docs
+    .map(d => d.data()?.lessonIdx)
+    .filter(n => Number.isFinite(n));
+
+  res.json({ completedIdx, lessonCount });
+}));
+
+// ==== (Legacy) MODULE-LEVEL ENDPOINTS kept for compatibility ====
+
 // GET /users/:email/modules/:moduleId/isCompleted
 router.get('/users/:email/modules/:moduleId/isCompleted', asyncHandler(async (req, res) => {
   const email = decodeURIComponent(req.params.email);
   const moduleId = req.params.moduleId;
 
-  const userSnapshot = await firestore.collection('users').where('email', '==', email).get();
-  if (userSnapshot.empty) return res.json({ completed: false });
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.json({ completed: false });
 
-  const userId = userSnapshot.docs[0].id;
-  const moduleDoc = await firestore
-    .collection('users')
-    .doc(userId)
-    .collection('completedModules')
-    .doc(moduleId)
+  const doc = await firestore
+    .collection('users').doc(userId)
+    .collection('completedModules').doc(moduleId)
     .get();
 
-  res.json({ completed: moduleDoc.exists });
+  res.json({ completed: doc.exists });
 }));
 
-// ==== MODULE: COMPLETED MODULE COUNT ====
 // GET /users/:email/completed-modules-count
 router.get('/users/:email/completed-modules-count', asyncHandler(async (req, res) => {
   const email = decodeURIComponent(req.params.email);
-
-  const userSnapshot = await firestore.collection('users').where('email', '==', email).get();
-  if (userSnapshot.empty) {
-    return res.status(404).json({ count: 0, message: 'User not found' });
-  }
-  const userId = userSnapshot.docs[0].id;
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.status(404).json({ count: 0, message: 'User not found' });
 
   const snapshot = await firestore
-    .collection('users')
-    .doc(userId)
-    .collection('completedModules')
-    .get();
+    .collection('users').doc(userId)
+    .collection('completedModules').get();
 
   res.json({ count: snapshot.size });
 }));
 
-// ==== MODULE: MARK AS COMPLETE ====
 // POST /mark-module-complete   body: { email, moduleId }
+// (kept for legacy callers)
 router.post('/mark-module-complete', asyncHandler(async (req, res) => {
   const { email, moduleId } = req.body;
-
   if (!email || !moduleId) {
     return res.status(400).json({ success: false, message: 'Missing email or moduleId.' });
   }
 
-  const userSnapshot = await firestore.collection('users').where('email', '==', email).get();
-  if (userSnapshot.empty) return res.status(404).json({ success: false, message: 'User not found.' });
+  const userId = await _getUserIdByEmail(email);
+  if (!userId) return res.status(404).json({ success: false, message: 'User not found.' });
 
-  const userId = userSnapshot.docs[0].id;
+  const modSnap = await firestore.collection('modules').doc(moduleId).get();
+  if (!modSnap.exists) return res.status(404).json({ success: false, message: 'Module not found.' });
+  const mod = modSnap.data() || {};
+
   const userRef = firestore.collection('users').doc(userId);
+  await userRef.collection('completedModules').doc(moduleId).set({
+    moduleId,
+    courseId: mod.courseId || null,
+    completedAt: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
 
-  const completedModulesRef = userRef.collection('completedModules');
-  const existingModuleDoc = await completedModulesRef.doc(moduleId).get();
-
-  if (!existingModuleDoc.exists) {
-    const moduleDoc = await firestore.collection('modules').doc(moduleId).get();
-    if (!moduleDoc.exists) {
-      return res.status(404).json({ success: false, message: 'Module not found.' });
-    }
-
-    const { courseId } = moduleDoc.data();
-
-    await completedModulesRef.doc(moduleId).set({
-      moduleId,
-      courseId,
-      completedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Check if all modules in the course are completed
-    const allModulesSnapshot = await firestore.collection('modules')
-      .where('courseId', '==', courseId)
-      .get();
-
-    const allModuleIds = allModulesSnapshot.docs.map(doc => doc.id);
-    const completedSnapshot = await completedModulesRef.where('courseId', '==', courseId).get();
-    const completedIds = completedSnapshot.docs.map(doc => doc.id);
-
-    const allCompleted = allModuleIds.every(id => completedIds.includes(id));
-
-    if (allCompleted) {
-      const completedCoursesRef = userRef.collection('completedCourses');
-      await completedCoursesRef.doc(courseId).set({
-        courseId,
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-    }
-  }
-
-  res.json({ success: true, message: 'Module marked complete. Course updated if fully complete.' });
+  res.json({ success: true, message: 'Module marked complete (legacy).' });
 }));
 
 module.exports = router;

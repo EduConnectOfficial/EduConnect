@@ -12,7 +12,6 @@
 
   <!-- Sidebar / page styles -->
   <link rel="stylesheet" href="../help/help.css" />
-  
 </head>
 <body>
   <div class="dashboard">
@@ -23,7 +22,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
+        <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -32,7 +31,7 @@
           <input type="text" placeholder="Search..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn">
+        <button class="profile-btn" aria-label="Open profile menu">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -69,7 +68,7 @@
                     <span class="input-group-text bg-white border-end-0">
                       <i class="bi bi-search text-muted"></i>
                     </span>
-                    <input id="kbSearch" type="search" class="form-control border-start-0" placeholder="Search articles...">
+                    <input id="kbSearch" type="search" class="form-control border-start-0" placeholder="Search articles..." />
                   </div>
                   <select id="kbFilter" class="form-select form-select-sm">
                     <option value="All">All</option>
@@ -124,11 +123,12 @@
                 <div class="ui-subtext">Describe the issue—suggested articles appear as you type.</div>
               </div>
 
-              <form id="supportForm" class="support-form" enctype="multipart/form-data">
+              <form id="supportForm" class="support-form" enctype="multipart/form-data" novalidate>
                 <div class="row g-3">
                   <div class="col-12 col-md-6">
                     <label for="issueTitle" class="form-label">Title</label>
                     <input id="issueTitle" type="text" class="form-control" placeholder="Short summary (e.g., Cannot upload assignment)" required />
+                    <div class="invalid-feedback">Please enter a title.</div>
                   </div>
                   <div class="col-12 col-md-3">
                     <label for="issueType" class="form-label">Issue Type</label>
@@ -140,6 +140,7 @@
                       <option value="Bug">Page Bug</option>
                       <option value="Other">Other</option>
                     </select>
+                    <div class="invalid-feedback">Pick an issue type.</div>
                   </div>
                   <div class="col-6 col-md-3">
                     <label for="priority" class="form-label">Priority</label>
@@ -152,6 +153,7 @@
                   <div class="col-12">
                     <label for="issueDetails" class="form-label">Details</label>
                     <textarea id="issueDetails" class="form-control" rows="4" placeholder="Describe your issue here..." required></textarea>
+                    <div class="invalid-feedback">Please describe the issue.</div>
                   </div>
 
                   <div class="col-12 col-md-6">
@@ -160,6 +162,7 @@
                       <i class="bi bi-info-circle ms-1" title="Images or PDF up to 50MB"></i>
                     </label>
                     <input id="attachment" type="file" class="form-control" accept="image/*,application/pdf" />
+                    <div class="form-text">Accepted: PNG, JPG, GIF, WEBP, PDF. Max 50 MB.</div>
                   </div>
 
                   <!-- Suggested Articles -->
@@ -172,13 +175,16 @@
 
                   <div class="col-12 d-flex justify-content-end gap-2">
                     <button class="btn btn-outline-secondary" type="reset">Reset</button>
-                    <button class="btn btn-amber" type="submit">Send Ticket</button>
+                    <button id="ticketSubmitBtn" class="btn btn-amber" type="submit">
+                      <span class="btn-label">Send Ticket</span>
+                      <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
                   </div>
                 </div>
               </form>
             </div>
 
-            <!-- My Tickets (fetched from backend for this user) -->
+            <!-- My Tickets -->
             <div class="ui-card card-themed">
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-inbox"></i> My Tickets</h2>
@@ -238,58 +244,46 @@
     });
   </script>
 
-  <!-- Auth Check (fixed: no duplicate const userData) -->
+  <!-- Auth (unified with other pages) -->
   <script>
-    const _userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!_userData || !_userData.email) {
-      window.location.href = "../login/login.html";
-    } else {
+    (function initHeaderAuth(){
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = user.userId || user.uid || user.id || user.email;
+      if (!userId) {
+        window.location.href = "../login/login.html";
+        return;
+      }
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
         if (!s) return "";
-
-        // If email, take first + last token from local part
         if (s.includes("@")) {
           const local = s.split("@")[0];
           const parts = local.split(/[.\-_]+/).filter(Boolean);
-          return (parts.length >= 2
-            ? parts[0][0] + parts[parts.length - 1][0]
-            : local.slice(0, 2)
-          ).toUpperCase();
+          return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
         }
-
-        // Names or usernames: first + last token initials
         const parts = s.split(/[\s\-]+/).filter(Boolean);
-        return (parts.length >= 2
-          ? parts[0][0] + parts[parts.length - 1][0]
-          : parts[0].slice(0, 2)
-        ).toUpperCase();
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
       }
-
-      const userId = _userData.userId || _userData.uid || _userData.id || _userData.email;
-      if (!userId) {
-        window.location.href = "../login/login.html";
-      } else {
-        const displayName = _userData.fullName || _userData.username || _userData.email || "Student";
-        const initials = initialsFrom(displayName) || "?";
-        const el = document.getElementById("Username");
-        if (el){
-          el.textContent = initials;
-          el.title = displayName;                 // tooltip with full name
-          el.setAttribute("aria-label", displayName);
-        }
-        if (!_userData.uid) {
-          _userData.uid = userId;
-          localStorage.setItem("user", JSON.stringify(_userData));
-        }
+      const displayName = user.fullName || user.username || user.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      const el = document.getElementById("Username");
+      if (el){
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
       }
-    }
+      if (!user.uid) {
+        user.uid = userId;
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+    })();
   </script>
 
   <!-- Help & Support Logic -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const API_BASE = isLocal ? "http://localhost:5000" : "";
     const CURRENT_USER = JSON.parse(localStorage.getItem('user') || '{}');
     const MY_NAME = CURRENT_USER?.username || CURRENT_USER?.email || CURRENT_USER?.userId || 'Anonymous';
 
@@ -325,16 +319,19 @@
         });
     }
 
-    document.getElementById('kbSearch').addEventListener('input', renderKB);
+    // Debounce for KB search
+    function debounce(fn, ms=250){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; }
+    const debouncedRenderKB = debounce(renderKB, 200);
+    document.getElementById('kbSearch').addEventListener('input', debouncedRenderKB);
     document.getElementById('kbFilter').addEventListener('change', renderKB);
 
     // Suggested articles
     const issueDetails = document.getElementById('issueDetails');
     const suggestedWrap = document.getElementById('suggestedWrap');
-       const suggestedList = document.getElementById('suggestedList');
+    const suggestedList = document.getElementById('suggestedList');
 
-    issueDetails.addEventListener('input', ()=>{
-      const q = issueDetails.value.toLowerCase().trim();
+    const updateSuggestions = debounce(()=>{
+      const q = (issueDetails.value || '').toLowerCase().trim();
       if(!q){ suggestedWrap.classList.add('d-none'); suggestedList.innerHTML=''; return; }
       const suggestions = KB.filter(a => a.title.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q)).slice(0,4);
       suggestedList.innerHTML = '';
@@ -346,14 +343,15 @@
         suggestedList.appendChild(pill);
       });
       suggestedWrap.classList.toggle('d-none', suggestions.length===0);
-    });
+    }, 200);
+    issueDetails.addEventListener('input', updateSuggestions);
 
     /* ---------- My Tickets (from backend) ---------- */
     function toDisplayDate(v) {
       if (!v) return "";
       if (v._seconds) return new Date(v._seconds * 1000).toLocaleString(); // Firestore Timestamp
       const n = Number(v);
-      if (!Number.isNaN(n)) return new Date(n).toLocaleString(); // epoch millis/seconds
+      if (!Number.isNaN(n)) return new Date(n < 2e10 ? n*1000 : n).toLocaleString(); // sec or ms
       return new Date(v).toLocaleString(); // ISO
     }
     function badgeClassForStatus(status){
@@ -375,13 +373,18 @@
       try {
         const url = `${API_BASE}/api/bug-reports?createdBy=${encodeURIComponent(MY_NAME)}`;
         const res = await fetch(url);
-        const raw = await res.text();
-        let data = null; try { data = JSON.parse(raw); } catch {}
+        const txt = await res.text();
+        let data = null; try { data = JSON.parse(txt); } catch {}
         if (!res.ok || !data?.success) {
           tbody.innerHTML = `<tr><td colspan="6" class="text-danger">Failed to load your tickets.</td></tr>`;
           return;
         }
-        const list = data.reports || data.bugs || [];
+        const list = (data.reports || data.bugs || []).slice().sort((a,b)=>{
+          const ta = new Date(a.createdAt || 0).getTime();
+          const tb = new Date(b.createdAt || 0).getTime();
+          return tb - ta;
+        });
+
         if (!list.length) {
           tbody.innerHTML = `<tr><td colspan="6">No tickets yet.</td></tr>`;
           return;
@@ -391,10 +394,11 @@
         list.forEach(r => {
           const tr = document.createElement('tr');
           const priority = inferPriorityFromSeverity(r.severity);
+          const type = (r.severity || '').split(' (')[0] || 'Bug';
           tr.innerHTML = `
-            <td>${r.id}</td>
-            <td>${r.title || 'Untitled'}</td>
-            <td>${(r.severity || '').split(' (')[0] || 'Bug'}</td>
+            <td>${r.id ?? '-'}</td>
+            <td>${(r.title || 'Untitled')}</td>
+            <td>${type}</td>
             <td><span class="ticket-badge">${priority}</span></td>
             <td><span class="badge ${badgeClassForStatus(r.status)}">${r.status || 'Pending'}</span></td>
             <td>${toDisplayDate(r.createdAt)}</td>
@@ -415,7 +419,7 @@
       modal.show();
     }
 
-    /* ---------- Inline alert (kept for errors/warnings) ---------- */
+    /* ---------- Inline alert (errors/warnings) ---------- */
     function showAlert(kind, msg){
       const el = document.getElementById('ticketAlert');
       el.className = `alert alert-${kind} alert-fixed`;
@@ -424,9 +428,31 @@
       setTimeout(()=> el.classList.add('d-none'), 3500);
     }
 
+    /* ---------- Upload validation ---------- */
+    const fileInput = document.getElementById('attachment');
+    fileInput.addEventListener('change', ()=>{
+      const f = fileInput.files?.[0];
+      if (!f) return;
+      const okType = /^image\/(png|jpe?g|gif|webp)$/i.test(f.type) || f.type === 'application/pdf';
+      const okSize = f.size <= 50 * 1024 * 1024; // 50 MB
+      if (!okType || !okSize) {
+        showAlert('warning', 'Attachment must be an image or PDF up to 50 MB.');
+        fileInput.value = '';
+      }
+    });
+
     /* ---------- Submit Ticket -> backend ---------- */
-    document.getElementById("supportForm").addEventListener("submit", async function (e) {
+    const supportForm = document.getElementById("supportForm");
+    const submitBtn   = document.getElementById("ticketSubmitBtn");
+    const btnLabel    = submitBtn.querySelector('.btn-label');
+    const btnSpinner  = submitBtn.querySelector('.spinner-border');
+
+    supportForm.addEventListener("submit", async function (e) {
       e.preventDefault();
+
+      // basic validity UI
+      supportForm.classList.add('was-validated');
+      if (!supportForm.checkValidity()) return;
 
       const titleEl = document.getElementById("issueTitle");
       const typeEl = document.getElementById("issueType");
@@ -436,10 +462,15 @@
 
       const title = (titleEl?.value || '').trim();
       const description = (detailsEl?.value || '').trim();
+
+      // extra guard (already covered by required)
       if (!title || !description) {
-        alert("Please provide both a title and description.");
+        showAlert('warning', 'Please provide both a title and description.');
         return;
       }
+
+      // disable while sending
+      submitBtn.disabled = true; btnLabel.classList.add('d-none'); btnSpinner.classList.remove('d-none');
 
       const severity = `${typeEl.value || 'Bug'}${(priorityEl.value === 'High') ? ' (High)' : ''}`;
       const createdBy = MY_NAME || 'Anonymous';
@@ -458,18 +489,17 @@
         if (!res.ok || !data?.success) {
           const message = (data && data.message) || 'Server error while submitting ticket.';
           showAlert('danger', message);
-          return;
+        } else {
+          await refreshMyTickets();               // reflect the new ticket
+          showSuccessModal('Your ticket has been submitted! ✅');
+          supportForm.reset();
+          supportForm.classList.remove('was-validated');
+          suggestedWrap.classList.add('d-none'); suggestedList.innerHTML='';
         }
-
-        // refresh from backend for this user so it persists
-        await refreshMyTickets();
-
-        // SUCCESS now uses modal (brand-aligned)
-        showSuccessModal('Your ticket has been submitted! ✅');
-        this.reset();
-        suggestedWrap.classList.add('d-none'); suggestedList.innerHTML='';
-      } catch (err) {
+      } catch {
         showAlert('danger', 'Network/server error while submitting ticket.');
+      } finally {
+        submitBtn.disabled = false; btnLabel.classList.remove('d-none'); btnSpinner.classList.add('d-none');
       }
     });
 

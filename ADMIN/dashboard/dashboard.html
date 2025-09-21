@@ -15,7 +15,43 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+  <script>
+    /* =========================
+       EARLY ADMIN SESSION GUARD
+       ========================= */
+    function coerceBool(v) {
+      if (v === true || v === 1) return true;
+      if (typeof v === "string") {
+        const s = v.trim().toLowerCase();
+        return s === "true" || s === "1" || s === "yes";
+      }
+      return false;
+    }
+    function hasAdminRole(u) {
+      if (!u || typeof u !== "object") return false;
+      if (coerceBool(u.isAdmin)) return true;
+      if (typeof u.role === "string" && u.role.toLowerCase() === "admin") return true;
+      if (Array.isArray(u.roles) && u.roles.map(r => String(r).toLowerCase()).includes("admin")) return true;
+      if (u.claims && (coerceBool(u.claims.admin) || String(u.claims.role || "").toLowerCase() === "admin")) return true;
+      return false;
+    }
+    function loginUrl() { return "/ADMIN/login/login.html"; }
 
+    (function guard() {
+      let user = null;
+      try { user = JSON.parse(localStorage.getItem("user") || "null"); } catch { user = null; }
+      if (!hasAdminRole(user)) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.replace(loginUrl());
+        return;
+      }
+      // Normalize and expose admin user
+      user.isAdmin = true;
+      localStorage.setItem("user", JSON.stringify(user));
+      window.__ADMIN_USER__ = user;
+    })();
+  </script>
 </head>
 
 <body>
@@ -54,7 +90,6 @@
     <div class="main">
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -64,12 +99,11 @@
           <i class="fas fa-search"></i>
         </div>
 
-        <button class="profile-btn">
+        <button class="profile-btn" type="button" onclick="logoutUser()" title="Logout">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
       </header>
-
 
       <section class="content px-4">
         <h2 class="mt-4 mb-3 fw-bold text-center">Admin Dashboard</h2>
@@ -220,8 +254,7 @@
                   </table>
                 </div>
                 <div class="text-end">
-                  <a href="../access/student_access.html" class="btn btn-sm btn-outline-secondary">View Student
-                    Users</a>
+                  <a href="../access/student_access.html" class="btn btn-sm btn-outline-secondary">View Student Users</a>
                 </div>
               </div>
             </div>
@@ -233,21 +266,27 @@
   </div>
 
   <script>
-    // Header initials
-    const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData || !userData.firstName || !userData.lastName) {
-      window.location.href = "../login/login.html";
-    } else {
-      const firstInitial = userData.firstName.charAt(0).toUpperCase();
-      const lastInitial = userData.lastName.charAt(0).toUpperCase();
-      document.getElementById("Username").textContent = `${firstInitial}${lastInitial}`;
-    }
+    /* =========================
+       Header initials
+       ========================= */
+    document.addEventListener("DOMContentLoaded", () => {
+      const u = window.__ADMIN_USER__ || (JSON.parse(localStorage.getItem("user") || "null"));
+      const firstInitial = (u?.firstName || "").charAt(0).toUpperCase();
+      const lastInitial = (u?.lastName || "").charAt(0).toUpperCase();
+      const el = document.getElementById("Username");
+      if (el) el.textContent = `${firstInitial}${lastInitial}`;
+    });
 
-    const API_ORIGIN = "http://localhost:5000";
+    /* =========================
+       API BASE (dev vs prod)
+       ========================= */
+    const isDevHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    const API_ORIGIN = isDevHost ? "http://localhost:5000" : ""; // same-origin in prod
+
     let activeInactiveChart, roleDistributionChart;
 
     function maskEmail(email) {
-      if (!email || !email.includes("@")) return email;
+      if (!email || !email.includes("@")) return email || "";
       const [localPart, domain] = email.split("@");
       const domainParts = domain.split(".");
       const maskedLocal = localPart[0] + "*".repeat(Math.max(localPart.length - 1, 0));
@@ -257,11 +296,23 @@
       return maskedLocal + "@" + (maskedDomainName ? (maskedDomainName + ".") : "") + tld;
     }
 
+    /* =========================
+       Load Dashboard Data (safe)
+       ========================= */
     async function loadDashboard() {
       try {
-        const res = await fetch(`${API_ORIGIN}/api/dashboard-stats`);
+        const res = await fetch(`${API_ORIGIN}/api/dashboard-stats`, {
+          headers: { "Content-Type": "application/json" },
+          credentials: "include" // OK even if you don't use cookies
+        });
+
+        if (!res.ok) {
+          const text = await res.text(); // may be HTML error page
+          throw new Error(`HTTP ${res.status} ${res.statusText} @ /api/dashboard-stats\n` + text.slice(0, 300));
+        }
+
         const data = await res.json();
-        if (!data?.success) throw new Error("stats not ok");
+        if (!data?.success) throw new Error("API returned success:false or invalid payload");
 
         const s = data.stats || {};
         const list = Array.isArray(s.users) ? s.users : [];
@@ -285,14 +336,14 @@
         document.getElementById("topCourseCard").textContent = s.topCourse || "—";
         document.getElementById("mostCompletedModuleCard").textContent = s.mostCompletedModule || "—";
 
-        // Role counts
+        // Role counts + sample table data
         let teachers = 0, students = 0, superAdmins = 0;
         const sample = [];
 
         list.forEach(u => {
           const isTeacher = u?.isTeacher === true || Boolean(u?.teacherId);
           const isStudent = u?.isStudent === true || Boolean(u?.studentId);
-          const isAdmin = u?.isAdmin === true;
+          const isAdmin = u?.isAdmin === true || String(u?.role || "").toLowerCase() === "admin";
 
           if (isTeacher) teachers++;
           if (isStudent) students++;
@@ -304,7 +355,7 @@
             const ln = (u.lastName || '').trim();
             const role = isTeacher && isStudent ? 'Teacher & Student'
               : isTeacher ? 'Teacher'
-                : 'Student';
+              : 'Student';
 
             sample.push({
               username: u.username || '',

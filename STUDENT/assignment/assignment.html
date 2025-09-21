@@ -11,7 +11,22 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="../assignment/assignment.css" />
 
-  
+  <style>
+    /* ===== Full-screen-ish File Preview Modal (shared look/feel) ===== */
+    #filePreviewModal .modal-dialog { max-width: 96vw; }
+    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
+    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
+    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
+      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
+    }
+    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
+    #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+
+    /* Long token wrapping (titles, meta, etc.) */
+    .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -22,7 +37,7 @@
     <div class="main">
       <!-- Header -->
       <header class="header-top">
-         <div class="brand">
+        <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -198,33 +213,61 @@
   // ========= Config =========
   const API_BASE = "http://localhost:5000";
 
-  // ========= Auth guard (student) =========
-  const userData = JSON.parse(localStorage.getItem("user") || "{}");
-  if (!userData?.userId || !userData?.isStudent) {
-    window.location.href = "/STUDENT/login/login.html";
-  }
+  // ========= Stronger auth guard (student only) =========
+  (function guardStudentSession() {
+    const raw = JSON.parse(localStorage.getItem("user") || "{}");
+    const u = raw.user || raw;
 
-  // === Initials-only header name ===
-  function initialsFrom(str) {
-    if (!str) return "";
-    const s = String(str).trim();
-    if (!s) return "";
-    if (s.includes("@")) {
-      const local = s.split("@")[0];
-      const parts = local.split(/[.\-_]+/).filter(Boolean);
-      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
+    const isValid =
+      !!u?.userId &&
+      u?.isStudent === true &&
+      // optional format check if you use S-xxx student IDs
+      (u?.studentId ? /^S-/.test(String(u.studentId)) : true);
+
+    if (!isValid) {
+      try { localStorage.removeItem("user"); } catch {}
+      window.location.replace("/STUDENT/login/login.html");
+      return;
     }
-    const parts = s.split(/[\s\-]+/).filter(Boolean);
-    return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
-  }
-  (() => {
+
+    // Expose for rest of script
+    window.userData = u;
+
+    // Header initials (initials only)
+    function initialsFrom(str) {
+      if (!str) return "";
+      const s = String(str).trim();
+      if (!s) return "";
+      if (s.includes("@")) {
+        const local = s.split("@")[0];
+        const parts = local.split(/[.\-_]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0,2)).toUpperCase();
+      }
+      const parts = s.split(/[\s\-]+/).filter(Boolean);
+      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0,2)).toUpperCase();
+    }
     const el = document.getElementById("Username");
-    if (!el) return;
-    const displayName = userData.fullName || userData.username || userData.email || "";
-    const initials = initialsFrom(displayName) || "?";
-    el.textContent = initials;
-    el.title = displayName;
-    el.setAttribute("aria-label", displayName);
+    if (el) {
+      const displayName = u.fullName || u.username || u.email || "Student";
+      const initials = initialsFrom(displayName) || "?";
+      el.textContent = initials;
+      el.title = displayName;
+      el.setAttribute("aria-label", displayName);
+    }
+
+    // Cross-tab tamper guard: if user changes to non-student elsewhere, kick back to login
+    window.addEventListener("storage", (e) => {
+      if (e.key === "user") {
+        try {
+          const next = JSON.parse(e.newValue || "null");
+          const nu = (next && (next.user || next)) || null;
+          const ok = !!nu?.userId && nu?.isStudent === true && (nu?.studentId ? /^S-/.test(String(nu.studentId)) : true);
+          if (!ok) window.location.replace("/STUDENT/login/login.html");
+        } catch {
+          window.location.replace("/STUDENT/login/login.html");
+        }
+      }
+    });
   })();
 
   // ========= DOM refs =========
@@ -262,7 +305,7 @@
   }
 
   const fmtDateTime = (ms) => {
-    if (!ms) return '—';
+    if (!ms) return 'No due date';
     try { return new Date(ms).toLocaleString(); } catch { return '—'; }
   };
 
@@ -615,7 +658,7 @@
       return;
     }
 
-    if (['mp4','webm','ogg'].includes(ext)) {
+    if (['mp4','webm','ogg','ogv','mov'].includes(ext)) {
       const video = document.createElement('video');
       video.controls = true;
       video.onloadeddata = done;
@@ -631,7 +674,7 @@
       return;
     }
 
-    if (['mp3','wav','m4a','ogg'].includes(ext)) {
+    if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) {
       const audio = document.createElement('audio');
       audio.controls = true;
       audio.onloadeddata = done;
@@ -692,7 +735,7 @@
       done();
     };
     container.appendChild(obj);
-    setTimeout(() => { done(); }, 1200);
+    setTimeout(done, 1200);
   }
 
   // ========= Render =========
@@ -777,7 +820,7 @@
       col.innerHTML = `
         <div class="assignment-card">
           <div class="d-flex justify-content-between align-items-start mb-1">
-            <h5 class="mb-0">${escapeHTML(a.title)}</h5>
+            <h5 class="mb-0 wrap-anywhere">${escapeHTML(a.title)}</h5>
             <div class="muted small text-end">${statusBadge}</div>
           </div>
 
@@ -787,7 +830,7 @@
             Due: <strong>${dueTxt}</strong>
           </div>
 
-          <div class="desc mb-3" title="${escapeHTML(a.content || '')}">
+          <div class="desc mb-3 wrap-anywhere" title="${escapeHTML(a.content || '')}">
             ${escapeHTML(a.content || '')}
           </div>
 

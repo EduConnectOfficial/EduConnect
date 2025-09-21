@@ -12,6 +12,43 @@
   <link rel="stylesheet" href="/ADMIN/feedbacks/feedback.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
+  <script>
+    /* =========================
+       EARLY ADMIN SESSION GUARD
+       ========================= */
+    function coerceBool(v) {
+      if (v === true || v === 1) return true;
+      if (typeof v === "string") {
+        const s = v.trim().toLowerCase();
+        return s === "true" || s === "1" || s === "yes";
+      }
+      return false;
+    }
+    function hasAdminRole(u) {
+      if (!u || typeof u !== "object") return false;
+      if (coerceBool(u.isAdmin)) return true;
+      if (typeof u.role === "string" && u.role.toLowerCase() === "admin") return true;
+      if (Array.isArray(u.roles) && u.roles.map(r => String(r).toLowerCase()).includes("admin")) return true;
+      if (u.claims && (coerceBool(u.claims.admin) || String(u.claims.role || "").toLowerCase() === "admin")) return true;
+      return false;
+    }
+    function loginUrl() { return "/ADMIN/login/login.html"; }
+
+    (function guard() {
+      let user = null;
+      try { user = JSON.parse(localStorage.getItem("user") || "null"); } catch { user = null; }
+      if (!hasAdminRole(user)) {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.replace(loginUrl());
+        return;
+      }
+      // Normalize and expose admin user for later scripts
+      user.isAdmin = true;
+      localStorage.setItem("user", JSON.stringify(user));
+      window.__ADMIN_USER__ = user;
+    })();
+  </script>
 </head>
 
 <body>
@@ -60,8 +97,9 @@
               });
             });
           });
-        let userData = null;
-        try { userData = JSON.parse(localStorage.getItem("user")) || JSON.parse(sessionStorage.getItem("user")); } catch { }
+
+        // Use normalized admin user
+        const userData = window.__ADMIN_USER__ || (JSON.parse(localStorage.getItem("user") || "null"));
         if (!userData) { window.location.href = "../login/login.html"; return; }
         const el = document.getElementById("Username");
         if (el) { el.textContent = getInitials(userData); el.title = bestFull(userData); }
@@ -176,29 +214,255 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    function showAppAlert(msg, { title = "Notice", variant = "primary" } = {}) { const h = document.getElementById("appAlertHeader"), t = document.getElementById("appAlertTitle"), b = document.getElementById("appAlertBody"); h.className = "modal-header"; const bg = { primary: "bg-primary text-white", success: "bg-success text-white", danger: "bg-danger text-white", warning: "bg-warning" }[variant] || "bg-primary text-white"; h.classList.add(...bg.split(" ")); t.textContent = title; b.textContent = msg; bootstrap.Modal.getOrCreateInstance(document.getElementById("appAlertModal")).show(); }
-    const API_BASE = "http://localhost:5000/api"; let currentBugId = null, allBugs = [];
-    function toMillis(v) { if (!v) return 0; if (v._seconds) return v._seconds * 1000; if (typeof v?.toMillis === "function") return v.toMillis(); const n = Number(v); if (!Number.isNaN(n)) return n; const t = new Date(v).getTime(); return Number.isNaN(t) ? 0 : t; }
+    /* =========================
+       Alerts
+       ========================= */
+    function showAppAlert(msg, { title = "Notice", variant = "primary" } = {}) {
+      const h = document.getElementById("appAlertHeader"),
+            t = document.getElementById("appAlertTitle"),
+            b = document.getElementById("appAlertBody");
+      h.className = "modal-header";
+      const bg = { primary: "bg-primary text-white", success: "bg-success text-white", danger: "bg-danger text-white", warning: "bg-warning" }[variant] || "bg-primary text-white";
+      h.classList.add(...bg.split(" "));
+      t.textContent = title; b.textContent = msg;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("appAlertModal")).show();
+    }
+
+    /* =========================
+       API base (dev vs prod)
+       ========================= */
+    const isDevHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    const API_BASE = isDevHost ? "http://localhost:5000/api" : "/api";
+
+    /* =========================
+       State
+       ========================= */
+    let currentBugId = null, allBugs = [];
+
+    /* =========================
+       Utils
+       ========================= */
+    function toMillis(v) {
+      if (!v) return 0;
+      if (v._seconds) return v._seconds * 1000;
+      if (typeof v?.toMillis === "function") return v.toMillis();
+      const n = Number(v); if (!Number.isNaN(n)) return n;
+      const t = new Date(v).getTime(); return Number.isNaN(t) ? 0 : t;
+    }
     function toDisplayDate(v) { const ms = toMillis(v); return ms ? new Date(ms).toLocaleString() : ""; }
     function titleCase(s) { return String(s || "").toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
-    function hideModalThen(m, n) { const i = bootstrap.Modal.getOrCreateInstance(m); const h = () => { m.removeEventListener("hidden.bs.modal", h); n(); }; m.addEventListener("hidden.bs.modal", h); i.hide(); }
-    const tableBody = document.getElementById("feedbackTable"), elSearch = document.getElementById("filterSearch"), elStatus = document.getElementById("filterStatus"), elSort = document.getElementById("filterSort");
+    function hideModalThen(m, n) {
+      const i = bootstrap.Modal.getOrCreateInstance(m);
+      const h = () => { m.removeEventListener("hidden.bs.modal", h); n(); };
+      m.addEventListener("hidden.bs.modal", h); i.hide();
+    }
+
+    const tableBody = document.getElementById("feedbackTable"),
+          elSearch = document.getElementById("filterSearch"),
+          elStatus = document.getElementById("filterStatus"),
+          elSort = document.getElementById("filterSort");
     let sortKey = "index", sortDir = "asc";
-    function statusRank(s) { const v = String(s || "pending").toLowerCase(); if (v === "resolved") return 0; if (v === "open") return 1; return 2; }
-    function applyFiltersArray(list) { const q = (elSearch.value || "").toLowerCase().trim(); const st = (elStatus.value || "all").toLowerCase(); return list.filter(b => { const lc = String(b.status || "pending").toLowerCase(); if (st !== "all" && lc !== st) return false; if (!q) return true; const hay = [b.title, b.createdBy, b.description, b.severity].map(v => (v || "").toString().toLowerCase()).join(" "); return hay.includes(q); }); }
-    function sortByDropdown(a, b) { const m = elSort.value, A = (a.title || "").toLowerCase(), B = (b.title || "").toLowerCase(), dA = toMillis(a.createdAt), dB = toMillis(b.createdAt), sA = statusRank(a.status), sB = statusRank(b.status); if (m === "dateDesc") return dB - dA; if (m === "dateAsc") return dA - dB; if (m === "titleAsc") return A.localeCompare(B); if (m === "titleDesc") return B.localeCompare(A); if (m === "statusResolvedFirst") return sA - sB; if (m === "statusPendingFirst") return sB - sA; return 0; }
-    function sortByHeader(a, b) { let av, bv; switch (sortKey) { case "index": av = a.__index; bv = b.__index; break; case "title": av = (a.title || "").toLowerCase(); bv = (b.title || "").toLowerCase(); break; case "sender": av = (a.createdBy || "").toLowerCase(); bv = (b.createdBy || "").toLowerCase(); break; case "date": av = toMillis(a.createdAt); bv = toMillis(b.createdAt); break; case "type": av = (a.severity || "").toLowerCase(); bv = (b.severity || "").toLowerCase(); break; case "status": av = statusRank(a.status); bv = statusRank(b.status); break; default: av = a.__index; bv = b.__index; }if (av === bv) return 0; const d = av > bv ? 1 : -1; return sortDir === "asc" ? d : -d; }
-    function renderBugTable(list) { tableBody.innerHTML = ""; const f = applyFiltersArray(list), s = f.sort((a, b) => { const d = sortByDropdown(a, b); return d !== 0 ? d : sortByHeader(a, b); }); if (!s.length) { tableBody.innerHTML = '<tr><td colspan="7">No matching reports.</td></tr>'; return; } s.forEach((bug, i) => { const lc = String(bug.status || "Pending").toLowerCase(); let badge = "badge-pending"; if (lc === "resolved") badge = "badge-resolved"; else if (lc === "open") badge = "badge-open"; const r = document.createElement("tr"); r.innerHTML = `<td>${i + 1}</td><td>${bug.title?.trim() || "No Title"}</td><td>${bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous"}</td><td>${toDisplayDate(bug.createdAt)}</td><td>${titleCase(bug.severity || "Bug")}</td><td><span class="badge badge-status ${badge}">${bug.status || "Pending"}</span></td><td class="text-primary" style="cursor:pointer;">View</td>`; r.addEventListener("click", () => showBugModal(bug)); tableBody.appendChild(r); }); }
-    function showBugModal(bug) { currentBugId = bug.id; const lc = String(bug.status || "Pending").toLowerCase(), badge = lc === "resolved" ? "badge-resolved" : lc === "open" ? "badge-open" : "badge-pending"; const sender = bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous"; const dateStr = toDisplayDate(bug.createdAt); let screenshotHtml = "<em>No screenshot provided.</em>"; if (bug.screenshot?.downloadUrl) { screenshotHtml = `<img src="${bug.screenshot.downloadUrl}" class="img-fluid mt-2 border rounded" style="max-height:300px;"/>`; } const title = bug.title?.trim() || "No Title"; document.getElementById("viewBugModalLabel").textContent = title; document.getElementById("bugDetailsBody").innerHTML = `<p><strong>Bug Title:</strong> ${title}</p><p><strong>Sender:</strong> ${sender}</p><p><strong>Submitted:</strong> ${dateStr}</p><p><strong>Severity:</strong> ${bug.severity || "Bug"}</p><p><strong>Status:</strong> <span class="badge badge-status ${badge}">${bug.status || "Pending"}</span></p><p><strong>Message:</strong></p><div class="bg-light border rounded p-2">${bug.description || "No message."}</div><p class="mt-3"><strong>Screenshot:</strong><br>${screenshotHtml}</p>`; document.getElementById("itReply").value = bug.reply || ""; document.getElementById("markResolvedBtn").classList.toggle("d-none", lc === "resolved"); document.getElementById("reopenBtn").classList.toggle("d-none", lc !== "resolved"); new bootstrap.Modal(document.getElementById("viewBugModal")).show(); }
-    function updateBugStatus(st) { if (!currentBugId) return; const reply = document.getElementById("itReply").value.trim(); fetch(`${API_BASE}/bug-reports/${currentBugId}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: st, reply }) }).then(r => r.json()).then(res => { const m = document.getElementById("viewBugModal"); if (res.success) { hideModalThen(m, () => { showAppAlert(`Bug report has been marked as ${st}.`, { title: "Success", variant: "success" }); const a = document.getElementById("appAlertModal"); const h = () => { a.removeEventListener("hidden.bs.modal", h); location.reload(); }; a.addEventListener("hidden.bs.modal", h); }); } else { hideModalThen(m, () => showAppAlert("Failed to update status.", { title: "Error", variant: "danger" })); } }).catch(e => { console.error("Status update failed:", e); hideModalThen(document.getElementById("viewBugModal"), () => showAppAlert("Server error while updating status.", { title: "Error", variant: "danger" })); }); }
+
+    function statusRank(s) {
+      const v = String(s || "pending").toLowerCase();
+      if (v === "resolved") return 0;
+      if (v === "open") return 1;
+      return 2; // pending last by default
+    }
+
+    function applyFiltersArray(list) {
+      const q = (elSearch.value || "").toLowerCase().trim();
+      const st = (elStatus.value || "all").toLowerCase();
+      return list.filter(b => {
+        const lc = String(b.status || "pending").toLowerCase();
+        if (st !== "all" && lc !== st) return false;
+        if (!q) return true;
+        const hay = [b.title, b.createdBy, b.description, b.severity].map(v => (v || "").toString().toLowerCase()).join(" ");
+        return hay.includes(q);
+      });
+    }
+
+    function sortByDropdown(a, b) {
+      const m = elSort.value,
+            A = (a.title || "").toLowerCase(),
+            B = (b.title || "").toLowerCase(),
+            dA = toMillis(a.createdAt),
+            dB = toMillis(b.createdAt),
+            sA = statusRank(a.status),
+            sB = statusRank(b.status);
+      if (m === "dateDesc") return dB - dA;
+      if (m === "dateAsc") return dA - dB;
+      if (m === "titleAsc") return A.localeCompare(B);
+      if (m === "titleDesc") return B.localeCompare(A);
+      if (m === "statusResolvedFirst") return sA - sB;
+      if (m === "statusPendingFirst") return sB - sA;
+      return 0;
+    }
+
+    function sortByHeader(a, b) {
+      let av, bv;
+      switch (sortKey) {
+        case "index": av = a.__index; bv = b.__index; break;
+        case "title": av = (a.title || "").toLowerCase(); bv = (b.title || "").toLowerCase(); break;
+        case "sender": av = (a.createdBy || "").toLowerCase(); bv = (b.createdBy || "").toLowerCase(); break;
+        case "date": av = toMillis(a.createdAt); bv = toMillis(b.createdAt); break;
+        case "type": av = (a.severity || "").toLowerCase(); bv = (b.severity || "").toLowerCase(); break;
+        case "status": av = statusRank(a.status); bv = statusRank(b.status); break;
+        default: av = a.__index; bv = b.__index;
+      }
+      if (av === bv) return 0;
+      const d = av > bv ? 1 : -1;
+      return sortDir === "asc" ? d : -d;
+    }
+
+    function renderBugTable(list) {
+      tableBody.innerHTML = "";
+      const f = applyFiltersArray(list),
+            s = f.sort((a, b) => { const d = sortByDropdown(a, b); return d !== 0 ? d : sortByHeader(a, b); });
+      if (!s.length) {
+        tableBody.innerHTML = '<tr><td colspan="7">No matching reports.</td></tr>';
+        return;
+      }
+      s.forEach((bug, i) => {
+        const lc = String(bug.status || "Pending").toLowerCase();
+        let badge = "badge-pending";
+        if (lc === "resolved") badge = "badge-resolved";
+        else if (lc === "open") badge = "badge-open";
+        const r = document.createElement("tr");
+        r.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${bug.title?.trim() || "No Title"}</td>
+          <td>${bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous"}</td>
+          <td>${toDisplayDate(bug.createdAt)}</td>
+          <td>${titleCase(bug.severity || "Bug")}</td>
+          <td><span class="badge badge-status ${badge}">${bug.status || "Pending"}</span></td>
+          <td class="text-primary" style="cursor:pointer;">View</td>`;
+        r.addEventListener("click", () => showBugModal(bug));
+        tableBody.appendChild(r);
+      });
+    }
+
+    function showBugModal(bug) {
+      currentBugId = bug.id;
+      const lc = String(bug.status || "Pending").toLowerCase(),
+            badge = lc === "resolved" ? "badge-resolved" : lc === "open" ? "badge-open" : "badge-pending";
+      const sender = bug.createdBy && bug.createdBy !== "Anonymous" ? bug.createdBy : "Anonymous";
+      const dateStr = toDisplayDate(bug.createdAt);
+      let screenshotHtml = "<em>No screenshot provided.</em>";
+      if (bug.screenshot?.downloadUrl) {
+        screenshotHtml = `<img src="${bug.screenshot.downloadUrl}" class="img-fluid mt-2 border rounded" style="max-height:300px;"/>`;
+      }
+      const title = bug.title?.trim() || "No Title";
+      document.getElementById("viewBugModalLabel").textContent = title;
+      document.getElementById("bugDetailsBody").innerHTML = `
+        <p><strong>Bug Title:</strong> ${title}</p>
+        <p><strong>Sender:</strong> ${sender}</p>
+        <p><strong>Submitted:</strong> ${dateStr}</p>
+        <p><strong>Severity:</strong> ${bug.severity || "Bug"}</p>
+        <p><strong>Status:</strong> <span class="badge badge-status ${badge}">${bug.status || "Pending"}</span></p>
+        <p><strong>Message:</strong></p>
+        <div class="bg-light border rounded p-2">${bug.description || "No message."}</div>
+        <p class="mt-3"><strong>Screenshot:</strong><br>${screenshotHtml}</p>`;
+      document.getElementById("itReply").value = bug.reply || "";
+      document.getElementById("markResolvedBtn").classList.toggle("d-none", lc === "resolved");
+      document.getElementById("reopenBtn").classList.toggle("d-none", lc !== "resolved");
+      new bootstrap.Modal(document.getElementById("viewBugModal")).show();
+    }
+
+    function updateBugStatus(st) {
+      if (!currentBugId) return;
+      const reply = document.getElementById("itReply").value.trim();
+      fetch(`${API_BASE}/bug-reports/${currentBugId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: st, reply })
+      })
+        .then(r => r.json())
+        .then(res => {
+          const m = document.getElementById("viewBugModal");
+          if (res.success) {
+            hideModalThen(m, () => {
+              showAppAlert(`Bug report has been marked as ${st}.`, { title: "Success", variant: "success" });
+              const a = document.getElementById("appAlertModal");
+              const h = () => { a.removeEventListener("hidden.bs.modal", h); location.reload(); };
+              a.addEventListener("hidden.bs.modal", h);
+            });
+          } else {
+            hideModalThen(m, () => showAppAlert("Failed to update status.", { title: "Error", variant: "danger" }));
+          }
+        })
+        .catch(e => {
+          console.error("Status update failed:", e);
+          hideModalThen(document.getElementById("viewBugModal"), () => showAppAlert("Server error while updating status.", { title: "Error", variant: "danger" }));
+        });
+    }
     document.getElementById("markResolvedBtn").addEventListener("click", () => updateBugStatus("Resolved"));
     document.getElementById("reopenBtn").addEventListener("click", () => updateBugStatus("Pending"));
-    async function fetchJSON(url, opt = {}) { const r = await fetch(url, { headers: { "Accept": "application/json", ...(opt.headers || {}) }, ...opt }); const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch { } if (!r.ok) throw new Error(j?.message || `HTTP ${r.status}`); return j; }
-    function normalizeBugs(raw) { let l = []; if (Array.isArray(raw)) l = raw; else if (Array.isArray(raw?.reports)) l = raw.reports; else if (Array.isArray(raw?.bugs)) l = raw.bugs; else if (Array.isArray(raw?.data)) l = raw.data; return l.map((b, i) => ({ id: b.id || b._id, title: b.title || "", description: b.description || "", createdAt: b.createdAt, createdBy: b.createdBy || "Anonymous", severity: b.severity || "Bug", status: b.status || "Pending", screenshot: b.screenshot || null, __index: i, ...b })); }
-    (async () => { try { const d = await fetchJSON(`${API_BASE}/bug-reports`); allBugs = normalizeBugs(d); renderBugTable(allBugs); } catch (e) { console.error("❌ Failed to load bug reports:", e); tableBody.innerHTML = '<tr><td colspan="7">Error loading reports.</td></tr>'; } })();
-    elSearch.addEventListener("input", () => renderBugTable(allBugs)); elStatus.addEventListener("change", () => renderBugTable(allBugs)); elSort.addEventListener("change", () => renderBugTable(allBugs));
-    document.querySelectorAll("th.sortable").forEach(th => { th.addEventListener("click", () => { const k = th.getAttribute("data-sort"); if (sortKey === k) sortDir = sortDir === "asc" ? "desc" : "asc"; else { sortKey = k; sortDir = "asc"; } document.querySelectorAll("th.sortable").forEach(h => h.classList.remove("active")); th.classList.add("active"); const arrow = th.querySelector(".arrow"); if (arrow) arrow.textContent = sortDir === "asc" ? "▲" : "▼"; renderBugTable(allBugs); }); });
-    function logoutUser() { localStorage.clear(); sessionStorage.clear(); window.location.href = "/ADMIN/login/login.html"; }
+
+    async function fetchJSON(url, opt = {}) {
+      const r = await fetch(url, { headers: { "Accept": "application/json", ...(opt.headers || {}) }, ...opt });
+      const t = await r.text();
+      let j = {};
+      try { j = JSON.parse(t); } catch { }
+      if (!r.ok) throw new Error(j?.message || `HTTP ${r.status}`);
+      return j;
+    }
+
+    function normalizeBugs(raw) {
+      let l = [];
+      if (Array.isArray(raw)) l = raw;
+      else if (Array.isArray(raw?.reports)) l = raw.reports;
+      else if (Array.isArray(raw?.bugs)) l = raw.bugs;
+      else if (Array.isArray(raw?.data)) l = raw.data;
+      return l.map((b, i) => ({
+        id: b.id || b._id,
+        title: b.title || "",
+        description: b.description || "",
+        createdAt: b.createdAt,
+        createdBy: b.createdBy || "Anonymous",
+        severity: b.severity || "Bug",
+        status: b.status || "Pending",
+        screenshot: b.screenshot || null,
+        __index: i,
+        ...b
+      }));
+    }
+
+    // Initial load
+    (async () => {
+      try {
+        const d = await fetchJSON(`${API_BASE}/bug-reports`);
+        allBugs = normalizeBugs(d);
+        renderBugTable(allBugs);
+      } catch (e) {
+        console.error("❌ Failed to load bug reports:", e);
+        tableBody.innerHTML = '<tr><td colspan="7">Error loading reports.</td></tr>';
+      }
+    })();
+
+    // Filters & sorting
+    elSearch.addEventListener("input", () => renderBugTable(allBugs));
+    elStatus.addEventListener("change", () => renderBugTable(allBugs));
+    elSort.addEventListener("change", () => renderBugTable(allBugs));
+
+    document.querySelectorAll("th.sortable").forEach(th => {
+      th.addEventListener("click", () => {
+        const k = th.getAttribute("data-sort");
+        if (sortKey === k) sortDir = sortDir === "asc" ? "desc" : "asc";
+        else { sortKey = k; sortDir = "asc"; }
+        document.querySelectorAll("th.sortable").forEach(h => h.classList.remove("active"));
+        th.classList.add("active");
+        const arrow = th.querySelector(".arrow");
+        if (arrow) arrow.textContent = sortDir === "asc" ? "▲" : "▼";
+        renderBugTable(allBugs);
+      });
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/ADMIN/login/login.html";
+    }
   </script>
 </body>
 

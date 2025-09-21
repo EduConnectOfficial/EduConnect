@@ -13,6 +13,16 @@
   <!-- Sidebar / shared styles -->
   <link rel="stylesheet" href="../rewards/rewards.css" />
 
+  <style>
+    /* small quality-of-life styles */
+    .badge-chip{display:inline-flex;align-items:center;gap:.45rem;padding:.3rem .6rem;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:.875rem;border:1px solid #e5e7eb}
+    .table-clean thead th{border-bottom:1px solid #e9ecef}
+    .table-clean tbody td{border-top:1px solid #f1f3f5}
+    .skeleton{position:relative;border-radius:.5rem;background:#e9ecef;overflow:hidden}
+    .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shimmer 1.4s infinite;transform:translateX(-100%)}
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+    .wrap-anywhere{overflow-wrap:anywhere}
+  </style>
 </head>
 <body>
   <div class="dashboard">
@@ -24,7 +34,6 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -34,7 +43,7 @@
         </div>
         <button class="profile-btn">
           <i class="fas fa-user-circle"></i>
-          <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
+          <span id="Username" class="username align-items-center" style="font-size:14px;"></span>
         </button>
       </header>
 
@@ -49,8 +58,8 @@
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-trophy"></i> Your Points & Badges</h2>
                 <div class="d-flex align-items-center gap-3">
-                  <span id="streakChip" class="badge-chip"><i class="bi bi-fire"></i><span>0-day streak</span></span>
-                  <span id="pointsChip" class="badge-chip"><i class="bi bi-stars"></i><span>0 pts</span></span>
+                  <span id="streakChip" class="badge-chip"><i class="bi bi-fire"></i><span>—</span></span>
+                  <span id="pointsChip" class="badge-chip"><i class="bi bi-stars"></i><span>—</span></span>
                 </div>
               </div>
 
@@ -68,11 +77,15 @@
 
                 <div class="col-12 col-md-8">
                   <div class="p-3 border rounded-3 h-100 bg-white">
-                    <strong class="d-block mb-2 text-dark">Recent Badges</strong>
-                    <div id="badgeWrap" class="d-flex flex-wrap gap-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong class="text-dark">Recent Badges</strong>
+                      <button id="viewAllBadgesBtn" class="btn btn-sm btn-amber-outline">
+                        <i class="bi bi-collection me-1"></i>View All
+                      </button>
+                    </div>
+                    <div id="badgeWrap" class="d-flex flex-wrap gap-2 mt-2">
                       <!-- badges injected -->
                     </div>
-                    
                   </div>
                 </div>
               </div> <!-- /row -->
@@ -87,28 +100,29 @@
               <div class="ui-card-head">
                 <h2 class="ui-card-title"><i class="bi bi-award"></i> Leaderboard</h2>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                  <!-- Opt-in -->
                   <div class="form-check form-switch text-light">
                     <input class="form-check-input" type="checkbox" id="optInLeaderboard">
-                    <label class="form-check-label" for="optInLeaderboard">Opt-in</label>
+                    <label class="form-check-label" for="optInLeaderboard" title="Opt in to appear on the leaderboard">Opt-in</label>
                   </div>
-                  <!-- Scope -->
-                  <select id="scopeSelect" class="form-select form-select-sm">
+
+                  <select id="scopeSelect" class="form-select form-select-sm" title="Scope">
                     <option value="class" selected>Class</option>
                     <option value="subject">Subject</option>
                   </select>
-                  <!-- Subject (shown only when subject scope) -->
-                  <select id="subjectSelect" class="form-select form-select-sm d-none">
+
+                  <select id="subjectSelect" class="form-select form-select-sm d-none" title="Subject">
                     <option value="ICT" selected>ICT</option>
                     <option value="Practical Research">Practical Research</option>
                     <option value="Oral Communication">Oral Communication</option>
                   </select>
-                  <!-- Timeframe -->
-                  <select id="timeframeSelect" class="form-select form-select-sm">
+
+                  <select id="timeframeSelect" class="form-select form-select-sm" title="Timeframe">
                     <option value="all" selected>All-time</option>
                     <option value="month">This month</option>
                     <option value="week">This week</option>
                   </select>
+
+                  <button id="refreshBtn" class="btn btn-sm btn-amber"><i class="bi bi-arrow-repeat me-1"></i>Refresh</button>
                 </div>
               </div>
 
@@ -168,59 +182,41 @@
 
   <!-- User + API -->
   <script>
-    const API_BASE = 'http://127.0.0.1:5000'; // backend server
-    const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData || !userData.userId) {
-      window.location.href = "../login/login.html";
-    } else {
-      // === Initials-only header display ===
-function initialsFrom(str) {
-  if (!str) return "";
-  const s = String(str).trim();
-  if (!s) return "";
+    const API_BASE = 'http://localhost:5000'; // unify with other pages
 
-  // If email, take first + last token from local part
-  if (s.includes("@")) {
-    const local = s.split("@")[0];
-    const parts = local.split(/[.\-_]+/).filter(Boolean);
-    return (parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : local.slice(0, 2)
-    ).toUpperCase();
-  }
+    // ---- Auth guard + initials header ----
+    (function guardAndHeader(){
+      const raw = JSON.parse(localStorage.getItem("user") || "{}");
+      const u = raw.user || raw;
+      if (!u?.userId) {
+        window.location.replace("../login/login.html");
+        return;
+      }
+      window.userData = u;
 
-  // Names or usernames: first + last token initials
-  const parts = s.split(/[\s\-]+/).filter(Boolean);
-  return (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : parts[0].slice(0, 2)
-  ).toUpperCase();
-}
-
-const userData = JSON.parse(localStorage.getItem("user") || "{}");
-const userId = userData.userId || userData.uid || userData.id || userData.email;
-
-if (!userId) {
-  window.location.href = "../login/login.html";
-} else {
-  const displayName = userData.fullName || userData.username || userData.email || "Student";
-  const initials = initialsFrom(displayName) || "?";
-  const el = document.getElementById("Username");
-  el.textContent = initials;
-  el.title = displayName;                 // tooltip with full name
-  el.setAttribute("aria-label", displayName);
-
-  if (!userData.uid) {
-    userData.uid = userId;
-    localStorage.setItem("user", JSON.stringify(userData));
-  }
-}
-
-    }
+      function initialsFrom(str){
+        if(!str) return "";
+        const s = String(str).trim(); if(!s) return "";
+        if(s.includes("@")){
+          const local=s.split("@")[0];
+          const parts=local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+        }
+        const parts=s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
+      }
+      const el=document.getElementById("Username");
+      if(el){
+        const displayName=u.fullName||u.username||u.email||"Student";
+        el.textContent=initialsFrom(displayName)||"?";
+        el.title=displayName;
+        el.setAttribute("aria-label",displayName);
+      }
+    })();
 
     async function apiGet(url) {
       const res = await fetch(url, { headers: { 'Content-Type':'application/json' }});
-      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(()=> '')}`);
       return res.json();
     }
     async function apiPatch(url, body) {
@@ -229,19 +225,39 @@ if (!userId) {
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify(body || {})
       });
-      if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(()=> '')}`);
       return res.json();
     }
   </script>
 
-  <!-- Rewards & Leaderboard Logic (REAL DATA) -->
+  <!-- Rewards & Leaderboard Logic -->
   <script>
+    // Local cache keys
+    const LS = {
+      rewards: (uid)=>`rewards-cache:${uid}`,
+      leaderboard: (uid,scope,tf,subj)=>`lb-cache:${uid}:${scope}:${tf}:${subj||'-'}`
+    };
+
+    function showLBShimmer() {
+      const tbody = document.getElementById('leaderboardBody');
+      tbody.innerHTML = '';
+      for (let i=0;i<5;i++){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><div class="skeleton" style="height:20px;width:42px"></div></td>
+          <td><div class="skeleton" style="height:20px;width:180px"></div></td>
+          <td class="text-end"><div class="skeleton ms-auto" style="height:20px;width:72px"></div></td>
+          <td><div class="skeleton" style="height:20px;width:140px"></div></td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
     // Render profile summary
     function renderProfileSummary(data){
-      const pts = data.totalPoints || 0;
-      const streak = data.streakDays || 0;
-      const badges = data.recentBadges || [];
-      const optIn = data.optIn !== false;
+      const pts = data?.totalPoints ?? 0;
+      const streak = data?.streakDays ?? 0;
+      const badges = Array.isArray(data?.recentBadges) ? data.recentBadges : [];
+      const optIn = data?.optIn !== false;
 
       document.getElementById('totalPoints').textContent = pts.toLocaleString();
       document.getElementById('pointsChip').querySelector('span').textContent = `${pts} pts`;
@@ -260,6 +276,7 @@ if (!userId) {
           const el = document.createElement('span');
           el.className = 'badge-chip';
           el.innerHTML = `<i class="bi bi-award"></i>${b.label}`;
+          el.title = b.description || '';
           wrap.appendChild(el);
         });
       }
@@ -282,7 +299,7 @@ if (!userId) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${i+1}</strong></td>
-          <td>${row.name || '—'} ${isYou?'<span class="badge bg-secondary-subtle text-secondary border ms-1">You</span>':''}</td>
+          <td class="wrap-anywhere">${row.name || '—'} ${isYou?'<span class="badge bg-secondary-subtle text-secondary border ms-1">You</span>':''}</td>
           <td class="text-end">${(row.points || 0).toLocaleString()}</td>
           <td><span class="badge-chip"><i class="bi bi-award"></i>${row.topBadge || '-'}</span></td>
         `;
@@ -290,61 +307,106 @@ if (!userId) {
       });
     }
 
-    // Load rewards & badges
-    async function loadRewards(){
-      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/rewards`;
-      const data = await apiGet(url);
-      renderProfileSummary(data);
+    // Load rewards & badges (with cache)
+    async function loadRewards(useCacheFirst = true){
+      const uid = userData.userId;
+      const ckey = LS.rewards(uid);
+
+      if (useCacheFirst) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(ckey) || 'null');
+          if (cached) renderProfileSummary(cached);
+        } catch {}
+      }
+
+      try{
+        const url = `${API_BASE}/api/students/${encodeURIComponent(uid)}/rewards`;
+        const data = await apiGet(url);
+        renderProfileSummary(data);
+        try { localStorage.setItem(ckey, JSON.stringify(data)); } catch {}
+      }catch(err){
+        console.error(err);
+        // keep cache/previous UI
+      }
     }
 
-    // Load leaderboard based on controls
-    async function loadLeaderboard(){
+    // Load leaderboard (with cache)
+    async function loadLeaderboard(useCacheFirst = true){
       const scope = document.getElementById('scopeSelect').value;
       const timeframe = document.getElementById('timeframeSelect').value;
       const subjectSel = document.getElementById('subjectSelect');
 
-      // subject dropdown visibility
-      if(scope==='subject'){ subjectSel.classList.remove('d-none'); }
-      else { subjectSel.classList.add('d-none'); }
+      // toggle subject dropdown
+      subjectSel.classList.toggle('d-none', scope!=='subject');
 
-      const params = new URLSearchParams({
-        userId: userData.userId,
-        scope,
-        timeframe
-      });
-      if (scope === 'subject') params.set('subject', subjectSel.value);
+      const subject = scope==='subject' ? subjectSel.value : '';
+      const uid = userData.userId;
+      const ckey = LS.leaderboard(uid, scope, timeframe, subject);
 
-      const url = `${API_BASE}/api/leaderboard?${params.toString()}`;
-      const data = await apiGet(url); // { success, entries:[{userId,name,points,topBadge}] }
-      renderLeaderboard(data.entries || []);
+      if (useCacheFirst) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(ckey) || 'null');
+          if (cached) renderLeaderboard(cached);
+          else showLBShimmer();
+        } catch { showLBShimmer(); }
+      } else {
+        showLBShimmer();
+      }
+
+      try{
+        const params = new URLSearchParams({ userId: uid, scope, timeframe });
+        if (subject) params.set('subject', subject);
+        const url = `${API_BASE}/api/leaderboard?${params.toString()}`;
+        const data = await apiGet(url); // { success, entries:[...] }
+        renderLeaderboard(data.entries || []);
+        try { localStorage.setItem(ckey, JSON.stringify(data.entries || [])); } catch {}
+      }catch(err){
+        console.error(err);
+        // keep cache/skeleton
+      }
     }
 
     // Toggle opt-in
     async function updateOptIn(checked){
-      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/leaderboard-optin`;
-      await apiPatch(url, { optIn: !!checked });
-      // refresh leaderboard (your row may vanish if you opted out)
-      loadLeaderboard().catch(console.error);
+      try{
+        const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/leaderboard-optin`;
+        await apiPatch(url, { optIn: !!checked });
+        // refresh leaderboard (your row may vanish if you opted out)
+        loadLeaderboard(false).catch(console.error);
+      }catch(err){
+        console.error(err);
+        // revert toggle on failure
+        document.getElementById('optInLeaderboard').checked = !checked;
+      }
     }
 
-    // Events
+    // Events + Boot
     document.addEventListener('DOMContentLoaded', ()=>{
-      loadRewards().catch(err=>console.error(err));
-      loadLeaderboard().catch(err=>console.error(err));
+      loadRewards(true);
+      loadLeaderboard(true);
 
       document.getElementById('optInLeaderboard').addEventListener('change', (e)=> updateOptIn(e.target.checked).catch(console.error));
-      document.getElementById('scopeSelect').addEventListener('change', ()=> loadLeaderboard().catch(console.error));
-      document.getElementById('subjectSelect').addEventListener('change', ()=> loadLeaderboard().catch(console.error));
-      document.getElementById('timeframeSelect').addEventListener('change', ()=> loadLeaderboard().catch(console.error));
-      document.getElementById('viewAllBadgesBtn').addEventListener('click', ()=> alert('Coming soon: full badge history!'));
+      document.getElementById('scopeSelect').addEventListener('change', ()=> loadLeaderboard(false).catch(console.error));
+      document.getElementById('subjectSelect').addEventListener('change', ()=> loadLeaderboard(false).catch(console.error));
+      document.getElementById('timeframeSelect').addEventListener('change', ()=> loadLeaderboard(false).catch(console.error));
+      document.getElementById('refreshBtn').addEventListener('click', ()=>{
+        loadRewards(false);
+        loadLeaderboard(false);
+      });
+      document.getElementById('viewAllBadgesBtn').addEventListener('click', ()=>{
+        // You can route to a dedicated page later
+        alert('Coming soon: full badge history!');
+      });
     });
   </script>
-<script>
+
+  <script>
     function logoutUser() {
       localStorage.clear(); sessionStorage.clear();
       window.location.href = "/STUDENT/login/login.html";
     }
   </script>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

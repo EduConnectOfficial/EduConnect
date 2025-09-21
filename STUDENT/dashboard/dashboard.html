@@ -1,23 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>EduConnect Student - Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Icons + Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <!-- Sidebar CSS -->
-  <link rel="stylesheet" href="../dashboard/dashboard.css"/>
+  <link rel="stylesheet" href="../dashboard/dashboard.css" />
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -27,13 +29,13 @@
     <div class="main">
       <!-- HEADER -->
       <header class="header-top">
-         <div class="brand">
+        <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
-          <input type="text" placeholder="Search..." aria-label="Search site"/>
+          <input type="text" placeholder="Search..." aria-label="Search site" />
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn" aria-label="Open profile menu">
@@ -69,7 +71,13 @@
                 </div>
               </div>
               <div class="cal-head">
-                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
               </div>
               <div id="calendarGrid" class="calendar-grid"></div>
             </div>
@@ -111,7 +119,8 @@
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                   <div class="input-group input-group-sm" style="min-width:260px;">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input id="searchModules" type="search" class="form-control border-start-0" placeholder="Search modules..." aria-label="Search modules">
+                    <input id="searchModules" type="search" class="form-control border-start-0"
+                      placeholder="Search modules..." aria-label="Search modules">
                   </div>
                 </div>
               </div>
@@ -130,7 +139,12 @@
               <div class="table-responsive">
                 <table class="table table-clean table-hover align-middle mb-2">
                   <thead>
-                    <tr><th>Quiz</th><th>Type</th><th>Time</th><th class="text-end">Action</th></tr>
+                    <tr>
+                      <th>Quiz</th>
+                      <th>Type</th>
+                      <th>Time</th>
+                      <th class="text-end">Action</th>
+                    </tr>
                   </thead>
                   <tbody id="quizTable"></tbody>
                 </table>
@@ -151,14 +165,15 @@
                 </div>
                 <div class="mb-2">
                   <label for="fileUpload" class="form-label text-light">Upload file</label>
-                  <input id="fileUpload" type="file" class="form-control form-control-sm"/>
+                  <input id="fileUpload" type="file" class="form-control form-control-sm" />
                 </div>
                 <div class="d-flex justify-content-end gap-2">
-                  <button type="button" id="saveDraftBtn" class="btn btn-sm btn-amber-outline" disabled>Save Draft</button>
+                  <button type="button" id="saveDraftBtn" class="btn btn-sm btn-amber-outline" disabled>Save
+                    Draft</button>
                   <button type="submit" class="btn btn-sm btn-amber">Submit</button>
                 </div>
               </form>
-              <hr class="text-light"/>
+              <hr class="text-light" />
               <div class="small">
                 <strong class="text-light">Recent Feedback</strong>
                 <ul id="recentFeedback" class="mt-2 mb-0 text-light"></ul>
@@ -190,7 +205,12 @@
                   <div class="table-responsive">
                     <table class="table table-clean table-hover align-middle mb-0">
                       <thead>
-                        <tr><th>Date</th><th>Subject</th><th>Activity</th><th>Score</th></tr>
+                        <tr>
+                          <th>Date</th>
+                          <th>Subject</th>
+                          <th>Activity</th>
+                          <th>Score</th>
+                        </tr>
                       </thead>
                       <tbody id="gradeTable"></tbody>
                     </table>
@@ -214,38 +234,70 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <!-- Auth (Initials only) -->
+  <!-- Auth (Students-only, enforces S- prefix, exposes global userData) -->
   <script>
-    // Safely build initials from name/username/email
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
+    (function initStudentGuard() {
+      // Read stored session (supports either {user:{...}} or {...})
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
 
-      // Email? Use local part
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        return local.slice(0, 2).toUpperCase();
+      // Must be logged in, must be a student, and studentId must start with "S-"
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
+
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch { }
+        // This file is under /STUDENT/dashboard/, so ../login/login.html is the right relative path
+        window.location.replace("../login/login.html");
+        return;
       }
 
-      // Name or username: first + last token
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      return parts[0].slice(0, 2).toUpperCase();
-    }
+      // Expose user globally for other scripts on the page
+      window.currentUser = u;
+      // Use var to ensure global scope (other scripts reference `userData`)
+      window.userData = u;
 
-    const userData = JSON.parse(localStorage.getItem("user"));
-    if (!userData || !userData.userId) {
-      window.location.href = "../login/login.html";
-    } else {
-      const displayName = userData.fullName || userData.username || userData.email || "";
+      // ---- Header initials ----
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+      }
+
+      const displayName = u.fullName || u.username || u.email || "";
       const initials = initialsFrom(displayName) || "?";
       const el = document.getElementById("Username");
-      el.textContent = initials;
-      el.title = displayName;
-      el.setAttribute("aria-label", displayName);
-    }
+      if (el) {
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+
+      // Extra safety: if someone tampers with localStorage in another tab, kick out
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace("../login/login.html");
+          } catch {
+            window.location.replace("../login/login.html");
+          }
+        }
+      });
+    })();
   </script>
 
   <!-- Sidebar + API wiring -->
@@ -253,12 +305,12 @@
     const API_BASE = 'http://127.0.0.1:5000';
 
     async function apiGet(url) {
-      const r = await fetch(url, { headers:{'Content-Type':'application/json'} });
+      const r = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
       if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
       return r.json();
     }
     async function apiPostForm(url, formData) {
-      const r = await fetch(url, { method:'POST', body:formData });
+      const r = await fetch(url, { method: 'POST', body: formData });
       if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
       return r.json();
     }
@@ -295,21 +347,21 @@
   <!-- Dashboard data calls -->
   <script>
     // ===== To-Do =====
-    async function loadTodo(){
+    async function loadTodo() {
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/todo`;
       const data = await apiGet(url);
       const ul = document.getElementById('todoList');
       ul.innerHTML = '';
-      if (!data.items || !data.items.length){
+      if (!data.items || !data.items.length) {
         ul.innerHTML = `<li class="ui-list-item text-light">No upcoming tasks.</li>`;
         return;
       }
-      data.items.slice(0,6).forEach(t=>{
+      data.items.slice(0, 6).forEach(t => {
         const li = document.createElement('li');
         li.className = 'ui-list-item d-flex justify-content-between';
         li.innerHTML = `
           <span>${t.text}</span>
-          <span class="badge bg-${t.tagClass||'secondary'}-subtle text-${t.tagClass||'secondary'} border">${t.tag||''}</span>`;
+          <span class="badge bg-${t.tagClass || 'secondary'}-subtle text-${t.tagClass || 'secondary'} border">${t.tag || ''}</span>`;
         ul.appendChild(li);
       });
     }
@@ -317,19 +369,19 @@
     let calEventsByDate = {};
     let calEventsModal;
 
-    function openCalEventsModal(dateIso){
+    function openCalEventsModal(dateIso) {
       const list = document.getElementById('calEventsList');
       const title = document.getElementById('calEventsTitle');
       const events = calEventsByDate[dateIso] || [];
 
-      title.textContent = new Date(dateIso).toLocaleDateString(undefined, { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      title.textContent = new Date(dateIso).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
       if (!events.length) {
         list.innerHTML = '<li class="list-group-item text-muted">No events.</li>';
       } else {
         list.innerHTML = events.map(e => {
           const label = e.label || e.title || 'Event';
-          const time  =
+          const time =
             e.time ||
             (e.startTime && e.endTime ? `${e.startTime}–${e.endTime}` : (e.startTime || e.endTime || ''));
           const desc = e.description || e.note || '';
@@ -347,18 +399,18 @@
 
     // ===== Calendar =====
     let calDate = new Date();
-    function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
-    function ymd(d){ return d.toISOString().slice(0,10); }
-    async function loadCalendar(){
+    function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+    function ymd(d) { return d.toISOString().slice(0, 10); }
+    async function loadCalendar() {
       const y = calDate.getFullYear(), m = calDate.getMonth();
       document.getElementById('calLabel').textContent =
-        calDate.toLocaleString('en-US', { month:'long', year:'numeric' });
+        calDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
       const first = new Date(y, m, 1);
       const start = new Date(y, m, 1);
-      const end   = new Date(y, m, daysInMonth(y,m));
+      const end = new Date(y, m, daysInMonth(y, m));
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/calendar?start=${ymd(start)}&end=${ymd(end)}`;
-      const { events=[] } = await apiGet(url);
+      const { events = [] } = await apiGet(url);
 
       const byDate = {};
       events.forEach(e => { (byDate[e.date] ||= []).push(e); });
@@ -391,14 +443,14 @@
 
         // Render day number + pills
         cell.innerHTML = `<div class="num">${d}</div>` +
-                         evs.map(e => `<div class="pill">${e.label}</div>`).join('');
+          evs.map(e => `<div class="pill">${e.label}</div>`).join('');
 
         // Make clickable if it has events
         if (evs.length) {
           cell.classList.add('has-events');
           cell.setAttribute('role', 'button');
           cell.setAttribute('tabindex', '0');
-          cell.setAttribute('aria-label', `View ${evs.length} event${evs.length>1?'s':''} on ${thisDate.toDateString()}`);
+          cell.setAttribute('aria-label', `View ${evs.length} event${evs.length > 1 ? 's' : ''} on ${thisDate.toDateString()}`);
 
           const open = () => openCalEventsModal(iso);
           cell.addEventListener('click', open);
@@ -412,35 +464,35 @@
     }
 
     // ===== Notifications (prefs toggle removed) =====
-    async function loadNotifications(){
+    async function loadNotifications() {
       const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/notifications`;
       const data = await apiGet(url); // {items, prefs:{...}} but we ignore prefs now
       const ul = document.getElementById('notifList');
       ul.innerHTML = '';
-      (data.items||[]).slice(0,6).forEach(n=>{
+      (data.items || []).slice(0, 6).forEach(n => {
         const li = document.createElement('li');
         li.className = 'ui-list-item text-light';
-        li.innerHTML = `<i class="bi ${n.icon||'bi-bell'} me-1 ${n.cls||''}"></i> ${n.text}`;
+        li.innerHTML = `<i class="bi ${n.icon || 'bi-bell'} me-1 ${n.cls || ''}"></i> ${n.text}`;
         ul.appendChild(li);
       });
     }
 
     // ===== Library (Download removed; View goes to module viewer) =====
     let libraryAll = [];
-    async function loadLibrary(){
-      const q = encodeURIComponent(document.getElementById('searchModules').value||'');
-      const { modules=[] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/library?query=${q}`);
+    async function loadLibrary() {
+      const q = encodeURIComponent(document.getElementById('searchModules').value || '');
+      const { modules = [] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/library?query=${q}`);
       libraryAll = modules;
       renderLibrary(modules);
     }
-    function renderLibrary(items){
+    function renderLibrary(items) {
       const grid = document.getElementById('libraryGrid');
       grid.innerHTML = '';
-      if (!items.length){
+      if (!items.length) {
         grid.innerHTML = `<div class="col"><div class="p-3 border rounded-3 bg-white">No modules found.</div></div>`;
         return;
       }
-      items.forEach(m=>{
+      items.forEach(m => {
         const col = document.createElement('div');
         col.className = 'col';
         const uploaded = m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '';
@@ -461,15 +513,15 @@
     }
 
     // ===== Quiz Center =====
-    async function loadQuizzes(){
-      const { quizzes=[] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/quizzes-upcoming`);
+    async function loadQuizzes() {
+      const { quizzes = [] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/quizzes-upcoming`);
       const tbody = document.getElementById('quizTable');
       tbody.innerHTML = '';
-      if (!quizzes.length){
+      if (!quizzes.length) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No upcoming quizzes.</td></tr>`;
         return;
       }
-      quizzes.forEach(q=>{
+      quizzes.forEach(q => {
         const tr = document.createElement('tr');
         const type = q.settings?.timerEnabled ? 'Timed' : 'Regular';
         const time = q.settings?.timerEnabled ? `${q.settings.durationMinutes} min` : '—';
@@ -483,26 +535,26 @@
     }
 
     // ===== Assignments (select + submit) =====
-    async function loadOpenAssignments(){
-      const { assignments=[] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/assignments-open`);
+    async function loadOpenAssignments() {
+      const { assignments = [] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/assignments-open`);
       const sel = document.getElementById('assignmentSelect');
       sel.innerHTML = '';
-      if (!assignments.length){
+      if (!assignments.length) {
         sel.innerHTML = `<option disabled selected>No open assignments</option>`;
         return;
       }
-      assignments.forEach(a=>{
+      assignments.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.id;
         opt.textContent = `${a.courseTitle ? a.courseTitle + ' · ' : ''}${a.title}`;
         sel.appendChild(opt);
       });
     }
-    async function submitAssignment(e){
+    async function submitAssignment(e) {
       e.preventDefault();
       const assignmentId = document.getElementById('assignmentSelect').value;
       const file = document.getElementById('fileUpload').files[0];
-      if (!assignmentId){ alert('Pick an assignment'); return; }
+      if (!assignmentId) { alert('Pick an assignment'); return; }
 
       const fd = new FormData();
       fd.append('studentId', userData.userId);
@@ -513,12 +565,12 @@
       document.getElementById('fileUpload').value = '';
       await loadRecentFeedback();
     }
-    async function loadRecentFeedback(){
-      const { items=[] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/recent-feedback`);
+    async function loadRecentFeedback() {
+      const { items = [] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/recent-feedback`);
       const ul = document.getElementById('recentFeedback');
       ul.innerHTML = '';
-      if (!items.length){ ul.innerHTML = '<li class="text-light">No feedback yet.</li>'; return; }
-      items.forEach(i=>{
+      if (!items.length) { ul.innerHTML = '<li class="text-light">No feedback yet.</li>'; return; }
+      items.forEach(i => {
         const li = document.createElement('li');
         li.textContent = `${i.title}: “${i.feedback || '—'}”`;
         ul.appendChild(li);
@@ -527,36 +579,36 @@
 
     // ===== Grades =====
     let gradeChart;
-    function renderSubjectsDropdown(subjects){
+    function renderSubjectsDropdown(subjects) {
       const sel = document.getElementById('gradeSubject');
       const keep = sel.value;
       sel.innerHTML = `<option value="All">All Subjects</option>`;
-      subjects.sort().forEach(s=>{
+      subjects.sort().forEach(s => {
         const opt = document.createElement('option');
         opt.value = s; opt.textContent = s;
         sel.appendChild(opt);
       });
       if (subjects.includes(keep)) sel.value = keep;
     }
-    function renderGradeTable(list){
+    function renderGradeTable(list) {
       const tb = document.getElementById('gradeTable');
       tb.innerHTML = '';
-      list.sort((a,b)=> new Date(b.date)-new Date(a.date)).forEach(g=>{
+      list.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(g => {
         const tr = document.createElement('tr');
         const d = new Date(g.date);
         tr.innerHTML = `<td>${d.toLocaleDateString()}</td><td>${g.subject}</td><td>${g.activity}</td><td>${g.score}%</td>`;
         tb.appendChild(tr);
       });
     }
-    function renderGradeChart(list){
+    function renderGradeChart(list) {
       const canvas = document.getElementById('gradeChart');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
 
       const points = list
         .slice()
-        .sort((a,b)=> new Date(a.date)-new Date(b.date))
-        .map(g=>({ x: new Date(g.date), y: g.score }));
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(g => ({ x: new Date(g.date), y: g.score }));
 
       if (gradeChart) gradeChart.destroy();
 
@@ -595,11 +647,11 @@
         }
       });
     }
-    async function loadGrades(){
+    async function loadGrades() {
       const days = document.getElementById('gradeRange').value;
       const subj = document.getElementById('gradeSubject').value;
       const qs = new URLSearchParams({ days, subject: subj });
-      const { items=[], subjects=[] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/grades?${qs}`);
+      const { items = [], subjects = [] } = await apiGet(`${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/grades?${qs}`);
       renderSubjectsDropdown(subjects || []);
       renderGradeTable(items);
       renderGradeChart(items);
@@ -608,8 +660,8 @@
     // Boot
     document.addEventListener('DOMContentLoaded', async () => {
       // calendar buttons
-      document.getElementById('prevMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth()-1); await loadCalendar(); });
-      document.getElementById('nextMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth()+1); await loadCalendar(); });
+      document.getElementById('prevMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth() - 1); await loadCalendar(); });
+      document.getElementById('nextMonth').addEventListener('click', async () => { calDate.setMonth(calDate.getMonth() + 1); await loadCalendar(); });
 
       document.getElementById('searchModules').addEventListener('input', () => loadLibrary().catch(console.error));
       document.getElementById('assignmentForm').addEventListener('submit', submitAssignment);
@@ -639,4 +691,5 @@
     }
   </script>
 </body>
+
 </html>

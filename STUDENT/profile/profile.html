@@ -4,19 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Student - Profile Management</title>
+
+  <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Page styles -->
   <link rel="stylesheet" href="profile.css" />
 
+  <style>
+    .visually-hidden-input{position:absolute;left:-9999px}
+    .wrap-anywhere{overflow-wrap:anywhere}
+  </style>
 </head>
-
 <body>
   <div class="dashboard">
+    <!-- Sidebar -->
     <div id="sidebar-container"></div>
 
+    <!-- Main -->
     <div class="main">
-     <header class="header-top">
+      <!-- Header -->
+      <header class="header-top">
         <div class="brand">
           <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
@@ -27,29 +37,33 @@
           <i class="fas fa-search"></i>
         </div>
 
-        <button class="profile-btn">
+        <button class="profile-btn" aria-label="Open profile menu">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username"></span>
         </button>
       </header>
 
-      <!-- Profile Section -->
+      <!-- Content -->
       <section class="content">
         <div class="ui-card section mb-3">
           <h2 class="fw-bold mb-3">Profile Management</h2>
 
-          <form id="profileForm" class="row g-4" enctype="multipart/form-data">
+          <form id="profileForm" class="row g-4" enctype="multipart/form-data" novalidate>
+            <!-- Avatar -->
             <div class="col-12 text-center">
-              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover;" alt="Profile Picture" loading="lazy" decoding="async" />
+              <img id="profilePreview" src="/assets/default-avatar.png" class="rounded-circle mb-3" width="120" height="120" style="object-fit:cover" alt="Profile Picture" loading="lazy" decoding="async" />
               <div class="d-flex justify-content-center">
-                <label for="profilePic" class="btn btn-amber-outline">Choose Photo</label>
-                <input type="file" id="profilePic" name="profilePic" accept="image/png, image/jpeg, image/webp" class="visually-hidden-input" />
+                <label for="profilePic" class="btn btn-amber-outline"><i class="bi bi-image me-1"></i>Choose Photo</label>
+                <input type="file" id="profilePic" name="profilePic" accept="image/png,image/jpeg,image/webp" class="visually-hidden-input" />
               </div>
+              <div class="form-text">PNG/JPG/WEBP up to 5 MB.</div>
             </div>
 
+            <!-- Names -->
             <div class="col-md-4">
               <label class="form-label">First Name</label>
               <input type="text" id="firstName" class="form-control" required autocomplete="given-name" />
+              <div class="invalid-feedback">First name is required.</div>
             </div>
             <div class="col-md-4">
               <label class="form-label">Middle Name</label>
@@ -58,17 +72,18 @@
             <div class="col-md-4">
               <label class="form-label">Last Name</label>
               <input type="text" id="lastName" class="form-control" required autocomplete="family-name" />
+              <div class="invalid-feedback">Last name is required.</div>
             </div>
 
-            <!-- Student ID (readonly) -->
+            <!-- IDs -->
             <div class="col-md-6">
               <label class="form-label">Student ID (readonly)</label>
               <input type="text" id="studentId" class="form-control" readonly aria-readonly="true" />
             </div>
-
             <div class="col-md-6">
               <label class="form-label">Username</label>
               <input type="text" id="username" class="form-control" required autocomplete="username" />
+              <div class="invalid-feedback">Username is required.</div>
             </div>
 
             <div class="col-md-6">
@@ -77,8 +92,12 @@
             </div>
 
             <div class="col-12 text-end">
-              <button type="submit" class="btn btn-amber">Update Profile</button>
-              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Change Password</button>
+              <button type="submit" class="btn btn-amber">
+                <i class="bi bi-check2-circle me-1"></i>Update Profile
+              </button>
+              <button type="button" class="btn btn-amber-outline ms-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                <i class="bi bi-shield-lock me-1"></i>Change Password
+              </button>
             </div>
           </form>
         </div>
@@ -88,14 +107,15 @@
           <div class="modal-dialog">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title">Change Password</h5>
+                <h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Change Password</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body">
-                <form id="changePasswordForm">
+                <form id="changePasswordForm" novalidate>
                   <div class="mb-3">
                     <label class="form-label">Current Password</label>
                     <input type="password" class="form-control" id="currentPassword" required autocomplete="current-password" />
+                    <div class="invalid-feedback">Enter your current password.</div>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">New Password</label>
@@ -106,7 +126,7 @@
                     <input type="password" class="form-control" id="confirmPassword" required minlength="8" autocomplete="new-password" />
                   </div>
 
-                  <ul class="list-unstyled mt-2" id="pwCriteria">
+                  <ul class="list-unstyled mt-2" id="pwCriteria" aria-live="polite">
                     <li id="pwLength"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
                     <li id="pwUpper"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
                     <li id="pwNumber"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
@@ -120,7 +140,9 @@
                   </div>
 
                   <div id="changePasswordMsg" class="mb-2" style="display:none;" aria-live="polite"></div>
-                  <button type="submit" class="btn btn-amber">Change Password</button>
+                  <button type="submit" class="btn btn-amber">
+                    <i class="bi bi-arrow-repeat me-1"></i>Change Password
+                  </button>
                 </form>
               </div>
             </div>
@@ -131,7 +153,7 @@
     </div>
   </div>
 
-  <!-- Generic App Modal (replaces alerts) -->
+  <!-- App Modal (replaces alerts) -->
   <div class="modal fade" id="appModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content border-0">
@@ -148,7 +170,7 @@
     </div>
   </div>
 
-  <!-- Sidebar JS -->
+  <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/STUDENT/components/sidebar.html")
@@ -175,20 +197,14 @@
         })
         .catch(err => console.error("Failed to load sidebar:", err));
     });
-
-    // Mobile toggle button
-    document.getElementById("sidebarToggle")?.addEventListener("click", () => {
-      const dash = document.querySelector(".dashboard");
-      const expanded = dash.classList.toggle("sidebar-expanded");
-      document.getElementById("sidebarToggle").setAttribute("aria-expanded", String(expanded));
-    });
   </script>
 
+  <!-- Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Profile Logic -->
+  <!-- Page Logic -->
   <script>
-    // ===== Modal helper (replaces alert) =====
+    /* ========= Modal helper ========= */
     const appModalEl = document.getElementById('appModal');
     const appModal = new bootstrap.Modal(appModalEl);
     const appModalTitle = document.getElementById('appModalTitle');
@@ -199,29 +215,26 @@
       appModalTitle.textContent = title;
       appModalBody.textContent = message;
 
-      // cleanup previous handlers
-      appModalPrimaryBtn.classList.add('d-none');
-      appModalPrimaryBtn.replaceWith(appModalPrimaryBtn.cloneNode(true));
-      const freshPrimary = document.getElementById('appModalPrimaryBtn');
+      // Reset primary button (ensure no stale handlers)
+      const fresh = appModalPrimaryBtn.cloneNode(true);
+      appModalPrimaryBtn.replaceWith(fresh);
 
       if (primaryText) {
-        freshPrimary.textContent = primaryText;
-        freshPrimary.classList.remove('d-none');
-        if (typeof onPrimary === 'function') {
-          freshPrimary.onclick = onPrimary;
-        }
+        fresh.textContent = primaryText;
+        fresh.classList.remove('d-none');
+        if (typeof onPrimary === 'function') fresh.onclick = onPrimary;
+      } else {
+        fresh.classList.add('d-none');
       }
 
-      // onHide (one-time)
-      appModalEl.addEventListener('hidden.bs.modal', function handler() {
-        appModalEl.removeEventListener('hidden.bs.modal', handler);
-        if (typeof onHide === 'function') onHide();
-      });
+      // one-time onHide
+      function handler() { appModalEl.removeEventListener('hidden.bs.modal', handler); if (typeof onHide === 'function') onHide(); }
+      appModalEl.addEventListener('hidden.bs.modal', handler);
 
       appModal.show();
     }
 
-    // ===== Utilities =====
+    /* ========= Shared helpers ========= */
     function initialsFrom(str) {
       if (!str) return "";
       const s = String(str).trim();
@@ -234,7 +247,6 @@
       const parts = s.split(/[\s\-]+/).filter(Boolean);
       return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
     }
-
     function setHeaderInitials(displayName) {
       const el = document.getElementById("Username");
       if (!el) return;
@@ -243,22 +255,14 @@
       el.title = displayName || "";
       el.setAttribute("aria-label", displayName || "");
     }
-
-    // Auth header helper
     function authHeaders(extra = {}) {
       const token = localStorage.getItem("authToken");
       return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
     }
-
-    // Base URLs
     const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const SERVER_BASE = isLocal ? "http://localhost:5000" : "";
     const API = `${SERVER_BASE}/api`;
-
-    // Helpers to safely use absolute/relative URLs coming from the server
-    function isAbsoluteUrl(u) {
-      return /^https?:\/\//i.test(u || "");
-    }
+    function isAbsoluteUrl(u) { return /^https?:\/\//i.test(u || ""); }
     function resolveURL(u, { cacheBust = false } = {}) {
       if (!u) return "";
       const url = isAbsoluteUrl(u) ? u : `${SERVER_BASE}${u}`;
@@ -267,22 +271,19 @@
       return `${url}${sep}t=${Date.now()}`;
     }
 
-    // ===== Startup auth guard =====
+    /* ========= Auth guard + header initials ========= */
     const rawUser = localStorage.getItem("user");
     if (!rawUser) { window.location.href = "/STUDENT/login/login.html"; }
     const storedUser = JSON.parse(rawUser || "{}");
     if (!storedUser?.userId) { window.location.href = "/STUDENT/login/login.html"; }
-
     const userId = encodeURIComponent(storedUser.userId);
-
-    // Header initials on load
     setHeaderInitials(
       storedUser.firstName && storedUser.lastName
         ? `${storedUser.firstName} ${storedUser.lastName}`
-        : storedUser.username || storedUser.email || ""
+        : storedUser.username || storedUser.email || "Student"
     );
 
-    // ===== Avatar preview + validation =====
+    /* ========= Avatar preview/validation ========= */
     const profilePicInput = document.getElementById("profilePic");
     const profilePreview = document.getElementById("profilePreview");
     const MAX_MB = 5;
@@ -293,10 +294,7 @@
       const okType = /^image\/(png|jpe?g|webp)$/i.test(f.type);
       const okSize = f.size <= MAX_MB * 1024 * 1024;
       if (!okType || !okSize) {
-        showAppModal({
-          title: "Invalid Image",
-          message: `Please select a PNG/JPG/WEBP up to ${MAX_MB} MB.`,
-        });
+        showAppModal({ title: "Invalid Image", message: `Please select a PNG/JPG/WEBP up to ${MAX_MB} MB.` });
         profilePicInput.value = "";
         return;
       }
@@ -304,9 +302,9 @@
       previewUrl = URL.createObjectURL(f);
       profilePreview.src = previewUrl;
     });
-    window.addEventListener("beforeunload", () => previewUrl && URL.revokeObjectURL(previewUrl));
+    window.addEventListener("beforeunload", () => { if (previewUrl) URL.revokeObjectURL(previewUrl); });
 
-    // ===== Student ID resolve + lock =====
+    /* ========= Student ID lock ========= */
     const studentIdInput = document.getElementById("studentId");
     const lockStudentId = (v) => {
       studentIdInput.value = v || "";
@@ -314,12 +312,10 @@
       studentIdInput.setAttribute("aria-readonly", "true");
     };
     function resolveStudentId(u) {
-      return (
-        u.studentId || u.studentID || u.sid || u.idNumber || u.lpuId || u.student_no || ""
-      );
+      return (u.studentId || u.studentID || u.sid || u.idNumber || u.lpuId || u.student_no || "");
     }
 
-    // ===== Load user =====
+    /* ========= Load user ========= */
     (async () => {
       try {
         const res = await fetch(`${API}/users/${userId}`, { headers: authHeaders() });
@@ -328,8 +324,8 @@
             title: "Session Expired",
             message: "Please log in again.",
             primaryText: "Log in",
-            onPrimary: () => { logoutUser(); },
-            onHide: () => { logoutUser(); }
+            onPrimary: logoutUser,
+            onHide: logoutUser
           });
           return;
         }
@@ -348,7 +344,7 @@
           // Header initials
           setHeaderInitials(
             (user.firstName || user.lastName) ? `${user.firstName||""} ${user.lastName||""}`.trim()
-              : user.username || user.email || ""
+              : user.username || user.email || "Student"
           );
 
           // Persist safe fields + avatar
@@ -360,14 +356,20 @@
           localStorage.setItem("user", JSON.stringify(storedUser));
         }
       } catch (err) {
-        console.error("❌ Error fetching user:", err);
+        console.error("Error fetching user:", err);
       }
     })();
 
-    // ===== Update profile (Change Photo uploads via FormData) =====
+    /* ========= Update profile ========= */
     const profileForm = document.getElementById("profileForm");
-    profileForm.addEventListener("submit", async e => {
+    function validateForm(form){
+      form.classList.add('was-validated');
+      return form.checkValidity();
+    }
+    profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!validateForm(profileForm)) return;
+
       const submitBtn = profileForm.querySelector('button[type="submit"]');
       submitBtn.disabled = true; const oldText = submitBtn.textContent; submitBtn.textContent = "Updating…";
 
@@ -381,26 +383,28 @@
       try {
         const res = await fetch(`${API}/users/${userId}/profile`, {
           method: "POST",
-          headers: authHeaders(), // don't set Content-Type for FormData
+          headers: authHeaders(), // keep boundary for FormData
           body: fd
         });
+
         if (res.status === 401) {
           showAppModal({
             title: "Session Expired",
             message: "Please log in again.",
             primaryText: "Log in",
-            onPrimary: () => { logoutUser(); },
-            onHide: () => { logoutUser(); }
+            onPrimary: logoutUser,
+            onHide: logoutUser
           });
           return;
         }
+        if (res.status === 413) {
+          showAppModal({ title: "Upload Too Large", message: "Your image exceeds the server limit." });
+          return;
+        }
+
         const result = await res.json().catch(() => ({}));
         if (res.ok && result.success) {
-          // success modal
-          showAppModal({
-            title: "Profile Updated",
-            message: "Your profile has been updated successfully."
-          });
+          showAppModal({ title: "Profile Updated", message: "Your profile has been updated successfully." });
 
           if (result.updatedUser) {
             const uu = result.updatedUser;
@@ -408,66 +412,32 @@
             storedUser.firstName = uu.firstName ?? storedUser.firstName;
             storedUser.lastName  = uu.lastName  ?? storedUser.lastName;
 
-            // Re-lock Student ID to server value if echoed
             lockStudentId(resolveStudentId(uu) || studentIdInput.value);
 
             setHeaderInitials(
               (uu.firstName || uu.lastName) ? `${uu.firstName||""} ${uu.lastName||""}`.trim()
-                : uu.username || storedUser.email || ""
+                : uu.username || storedUser.email || "Student"
             );
+
+            if (uu.photoURL) {
+              if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+              profilePreview.src = resolveURL(uu.photoURL, { cacheBust: true });
+              storedUser.photoURL = uu.photoURL;
+            }
+            localStorage.setItem("user", JSON.stringify(storedUser));
           }
-          if (result.updatedUser?.photoURL) {
-            if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-            profilePreview.src = resolveURL(result.updatedUser.photoURL, { cacheBust: true });
-            storedUser.photoURL = result.updatedUser.photoURL;
-          }
-          localStorage.setItem("user", JSON.stringify(storedUser));
         } else {
-          showAppModal({
-            title: "Update Failed",
-            message: result.message || "We couldn't update your profile. Please try again."
-          });
+          showAppModal({ title: "Update Failed", message: result.message || "We couldn't update your profile. Please try again." });
         }
       } catch (err) {
-        console.error("❌ Update failed:", err);
-        showAppModal({
-          title: "Update Failed",
-          message: "An unexpected error occurred while updating your profile."
-        });
+        console.error("Update failed:", err);
+        showAppModal({ title: "Update Failed", message: "An unexpected error occurred while updating your profile." });
       } finally {
         submitBtn.disabled = false; submitBtn.textContent = oldText;
       }
     });
 
-    // ===== Auto-login helpers =====
-    function persistAuth(obj) {
-      const u = obj?.user || obj?.data?.user || obj?.data || obj;
-      const token = obj?.token || obj?.accessToken || obj?.jwt || obj?.data?.token || null;
-      if (u) localStorage.setItem("user", JSON.stringify({ ...u, token }));
-      if (token) localStorage.setItem("authToken", token);
-    }
-    async function smartLogin({ email, username, password }) {
-      const bodies = [];
-      if (email) { bodies.push({ email, password }, { identifier: email, password }); }
-      if (username) { bodies.push({ username, password }, { identifier: username, password }); }
-      const routes = [`${API}/login`, `${API}/auth/login`, `${SERVER_BASE}/login`, `${SERVER_BASE}/auth/login`];
-      const creds = ["include", "omit"];
-      for (const url of routes) {
-        for (const b of bodies) {
-          for (const c of creds) {
-            try {
-              const r = await fetch(url, { method: "POST", credentials: c, headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
-              const txt = await r.text(); let j = {}; try { j = JSON.parse(txt); } catch { }
-              const ok = j?.user || j?.data?.user || (j?.success && (j?.user || j?.data));
-              if (r.ok && ok) { persistAuth(j); return j; }
-            } catch {}
-          }
-        }
-      }
-      throw new Error("All login attempts failed");
-    }
-
-    // ===== Password change (with auto re-login + auto-close) =====
+    /* ========= Password change ========= */
     const newPw = document.getElementById("newPassword");
     const confirmPw = document.getElementById("confirmPassword");
     const msgDiv = document.getElementById("changePasswordMsg");
@@ -496,9 +466,39 @@
       newPw.type = t; confirmPw.type = t;
     });
 
+    function persistAuth(obj) {
+      const u = obj?.user || obj?.data?.user || obj?.data || obj;
+      const token = obj?.token || obj?.accessToken || obj?.jwt || obj?.data?.token || null;
+      if (u) localStorage.setItem("user", JSON.stringify({ ...u, token }));
+      if (token) localStorage.setItem("authToken", token);
+    }
+    async function smartLogin({ email, username, password }) {
+      const bodies = [];
+      if (email)    bodies.push({ email, password }, { identifier: email, password });
+      if (username) bodies.push({ username, password }, { identifier: username, password });
+      const routes = [`${API}/login`, `${API}/auth/login`, `${SERVER_BASE}/login`, `${SERVER_BASE}/auth/login`];
+      const creds = ["include", "omit"];
+      for (const url of routes) {
+        for (const b of bodies) {
+          for (const c of creds) {
+            try {
+              const r = await fetch(url, { method: "POST", credentials: c, headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+              const txt = await r.text(); let j = {}; try { j = JSON.parse(txt); } catch {}
+              const ok = j?.user || j?.data?.user || (j?.success && (j?.user || j?.data));
+              if (r.ok && ok) { persistAuth(j); return j; }
+            } catch {}
+          }
+        }
+      }
+      throw new Error("All login attempts failed");
+    }
+
     const pwForm = document.getElementById("changePasswordForm");
-    pwForm.addEventListener("submit", async e => {
+    pwForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // simple validity UI
+      pwForm.classList.add('was-validated');
       const currentPassword = document.getElementById("currentPassword").value;
       const newPassword = newPw.value;
       const confirmPassword = confirmPw.value;
@@ -510,11 +510,11 @@
 
       const showErr = (m) => { msgDiv.textContent = m; msgDiv.classList.add("text-danger"); msgDiv.style.display = "block"; };
 
-      if (newPassword.length < 8) { showErr("Password ≥8 chars"); done(); return; }
-      if (!/[A-Z]/.test(newPassword)) { showErr("Need uppercase"); done(); return; }
-      if (!/\d/.test(newPassword)) { showErr("Need number"); done(); return; }
-      if (!/[^A-Za-z0-9]/.test(newPassword)) { showErr("Need special char"); done(); return; }
-      if (newPassword !== confirmPassword) { showErr("Passwords do not match"); done(); return; }
+      if (newPassword.length < 8) { showErr("Password must be at least 8 characters."); done(); return; }
+      if (!/[A-Z]/.test(newPassword)) { showErr("Include at least one uppercase letter."); done(); return; }
+      if (!/\d/.test(newPassword)) { showErr("Include at least one number."); done(); return; }
+      if (!/[^A-Za-z0-9]/.test(newPassword)) { showErr("Include at least one special character."); done(); return; }
+      if (newPassword !== confirmPassword) { showErr("Passwords do not match."); done(); return; }
 
       try {
         const res = await fetch(`${API}/users/${userId}/change-password`, {
@@ -522,32 +522,34 @@
           headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ currentPassword, newPassword })
         });
+
         if (res.status === 401) {
           showAppModal({
             title: "Session Expired",
             message: "Please log in again.",
             primaryText: "Log in",
-            onPrimary: () => { logoutUser(); },
-            onHide: () => { logoutUser(); }
+            onPrimary: logoutUser,
+            onHide: logoutUser
           });
           done();
           return;
         }
-
         const result = await res.json().catch(() => ({}));
         if (!res.ok || !result.success) { showErr(result.error || `HTTP ${res.status}`); done(); return; }
 
-        // Re-login
+        // Re-login (keep session fresh)
         const latestEmail = document.getElementById("email").value || storedUser.email || null;
         const latestUsername = document.getElementById("username").value || storedUser.username || null;
 
         try {
           await smartLogin({ email: latestEmail, username: latestUsername, password: newPassword });
-          msgDiv.textContent = "Password changed!"; msgDiv.classList.add("text-success"); msgDiv.style.display = "block";
+          msgDiv.textContent = "Password changed successfully.";
+          msgDiv.classList.add("text-success"); msgDiv.style.display = "block";
           setTimeout(() => {
             bootstrap.Modal.getOrCreateInstance(document.getElementById("changePasswordModal")).hide();
             pwForm.reset();
             msgDiv.style.display = "none";
+            pwForm.classList.remove('was-validated');
           }, 1200);
         } catch {
           showErr("Password changed, but auto-login failed. Please log in again.");
@@ -559,9 +561,10 @@
         done();
       }
 
-      function done() { btn.disabled = false; btn.textContent = old; }
+      function done(){ btn.disabled = false; btn.textContent = old; }
     });
 
+    /* ========= Logout ========= */
     function logoutUser() {
       localStorage.clear(); sessionStorage.clear();
       window.location.href = "/STUDENT/login/login.html";
