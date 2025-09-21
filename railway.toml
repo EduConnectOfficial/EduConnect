@@ -1,8 +1,9 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci"
+buildCommand = "echo 'no build step'"
 
 [deploy]
 rootDirectory = "backend-code/backend"
 startCommand = "npm start"
 healthcheckPath = "/api/health"
+healthcheckTimeout = 10
