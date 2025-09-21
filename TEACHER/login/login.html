@@ -13,7 +13,7 @@
 
 <body>
 
- <!-- Top Logo -->
+  <!-- Top Logo -->
   <div class="top-logo text-center brand">
     <!-- CSIS logo beside EduConnect -->
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
@@ -84,7 +84,12 @@
 
   <!-- Login Logic -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    // ✅ Only change: dynamic API base. Same-origin on Railway; localhost in dev.
+    const API_BASE =
+      (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://localhost:5000'
+        : ''; // same-origin in production
+
     const form = document.getElementById("loginForm");
     const btn = document.getElementById("loginBtn");
     const errorBox = document.getElementById("loginError");
@@ -117,13 +122,36 @@
     const normalize = (v) => String(v || "").trim();
     const normalizeUserKey = (v) => normalize(v).toLowerCase();
 
+    // Small helper: try a list of URLs in order until one works (non-404)
+    async function fetchJSONFallback(urls, options) {
+      for (const url of urls) {
+        try {
+          const r = await fetch(url, options);
+          // If 404, try next; otherwise return result (even if 4xx for caller to handle)
+          if (r.status === 404) continue;
+          let json = {};
+          try { json = await r.json(); } catch { json = {}; }
+          return { response: r, json };
+        } catch {
+          // network error → try next
+          continue;
+        }
+      }
+      // nothing worked
+      throw new Error('All endpoints failed');
+    }
+
     async function usernameExists(username) {
+      const q = new URLSearchParams({ username });
+      const urls = [
+        `${API_BASE}/check-username?${q.toString()}`,              // root path
+        `${API_BASE}/api/users/check-username?${q.toString()}`,    // /api path
+      ];
       try {
-        const q = new URLSearchParams({ username });
-        const r = await fetch(`${API_BASE}/check-username?${q.toString()}`, { method: 'GET' });
-        if (!r.ok) return false;
-        const j = await r.json();
-        return !!j && j.taken === true; // taken=true => username exists
+        const { response, json } = await fetchJSONFallback(urls, { method: 'GET' });
+        if (!response.ok) return false;
+        // Expecting something like { taken: true/false } or { exists: true/false }
+        return json.taken === true || json.exists === true;
       } catch {
         // network hiccup: don't block login attempt
         return true;
@@ -167,7 +195,7 @@
       attemptModal.show();
     }
 
-    // ✅ Your unified attempt notice
+    // Unified attempt notice
     function showAttemptNotice() {
       let msg = `You have made ${failedAttempts} failed login attempt(s).`;
       if (failedAttempts < MAX_ATTEMPTS) {
@@ -207,14 +235,16 @@
           return;
         }
 
-        const response = await fetch(`${API_BASE}/login`, {
+        // Try /login then /api/login
+        const urls = [
+          `${API_BASE}/login`,
+          `${API_BASE}/api/login`,
+        ];
+        const { response, json: data } = await fetchJSONFallback(urls, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password })
         });
-
-        let data = {};
-        try { data = await response.json(); } catch { data = {}; }
 
         if (response.ok && data.user?.isTeacher) {
           // safety: ensure same username
