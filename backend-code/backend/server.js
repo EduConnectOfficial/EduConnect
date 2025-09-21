@@ -1,4 +1,4 @@
-// ==== server.js ==== //
+// ==== server.js ====
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
@@ -13,21 +13,30 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
-/* ===== CORS FIRST (Express 5 safe) ===== */
+/* ===== Behind proxy (Railway) ===== */
+app.set('trust proxy', 1);
+
+/* ===== CORS (Express 5 safe) ===== */
 app.use(cors(corsOptions));
-// Optional explicit preflight (choose ONE; both shown for clarity, keep only the first)
-app.options(/.*/, cors(corsOptions));     // ✅ regex works in Express 5
-// app.options('/*', cors(corsOptions));   // ✅ string wildcard also OK
+app.options(/.*/, cors(corsOptions)); // preflight
 
 /* ===== Parsers ===== */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-/* ===== Static files ===== */
+/* ===== Serve frontend (same service) ===== */
+const ROOT = path.join(__dirname, '..', '..'); // repo root
+app.use('/ADMIN',      express.static(path.join(ROOT, 'ADMIN')));
+app.use('/STUDENT',    express.static(path.join(ROOT, 'STUDENT')));
+app.use('/TEACHER',    express.static(path.join(ROOT, 'TEACHER')));
+app.use('/assets',     express.static(path.join(ROOT, 'assets')));
+app.use('/components', express.static(path.join(ROOT, 'components')));
+
+/* ===== Static uploads (dev note: Railway disk is ephemeral) ===== */
 app.use('/uploads', staticUploads(path.join(__dirname, 'uploads')));
 
 /* ===== Healthcheck ===== */
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 /* ===== Routes ===== */
 app.use('/', testRoutes);
@@ -54,25 +63,25 @@ app.use('/api', require('./routes/studentProgressRoutes'));
 app.use('/api', require('./routes/adminDashboardRoutes'));
 app.use('/', require('./routes/usersCompatRoutes'));
 app.use('/api', require('./routes/bugReportRoutes'));
-// app.use('/api/teacher', require('./routes/quizEssayRoutes'));
 app.use('/api/teacher', require('./routes/teacherEssayRoutes'));
 app.use('/api/forum', require('./routes/forumRoutes'));
-// server.js
+
 const studentGradesRoutes = require('./routes/studentGradesRoutes');
 app.use('/api', studentGradesRoutes);
-
 app.use('/api/teacher', require('./routes/studentAnalyticsRoutes'));
 
-
-
 /* ===== 404 ===== */
-app.use((req, res) => res.status(404).json({ success: false, message: 'Not found' }));
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Not found' });
+});
 
 /* ===== Errors ===== */
 app.use(errorHandler);
 
 /* ===== Start ===== */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Hello! Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Hello! Server running on port ${PORT}`);
+});
 
 module.exports = app;
