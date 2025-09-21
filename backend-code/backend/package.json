@@ -1,0 +1,23 @@
+{
+  "name": "educonnect-api",
+  "private": true,
+  "main": "server.js",
+  "engines": { "node": "20.x" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@json2csv/plainjs": "^7.0.6",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.6",
+    "pdfkit": "^0.17.1",
+    "xlsx": "^0.18.5"
+  }
+}
