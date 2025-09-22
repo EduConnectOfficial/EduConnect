@@ -1,4 +1,6 @@
 // backend/routes/classesRoutes.js
+'use strict';
+
 const router = require('express').Router();
 const XLSX = require('xlsx');
 const multer = require('multer');
@@ -7,7 +9,13 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-const { safeDecrypt } = require('../utils/fieldCrypto'); // switched
+
+// ⬇️ use tolerant decrypt + name helpers
+const {
+  safeDecrypt,
+  smartFirstName,
+  smartLastName
+} = require('../utils/fieldCrypto');
 
 // ====== In-memory uploader for bulk ======
 const memoryStorage = multer.memoryStorage();
@@ -44,12 +52,13 @@ function isStudentUser(u = {}) {
   return hasStudentId && !isTeacherSignal;
 }
 
-// Small helper to decrypt names from a user doc
+// ---- name decryption with robust fallbacks ----
 function decryptNamesFromUser(u = {}) {
+  const ctx = { fullName: u.fullName, username: u.username, email: u.email };
   return {
-    firstName:  safeDecrypt(u.firstNameEnc  || u.firstName  || ''),
-    middleName: safeDecrypt(u.middleNameEnc || u.middleName || ''),
-    lastName:   safeDecrypt(u.lastNameEnc   || u.lastName   || ''),
+    firstName:  smartFirstName(u.firstNameEnc,  { ...ctx, plain: u.firstName }),
+    middleName: safeDecrypt(u.middleNameEnc, u.middleName || ''),
+    lastName:   smartLastName(u.lastNameEnc,   { ...ctx, plain: u.lastName }),
   };
 }
 
@@ -533,7 +542,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
           }
         }
       }
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   const LIMIT = 500;
@@ -553,7 +562,14 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     const em = String(u.email || '').toLowerCase();
     const sid = String(u.studentId || '').toLowerCase();
 
-    if (sid.includes(qLower) || fn.includes(qLower) || mn.includes(qLower) || ln.includes(qLower) || full.includes(qLower) || em.includes(qLower)) {
+    if (
+      sid.includes(qLower) ||
+      fn.includes(qLower)  ||
+      mn.includes(qLower)  ||
+      ln.includes(qLower)  ||
+      full.includes(qLower)||
+      em.includes(qLower)
+    ) {
       matches.push({
         studentId: u.studentId || '',
         firstName: names.firstName || '',
@@ -592,7 +608,7 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
           const full = `${names.firstName || ''} ${names.lastName || ''}`.trim();
           teacherMap[tid] = full || t.username || 'Teacher';
         }
-      } catch {}
+      } catch { /* ignore */ }
     }));
     enrollments = enrollments.map(e => ({
       ...e,

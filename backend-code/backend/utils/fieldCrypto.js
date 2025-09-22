@@ -1,18 +1,26 @@
-// backend/utils/fieldCrypto.js
+// utils/fieldCrypto.js
 'use strict';
+
 const crypto = require('crypto');
 
 const ALGO = 'aes-256-gcm';
 
-/* ------------------------------------------------------------------ */
-/*                       Key ring (Railway-friendly)                   */
-/* ------------------------------------------------------------------ */
+/* =========================================================================
+   KEY MANAGEMENT
+   - Provide keys via:
+       PII_ENC_KEYS = "<NEW_HEX>[, <OLDER_HEX>, ...]"
+     or
+       PII_ENC_KEY  = "<SINGLE_HEX>"
+   - Keys may be HEX (preferred) or base64; length must be 16/24/32 bytes.
+   - We DO NOT silently generate a random key for encryption (to avoid
+     writing data that can never be decrypted on the next deploy).
+=========================================================================== */
 
 function parseKey(str) {
   const raw = (str || '').trim();
   if (!raw) return null;
 
-  // hex (preferred)
+  // HEX (preferred)
   if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0) {
     const b = Buffer.from(raw, 'hex');
     if ([16, 24, 32].includes(b.length)) return b;
@@ -22,42 +30,42 @@ function parseKey(str) {
   try {
     const b = Buffer.from(raw, 'base64');
     if ([16, 24, 32].includes(b.length)) return b;
-  } catch (_) {}
-
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
-/** Load newest-first keys from env (PII_ENC_KEYS or fallback PII_ENC_KEY). */
+/** Parse env -> newest-first key ring */
 function getKeyRing() {
   const raw = (process.env.PII_ENC_KEYS || process.env.PII_ENC_KEY || '').trim();
   if (!raw) {
-    console.warn('[fieldCrypto] Missing PII_ENC_KEYS/PII_ENC_KEY');
-    console.warn('[fieldCrypto] Missing PII_ENC_KEYS/PII_ENC_KEY');
+    console.warn('[fieldCrypto] Missing PII_ENC_KEYS / PII_ENC_KEY');
     return [];
   }
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
   const keys = parts.map(parseKey).filter(Boolean);
   if (keys.length === 0) {
-    console.warn('[fieldCrypto] No valid keys parsed (expect 16/24/32 bytes, hex or base64)');
-  } else {
-    console.log(`[fieldCrypto] key ring loaded: ${keys.length} key(s), first length=${keys[0].length} bytes`);
+    console.warn('[fieldCrypto] No valid keys parsed (need 16/24/32 bytes in hex or base64).');
   }
   return keys;
 }
 
 const KEY_RING = getKeyRing();
-const KEY_PRIMARY = KEY_RING[0] || crypto.randomBytes(32); // encrypt will still work, but use real keys in env
-const KEY_BYTES = KEY_PRIMARY.length;
+const KEY_PRIMARY = KEY_RING[0] || null; // null => encrypt will throw (safer)
 
-/* ------------------------------------------------------------------ */
-/*                           Encrypt (current)                         */
-/*   Stored format: "<enc||tag hex>:<iv hex>" (GCM tag is last 16B)    */
-/* ------------------------------------------------------------------ */
-
+/* =========================================================================
+   ENCRYPT (current format)
+   Format:  "<enc||tag hex>:<iv hex>"
+=========================================================================== */
 function encryptField(v) {
   if (v === undefined || v === null) return '';
+  if (!KEY_PRIMARY) {
+    throw new Error('[fieldCrypto] No encryption key configured. Set PII_ENC_KEYS or PII_ENC_KEY.');
+  }
+
   const plain = String(v);
-  const iv = crypto.randomBytes(12);
+  const iv = crypto.randomBytes(12); // 96-bit IV for GCM
   const cipher = crypto.createCipheriv(ALGO, KEY_PRIMARY, iv);
   const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -65,87 +73,75 @@ function encryptField(v) {
   return `${outHex}:${iv.toString('hex')}`;
 }
 
-/* ------------------------------------------------------------------ */
-/*                               Decrypt                               */
-/*   Supports:                                                         */
-/*   1) "<enc||tag hex>:<iv hex>"                                      */
-/*   2) "<iv b64>:<ct b64>:<tag b64>"                                  */
-/*   3) "<iv hex>:<ct hex>:<tag hex>"                                  */
-/*   If token is not in any encrypted format, return it as plaintext.  */
-/* ------------------------------------------------------------------ */
-
+/* =========================================================================
+   DECRYPT (tries current format first, then legacy; tries all keys)
+   - Current: "<cipher||tag hex>:<iv hex>"
+   - Legacy : "<iv base64>:<ct base64>:<tag base64>"
+=========================================================================== */
 function decryptWithKey(bufEnc, bufTag, bufIv, key) {
   const d = crypto.createDecipheriv(ALGO, key, bufIv);
   d.setAuthTag(bufTag);
   return Buffer.concat([d.update(bufEnc), d.final()]);
 }
 
-const isHex = s => /^[0-9a-fA-F]+$/.test(s || '');
-
+/** STRICT decrypt. Throws on true decrypt failures; returns plaintext if token does not look encrypted. */
 function decryptField(token) {
   if (!token) return '';
-  const s = String(token).trim();
+  const s = String(token);
   const parts = s.split(':');
 
-  // Case 1: current 2-part hex -> cipherAndTagHex : ivHex
-  if (parts.length === 2 && isHex(parts[0]) && isHex(parts[1])) {
+  // Case 1: current hex format -> cipherHex:ivHex
+  if (
+    parts.length === 2 &&
+    /^[0-9a-fA-F]+$/.test(parts[0]) &&
+    /^[0-9a-fA-F]+$/.test(parts[1])
+  ) {
     const data = Buffer.from(parts[0], 'hex');
-    const iv   = Buffer.from(parts[1], 'hex');
-    if (iv.length !== 12) throw new Error('Invalid IV length (2-part hex)');
-    if (data.length < 16) throw new Error('Cipher data too short (2-part hex)');
+    const iv = Buffer.from(parts[1], 'hex');
+    if (iv.length !== 12) throw new Error('Invalid IV length for hex format (expected 12)');
+    if (data.length < 16) throw new Error('Cipher data too short');
+
     const tag = data.slice(-16);
     const enc = data.slice(0, -16);
 
     let lastErr;
     for (const key of KEY_RING) {
-      try { return decryptWithKey(enc, tag, iv, key).toString('utf8'); }
-      catch (e) { lastErr = e; }
+      try {
+        return decryptWithKey(enc, tag, iv, key).toString('utf8');
+      } catch (e) {
+        lastErr = e;
+      }
     }
-    throw lastErr || new Error('No matching key (2-part hex)');
+    throw lastErr || new Error('No keys available for decrypt');
   }
 
-  // Case 2: legacy 3-part base64 -> ivB64 : ctB64 : tagB64
-  if (parts.length === 3 && !isHex(parts[0] + parts[1] + parts[2])) {
+  // Case 2: legacy base64 -> ivB64:ctB64:tagB64
+  if (parts.length === 3) {
     const [ivB64, ctB64, tagB64] = parts;
-    const iv  = Buffer.from(ivB64, 'base64');
+    const iv = Buffer.from(ivB64, 'base64');
     const enc = Buffer.from(ctB64, 'base64');
     const tag = Buffer.from(tagB64, 'base64');
-    if (iv.length !== 12) throw new Error('Invalid IV length (3-part b64)');
-    if (tag.length !== 16) throw new Error('Invalid tag length (3-part b64)');
+    if (iv.length !== 12) throw new Error('Invalid IV length for base64 format (expected 12)');
+    if (tag.length !== 16) throw new Error('Invalid tag length for base64 format (expected 16)');
 
     let lastErr;
     for (const key of KEY_RING) {
-      try { return decryptWithKey(enc, tag, iv, key).toString('utf8'); }
-      catch (e) { lastErr = e; }
+      try {
+        return decryptWithKey(enc, tag, iv, key).toString('utf8');
+      } catch (e) {
+        lastErr = e;
+      }
     }
-    throw lastErr || new Error('No matching key (3-part b64)');
+    throw lastErr || new Error('No keys available for decrypt (legacy)');
   }
 
-  // Case 3: legacy 3-part hex -> ivHex : ctHex : tagHex
-  if (parts.length === 3 && isHex(parts[0]) && isHex(parts[1]) && isHex(parts[2])) {
-    const [ivHex, ctHex, tagHex] = parts;
-    const iv  = Buffer.from(ivHex,  'hex');
-    const enc = Buffer.from(ctHex,  'hex');
-    const tag = Buffer.from(tagHex, 'hex');
-    if (iv.length !== 12) throw new Error('Invalid IV length (3-part hex)');
-    if (tag.length !== 16) throw new Error('Invalid tag length (3-part hex)');
-
-    let lastErr;
-    for (const key of KEY_RING) {
-      try { return decryptWithKey(enc, tag, iv, key).toString('utf8'); }
-      catch (e) { lastErr = e; }
-    }
-    throw lastErr || new Error('No matching key (3-part hex)');
-  }
-
-  // Not recognized as encrypted -> treat as plaintext (older rows)
+  // Not in any encrypted format => treat as plaintext (older rows)
   return s;
 }
 
-/* ------------------------------------------------------------------ */
-/*                         Safe + “smart” helpers                      */
-/* ------------------------------------------------------------------ */
-
+/* =========================================================================
+   SAFE WRAPPER (doesn't throw; throttled logging)
+=========================================================================== */
 let warnCount = 0;
 let suppressed = false;
 const MAX_WARN = parseInt(process.env.PII_ENC_MAX_WARN || '10', 10);
@@ -165,26 +161,20 @@ function safeDecrypt(token, fallback = '') {
         }
       }
     }
-    if (LOG_ENABLED && !suppressed) {
-      warnCount++;
-      if (warnCount <= MAX_WARN) {
-        console.warn('[fieldCrypto] decrypt failed:', e.message);
-        if (warnCount === MAX_WARN) {
-          suppressed = true;
-          console.warn('[fieldCrypto] further decrypt warnings suppressed…');
-        }
-      }
-    }
     return fallback;
   }
 }
 
-// Nice-to-have: derive readable names when decrypt is missing/impossible
+/* =========================================================================
+   NAME FALLBACK HELPERS (for UI resilience)
+=========================================================================== */
 function deriveNameFallback({ fullName, username, email } = {}) {
   const f = (fullName || '').trim();
   if (f) {
     const parts = f.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) return { first: parts[0], last: parts[parts.length - 1] };
+    if (parts.length >= 2) {
+      return { first: parts[0], last: parts[parts.length - 1] };
+    }
     return { first: parts[0] || '', last: '' };
   }
   if (username) return { first: String(username), last: '' };
@@ -192,25 +182,41 @@ function deriveNameFallback({ fullName, username, email } = {}) {
   return { first: '', last: '' };
 }
 
-function smartFirstName(token, ctx = {}) {
-  const d = safeDecrypt(token, '');
+/**
+ * smartFirstName / smartLastName
+ * - Try decrypt
+ * - Else use provided plaintext (ctx.plain)
+ * - Else derive from fullName → username → email
+ */
+function smartFirstName(encToken, ctx = {}) {
+  const d = safeDecrypt(encToken, '');
   if (d) return d;
   if (ctx.plain) return String(ctx.plain);
   return deriveNameFallback(ctx).first;
 }
 
-function smartLastName(token, ctx = {}) {
-  const d = safeDecrypt(token, '');
+function smartLastName(encToken, ctx = {}) {
+  const d = safeDecrypt(encToken, '');
   if (d) return d;
   if (ctx.plain) return String(ctx.plain);
   return deriveNameFallback(ctx).last;
 }
 
+/* =========================================================================
+   EXPORTS
+=========================================================================== */
 module.exports = {
+  // crypto
   encryptField,
-  decryptField,   // strict
-  safeDecrypt,    // tolerant
+  decryptField,
+  safeDecrypt,
+
+  // name helpers
   smartFirstName,
   smartLastName,
-  KEY_BYTES,
+  deriveNameFallback,
+
+  // (optional) expose key info for diagnostics
+  __hasPrimaryKey: !!KEY_PRIMARY,
+  __keyCount: KEY_RING.length,
 };
