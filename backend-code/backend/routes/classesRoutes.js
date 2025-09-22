@@ -9,7 +9,7 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-const { safeDecrypt } = require('../utils/fieldCrypto');
+const { preferDecrypt } = require('../utils/fieldCrypto'); // <-- use preferDecrypt
 
 // ===== In-memory uploader for bulk =====
 const memoryStorage = multer.memoryStorage();
@@ -44,7 +44,7 @@ function isStudentUser(u = {}) {
   return hasStudentId && !isTeacherSignal;
 }
 
-// ---------- FULL NAME FIRST: decrypt + split helpers ----------
+// ---------- name helpers ----------
 function splitFullName(full = '') {
   const s = String(full || '').trim();
   if (!s) return { first: '', last: '' };
@@ -58,30 +58,32 @@ function fallbackNameFromEmail(email = '') {
   return m ? m[0] : '';
 }
 
-// Prefer: fullName -> decrypted first/last -> plaintext first/last -> username/email
+/**
+ * Prefer: fullName -> decrypted first/middle/last -> plaintext first/middle/last -> username/email
+ */
 function decryptNamesFromUser(u = {}) {
-  const decFirst  = safeDecrypt(u.firstNameEnc,  u.firstName || '');
-  const decMiddle = safeDecrypt(u.middleNameEnc, u.middleName || '');
-  const decLast   = safeDecrypt(u.lastNameEnc,   u.lastName || '');
-  const hasDec = (decFirst || decLast);
+  // try encrypted tokens; if not present / not decryptable, fall back to the plain fields
+  const firstName  = preferDecrypt(u.firstNameEnc,  u.firstName || '');
+  const middleName = preferDecrypt(u.middleNameEnc, u.middleName || '');
+  const lastName   = preferDecrypt(u.lastNameEnc,   u.lastName || '');
 
-  const full = String(u.fullName || '').trim();
-  if (full) {
-    const { first, last } = splitFullName(full);
+  const fullRaw = String(u.fullName || '').trim();
+  if (fullRaw) {
+    const { first, last } = splitFullName(fullRaw);
     return {
-      firstName: first || decFirst || fallbackNameFromEmail(u.email) || u.username || '',
-      middleName: decMiddle || '',
-      lastName: last || decLast || '',
-      fullName: full
+      firstName: first || firstName || fallbackNameFromEmail(u.email) || u.username || '',
+      middleName,
+      lastName: last || lastName || '',
+      fullName: fullRaw,
     };
   }
 
-  if (hasDec) {
-    const built = `${decFirst} ${decMiddle ? decMiddle + ' ' : ''}${decLast}`.replace(/\s+/g,' ').trim();
-    return { firstName: decFirst, middleName: decMiddle, lastName: decLast, fullName: built || '' };
+  const built = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.replace(/\s+/g, ' ').trim();
+  if (built) {
+    return { firstName, middleName, lastName, fullName: built };
   }
 
-  // nothing decrypted/recorded — last-ditch from username/email
+  // nothing to use — fall back to username/email
   const guessed = fallbackNameFromEmail(u.email) || u.username || 'Student';
   const { first, last } = splitFullName(guessed);
   return { firstName: first, middleName: '', lastName: last, fullName: guessed };
@@ -291,7 +293,7 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          // ---------- FULL NAME FIRST ----------
+          // FULL NAME FIRST
           const candidate = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
@@ -349,7 +351,8 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
 }));
 
 // === ROSTER: BULK ENROLL ===
-router.post('/api/classes/:id/students/bulk',
+router.post(
+  '/api/classes/:id/students/bulk',
   uploadBulkMemory.single('file'),
   asyncHandler(async (req, res) => {
     const classId = req.params.id;
@@ -417,6 +420,7 @@ router.post('/api/classes/:id/students/bulk',
           report.errors++; report.details.push({ studentId: sid, status: 'error', error: result.reason || 'unknown' });
         }
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error('Bulk enroll error for', sid, e);
         report.errors++; report.details.push({ studentId: sid, status: 'error', error: 'exception' });
       }
@@ -473,7 +477,7 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
       firstName: names.firstName || '',
       middleName: names.middleName || '',
       lastName:  names.lastName  || '',
-      fullName:  names.fullName  || '',   // optional extra
+      fullName:  names.fullName  || '',
       email:     u.email || '',
       photoURL:  u.photoURL || ''
     }
@@ -492,7 +496,6 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
   const buildDecrypted = (u = {}) => {
     const names = decryptNamesFromUser(u);
     const studentId = u.studentId || '';
-    // ensure first/last are set even if only fullName is known
     const first = names.firstName || splitFullName(names.fullName).first || '';
     const last  = names.lastName  || splitFullName(names.fullName).last  || '';
     return {
