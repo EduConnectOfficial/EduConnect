@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>EduConnect Teacher – Submission Inbox</title>
 
+  <!-- (Optional) If your backend is on another Railway service/domain, set it here -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
@@ -12,7 +15,6 @@
 
   <!-- Global teacher styles -->
   <link rel="stylesheet" href="grade.css"/>
-
 </head>
 <body>
   <div class="dashboard">
@@ -282,7 +284,18 @@
 
   <!-- Page Logic -->
   <script>
-    const API = "http://localhost:5000";
+    /* ===== Railway-friendly API base resolver =====
+       1) <meta name="api-base">, 2) window.__API_BASE, 3) localStorage.API_BASE,
+       4) same origin on *.railway.app, 5) http://localhost:5000 (dev)
+    ================================================= */
+    const API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
 
     /* ---------- Auth ---------- */
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -304,7 +317,7 @@
     const elSearch   = document.getElementById('searchInput');
     const elClass    = document.getElementById('filterClass');
     const elModule   = document.getElementById('filterModule');
-    const elDue      = document.getElementById('filterDue');
+    theElDue      = document.getElementById('filterDue');
     const elStatus   = document.getElementById('filterStatus');
     const elBody     = document.getElementById('tableBody');
     const elSummary  = document.getElementById('summaryText');
@@ -337,7 +350,7 @@
       return new Promise(resolve => {
         const modalEl = document.getElementById('confirmModal');
         const content = modalEl.querySelector('.modal-content');
-        content.classList.remove('confirm-themed'); // ensure normal confirm
+        content.classList.remove('confirm-themed');
         document.getElementById('confirmModalLabel').textContent = title;
         document.getElementById('confirmModalBody').textContent = message;
 
@@ -370,104 +383,98 @@
     }
 
     /* ----- Type-to-confirm (hardened) ----- */
-/* Blocks copying the expected text or hint, and prevents paste/⌘V/drag. */
-function showTypeToConfirm({ title, expected, hint='Type the Student Name exactly to delete', primaryText='Delete' }){
-  // Close any open modals first (matches the rest of your page flow)
-  closeAllModals();
+    function showTypeToConfirm({ title, expected, hint='Type the Student Name exactly to delete', primaryText='Delete' }){
+      closeAllModals();
+      return new Promise((resolve)=>{
+        const modalEl = document.getElementById('confirmModal');
+        const content = modalEl.querySelector('.modal-content');
+        content.classList.add('confirm-themed');
 
-  return new Promise((resolve)=>{
-    const modalEl = document.getElementById('confirmModal');
-    const content = modalEl.querySelector('.modal-content');
-    content.classList.add('confirm-themed');
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const escAttr = s => String(s).replace(/"/g,'&quot;');
 
-    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const escAttr = s => String(s).replace(/"/g,'&quot;');
+        document.getElementById('confirmModalLabel').textContent = title || 'Confirm';
+        const body = document.getElementById('confirmModalBody');
 
-    document.getElementById('confirmModalLabel').textContent = title || 'Confirm';
-    const body = document.getElementById('confirmModalBody');
+        body.innerHTML = `
+          <p class="mb-2 no-copy">${esc(hint)}</p>
+          <div class="no-copy pill-danger mb-2" id="ttcPill">
+            Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+          </div>
+          <div class="mb-1">
+            <input id="ttcInput" type="text" class="form-control is-invalid"
+                   placeholder="${escAttr('Type here…')}" autocomplete="off"
+                   autocapitalize="off" spellcheck="false">
+          </div>
+          <div id="ttcBad" class="invalid-msg no-copy">
+            Input does not match. Please type <strong>${esc(expected||'')}</strong>.
+          </div>
+          <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+        `;
 
-    body.innerHTML = `
-      <p class="mb-2 no-copy">${esc(hint)}</p>
-      <div class="no-copy pill-danger mb-2" id="ttcPill">
-        Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
-      </div>
-      <div class="mb-1">
-        <input id="ttcInput" type="text" class="form-control is-invalid"
-               placeholder="${escAttr('Type here…')}" autocomplete="off"
-               autocapitalize="off" spellcheck="false">
-      </div>
-      <div id="ttcBad" class="invalid-msg no-copy">
-        Input does not match. Please type <strong>${esc(expected||'')}</strong>.
-      </div>
-      <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
-    `;
+        const okBtn = document.getElementById('confirmYesBtn');
+        const cancelBtn = modalEl.querySelector('.btn-close-footer');
 
-    const okBtn = document.getElementById('confirmYesBtn');
-    const cancelBtn = modalEl.querySelector('.btn-close-footer');
+        okBtn.textContent = primaryText;
+        okBtn.className = 'btn btn-delete';
+        okBtn.disabled = true;
 
-    okBtn.textContent = primaryText;
-    okBtn.className = 'btn btn-delete';
-    okBtn.disabled = true;
+        const guardRoots = [modalEl, body.querySelector('#ttcPill'), body.querySelector('#ttcBad')];
+        const block = e => e.preventDefault();
+        guardRoots.forEach(node=>{
+          ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.addEventListener(evt, block));
+        });
 
-    // --- Hardening guards ---
-    const guardRoots = [modalEl, body.querySelector('#ttcPill'), body.querySelector('#ttcBad')];
-    const block = e => e.preventDefault();
-    guardRoots.forEach(node=>{
-      ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.addEventListener(evt, block));
-    });
+        const input = body.querySelector('#ttcInput');
+        input.addEventListener('paste', block);
+        input.addEventListener('beforeinput', e => {
+          if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+        });
+        input.addEventListener('keydown', e => {
+          const k = (e.key||'').toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
+        });
 
-    const input = body.querySelector('#ttcInput');
-    input.addEventListener('paste', block);
-    input.addEventListener('beforeinput', e => {
-      if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
-    });
-    input.addEventListener('keydown', e => {
-      const k = (e.key||'').toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
-    });
+        const bad = body.querySelector('#ttcBad');
+        const good = body.querySelector('#ttcGood');
+        const expectedRaw = String(expected||'');
 
-    const bad = body.querySelector('#ttcBad');
-    const good = body.querySelector('#ttcGood');
-    const expectedRaw = String(expected||'');
+        function refresh(){
+          const ok = (input.value === expectedRaw);
+          okBtn.disabled = !ok;
+          input.classList.toggle('is-valid', ok);
+          input.classList.toggle('is-invalid', !ok);
+          bad.classList.toggle('d-none', ok);
+          good.classList.toggle('d-none', !ok);
+        }
+        input.addEventListener('input', refresh);
+        setTimeout(()=>input.focus(), 60);
 
-    function refresh(){
-      const ok = (input.value === expectedRaw);
-      okBtn.disabled = !ok;
-      input.classList.toggle('is-valid', ok);
-      input.classList.toggle('is-invalid', !ok);
-      bad.classList.toggle('d-none', ok);
-      good.classList.toggle('d-none', !ok);
-    }
-    input.addEventListener('input', refresh);
-    setTimeout(()=>input.focus(), 60);
+        let confirmed = false;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
+        const onCancel = () => { modal.hide(); };
+        const onHidden = () => {
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+          modalEl.removeEventListener('hidden.bs.modal', onHidden);
+          content.classList.remove('confirm-themed');
 
-    let confirmed = false;
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
-    const onCancel = () => { modal.hide(); };
-    const onHidden = () => {
-      okBtn.removeEventListener('click', onOk);
-      cancelBtn && cancelBtn.removeEventListener('click', onCancel);
-      modalEl.removeEventListener('hidden.bs.modal', onHidden);
-      content.classList.remove('confirm-themed');
+          guardRoots.forEach(node=>{
+            ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.removeEventListener(evt, block));
+          });
+          input.removeEventListener('paste', block);
 
-      // cleanup guards
-      guardRoots.forEach(node=>{
-        ['copy','cut','contextmenu','dragstart','dragover','drop'].forEach(evt => node.removeEventListener(evt, block));
+          resolve(confirmed);
+        };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn && cancelBtn.addEventListener('click', onCancel);
+        modalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
+
+        modal.show();
       });
-      input.removeEventListener('paste', block);
-
-      resolve(confirmed);
-    };
-
-    okBtn.addEventListener('click', onOk);
-    cancelBtn && cancelBtn.addEventListener('click', onCancel);
-    modalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
-
-    modal.show();
-  });
-}
-
+    }
 
     /* ---------- Utils ---------- */
     function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
@@ -482,7 +489,11 @@ function showTypeToConfirm({ title, expected, hint='Type the Student Name exactl
     }
     function toDate(v){ const ms = tsToMs(v); if (ms==null) return null; const d=new Date(ms); return Number.isNaN(d.getTime())?null:d; }
     function fmt(dt){ if (!dt) return '—'; const d=dt instanceof Date?dt:new Date(dt); return isNaN(d.getTime())?'—':d.toLocaleString(); }
-    function toApiUrl(pathOrUrl){ return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
+    function toApiUrl(pathOrUrl){
+      const s = String(pathOrUrl || "");
+      if (/^https?:\/\/|^blob:/i.test(s)) return s;
+      return API + (s.startsWith('/') ? s : '/' + s);
+    }
 
     // ===== File-kind detection + preview utils (modal) =====
     function getExtFromUrl(url=''){ const clean=String(url).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
@@ -559,7 +570,6 @@ function showTypeToConfirm({ title, expected, hint='Type the Student Name exactl
       return '';
     }
 
-    // Open preview (modal) after resolving a safe URL (uses signed URL if needed)
     async function openPreviewFromObj(obj = {}) {
       const direct = pickHref(obj);
       if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) {
@@ -707,7 +717,7 @@ function showTypeToConfirm({ title, expected, hint='Type the Student Name exactl
       const q = (elSearch.value || '').toLowerCase().trim();
       const fClass = elClass.value;
       const fModule = elModule.value;
-      const fDue = elDue.value;
+      const fDue = theElDue.value;
       const fStatus = elStatus.value;
       const sort = (elSortBy?.value) || 'submitted_desc';
 
@@ -1008,8 +1018,8 @@ function showTypeToConfirm({ title, expected, hint='Type the Student Name exactl
     elClass.addEventListener('change', applyFilters);
     elModule.addEventListener('change', applyFilters);
     elStatus.addEventListener('change', applyFilters);
-    elDue.addEventListener('change', applyFilters);
-    elDue.addEventListener('input', applyFilters);
+    theElDue.addEventListener('change', applyFilters);
+    theElDue.addEventListener('input', applyFilters);
 
     viewGradedBtn.addEventListener('click', () => {
       const params = new URLSearchParams();

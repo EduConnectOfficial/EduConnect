@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Teacher - Assignments</title>
 
+  <!-- OPTIONAL: if your API is a separate Railway service, set this -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Bootstrap / Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <link rel="stylesheet" href="../assignment/list.css" />
-
 </head>
 
 <body>
@@ -111,7 +113,7 @@
     </div>
   </div>
 
-  <!-- GENERIC CONFIRM MODAL (also themed for type-to-confirm) -->
+  <!-- GENERIC CONFIRM MODAL -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -219,7 +221,17 @@
 
   <!-- Page logic -->
   <script>
-    const API = "http://localhost:5000";
+    /* ===== Railway-friendly API resolver ===== */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]');
+      if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+      if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+      const host = location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:5000';
+      return ''; // same-origin in production
+    }
+    const API_BASE = resolveApiBase();
+    const api = (path) => `${API_BASE}${path}`;
 
     // Auth
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
@@ -308,7 +320,6 @@
         yesBtn.textContent = yesText;
         noBtn.textContent = noText;
 
-        // remove themed class if previously added
         el.querySelector('.modal-content').classList.remove('confirm-themed');
 
         const modal = new bootstrap.Modal(el);
@@ -329,8 +340,7 @@
       });
     }
 
-    /* ===== Type-to-confirm helper (expects exact text) =====
-       Hardened: cannot copy the phrase OR the hint, and input blocks paste/⌘V/drag-drop. */
+    /* ===== Type-to-confirm helper ===== */
     function showTypeToConfirm({ title, expected, placeholder='Type here', primaryText='Delete' }){
       return new Promise((resolve)=>{
         const el = document.getElementById('confirmModal');
@@ -362,7 +372,6 @@
         okBtn.className = 'btn btn-danger';
         okBtn.disabled = true;
 
-        // Hardening: block copy/cut/context menu/drag/drop on modal, pill, and hint
         const pill = body.querySelector('#ttcPill');
         const bad = body.querySelector('#ttcBad');
         const guardRoots = [el, pill, bad];
@@ -371,9 +380,7 @@
           ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
         });
 
-        // Hardening: block paste / kb shortcuts / insertFromPaste on the input
         const input = body.querySelector('#ttcInput');
-        const good = body.querySelector('#ttcGood');
         const expectedRaw = String(expected||'');
         input.addEventListener('paste', block);
         input.addEventListener('beforeinput', e => {
@@ -390,7 +397,7 @@
           input.classList.toggle('is-valid', ok);
           input.classList.toggle('is-invalid', !ok);
           bad.classList.toggle('d-none', ok);
-          good.classList.toggle('d-none', !ok);
+          document.getElementById('ttcGood').classList.toggle('d-none', !ok);
         }
         input.addEventListener('input', refresh);
         setTimeout(()=>input.focus(), 60);
@@ -404,7 +411,6 @@
           cancelBtn.removeEventListener('click', onCancel);
           el.removeEventListener('hidden.bs.modal', onHidden);
           content.classList.remove('confirm-themed');
-          // cleanup guards
           guardRoots.forEach(node=>{
             ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
           });
@@ -419,10 +425,11 @@
       });
     }
 
-    // Load courses
+    // Load courses (Railway-ready: /api/courses)
     async function loadCourses() {
-      const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}`);
-      const courses = await res.json();
+      const res = await fetch(api(`/api/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=false`));
+      const payload = await res.json().catch(() => []);
+      const courses = Array.isArray(payload) ? payload : (payload.courses || []);
       courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
       coursesList = courses.map((c, idx) => {
         const n = Number.isFinite(c?.courseNumber) ? c.courseNumber : (idx + 1);
@@ -442,9 +449,9 @@
       if (!moduleId) return null;
       if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
       try {
-        const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`);
+        const res = await fetch(api(`/api/modules/${encodeURIComponent(moduleId)}`));
         const js = await res.json();
-        const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
+        const meta = js && (js.id || js.moduleId) ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
         moduleCache.set(moduleId, meta);
         return meta;
       } catch (e) {
@@ -470,7 +477,7 @@
     // NEW: fetch & cache submission count for an assignment
     async function fetchSubmissionCount(assignmentId) {
       try {
-        const r = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`);
+        const r = await fetch(api(`/api/assignments/${encodeURIComponent(assignmentId)}/submissions`));
         const js = await r.json();
         if (!r.ok || js.success === false || !Array.isArray(js.submissions)) return 0;
         return js.submissions.length;
@@ -502,7 +509,7 @@
       elGrid.innerHTML = `<div class="col-12"><div class="empty text-center">Loading assignments…</div></div>`;
 
       const promises = coursesList.map(c =>
-        fetch(`${API}/api/courses/${encodeURIComponent(c.id)}/assignments?includeArchived=true`)
+        fetch(api(`/api/courses/${encodeURIComponent(c.id)}/assignments?includeArchived=true`))
           .then(r => r.json().catch(() => ({ success: false })))
           .then(js => ({ course: c, payload: js }))
           .catch(() => ({ course: c, payload: { success: false, assignments: [] } }))
@@ -575,7 +582,7 @@
     // ---- Archive / Unarchive ----
     async function setArchiveState(id, archived) {
       try {
-        const res = await fetch(`${API}/api/assignments/${id}`, {
+        const res = await fetch(api(`/api/assignments/${id}`), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ archived: !!archived })
@@ -602,13 +609,11 @@
     /* ===== Delete with TYPE-TO-CONFIRM (Assignment Title) ===== */
     async function deleteAssignment(id) {
       try {
-        // Try to get the title for exact match (prefer the already-rendered data first)
         const card = document.querySelector(`[data-assignment-card="${CSS.escape(id)}"] h5`);
         let titleToMatch = card ? card.textContent.trim() : '';
 
         if (!titleToMatch) {
-          // Fallback: fetch the assignment meta
-          const metaRes = await fetch(`${API}/api/assignments/${encodeURIComponent(id)}`);
+          const metaRes = await fetch(api(`/api/assignments/${encodeURIComponent(id)}`));
           if (metaRes.ok) {
             const meta = await metaRes.json().catch(() => ({}));
             titleToMatch = meta?.title || '';
@@ -633,7 +638,7 @@
         }
         if (!ok) return;
 
-        const res = await fetch(`${API}/api/assignments/${id}`, { method: 'DELETE' });
+        const res = await fetch(api(`/api/assignments/${id}`), { method: 'DELETE' });
         const js = await res.json();
         if (!res.ok || !js.success) {
           showInfoModal({ title: 'Delete Failed', html: escapeHTML(js.message || 'Failed to delete assignment.') });

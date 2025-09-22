@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Edit Assignment • EduConnect</title>
 
+  <!-- (Optional but recommended) Set this to your Railway backend URL -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <link rel="stylesheet" href="edit_assignment.css" />
-
 </head>
 <body>
   <div class="dashboard">
@@ -273,13 +275,28 @@
     </div></div>
   </div>
 
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const API = "http://localhost:5000";
+    /* ============= Railway-friendly API base resolver =============
+       Priority:
+       1) <meta name="api-base" content="https://...">
+       2) window.__API_BASE
+       3) localStorage.API_BASE
+       4) If hosted on *.railway.app -> use same origin
+       5) Fallback to http://localhost:5000 (dev)
+    ================================================================= */
+    const API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
 
-    /* Sidebar loader */
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, ''); // strip trailing slash
+    })();
+
+    /* Sidebar loader (same-origin relative path works on Railway) */
     document.addEventListener("DOMContentLoaded", () => {
       fetch("/components/sidebar.html")
         .then(r => r.text())
@@ -336,7 +353,6 @@
         document.getElementById('confirmBody').innerHTML=body;
         const btn=document.getElementById('confirmYesBtn');
         const modal=bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
-        // remove themed class if previously added
         document.querySelector('#confirmModal .modal-content').classList.remove('confirm-themed');
         const onYes=()=>{ btn.removeEventListener('click',onYes); modal.hide(); resolve(true); };
         const onHide=()=>{ btn.removeEventListener('click',onYes); resolve(false); };
@@ -346,111 +362,109 @@
       });
     }
 
-    /* ===== Type-to-confirm helper (expects exact text) ===== */
-   /* ===== Type-to-confirm helper (expects exact text) =====
-   Hardened: cannot copy the phrase OR the hint, and input blocks paste/⌘V/drag-drop. */
-function showTypeToConfirm({ title, expected, placeholder='Type here', primaryText='Delete' }){
-  return new Promise((resolve)=>{
-    const el = document.getElementById('confirmModal');
-    const content = el.querySelector('.modal-content');
-    content.classList.add('confirm-themed');
+    /* ===== Type-to-confirm helper ===== */
+    function showTypeToConfirm({ title, expected, placeholder='Type here', primaryText='Delete' }){
+      return new Promise((resolve)=>{
+        const el = document.getElementById('confirmModal');
+        const content = el.querySelector('.modal-content');
+        content.classList.add('confirm-themed');
 
-    document.getElementById('confirmTitle').textContent = title || 'Confirm';
-    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const escAttr = s => String(s).replace(/"/g,'&quot;');
-    const body = document.getElementById('confirmBody');
+        document.getElementById('confirmTitle').textContent = title || 'Confirm';
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const escAttr = s => String(s).replace(/"/g,'&quot;');
+        const body = document.getElementById('confirmBody');
 
-    body.innerHTML = `
-      <p class="mb-2">
-        Confirm you want to delete this assignment by typing the exact
-        <strong>Assignment Title</strong> (case-sensitive).
-      </p>
-      <div class="no-copy pill-danger mb-2" id="ttcPill">
-        Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
-      </div>
-      <div class="mb-1">
-        <input id="ttcInput" type="text" class="form-control is-invalid"
-               placeholder="${escAttr(placeholder)}" autocomplete="off"
-               autocapitalize="off" spellcheck="false">
-      </div>
-      <div id="ttcBad" class="invalid-msg no-copy">
-        Input does not match. Please type <strong>${esc(expected||'')}</strong> to proceed.
-      </div>
-      <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
-    `;
+        body.innerHTML = `
+          <p class="mb-2">
+            Confirm you want to delete this assignment by typing the exact
+            <strong>Assignment Title</strong> (case-sensitive).
+          </p>
+          <div class="no-copy pill-danger mb-2" id="ttcPill">
+            Type exactly: <strong id="ttcExpected">${esc(expected||'')}</strong>
+          </div>
+          <div class="mb-1">
+            <input id="ttcInput" type="text" class="form-control is-invalid"
+                   placeholder="${escAttr(placeholder)}" autocomplete="off"
+                   autocapitalize="off" spellcheck="false">
+          </div>
+          <div id="ttcBad" class="invalid-msg no-copy">
+            Input does not match. Please type <strong>${esc(expected||'')}</strong> to proceed.
+          </div>
+          <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
+        `;
 
-    const okBtn = document.getElementById('confirmYesBtn');
-    const cancelBtn = document.querySelector('#confirmModal .btn-close-footer');
-    okBtn.textContent = primaryText;
-    okBtn.className = 'btn btn-danger';
-    okBtn.disabled = true;
+        const okBtn = document.getElementById('confirmYesBtn');
+        const cancelBtn = document.querySelector('#confirmModal .btn-close-footer');
+        okBtn.textContent = primaryText;
+        okBtn.className = 'btn btn-danger';
+        okBtn.disabled = true;
 
-    // Hardening: block copy/cut/context menu/drag/drop on modal, pill, and hint
-    const pill = body.querySelector('#ttcPill');
-    const bad = body.querySelector('#ttcBad');
-    const guardRoots = [el, pill, bad];
-    const block = e => e.preventDefault();
-    guardRoots.forEach(node=>{
-      ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
-    });
+        const pill = body.querySelector('#ttcPill');
+        const bad = body.querySelector('#ttcBad');
+        const guardRoots = [el, pill, bad];
+        const block = e => e.preventDefault();
+        guardRoots.forEach(node=>{
+          ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
+        });
 
-    // Hardening: block paste / kb shortcuts / insertFromPaste on the input
-    const input = body.querySelector('#ttcInput');
-    const good = body.querySelector('#ttcGood');
-    const expectedRaw = String(expected||'');
+        const input = body.querySelector('#ttcInput');
+        const good = body.querySelector('#ttcGood');
+        const expectedRaw = String(expected||'');
 
-    input.addEventListener('paste', block);
-    input.addEventListener('beforeinput', e => {
-      if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
-    });
-    input.addEventListener('keydown', e => {
-      const k = (e.key||'').toLowerCase();
-      // block Ctrl/Cmd + (v x c a)
-      if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
-    });
+        input.addEventListener('paste', block);
+        input.addEventListener('beforeinput', e => {
+          if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
+        });
+        input.addEventListener('keydown', e => {
+          const k = (e.key||'').toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && (k==='v' || k==='x' || k==='c' || k==='a')) e.preventDefault();
+        });
 
-    function refresh(){
-      const ok = (input.value === expectedRaw);
-      okBtn.disabled = !ok;
-      input.classList.toggle('is-valid', ok);
-      input.classList.toggle('is-invalid', !ok);
-      bad.classList.toggle('d-none', ok);
-      good.classList.toggle('d-none', !ok);
-    }
-    input.addEventListener('input', refresh);
-    setTimeout(()=>input.focus(), 60);
+        function refresh(){
+          const ok = (input.value === expectedRaw);
+          okBtn.disabled = !ok;
+          input.classList.toggle('is-valid', ok);
+          input.classList.toggle('is-invalid', !ok);
+          bad.classList.toggle('d-none', ok);
+          good.classList.toggle('d-none', !ok);
+        }
+        input.addEventListener('input', refresh);
+        setTimeout(()=>input.focus(), 60);
 
-    let confirmed = false;
-    const modal = bootstrap.Modal.getOrCreateInstance(el);
-    const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
-    const onCancel = () => { modal.hide(); };
-    const onHidden = () => {
-      okBtn.removeEventListener('click', onOk);
-      cancelBtn && cancelBtn.removeEventListener('click', onCancel);
-      el.removeEventListener('hidden.bs.modal', onHidden);
-      content.classList.remove('confirm-themed');
-      // cleanup guards
-      guardRoots.forEach(node=>{
-        ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
+        let confirmed = false;
+        const modal = bootstrap.Modal.getOrCreateInstance(el);
+        const onOk = () => { if (!okBtn.disabled){ confirmed = true; modal.hide(); } };
+        const onCancel = () => { modal.hide(); };
+        const onHidden = () => {
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+          el.removeEventListener('hidden.bs.modal', onHidden);
+          content.classList.remove('confirm-themed');
+          guardRoots.forEach(node=>{
+            ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.removeEventListener(evt, block));
+          });
+          input.removeEventListener('paste', block);
+          resolve(confirmed);
+        };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn && cancelBtn.addEventListener('click', onCancel);
+        el.addEventListener('hidden.bs.modal', onHidden, { once:true });
+        modal.show();
       });
-      input.removeEventListener('paste', block);
-      resolve(confirmed);
-    };
-
-    okBtn.addEventListener('click', onOk);
-    cancelBtn && cancelBtn.addEventListener('click', onCancel);
-    el.addEventListener('hidden.bs.modal', onHidden, { once:true });
-    modal.show();
-  });
-}
-
+    }
 
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
              (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
              (obj.filePath ? toApiUrl(obj.filePath) : '');
     }
-    function toApiUrl(pathOrUrl){ return /^https?:\/\/|^blob:/i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
+    function toApiUrl(pathOrUrl){
+      const s = String(pathOrUrl || "");
+      if (/^https?:\/\/|^blob:/i.test(s)) return s;
+      // Ensure exactly one slash between API and path
+      return API + (s.startsWith('/') ? s : '/' + s);
+    }
     function pickName(obj = {}) {
       if (obj.__stagedName) return obj.__stagedName;
       const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
@@ -712,7 +726,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
       if (!initialAssignment) return false;
       if (window.__dirty) return true;
       if (staged.addFiles.length || staged.addLinks.length || staged.addRubric || staged.removeIds.size || staged.removeRubric) return true;
-      // also consider class selection changes
       const now = [...selectedClassIds].sort().join(',');
       const was = [...initialAssigned].sort().join(',');
       if (now !== was) return true;
@@ -733,14 +746,12 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
     function getMergedAttachmentView() {
       const keep = [];
 
-      // Existing attachments (flag pending removal)
       for (const a of (currentAttachments || [])) {
         const id = String(a.id || '');
         const isRemoved = id && staged.removeIds.has(id);
         keep.push({ ...a, __pendingRemoval: !!isRemoved });
       }
 
-      // Rubric logic
       const existingRubric = keep.find(k => k.type === 'rubrics');
 
       if (staged.addRubric && existingRubric) {
@@ -760,7 +771,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
         existingRubric.__pendingRemoval = true;
       }
 
-      // Staged files
       for (const f of staged.addFiles) {
         keep.push({
           id: `__staged_file_${f.__uid}`,
@@ -770,7 +780,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
         });
       }
 
-      // Staged links
       for (const link of staged.addLinks) {
         keep.push({
           id: `__staged_link_${btoa(link).slice(0,12)}`,
@@ -1035,7 +1044,7 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
       }
     });
     rubricInput.addEventListener('change', ()=>{
-     const f = (rubricInput.files && rubricInput.files[0]) || null;
+      const f = (rubricInput.files && rubricInput.files[0]) || null;
       if (f) {
         const blobUrl = URL.createObjectURL(f);
         currentPreviewRevoke = ()=>URL.revokeObjectURL(blobUrl);
@@ -1063,7 +1072,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
     let selectedClassIds = new Set(); // working selection
     let initialAssigned  = new Set(); // snapshot from load (for dirty tracking)
 
-    // Debug switch to log filtering details
     const DEBUG_CLASSES = false;
     const dlog = (...a) => { if (DEBUG_CLASSES) console.log('[classes]', ...a); };
 
@@ -1156,13 +1164,11 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
           return;
         }
 
-        // 1) Teacher classes
         const res = await fetch(`${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`, { headers: { "Accept": "application/json" } });
         const js = await res.json().catch(()=>({ success:false, classes:[] }));
         const teacherClasses = Array.isArray(js?.classes) ? js.classes : [];
         dlog('teacherClasses:', teacherClasses.length);
 
-        // 2) Course -> assignedClasses
         let filtered = teacherClasses;
         if (courseIdForAssignment) {
           const course = await fetchCourseById(courseIdForAssignment);
@@ -1175,7 +1181,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
           });
           dlog('filtered after intersect:', filtered.length);
 
-          // Optional fallback: /courses/:id/classes
           if (filtered.length === 0) {
             try {
               const r2 = await fetch(`${API}/courses/${encodeURIComponent(courseIdForAssignment)}/classes`, { headers:{Accept:'application/json'} });
@@ -1192,7 +1197,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
           }
         }
 
-        // 3) Trim preselected set to visible/eligible IDs
         const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || '')));
         selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
         initialAssigned  = new Set([...initialAssigned].filter(id => visibleIds.has(String(id))));
@@ -1244,14 +1248,11 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
         clearDirty();
         renderAttachments();
 
-        // Preselect classes from assignment.classIds (we will later trim to eligible set)
         selectedClassIds = new Set(Array.isArray(a.classIds) ? a.classIds.filter(Boolean).map(String) : []);
         initialAssigned  = new Set(selectedClassIds);
 
-        // Filter and render classes eligible for this course
         const useCourseId = courseId || a.courseId || '';
         await loadTeacherClassesAndRenderFiltered(useCourseId);
-
         await loadModulesForCourse(useCourseId, a.moduleId || '');
       }catch(e){
         console.error(e);
@@ -1270,8 +1271,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
       if (!title || !content){ formError.textContent='Title and Content are required.'; return; }
 
       const payload = { title, content };
-
-      // include assigned classes
       payload.assignedClasses = Array.from(selectedClassIds);
 
       if (pointsInput.value !== '') payload.points = Number(pointsInput.value);
@@ -1285,7 +1284,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
       const patchJs = await patch.json().catch(()=>({}));
       if (!patch.ok || patchJs.success === false) throw new Error(patchJs.message || 'Failed to save changes.');
 
-      // uploads / adds
       if (staged.addFiles.length) {
         const form = new FormData();
         staged.addFiles.forEach(f => form.append('files', f));
@@ -1317,7 +1315,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
         currentAttachments = delJs.files || currentAttachments;
       }
 
-      // removals
       for (const id of staged.removeIds) {
         const del = await fetch(`${API}/api/assignments/${encodeURIComponent(assignmentId)}/files/${encodeURIComponent(id)}`, { method:'DELETE' });
         const delJs = await del.json().catch(()=>({}));
@@ -1325,7 +1322,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
         currentAttachments = delJs.files || currentAttachments;
       }
 
-      // Optional: surface backend warnings
       const warnings = (patchJs && patchJs.warnings) || {};
       let warnMsg = '';
       if (warnings.archivedClassIds?.length) {
@@ -1375,7 +1371,6 @@ function showTypeToConfirm({ title, expected, placeholder='Type here', primaryTe
     btnDelete.addEventListener('click', async ()=>{
       if (!assignmentId) return;
 
-      // Use loaded title if available; fallback to fetch
       let titleToMatch = (initialAssignment && initialAssignment.title) ? String(initialAssignment.title).trim() : '';
       if (!titleToMatch) {
         try {

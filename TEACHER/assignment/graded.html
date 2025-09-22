@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Teacher - Graded Submissions</title>
 
+  <!-- Optional: set your backend base explicitly when frontend+backend are on different Railway services -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
@@ -219,7 +222,7 @@
     </div>
   </div>
 
-  <!-- Confirm Delete Modal (reused for type-to-confirm) -->
+  <!-- Confirm Delete Modal -->
   <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -365,14 +368,26 @@
 
   <!-- Page Logic -->
   <script>
-    const API = "http://localhost:5000";
+    /* ===== Railway-friendly API base resolver =====
+       Priority: 1) <meta name="api-base">, 2) window.__API_BASE, 3) localStorage.API_BASE,
+                 4) same origin on *.railway.app, 5) http://localhost:5000
+    ================================================= */
+    const API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
 
     /* -------- Auth -------- */
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (!user || !user.userId || !user.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
     } else {
-      document.getElementById("Username").textContent = user.username || "Teacher";
+      const uEl = document.getElementById("Username");
+      if (uEl) uEl.textContent = user.username || "Teacher";
     }
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
     window.logoutUser = logoutUser;
@@ -455,7 +470,6 @@
       const expected = pendingDelete.studentName;
       const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 
-      // Theme modal for TTC
       confirmModalEl.querySelector('.modal-content').classList.add('confirm-themed');
 
       confirmDeleteBody.innerHTML = `
@@ -470,19 +484,15 @@
         <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
       `;
 
-      // --- HARDEN: make the hint and expected text impossible to copy/select ---
       const pill = confirmDeleteBody.querySelector('.no-copy');
       const expectedEl = confirmDeleteBody.querySelector('#ttcExpected');
       const kill = e => e.preventDefault();
-
-      // block user actions that could copy/select
       ['copy','cut','contextmenu','dragstart','selectstart','mousedown','pointerdown']
         .forEach(evt => {
           pill.addEventListener(evt, kill);
           expectedEl.addEventListener(evt, kill);
         });
 
-      // if selection lands on the expected text, clear it
       const selClear = () => {
         const sel = window.getSelection?.();
         if (!sel || !sel.rangeCount) return;
@@ -491,7 +501,6 @@
       };
       document.addEventListener('selectionchange', selClear);
 
-      // Input validation wiring
       const input = confirmDeleteBody.querySelector('#ttcInput');
       const bad = confirmDeleteBody.querySelector('#ttcBad');
       const good = confirmDeleteBody.querySelector('#ttcGood');
@@ -510,7 +519,6 @@
       input.addEventListener('input', refresh);
       setTimeout(()=>input.focus(), 60);
 
-      // cleanup on close
       const onHidden = () => {
         confirmModalEl.querySelector('.modal-content').classList.remove('confirm-themed');
         ['copy','cut','contextmenu','dragstart','selectstart','mousedown','pointerdown']
@@ -527,7 +535,11 @@
     }
 
     /* -------- File preview utils (with signing) -------- */
-    function toApiUrl(pathOrUrl){ return /^https?:\/\//i.test(String(pathOrUrl)) ? String(pathOrUrl) : API + String(pathOrUrl || ""); }
+    function toApiUrl(pathOrUrl){
+      const s = String(pathOrUrl || "");
+      if (/^https?:\/\/|^blob:/i.test(s)) return s;
+      return API + (s.startsWith('/') ? s : '/' + s);
+    }
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
              (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
@@ -806,7 +818,6 @@
         return true;
       });
 
-      // Sorting
       shown.sort((a,b)=>{
         const gA = a.gradedAt?.getTime()||0, gB = b.gradedAt?.getTime()||0;
         const sA = a.submittedAt?.getTime()||0, sB = b.submittedAt?.getTime()||0;
@@ -918,7 +929,6 @@
           : '<span class="text-muted">—</span>';
       vm.feedback.textContent = item.feedback || '—';
 
-      // Files (open in Preview Modal with signing)
       vm.files.innerHTML = (item.files && item.files.length)
         ? item.files.map(f => {
             const name = escapeHTML(pickName(f));
@@ -1010,7 +1020,6 @@
 
           graded = await loadGradedForAssignment(paramAssignmentId);
         } else {
-          // All courses / all assignments view
           elAssignmentMeta.textContent = 'All courses • All assignments';
           const courses = await loadCoursesForTeacher(user.userId);
           for (const c of courses){
@@ -1022,7 +1031,6 @@
           }
         }
 
-        // Enrich missing class names
         for (const g of graded){
           if ((!g.className || g.className === '—') && g.classId){
             g.className = await getClassName(g.classId);
