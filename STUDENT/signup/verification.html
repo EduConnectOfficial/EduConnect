@@ -253,7 +253,7 @@
             lines.push(`<div class="mb-1"><div class="fw-semibold">Your Student ID:</div><div><em>—</em></div></div>`);
           }
 
-          showModalHTML(lines.join(""), { title: "Success", redirectTo: "STUDENT/login/login.html" });
+          showModalHTML(lines.join(""), { title: "Success", redirectTo: "/STUDENT/login/login.html" });
 
         } else {
           verificationError.textContent = data.error || "Invalid or expired code.";
