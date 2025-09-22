@@ -8,7 +8,7 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { sendVerificationEmail, transporter } = require('../config/email');
 const { generateRoleId } = require('../utils/idUtils');
-const { encryptField, decryptField } = require('../utils/fieldCrypto');
+const { encryptField, safeDecrypt } = require('../utils/fieldCrypto');
 
 // --- in-memory stores (signup + reset flows) ---
 // Key ALL of these by normalized email (lowercased + trimmed)
@@ -45,9 +45,9 @@ function tsToMillis(v) {
 
 function unpackNamesFromDoc(userDocData) {
   return {
-    firstName: decryptField(userDocData.firstNameEnc || ''),
-    middleName: decryptField(userDocData.middleNameEnc || ''),
-    lastName: decryptField(userDocData.lastNameEnc || ''),
+    firstName: safeDecrypt(userDocData.firstNameEnc || ''),
+    middleName: safeDecrypt(userDocData.middleNameEnc || ''),
+    lastName: safeDecrypt(userDocData.lastNameEnc || ''),
   };
 }
 
@@ -157,12 +157,12 @@ router.post('/verify-code', asyncHandler(async (req, res) => {
         code: p.code,
         expiresAt: Number(p.expiresAtMs) || 0,
         userData: {
-          firstName: decryptField(p.firstNameEnc || ''),
-          middleName: decryptField(p.middleNameEnc || ''),
-          lastName: decryptField(p.lastNameEnc || ''),
+          firstName: safeDecrypt(p.firstNameEnc || ''),
+          middleName: safeDecrypt(p.middleNameEnc || ''),
+          lastName: safeDecrypt(p.lastNameEnc || ''),
           username: p.username,
           email: p.email,
-          password: decryptField(p.passwordEnc || ''), // will be hashed below
+          password: safeDecrypt(p.passwordEnc || ''), // will be hashed below
           active: true,
           isUser: !!p.isUser,
           isAdmin: !!p.isAdmin,
@@ -313,12 +313,12 @@ router.post('/resend-code', asyncHandler(async (req, res) => {
       code: fsPending.code,
       expiresAt: Number(fsPending.expiresAtMs) || (now + 15 * 60 * 1000),
       userData: {
-        firstName: decryptField(fsPending.firstNameEnc || ''),
-        middleName: decryptField(fsPending.middleNameEnc || ''),
-        lastName: decryptField(fsPending.lastNameEnc || ''),
+        firstName: safeDecrypt(fsPending.firstNameEnc || ''),
+        middleName: safeDecrypt(fsPending.middleNameEnc || ''),
+        lastName: safeDecrypt(fsPending.lastNameEnc || ''),
         username: fsPending.username,
         email: fsPending.email,
-        password: decryptField(fsPending.passwordEnc || ''),
+        password: safeDecrypt(fsPending.passwordEnc || ''),
         active: true,
         isUser: !!fsPending.isUser,
         isAdmin: !!fsPending.isAdmin,
