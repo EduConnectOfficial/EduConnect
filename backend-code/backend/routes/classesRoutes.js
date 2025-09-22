@@ -1,4 +1,6 @@
 // backend/routes/classesRoutes.js
+'use strict';
+
 const router = require('express').Router();
 const XLSX = require('xlsx');
 const multer = require('multer');
@@ -7,9 +9,9 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-const { safeDecrypt } = require('../utils/fieldCrypto'); // switched
+const { preferDecrypt } = require('../utils/fieldCrypto'); // <-- use preferDecrypt
 
-// ====== In-memory uploader for bulk ======
+// ===== In-memory uploader for bulk =====
 const memoryStorage = multer.memoryStorage();
 const SPREADSHEET_MIMES = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -27,9 +29,7 @@ function bulkFileFilter(_req, file, cb) {
 
 const uploadBulkMemory = multer({
   storage: memoryStorage,
-  limits: {
-    fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024,
-  },
+  limits: { fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024 },
   fileFilter: bulkFileFilter,
 });
 
@@ -44,13 +44,49 @@ function isStudentUser(u = {}) {
   return hasStudentId && !isTeacherSignal;
 }
 
-// Small helper to decrypt names from a user doc
+// ---------- name helpers ----------
+function splitFullName(full = '') {
+  const s = String(full || '').trim();
+  if (!s) return { first: '', last: '' };
+  const parts = s.split(/\s+/);
+  if (parts.length === 1) return { first: parts[0], last: '' };
+  return { first: parts[0], last: parts.slice(1).join(' ') };
+}
+
+function fallbackNameFromEmail(email = '') {
+  const m = String(email || '').match(/^[^@]+/);
+  return m ? m[0] : '';
+}
+
+/**
+ * Prefer: fullName -> decrypted first/middle/last -> plaintext first/middle/last -> username/email
+ */
 function decryptNamesFromUser(u = {}) {
-  return {
-    firstName:  safeDecrypt(u.firstNameEnc  || u.firstName  || ''),
-    middleName: safeDecrypt(u.middleNameEnc || u.middleName || ''),
-    lastName:   safeDecrypt(u.lastNameEnc   || u.lastName   || ''),
-  };
+  // try encrypted tokens; if not present / not decryptable, fall back to the plain fields
+  const firstName  = preferDecrypt(u.firstNameEnc,  u.firstName || '');
+  const middleName = preferDecrypt(u.middleNameEnc, u.middleName || '');
+  const lastName   = preferDecrypt(u.lastNameEnc,   u.lastName || '');
+
+  const fullRaw = String(u.fullName || '').trim();
+  if (fullRaw) {
+    const { first, last } = splitFullName(fullRaw);
+    return {
+      firstName: first || firstName || fallbackNameFromEmail(u.email) || u.username || '',
+      middleName,
+      lastName: last || lastName || '',
+      fullName: fullRaw,
+    };
+  }
+
+  const built = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.replace(/\s+/g, ' ').trim();
+  if (built) {
+    return { firstName, middleName, lastName, fullName: built };
+  }
+
+  // nothing to use — fall back to username/email
+  const guessed = fallbackNameFromEmail(u.email) || u.username || 'Student';
+  const { first, last } = splitFullName(guessed);
+  return { firstName: first, middleName: '', lastName: last, fullName: guessed };
 }
 
 // === GET /api/classes/:id ===
@@ -72,11 +108,8 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
   if (req.query.semester) q = q.where('semester', '==', req.query.semester);
 
   const archivedParam = String(req.query.archived || 'exclude');
-  if (archivedParam === 'exclude') {
-    q = q.where('archived', '==', false);
-  } else if (archivedParam === 'only') {
-    q = q.where('archived', '==', true);
-  }
+  if (archivedParam === 'exclude')      q = q.where('archived', '==', false);
+  else if (archivedParam === 'only')    q = q.where('archived', '==', true);
 
   q = q.orderBy('createdAt', 'desc');
 
@@ -108,22 +141,13 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
   const { name, gradeLevel, section, teacherId, schoolYear, semester } = req.body;
 
   if (!name || !gradeLevel || !section || !teacherId) {
-    return res.status(400).json({
-      success: false,
-      message: 'name, gradeLevel, section and teacherId are all required.'
-    });
+    return res.status(400).json({ success: false, message: 'name, gradeLevel, section and teacherId are all required.' });
   }
   if (!isValidSchoolYear(schoolYear)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).'
-    });
+    return res.status(400).json({ success: false, message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).' });
   }
   if (!isValidSemester(semester)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid semester. Use "1st Semester" or "2nd Semester".'
-    });
+    return res.status(400).json({ success: false, message: 'Invalid semester. Use "1st Semester" or "2nd Semester".' });
   }
 
   const payload = {
@@ -144,10 +168,7 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
   await docRef.update({ classId: docRef.id });
 
   const saved = await docRef.get();
-  res.status(201).json({
-    success: true,
-    class: { id: docRef.id, classId: docRef.id, ...saved.data() }
-  });
+  res.status(201).json({ success: true, class: { id: docRef.id, classId: docRef.id, ...saved.data() } });
 }));
 
 // === PUT /api/classes/:id ===
@@ -157,9 +178,7 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
 
   const classRef = firestore.collection('classes').doc(id);
   const classDoc = await classRef.get();
-  if (!classDoc.exists) {
-    return res.status(404).json({ success: false, message: 'Class not found.' });
-  }
+  if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   const updates = {};
   if (name != null)       updates.name = String(name).trim();
@@ -167,19 +186,13 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   if (section != null)    updates.section = String(section).trim();
   if (schoolYear != null) {
     if (!isValidSchoolYear(schoolYear)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).' });
     }
     updates.schoolYear = schoolYear;
   }
   if (semester != null) {
     if (!isValidSemester(semester)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid semester. Use "1st Semester" or "2nd Semester".'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid semester. Use "1st Semester" or "2nd Semester".' });
     }
     updates.semester = semester;
   }
@@ -188,7 +201,7 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// === ARCHIVE class ===
+// === ARCHIVE ===
 router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { by } = req.body || {};
@@ -197,9 +210,7 @@ router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   const d = doc.data();
-  if (d.archived === true) {
-    return res.json({ success: true, already: true, message: 'Class already archived.' });
-  }
+  if (d.archived === true) return res.json({ success: true, already: true, message: 'Class already archived.' });
 
   await ref.update({
     archived: true,
@@ -210,7 +221,7 @@ router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'Class archived.' });
 }));
 
-// === UNARCHIVE class ===
+// === UNARCHIVE ===
 router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const ref = firestore.collection('classes').doc(id);
@@ -218,29 +229,20 @@ router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
   if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   const d = doc.data();
-  if (d.archived !== true) {
-    return res.json({ success: true, already: true, message: 'Class is not archived.' });
-  }
+  if (d.archived !== true) return res.json({ success: true, already: true, message: 'Class is not archived.' });
 
-  await ref.update({
-    archived: false,
-    archivedAt: null,
-    archivedBy: null
-  });
-
+  await ref.update({ archived: false, archivedAt: null, archivedBy: null });
   return res.json({ success: true, message: 'Class unarchived.' });
 }));
 
-// === DELETE /api/classes/:id ===
+// === DELETE ===
 router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const cascade = String(req.query.cascade || '').toLowerCase() === 'true';
 
   const classRef = firestore.collection('classes').doc(id);
   const snap = await classRef.get();
-  if (!snap.exists) {
-    return res.status(404).json({ success: false, message: 'Class not found.' });
-  }
+  if (!snap.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   if (cascade) {
     const subcols = await classRef.listCollections();
@@ -261,7 +263,7 @@ router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
   return res.json({ success: true });
 }));
 
-// === ROSTER: GET /api/classes/:id/students ===
+// === ROSTER: GET students ===
 router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classRef = firestore.collection('classes').doc(req.params.id);
   const classDoc = await classRef.get();
@@ -291,7 +293,8 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          // FULL NAME FIRST
+          const candidate = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
@@ -305,7 +308,7 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          const candidate = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
@@ -314,19 +317,13 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
       // keep fallbacks
     }
 
-    return {
-      ...row,
-      active,
-      email,
-      fullName,
-      photoURL,
-    };
+    return { ...row, active, email, fullName, photoURL };
   }));
 
   res.json({ success: true, students });
 }));
 
-// === ROSTER: POST /api/classes/:id/students ===
+// === ROSTER: POST single enroll ===
 router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classId = req.params.id;
 
@@ -337,9 +334,7 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   }
 
   const { studentId } = req.body || {};
-  if (!studentId) {
-    return res.status(400).json({ success: false, message: 'studentId is required.' });
-  }
+  if (!studentId) return res.status(400).json({ success: false, message: 'studentId is required.' });
 
   const result = await enrollStudentIdempotent(classId, studentId);
   if (!result.ok) {
@@ -355,7 +350,7 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   });
 }));
 
-// === ROSTER: BULK ENROLL (xlsx/csv) ===
+// === ROSTER: BULK ENROLL ===
 router.post(
   '/api/classes/:id/students/bulk',
   uploadBulkMemory.single('file'),
@@ -425,6 +420,7 @@ router.post(
           report.errors++; report.details.push({ studentId: sid, status: 'error', error: result.reason || 'unknown' });
         }
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error('Bulk enroll error for', sid, e);
         report.errors++; report.details.push({ studentId: sid, status: 'error', error: 'exception' });
       }
@@ -434,7 +430,7 @@ router.post(
   })
 );
 
-// === ROSTER: DELETE /api/classes/:id/students/:studentId ===
+// === DELETE student from class ===
 router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, res) => {
   const classId = req.params.id;
   const studentId = req.params.studentId;
@@ -469,9 +465,7 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   if (snap.empty) return res.json({ success: true, found: false });
   const u = snap.docs[0].data() || {};
 
-  if (!isStudentUser(u)) {
-    return res.json({ success: true, found: false });
-  }
+  if (!isStudentUser(u)) return res.json({ success: true, found: false });
 
   const names = decryptNamesFromUser(u);
 
@@ -483,21 +477,18 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
       firstName: names.firstName || '',
       middleName: names.middleName || '',
       lastName:  names.lastName  || '',
+      fullName:  names.fullName  || '',
       email:     u.email || '',
       photoURL:  u.photoURL || ''
     }
   });
 }));
 
-// === Student search ===
+// === Student search (returns fullName too) ===
 router.get('/api/students/search', asyncHandler(async (req, res) => {
   const qRaw = String(req.query.query || '').trim();
-  if (!qRaw) {
-    return res.status(400).json({ success: false, message: 'query is required.' });
-  }
-  if (qRaw.length < 2) {
-    return res.json({ success: true, students: [] });
-  }
+  if (!qRaw) return res.status(400).json({ success: false, message: 'query is required.' });
+  if (qRaw.length < 2) return res.json({ success: true, students: [] });
 
   const usersCol = firestore.collection('users');
   const qLower = qRaw.toLowerCase();
@@ -505,11 +496,14 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
   const buildDecrypted = (u = {}) => {
     const names = decryptNamesFromUser(u);
     const studentId = u.studentId || '';
+    const first = names.firstName || splitFullName(names.fullName).first || '';
+    const last  = names.lastName  || splitFullName(names.fullName).last  || '';
     return {
       studentId,
-      firstName: names.firstName || '',
+      firstName: first,
       middleName: names.middleName || '',
-      lastName:  names.lastName  || '',
+      lastName:  last,
+      fullName:  names.fullName || `${first} ${last}`.trim(),
       email:     u.email || '',
       active:    u.active !== false
     };
@@ -528,9 +522,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
         const u = exactSnap.docs[0].data() || {};
         if (isStudentUser(u)) {
           const stu = buildDecrypted(u);
-          if (stu.studentId) {
-            return res.json({ success: true, students: [stu] });
-          }
+          if (stu.studentId) return res.json({ success: true, students: [stu] });
         }
       }
     } catch {}
@@ -545,20 +537,21 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     if (!isStudentUser(u)) continue;
     if (!u.studentId || String(u.studentId).trim() === '') continue;
 
-    const names = decryptNamesFromUser(u);
-    const fn = String(names.firstName || '').toLowerCase();
-    const mn = String(names.middleName || '').toLowerCase();
-    const ln = String(names.lastName  || '').toLowerCase();
-    const full = (fn + ' ' + ln).trim();
-    const em = String(u.email || '').toLowerCase();
-    const sid = String(u.studentId || '').toLowerCase();
+    const stu = buildDecrypted(u);
+    const fn = String(stu.firstName || '').toLowerCase();
+    const mn = String(stu.middleName || '').toLowerCase();
+    const ln = String(stu.lastName  || '').toLowerCase();
+    const full = String(stu.fullName || `${stu.firstName} ${stu.lastName}`).toLowerCase().trim();
+    const em = String(stu.email || '').toLowerCase();
+    const sid = String(stu.studentId || '').toLowerCase();
 
     if (sid.includes(qLower) || fn.includes(qLower) || mn.includes(qLower) || ln.includes(qLower) || full.includes(qLower) || em.includes(qLower)) {
       matches.push({
-        studentId: u.studentId || '',
-        firstName: names.firstName || '',
-        lastName:  names.lastName  || '',
-        email:     u.email || ''
+        studentId: stu.studentId,
+        firstName: stu.firstName,
+        lastName:  stu.lastName,
+        fullName:  stu.fullName,
+        email:     stu.email
       });
     }
   }
@@ -573,9 +566,7 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
 
   const userRef = firestore.collection('users').doc(userId);
   const userDoc = await userRef.get();
-  if (!userDoc.exists) {
-    return res.status(404).json({ success: false, message: 'Student not found.' });
-  }
+  if (!userDoc.exists) return res.status(404).json({ success: false, message: 'Student not found.' });
 
   const snap = await userRef.collection('enrollments').get();
   let enrollments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -589,7 +580,7 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
         if (tdoc.exists) {
           const t = tdoc.data() || {};
           const names = decryptNamesFromUser(t);
-          const full = `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          const full = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
           teacherMap[tid] = full || t.username || 'Teacher';
         }
       } catch {}
