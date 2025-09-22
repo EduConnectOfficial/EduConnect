@@ -5,7 +5,7 @@
   <title>EduConnect Student - Quiz Overview</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Optional: set if your API runs on a different Railway domain (e.g. https://educonnect-api.up.railway.app) -->
+  <!-- Optional override if your API is on a different Railway service/domain -->
   <meta name="api-base" content="">
 
   <!-- Bootstrap & Icons -->
@@ -27,10 +27,11 @@
     .rubric-preview { border:1px solid #e5e7eb; border-radius:.5rem; overflow:hidden; background:#fff; }
     .rubric-meta { font-size:.875rem; color:#6b7280; }
 
+    /* Long text safety */
     .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
     #quizDesc { white-space:pre-wrap; }
 
-    /* File Preview Modal */
+    /* ===== Full-screen-ish File Preview Modal ===== */
     #filePreviewModal .modal-dialog { max-width: 96vw; }
     #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
     #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
@@ -53,6 +54,7 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
+          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -124,6 +126,7 @@
                   </div>
                 </div>
 
+                <!-- Rubric section (meta + preview slot; we will open modal instead of inline) -->
                 <div id="rubricSection" class="mt-3 d-none">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Rubric</div>
@@ -249,13 +252,15 @@
 
       if (!isValid) {
         try { localStorage.removeItem('user'); } catch {}
-        window.location.replace("../login/login.html");
+        window.location.replace("../login/login.html"); // page is under /STUDENT/quiz/
         return;
       }
 
+      // Expose for other scripts
       window.currentUser = u;
       window.userData = u;
 
+      // Header initials
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
@@ -279,6 +284,7 @@
         el.setAttribute("aria-label", displayName);
       }
 
+      // Cross-tab tamper guard
       window.addEventListener("storage", (e) => {
         if (e.key === "user") {
           try {
@@ -302,25 +308,25 @@
 
   <!-- App -->
   <script>
-    // ===== Railway-aware base + auth =====
+    // ---- Railway-aware base ----
     function getApiBase() {
-      const meta = document.querySelector('meta[name="api-base"]')?.content?.trim();
-      if (meta) return meta.replace(/\/+$/, '');
+      const metaBase = document.querySelector('meta[name="api-base"]')?.content?.trim();
+      if (metaBase) return metaBase.replace(/\/+$/, '');
       const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
-      return isLocal ? 'http://localhost:5000' : location.origin; // same-origin in Railway
+      return isLocal ? 'http://localhost:5000' : location.origin; // same-origin when deployed on Railway
     }
     const SERVER_BASE = getApiBase();
     const API = `${SERVER_BASE}/api`;
 
-    function authHeaders(extra = {}) {
-      const token = localStorage.getItem("authToken");
-      return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
-    }
-
     function getParam(name){ const url = new URL(location.href); return url.searchParams.get(name); }
     function ts(v){ if(!v) return null; if(v instanceof Date) return v; if(typeof v === 'number' || typeof v === 'string') return new Date(v); if(v?.toDate) return v.toDate(); if(typeof v?.seconds === 'number') return new Date(v.seconds*1000); if(typeof v?._seconds === 'number') return new Date(v._seconds*1000); return null; }
     function fmtDate(v){ const d=ts(v); return d? d.toLocaleString(): "—"; }
-    function softWrap(s, limit=40){ if (!s) return s; return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B'); }
+
+    // Insert zero-width space every 40 chars to allow breaking
+    function softWrap(s, limit=40){
+      if (!s) return s;
+      return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
+    }
 
     const quizId = getParam('id');
 
@@ -424,7 +430,7 @@
         params.set('quizIds', quizId);
         const res = await fetch(
           `${API}/students/${encodeURIComponent(userId)}/quiz-attempts?${params.toString()}`,
-          { headers: authHeaders(), credentials: 'include' }
+          { credentials: 'include' }
         );
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
         const js = await res.json();
@@ -454,7 +460,7 @@
       if (kb >= 1) return `${kb.toFixed(0)} KB`;
       return `${bytes} B`;
     }
-    // Resolve rubric to a viewable URL (Railway-safe)
+    // Prefer downloadUrl; gracefully fall back to publicUrl or filePath.
     function resolveRubricFromQuiz(quiz){
       const rf = quiz?.rubricFile || null;
       if (!rf) return null;
@@ -472,6 +478,7 @@
       return null;
     }
 
+    // OPEN RUBRIC IN MODAL
     function showRubric(r){
       rubricSection.classList.remove('d-none');
 
@@ -514,10 +521,7 @@
       }
 
       try{
-        const res = await fetch(
-          `${API}/quizzes/${encodeURIComponent(quizId)}`,
-          { headers: authHeaders(), credentials: 'include' }
-        );
+        const res = await fetch(`${SERVER_BASE}/quizzes/${encodeURIComponent(quizId)}`, { credentials: 'include' });
         const data = await res.json();
 
         if(!data?.success || !data.quiz){
@@ -551,7 +555,7 @@
         paginationEl.textContent = pag;
         timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) ? 'Enabled' : 'Disabled';
 
-        // Rubric
+        // Rubric (downloadUrl preferred, fallback supported)
         const rubric = resolveRubricFromQuiz(quiz);
         showRubric(rubric);
         fillInstructions(settings);
