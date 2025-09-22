@@ -1,4 +1,6 @@
-// ==== routes/authRoutes.js ==== //
+// ==== routes/authRoutes.js ====
+'use strict';
+
 const router = require('express').Router();
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
@@ -23,11 +25,11 @@ const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString(
 // lockout policy
 const TEMP_LOCK_THRESHOLD_MIN = 3;     // 3–4 -> temp lock
 const TEMP_LOCK_THRESHOLD_MAX = 5;
-const TEMP_LOCK_MINUTES = 3;           // <-- 3 minutes as requested
+const TEMP_LOCK_MINUTES = 3;           // 3 minutes
 const DEACTIVATE_THRESHOLD_MIN = 5;    // 5–10 -> set active=false
 const DEACTIVATE_THRESHOLD_MAX = 10;
 
-// NEW: Pending signup persistence (to make resend robust)
+// Pending signup persistence (to make resend robust)
 const PENDING_COLL = 'pending_signups';
 const RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute cooldown between resends
 
@@ -43,11 +45,11 @@ function tsToMillis(v) {
   } catch { return 0; }
 }
 
-function unpackNamesFromDoc(userDocData) {
+function unpackNamesFromDoc(userDocData = {}) {
   return {
-    firstName: safeDecrypt(userDocData.firstNameEnc || ''),
-    middleName: safeDecrypt(userDocData.middleNameEnc || ''),
-    lastName: safeDecrypt(userDocData.lastNameEnc || ''),
+    firstName:  safeDecrypt(userDocData.firstNameEnc,  ''),
+    middleName: safeDecrypt(userDocData.middleNameEnc, ''),
+    lastName:   safeDecrypt(userDocData.lastNameEnc,   ''),
   };
 }
 
@@ -107,15 +109,15 @@ router.post('/signup', asyncHandler(async (req, res) => {
     email: emailLower,
     username,
     // encrypt sensitive fields (we'll decrypt on verify)
-    firstNameEnc: encryptField(firstName),
+    firstNameEnc:  encryptField(firstName),
     middleNameEnc: encryptField(middleName || ''),
-    lastNameEnc: encryptField(lastName),
-    passwordEnc: encryptField(password),
-    isUser: isUser !== false,
-    isAdmin: !!isAdmin,
+    lastNameEnc:   encryptField(lastName),
+    passwordEnc:   encryptField(password),
+    isUser:   isUser !== false,
+    isAdmin:  !!isAdmin,
     isMobile: !!isMobile,
-    isTeacher: !!isTeacher,
-    isStudent: !!isStudent,
+    isTeacher:!!isTeacher,
+    isStudent:!!isStudent,
     code,
     expiresAtMs,
     lastSentAtMs: now,
@@ -125,9 +127,9 @@ router.post('/signup', asyncHandler(async (req, res) => {
   try {
     await sendVerificationEmail(emailLower, code);
   } catch (err) {
+    console.error('✉️  sendVerificationEmail failed:', err?.message || err);
+    // keep Firestore pending so user can /resend-code after you fix SMTP
     delete verificationStore[emailLower];
-    // clean pending doc too
-    await pendingRef.delete().catch(() => {});
     return res.status(500).json({ error: 'Failed to send verification email.' });
   }
 
@@ -157,12 +159,12 @@ router.post('/verify-code', asyncHandler(async (req, res) => {
         code: p.code,
         expiresAt: Number(p.expiresAtMs) || 0,
         userData: {
-          firstName: safeDecrypt(p.firstNameEnc || ''),
-          middleName: safeDecrypt(p.middleNameEnc || ''),
-          lastName: safeDecrypt(p.lastNameEnc || ''),
+          firstName:  safeDecrypt(p.firstNameEnc,  ''),
+          middleName: safeDecrypt(p.middleNameEnc, ''),
+          lastName:   safeDecrypt(p.lastNameEnc,   ''),
           username: p.username,
           email: p.email,
-          password: safeDecrypt(p.passwordEnc || ''), // will be hashed below
+          password: safeDecrypt(p.passwordEnc, ''), // will be hashed below
           active: true,
           isUser: !!p.isUser,
           isAdmin: !!p.isAdmin,
@@ -224,9 +226,9 @@ router.post('/verify-code', asyncHandler(async (req, res) => {
   const toStore = {
     userId,
     // names (encrypted)
-    firstNameEnc: encryptField(firstName),
+    firstNameEnc:  encryptField(firstName),
     middleNameEnc: encryptField(middleName || ''),
-    lastNameEnc: encryptField(lastName),
+    lastNameEnc:   encryptField(lastName),
 
     // DO NOT store plaintext name fields
     username,
@@ -313,12 +315,12 @@ router.post('/resend-code', asyncHandler(async (req, res) => {
       code: fsPending.code,
       expiresAt: Number(fsPending.expiresAtMs) || (now + 15 * 60 * 1000),
       userData: {
-        firstName: safeDecrypt(fsPending.firstNameEnc || ''),
-        middleName: safeDecrypt(fsPending.middleNameEnc || ''),
-        lastName: safeDecrypt(fsPending.lastNameEnc || ''),
+        firstName:  safeDecrypt(fsPending.firstNameEnc,  ''),
+        middleName: safeDecrypt(fsPending.middleNameEnc, ''),
+        lastName:   safeDecrypt(fsPending.lastNameEnc,   ''),
         username: fsPending.username,
         email: fsPending.email,
-        password: safeDecrypt(fsPending.passwordEnc || ''),
+        password: safeDecrypt(fsPending.passwordEnc, ''),
         active: true,
         isUser: !!fsPending.isUser,
         isAdmin: !!fsPending.isAdmin,
@@ -343,15 +345,15 @@ router.post('/resend-code', asyncHandler(async (req, res) => {
     ...(fsPending || {}),
     email: emailLower,
     username: pending.userData.username,
-    firstNameEnc: encryptField(pending.userData.firstName),
+    firstNameEnc:  encryptField(pending.userData.firstName),
     middleNameEnc: encryptField(pending.userData.middleName || ''),
-    lastNameEnc: encryptField(pending.userData.lastName),
-    passwordEnc: encryptField(pending.userData.password),
-    isUser: !!pending.userData.isUser,
-    isAdmin: !!pending.userData.isAdmin,
+    lastNameEnc:   encryptField(pending.userData.lastName),
+    passwordEnc:   encryptField(pending.userData.password),
+    isUser:   !!pending.userData.isUser,
+    isAdmin:  !!pending.userData.isAdmin,
     isMobile: !!pending.userData.isMobile,
-    isTeacher: !!pending.userData.isTeacher,
-    isStudent: !!pending.userData.isStudent,
+    isTeacher:!!pending.userData.isTeacher,
+    isStudent:!!pending.userData.isStudent,
     code: newCode,
     expiresAtMs: newExpiresAtMs,
     lastSentAtMs: now,
@@ -361,6 +363,7 @@ router.post('/resend-code', asyncHandler(async (req, res) => {
   try {
     await sendVerificationEmail(emailLower, newCode);
   } catch (err) {
+    console.error('✉️  resend sendMail failed:', err?.message || err);
     return res.status(500).json({ error: 'Failed to resend verification email.' });
   }
 
@@ -519,7 +522,7 @@ router.post('/request-reset', asyncHandler(async (req, res) => {
   const resetLink = `${resetLinkBase}?email=${encodeURIComponent(emailLower)}&token=${encodeURIComponent(token)}`;
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: process.env.APP_FROM || process.env.EMAIL_USER,
     to: emailLower,
     subject: 'Password Reset',
     html: `<p>Click <a href="${resetLink}">here</a> to reset your password. Link expires in 15 minutes.</p>`,
@@ -543,7 +546,7 @@ router.post('/send-reset-code', asyncHandler(async (req, res) => {
   verificationCodes.set(emailLower, { code, expiresAt });
 
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: process.env.APP_FROM || process.env.EMAIL_USER,
     to: emailLower,
     subject: 'DigiPic Password Reset Code',
     text: `Your DigiPic verification code is: ${code}. It expires in 5 minutes.`,
