@@ -96,12 +96,12 @@ function wantsArchived(req) {
 }
 
 /** Small util: decrypt first/middle/last and form full name */
-const { decryptField } = require('../utils/fieldCrypto');
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ switched to safeDecrypt
 function decryptNamesFromUser(u = {}) {
   return {
-    firstName: decryptField(u.firstNameEnc || '') || '',
-    middleName: decryptField(u.middleNameEnc || '') || '',
-    lastName: decryptField(u.lastNameEnc || '') || '',
+    firstName:  safeDecrypt(u.firstNameEnc  || '', '') || '',
+    middleName: safeDecrypt(u.middleNameEnc || '', '') || '',
+    lastName:   safeDecrypt(u.lastNameEnc   || '', '') || '',
   };
 }
 function fullNameFromUser(u = {}) {
@@ -1319,7 +1319,7 @@ function pickRubricFileFromReq(req) {
     return req.files[0];
   }
 
-  if (req.files && req.files.rubric && Array.isArray(req.files.rubric) && req.files.rubric.length) {
+if (req.files && req.files.rubric && Array.isArray(req.files.rubric) && req.files.rubric.length) {
     return req.files.rubric[0];
   }
 
