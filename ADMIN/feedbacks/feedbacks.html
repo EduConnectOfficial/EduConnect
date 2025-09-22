@@ -81,7 +81,7 @@
       }
       document.addEventListener("DOMContentLoaded", () => {
         // Relative fetch so it works on Railway subpaths
-        fetch("components/test.html")
+        fetch("/ADMIN/components/test.html")
           .then(res => res.text())
           .then(html => {
             document.getElementById("sidebar-container").innerHTML = html;
@@ -113,8 +113,8 @@
       <header class="header-top">
         <div class="brand">
           <!-- Use relative asset paths -->
-          <img src="components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-          <img src="assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
           <input type="text" placeholder="Search..." />
