@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { encryptField, decryptField } = require('../utils/fieldCrypto');
+const { encryptField, safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ use safeDecrypt
 
 // Helpers
 const nowTS = () => admin.firestore.FieldValue.serverTimestamp();
@@ -62,9 +62,8 @@ async function getUserNameAndEmail(uid) {
 
     // Support encrypted OR plaintext name fields; prefer encrypted when present.
     const readField = (encKey, plainKey) => {
-      try {
-        if (u[encKey]) return decryptField(u[encKey]) || '';
-      } catch {}
+      const val = safeDecrypt(u[encKey] || '', '');
+      if (val) return val;
       return u[plainKey] || '';
     };
 
@@ -114,16 +113,16 @@ async function resolveAuthors(items) {
 
     // Fallback to decrypting stored ciphertext if user doc missing or empty
     if (!firstName && author.firstNameEnc) {
-      try { firstName = decryptField(author.firstNameEnc) || ''; } catch {}
+      firstName = safeDecrypt(author.firstNameEnc || '', '');
     }
     if (!middleName && author.middleNameEnc) {
-      try { middleName = decryptField(author.middleNameEnc) || ''; } catch {}
+      middleName = safeDecrypt(author.middleNameEnc || '', '');
     }
     if (!lastName && author.lastNameEnc) {
-      try { lastName = decryptField(author.lastNameEnc) || ''; } catch {}
+      lastName = safeDecrypt(author.lastNameEnc || '', '');
     }
     if (!email && author.emailEnc) {
-      try { email = decryptField(author.emailEnc) || ''; } catch {}
+      email = safeDecrypt(author.emailEnc || '', '');
     }
 
     const fullName = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`

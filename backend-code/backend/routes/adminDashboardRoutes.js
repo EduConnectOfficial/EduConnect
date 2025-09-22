@@ -1,8 +1,10 @@
 // backend/routes/adminDashboardRoutes.js
+'use strict';
+
 const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore } = require('../config/firebase');
-const { decryptField } = require('../utils/fieldCrypto');
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ switched to safeDecrypt
 
 /* ========== SCHEMA CONFIG (adjust if your schema differs) ========== */
 const COLLECTIONS = {
@@ -17,17 +19,17 @@ const COLLECTIONS = {
 
 function decryptNamesFromUser(u = {}) {
   return {
-    firstName: decryptField(u.firstNameEnc || ''),
-    middleName: decryptField(u.middleNameEnc || ''),
-    lastName: decryptField(u.lastNameEnc || ''),
+    firstName:  safeDecrypt(u.firstNameEnc || '', ''),
+    middleName: safeDecrypt(u.middleNameEnc || '', ''),
+    lastName:   safeDecrypt(u.lastNameEnc || '', ''),
   };
 }
 
 function toMillis(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
-  if (v._seconds) return v._seconds * 1000;           // Firestore Timestamp-like object
-  if (typeof v.toMillis === 'function') return v.toMillis(); // Firestore Timestamp
+  if (v && typeof v.toMillis === 'function') return v.toMillis(); // Firestore Timestamp
+  if (v && typeof v._seconds === 'number') return v._seconds * 1000; // plain TS-like
   const t = new Date(v).getTime();
   return Number.isNaN(t) ? 0 : t;
 }
@@ -48,7 +50,7 @@ function todayBounds() {
 
 async function fetchUsersWithDecryptedNames() {
   const snap = await firestore.collection(COLLECTIONS.users).get();
-  const users = snap.docs.map(d => d.data() || []);
+  const users = snap.docs.map(d => d.data() || {});
   return users.map(u => {
     const names = decryptNamesFromUser(u);
     const fullName = [names.firstName, names.middleName, names.lastName]
@@ -94,8 +96,6 @@ async function getMostCompletedModule() {
 
 /**
  * Global average across ALL quiz results.
- * If you prefer to mirror teacherAnalytics calculation exactly,
- * query the same underlying `quizResults` your utils use.
  */
 async function getGlobalAverageQuizScore() {
   try {
@@ -117,12 +117,14 @@ async function getGlobalAverageQuizScore() {
 
 /**
  * Daily Active Users = unique users with an activity log entry today.
- * Expects activityLogs with fields: userId (string), timestamp (ms/TS)
  */
 async function getDailyActiveUsers() {
   try {
     const { start, end } = todayBounds();
-    // Works if timestamp is stored as Number (ms) OR Firestore Timestamp
+
+    // NOTE: If your activityLogs.timestamp is a Firestore Timestamp,
+    // it's better to store a parallel numeric ms field for range queries,
+    // or query via Timestamp objects. This version assumes a numeric ms field.
     const snap = await firestore
       .collection(COLLECTIONS.activityLogs)
       .where('timestamp', '>=', start)

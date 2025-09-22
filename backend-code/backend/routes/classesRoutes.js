@@ -1,6 +1,4 @@
-// backend/routes/classesRoutes.js
-'use strict';
-
+// ==== routes/classesRoutes.js ==== //
 const router = require('express').Router();
 const XLSX = require('xlsx');
 const multer = require('multer');
@@ -9,14 +7,15 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-const { preferDecrypt } = require('../utils/fieldCrypto'); // <-- use preferDecrypt
+// ⬇️ use safeDecrypt (non-throwing), not decryptField
+const { safeDecrypt } = require('../utils/fieldCrypto');
 
-// ===== In-memory uploader for bulk =====
+// ====== In-memory uploader (no disk), accepts xlsx/xls/csv for bulk ======
 const memoryStorage = multer.memoryStorage();
 const SPREADSHEET_MIMES = new Set([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-excel',
-  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel',   // .xls (and sometimes csv on some browsers)
+  'text/csv',                   // .csv (explicit)
 ]);
 const SPREADSHEET_EXT = /\.(xlsx|xls|csv)$/i;
 
@@ -29,64 +28,41 @@ function bulkFileFilter(_req, file, cb) {
 
 const uploadBulkMemory = multer({
   storage: memoryStorage,
-  limits: { fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024 },
+  limits: {
+    fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024, // default 25 MB
+  },
   fileFilter: bulkFileFilter,
 });
 
 // --- helpers: role guards (strict students-only) ---
 function isStudentUser(u = {}) {
   const role = String(u.role || u.userType || '').toLowerCase();
-  const hasStudentId = typeof u.studentId === 'string' && u.studentId.trim() !== '';
+
+  // must have a real studentId
+  const hasStudentId =
+    typeof u.studentId === 'string' && u.studentId.trim() !== '';
+
+  // any teacher signal -> block
   const isTeacherSignal =
     u.isTeacher === true ||
     role === 'teacher' ||
     (typeof u.teacherId === 'string' && u.teacherId.trim() !== '');
+
+  // allow unknown/mixed roles as long as not teacher and has studentId
   return hasStudentId && !isTeacherSignal;
 }
 
-// ---------- name helpers ----------
-function splitFullName(full = '') {
-  const s = String(full || '').trim();
-  if (!s) return { first: '', last: '' };
-  const parts = s.split(/\s+/);
-  if (parts.length === 1) return { first: parts[0], last: '' };
-  return { first: parts[0], last: parts.slice(1).join(' ') };
-}
-
-function fallbackNameFromEmail(email = '') {
-  const m = String(email || '').match(/^[^@]+/);
-  return m ? m[0] : '';
-}
-
-/**
- * Prefer: fullName -> decrypted first/middle/last -> plaintext first/middle/last -> username/email
- */
+// Small helper to decrypt names from a user doc (safe + fallback to plaintext fields)
 function decryptNamesFromUser(u = {}) {
-  // try encrypted tokens; if not present / not decryptable, fall back to the plain fields
-  const firstName  = preferDecrypt(u.firstNameEnc,  u.firstName || '');
-  const middleName = preferDecrypt(u.middleNameEnc, u.middleName || '');
-  const lastName   = preferDecrypt(u.lastNameEnc,   u.lastName || '');
-
-  const fullRaw = String(u.fullName || '').trim();
-  if (fullRaw) {
-    const { first, last } = splitFullName(fullRaw);
-    return {
-      firstName: first || firstName || fallbackNameFromEmail(u.email) || u.username || '',
-      middleName,
-      lastName: last || lastName || '',
-      fullName: fullRaw,
-    };
-  }
-
-  const built = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.replace(/\s+/g, ' ').trim();
-  if (built) {
-    return { firstName, middleName, lastName, fullName: built };
-  }
-
-  // nothing to use — fall back to username/email
-  const guessed = fallbackNameFromEmail(u.email) || u.username || 'Student';
-  const { first, last } = splitFullName(guessed);
-  return { firstName: first, middleName: '', lastName: last, fullName: guessed };
+  const dec = (encKey, plainKey) => {
+    const v = safeDecrypt(u[encKey], '');
+    return (v && typeof v === 'string') ? v : (u[plainKey] || '');
+  };
+  return {
+    firstName:  dec('firstNameEnc',  'firstName'),
+    middleName: dec('middleNameEnc', 'middleName'),
+    lastName:   dec('lastNameEnc',   'lastName'),
+  };
 }
 
 // === GET /api/classes/:id ===
@@ -100,6 +76,7 @@ router.get('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === GET /api/classes (filterable) ===
+// Optional query params: teacherId, schoolYear, semester, archived=(exclude|only|include)
 router.get('/api/classes', asyncHandler(async (req, res) => {
   let q = firestore.collection('classes');
 
@@ -107,9 +84,12 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
   if (req.query.schoolYear) q = q.where('schoolYear', '==', req.query.schoolYear);
   if (req.query.semester) q = q.where('semester', '==', req.query.semester);
 
-  const archivedParam = String(req.query.archived || 'exclude');
-  if (archivedParam === 'exclude')      q = q.where('archived', '==', false);
-  else if (archivedParam === 'only')    q = q.where('archived', '==', true);
+  const archivedParam = String(req.query.archived || 'exclude'); // exclude | include | only
+  if (archivedParam === 'exclude') {
+    q = q.where('archived', '==', false);
+  } else if (archivedParam === 'only') {
+    q = q.where('archived', '==', true);
+  } // include => no archived filter
 
   q = q.orderBy('createdAt', 'desc');
 
@@ -137,17 +117,27 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
 }));
 
 // === POST /api/classes ===
+// body: { name, gradeLevel, section, teacherId, schoolYear, semester }
 router.post('/api/classes', asyncHandler(async (req, res) => {
   const { name, gradeLevel, section, teacherId, schoolYear, semester } = req.body;
 
   if (!name || !gradeLevel || !section || !teacherId) {
-    return res.status(400).json({ success: false, message: 'name, gradeLevel, section and teacherId are all required.' });
+    return res.status(400).json({
+      success: false,
+      message: 'name, gradeLevel, section and teacherId are all required.'
+    });
   }
   if (!isValidSchoolYear(schoolYear)) {
-    return res.status(400).json({ success: false, message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).' });
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).'
+    });
   }
   if (!isValidSemester(semester)) {
-    return res.status(400).json({ success: false, message: 'Invalid semester. Use "1st Semester" or "2nd Semester".' });
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid semester. Use "1st Semester" or "2nd Semester".'
+    });
   }
 
   const payload = {
@@ -168,17 +158,23 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
   await docRef.update({ classId: docRef.id });
 
   const saved = await docRef.get();
-  res.status(201).json({ success: true, class: { id: docRef.id, classId: docRef.id, ...saved.data() } });
+  res.status(201).json({
+    success: true,
+    class: { id: docRef.id, classId: docRef.id, ...saved.data() }
+  });
 }));
 
 // === PUT /api/classes/:id ===
+// body: { title?, gradeLevel?, section?, schoolYear?, semester? }
 router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, gradeLevel, section, schoolYear, semester } = req.body;
 
   const classRef = firestore.collection('classes').doc(id);
   const classDoc = await classRef.get();
-  if (!classDoc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+  if (!classDoc.exists) {
+    return res.status(404).json({ success: false, message: 'Class not found.' });
+  }
 
   const updates = {};
   if (name != null)       updates.name = String(name).trim();
@@ -186,13 +182,19 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   if (section != null)    updates.section = String(section).trim();
   if (schoolYear != null) {
     if (!isValidSchoolYear(schoolYear)) {
-      return res.status(400).json({ success: false, message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid schoolYear. Use YYYY-YYYY (e.g., 2025-2026).'
+      });
     }
     updates.schoolYear = schoolYear;
   }
   if (semester != null) {
     if (!isValidSemester(semester)) {
-      return res.status(400).json({ success: false, message: 'Invalid semester. Use "1st Semester" or "2nd Semester".' });
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid semester. Use "1st Semester" or "2nd Semester".'
+      });
     }
     updates.semester = semester;
   }
@@ -201,7 +203,8 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// === ARCHIVE ===
+// === ARCHIVE class ===
+// PATCH /api/classes/:id/archive   body: { by?: teacherId }
 router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { by } = req.body || {};
@@ -210,7 +213,9 @@ router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   const d = doc.data();
-  if (d.archived === true) return res.json({ success: true, already: true, message: 'Class already archived.' });
+  if (d.archived === true) {
+    return res.json({ success: true, already: true, message: 'Class already archived.' });
+  }
 
   await ref.update({
     archived: true,
@@ -221,7 +226,8 @@ router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'Class archived.' });
 }));
 
-// === UNARCHIVE ===
+// === UNARCHIVE class ===
+// PATCH /api/classes/:id/unarchive
 router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const ref = firestore.collection('classes').doc(id);
@@ -229,20 +235,30 @@ router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
   if (!doc.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
 
   const d = doc.data();
-  if (d.archived !== true) return res.json({ success: true, already: true, message: 'Class is not archived.' });
+  if (d.archived !== true) {
+    return res.json({ success: true, already: true, message: 'Class is not archived.' });
+  }
 
-  await ref.update({ archived: false, archivedAt: null, archivedBy: null });
+  await ref.update({
+    archived: false,
+    archivedAt: null,
+    archivedBy: null
+  });
+
   return res.json({ success: true, message: 'Class unarchived.' });
 }));
 
-// === DELETE ===
+// === DELETE /api/classes/:id ===
+// Optional query param: ?cascade=true  -> also deletes subcollections
 router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const cascade = String(req.query.cascade || '').toLowerCase() === 'true';
 
   const classRef = firestore.collection('classes').doc(id);
   const snap = await classRef.get();
-  if (!snap.exists) return res.status(404).json({ success: false, message: 'Class not found.' });
+  if (!snap.exists) {
+    return res.status(404).json({ success: false, message: 'Class not found.' });
+  }
 
   if (cascade) {
     const subcols = await classRef.listCollections();
@@ -263,7 +279,8 @@ router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
   return res.json({ success: true });
 }));
 
-// === ROSTER: GET students ===
+// === ROSTER: GET /api/classes/:id/students ===
+// Hidden when archived unless ?archived=include is passed.
 router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classRef = firestore.collection('classes').doc(req.params.id);
   const classDoc = await classRef.get();
@@ -279,8 +296,9 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
 
   const base = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+  // Join each roster entry with its user doc (by studentId or userId)
   const students = await Promise.all(base.map(async (row) => {
-    let active = !!row.active;
+    let active = !!row.active; // fallback
     let email = row.email || '';
     let fullName = row.fullName || '';
     let photoURL = row.photoURL || '';
@@ -293,8 +311,8 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          // FULL NAME FIRST
-          const candidate = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          // Prefer decrypted names; fallback to username
+          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
@@ -308,22 +326,28 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          const candidate = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
         }
       }
-    } catch {
+    } catch (_) {
       // keep fallbacks
     }
 
-    return { ...row, active, email, fullName, photoURL };
+    return {
+      ...row,
+      active,
+      email,
+      fullName,
+      photoURL,
+    };
   }));
 
   res.json({ success: true, students });
 }));
 
-// === ROSTER: POST single enroll ===
+// === ROSTER: POST /api/classes/:id/students (single enroll) ===
 router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classId = req.params.id;
 
@@ -334,7 +358,9 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   }
 
   const { studentId } = req.body || {};
-  if (!studentId) return res.status(400).json({ success: false, message: 'studentId is required.' });
+  if (!studentId) {
+    return res.status(400).json({ success: false, message: 'studentId is required.' });
+  }
 
   const result = await enrollStudentIdempotent(classId, studentId);
   if (!result.ok) {
@@ -350,7 +376,7 @@ router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   });
 }));
 
-// === ROSTER: BULK ENROLL ===
+// === ROSTER: BULK ENROLL (xlsx/csv) ===
 router.post(
   '/api/classes/:id/students/bulk',
   uploadBulkMemory.single('file'),
@@ -369,12 +395,13 @@ router.post(
 
     const preferredCol = String(req.body.column || 'studentId').trim().toLowerCase();
 
+    // Read from memory buffer (works for .xlsx/.xls/.csv)
     let rows = [];
     try {
       const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    } catch {
+    } catch (e) {
       return res.status(400).json({ success: false, message: 'Failed to parse spreadsheet. Ensure it is a valid .xlsx, .xls, or .csv file.' });
     }
 
@@ -430,7 +457,7 @@ router.post(
   })
 );
 
-// === DELETE student from class ===
+// === ROSTER: DELETE /api/classes/:id/students/:studentId ===
 router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, res) => {
   const classId = req.params.id;
   const studentId = req.params.studentId;
@@ -442,20 +469,24 @@ router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, r
     return res.status(403).json({ success: false, message: 'Class is archived; modifications are disabled.' });
   }
 
+  // 1) Remove from roster
   await classRef.collection('roster').doc(studentId).delete();
+
+  // 2) Decrement count
   await classRef.update({ students: admin.firestore.FieldValue.increment(-1) });
 
+  // 3) Remove enrollment record from user's doc
   const userSnap = await firestore.collection('users').where('studentId', '==', studentId).limit(1).get();
   if (!userSnap.empty) {
     const userDocId = userSnap.docs[0].id;
     const enrollmentRef = firestore.collection('users').doc(userDocId).collection('enrollments').doc(classId);
-    await enrollmentRef.delete().catch(() => {});
+    await enrollmentRef.delete().catch(() => {}); // ignore if not present
   }
 
   return res.json({ success: true });
 }));
 
-// === Student lookup ===
+// === Student lookup (exact studentId) — hardened to students-only
 router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   const { studentId } = req.query;
   if (!studentId || String(studentId).trim() === '') {
@@ -465,7 +496,9 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   if (snap.empty) return res.json({ success: true, found: false });
   const u = snap.docs[0].data() || {};
 
-  if (!isStudentUser(u)) return res.json({ success: true, found: false });
+  if (!isStudentUser(u)) {
+    return res.json({ success: true, found: false });
+  }
 
   const names = decryptNamesFromUser(u);
 
@@ -477,44 +510,48 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
       firstName: names.firstName || '',
       middleName: names.middleName || '',
       lastName:  names.lastName  || '',
-      fullName:  names.fullName  || '',
       email:     u.email || '',
       photoURL:  u.photoURL || ''
     }
   });
 }));
 
-// === Student search (returns fullName too) ===
+// === Student SEARCH (by ID or name; STRICT STUDENTS ONLY, DECRYPT NAMES) ===
 router.get('/api/students/search', asyncHandler(async (req, res) => {
   const qRaw = String(req.query.query || '').trim();
-  if (!qRaw) return res.status(400).json({ success: false, message: 'query is required.' });
-  if (qRaw.length < 2) return res.json({ success: true, students: [] });
+  if (!qRaw) {
+    return res.status(400).json({ success: false, message: 'query is required.' });
+  }
+  if (qRaw.length < 2) {
+    // keep a small floor to avoid scanning for single letters
+    return res.json({ success: true, students: [] });
+  }
 
   const usersCol = firestore.collection('users');
   const qLower = qRaw.toLowerCase();
 
+  // Helper to build decrypted payload
   const buildDecrypted = (u = {}) => {
     const names = decryptNamesFromUser(u);
     const studentId = u.studentId || '';
-    const first = names.firstName || splitFullName(names.fullName).first || '';
-    const last  = names.lastName  || splitFullName(names.fullName).last  || '';
     return {
       studentId,
-      firstName: first,
+      firstName: names.firstName || '',
       middleName: names.middleName || '',
-      lastName:  last,
-      fullName:  names.fullName || `${first} ${last}`.trim(),
+      lastName:  names.lastName  || '',
       email:     u.email || '',
       active:    u.active !== false
     };
   };
 
+  // Helper: looks like an ID?
   const idLike =
-    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(qRaw) ||
+    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(qRaw) ||  // e.g., S-2025-00001 or A-2025-00001
     /^S-\d{4}-\d{5}$/i.test(qRaw)        ||
     /^S\d+$/i.test(qRaw)                 ||
     /^\d{4}-\d{5}$/.test(qRaw);
 
+  // ---- 1) Fast path: exact studentId match
   if (idLike) {
     try {
       const exactSnap = await usersCol.where('studentId', '==', qRaw).limit(1).get();
@@ -522,36 +559,49 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
         const u = exactSnap.docs[0].data() || {};
         if (isStudentUser(u)) {
           const stu = buildDecrypted(u);
-          if (stu.studentId) return res.json({ success: true, students: [stu] });
+          if (stu.studentId) {
+            return res.json({ success: true, students: [stu] });
+          }
         }
       }
-    } catch {}
+    } catch {
+      // ignore; we'll fall back to the name scan
+    }
   }
 
-  const LIMIT = 500;
+  // ---- 2) Bounded scan of student users, decrypt names, filter in memory
+  const LIMIT = 500; // tune for your dataset
   const snap = await usersCol.where('isStudent', '==', true).limit(LIMIT).get();
 
   const matches = [];
   for (const doc of snap.docs) {
     const u = doc.data() || {};
-    if (!isStudentUser(u)) continue;
-    if (!u.studentId || String(u.studentId).trim() === '') continue;
+    if (!isStudentUser(u)) continue;                 // must be a proper student
+    if (!u.studentId || String(u.studentId).trim() === '') continue; // must have studentId
 
-    const stu = buildDecrypted(u);
-    const fn = String(stu.firstName || '').toLowerCase();
-    const mn = String(stu.middleName || '').toLowerCase();
-    const ln = String(stu.lastName  || '').toLowerCase();
-    const full = String(stu.fullName || `${stu.firstName} ${stu.lastName}`).toLowerCase().trim();
-    const em = String(stu.email || '').toLowerCase();
-    const sid = String(stu.studentId || '').toLowerCase();
+    // Decrypt names for matching
+    const names = decryptNamesFromUser(u);
+    const fn = String(names.firstName || '').toLowerCase();
+    const mn = String(names.middleName || '').toLowerCase();
+    const ln = String(names.lastName  || '').toLowerCase();
+    const full = (fn + ' ' + ln).trim();
+    const em = String(u.email || '').toLowerCase();
+    const sid = String(u.studentId || '').toLowerCase();
 
-    if (sid.includes(qLower) || fn.includes(qLower) || mn.includes(qLower) || ln.includes(qLower) || full.includes(qLower) || em.includes(qLower)) {
+    // Match by studentId, any name part, full name, or email (substring)
+    if (
+      sid.includes(qLower) ||
+      fn.includes(qLower)  ||
+      mn.includes(qLower)  ||
+      ln.includes(qLower)  ||
+      full.includes(qLower)||
+      em.includes(qLower)
+    ) {
       matches.push({
-        studentId: stu.studentId,
-        firstName: stu.firstName,
-        lastName:  stu.lastName,
-        fullName:  stu.fullName,
-        email:     stu.email
+        studentId: u.studentId || '',
+        firstName: names.firstName || '',
+        lastName:  names.lastName  || '',
+        email:     u.email || ''
       });
     }
   }
@@ -560,16 +610,19 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
 }));
 
 // === STUDENT: GET ENROLLMENTS ===
+// GET /api/students/:userId/enrollments?includeTeacher=true
 router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const includeTeacher = String(req.query.includeTeacher || '').toLowerCase() === 'true';
 
   const userRef = firestore.collection('users').doc(userId);
   const userDoc = await userRef.get();
-  if (!userDoc.exists) return res.status(404).json({ success: false, message: 'Student not found.' });
+  if (!userDoc.exists) {
+    return res.status(404).json({ success: false, message: 'Student not found.' });
+  }
 
   const snap = await userRef.collection('enrollments').get();
-  let enrollments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let enrollments = snap.docs.map(d => ({ id: d.id, ...d.data() })); // id == classId
 
   if (includeTeacher) {
     const teacherIds = Array.from(new Set(enrollments.map(e => e.teacherId).filter(Boolean)));
@@ -580,7 +633,7 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
         if (tdoc.exists) {
           const t = tdoc.data() || {};
           const names = decryptNamesFromUser(t);
-          const full = names.fullName || `${names.firstName || ''} ${names.lastName || ''}`.trim();
+          const full = `${names.firstName || ''} ${names.lastName || ''}`.trim();
           teacherMap[tid] = full || t.username || 'Teacher';
         }
       } catch {}

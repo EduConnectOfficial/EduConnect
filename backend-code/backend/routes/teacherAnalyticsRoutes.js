@@ -12,14 +12,14 @@ const {
 } = require('../utils/analyticsUtils');
 
 // Decrypt helper for user docs
-const { decryptField } = require('../utils/fieldCrypto');
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ switched to safeDecrypt
 const { getUserRefByAnyId } = require('../utils/idUtils');
 
 function decryptNamesFromUser(u = {}) {
   return {
-    firstName: decryptField(u.firstNameEnc || ''),
-    middleName: decryptField(u.middleNameEnc || ''),
-    lastName: decryptField(u.lastNameEnc || ''),
+    firstName:  safeDecrypt(u.firstNameEnc  || '', ''),
+    middleName: safeDecrypt(u.middleNameEnc || '', ''),
+    lastName:   safeDecrypt(u.lastNameEnc   || '', ''),
   };
 }
 function fullNameFromUser(u = {}) {

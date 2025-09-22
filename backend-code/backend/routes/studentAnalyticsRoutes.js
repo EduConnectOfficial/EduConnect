@@ -5,7 +5,7 @@ const router = require('express').Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { getUserRefByAnyId } = require('../utils/idUtils');
-const { decryptField } = require('../utils/fieldCrypto'); // decrypt names
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ use safeDecrypt
 
 /* ----------------------------- helpers ----------------------------- */
 function chunk(arr, size = 10) {
@@ -65,9 +65,9 @@ async function fetchTitlesMap({ collection, ids }) {
 // Decrypt helper for user docs
 function decryptNamesFromUser(u = {}) {
   return {
-    firstName: decryptField(u.firstNameEnc || ''),
-    middleName: decryptField(u.middleNameEnc || ''),
-    lastName: decryptField(u.lastNameEnc || ''),
+    firstName:  safeDecrypt(u.firstNameEnc  || '', ''),
+    middleName: safeDecrypt(u.middleNameEnc || '', ''),
+    lastName:   safeDecrypt(u.lastNameEnc   || '', ''),
   };
 }
 
