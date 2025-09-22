@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Sign Up</title>
+
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="signup1.css" />
@@ -113,25 +117,30 @@
     </div>
   </div>
 
-  <!-- Optional manual override (uncomment and set a full origin, no trailing slash)
-  <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
-  -->
-
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    /* ===== API base detection (mirrors Teacher Login) ===== */
+    /* =========================
+       API base detection (Railway-ready)
+       Priority: meta[name=api-base] -> window.API_URL -> same-origin -> localhost
+    ========================== */
     (function decideApiBase(){
-      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
       const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+
+      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const sanitize = (u) => (u || '').replace(/\/+$/, '');
+
       let base = '';
-      if (manual) {
-        base = manual.replace(/\/+$/, '');
-      } else if (isLocal(location.hostname)) {
-        base = 'http://localhost:5000';
-      } else {
-        base = ''; // same-origin on Railway
+      if (metaBase) base = sanitize(metaBase);
+      else if (manual) base = sanitize(manual);
+      else if (isLocal(location.hostname)) base = 'http://localhost:5000';
+      else base = ''; // same-origin on Railway
+
+      if (!isLocal(location.hostname) && base.startsWith('http://')) {
+        base = base.replace(/^http:\/\//i, 'https://');
       }
       window.API_BASE = base;
     })();
@@ -198,42 +207,59 @@
     const normalizeEmail = v => trimmed(v).toLowerCase();
     function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
-    /* ===== Endpoints (ordered fallbacks) ===== */
+    /* ===== Endpoints (your backend first) ===== */
     const ENDPOINTS = {
       checkUsername(u) {
         const q = `username=${encodeURIComponent(u)}`;
         return [
-          `${API_BASE}/api/users/check-username?${q}`, // usersRoutes.js (preferred)
-          `${API_BASE}/check-username?${q}`,           // legacy/fallback
-        ];
+          `${API_BASE}/check-username`,
+          `${API_BASE}/api/users/check-username`,
+        ].map(u => u + (u.includes('?') ? `&${q}` : `?${q}`));
       },
       checkEmail(e) {
         const q = `email=${encodeURIComponent(e)}`;
         return [
-          `${API_BASE}/api/users/check-email?${q}`,    // usersRoutes.js (preferred)
-          `${API_BASE}/check-email?${q}`,              // legacy/fallback
-        ];
+          `${API_BASE}/check-email`,
+          `${API_BASE}/api/users/check-email`,
+        ].map(u => u + (u.includes('?') ? `&${q}` : `?${q}`));
       },
       signup() {
         return [
-          `${API_BASE}/signup`,        // authRoutes.js (mounted at '/')
-          `${API_BASE}/api/signup`,    // fallback
+          `${API_BASE}/signup`,
+          `${API_BASE}/api/signup`,
         ];
       }
     };
 
-    /* ===== Resilient fetch (skips 404/network and tries next) ===== */
+    function hintForNetworkFailure(url, resp) {
+      let hint = '';
+      if (!resp) {
+        hint = 'Network/CORS error. If backend is separate, set <meta name="api-base" ...> or window.API_URL.';
+      } else if (resp.status === 404) hint = '404 Not Found – check server route + mount path.';
+      else if (resp.status === 403) hint = '403 Forbidden – check CORS/auth on server.';
+      console.warn('[Signup] Request failed:', { tried: url, status: resp?.status, hint });
+      return hint;
+    }
+
     async function fetchJSONFallback(urls, options) {
+      let lastErr = null;
       for (const url of urls) {
         try {
-          const r = await fetch(url, options);
-          if (r.status === 404) continue;
+          const r = await fetch(url, {
+            ...options,
+            credentials: 'same-origin',
+            mode: 'cors',
+          });
+          if (r.status === 404) { hintForNetworkFailure(url, r); continue; }
           let js = {};
-          try { js = await r.json(); } catch { js = {}; }
-          return { response: r, json: js };
-        } catch { /* try next */ }
+          try { js = await r.json(); } catch {}
+          return { response: r, json: js, urlTried: url };
+        } catch (e) {
+          lastErr = e;
+          hintForNetworkFailure(url, null);
+        }
       }
-      throw new Error('All endpoints failed');
+      throw lastErr || new Error('All endpoints failed');
     }
 
     async function checkUsername() {
@@ -369,6 +395,7 @@
     }
 
     // Submit
+    submitBtn.disabled = true;
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       signupErrorDiv.textContent = "";
@@ -408,17 +435,23 @@
       submitBtn.textContent = "Submitting...";
 
       try {
-        const { response, json: js } = await fetchJSONFallback(
+        const { response, json: js, urlTried } = await fetchJSONFallback(
           ENDPOINTS.signup(),
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+            mode: 'cors',
           }
         );
 
         if (!response.ok) {
-          signupErrorDiv.textContent = js.error || "Signup failed.";
+          const msg = js?.error || "Signup failed.";
+          signupErrorDiv.textContent = (response.status === 404 || response.status === 500)
+            ? `${msg} (Endpoint: ${urlTried || 'unknown'})`
+            : msg;
+
           submitBtn.disabled = false;
           submitBtn.textContent = prevText;
           return;
@@ -436,14 +469,11 @@
 
       } catch (err) {
         console.error(err);
-        signupErrorDiv.textContent = "Could not connect to the server.";
+        signupErrorDiv.textContent = "Could not connect to the server. Use <meta name=\"api-base\" ...> if backend is separate.";
         submitBtn.disabled = false;
         submitBtn.textContent = prevText;
       }
     });
-
-    // Initial state
-    submitBtn.disabled = true;
   </script>
 </body>
 </html>

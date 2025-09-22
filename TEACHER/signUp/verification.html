@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Verify Code</title>
 
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="signup1.css"/>
 </head>
@@ -88,268 +91,131 @@
     </div>
   </div>
 
-  <!-- Optional manual override (uncomment and set a full origin, no trailing slash)
-  <script>window.API_URL='https://educonnect-production-a604.up.railway.app';</script>
-  -->
-
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    /* ===== API base detection (mirrors login/signup) ===== */
     (function decideApiBase(){
-      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
       const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
-      let base = '';
-      if (manual) {
-        base = manual.replace(/\/+$/, '');
-      } else if (isLocal(location.hostname)) {
-        base = 'http://localhost:5000';
-      } else {
-        base = ''; // same-origin on Railway
-      }
-      window.API_BASE = base;
+      const isLocal = (h) => ['localhost','127.0.0.1'].includes(h);
+      const sanitize = (u) => (u || '').replace(/\/+$/, '');
+      let base = metaBase || manual || (isLocal(location.hostname) ? 'http://localhost:5000' : '');
+      if (!isLocal(location.hostname) && base.startsWith('http://')) base = base.replace(/^http:\/\//i,'https://');
+      window.API_BASE = sanitize(base);
     })();
 
-    /* ===== Endpoint fallbacks ===== */
     const ENDPOINTS = {
-      verifyCode() {
-        return [
-          `${API_BASE}/verify-code`,      // authRoutes or dedicated route
-          `${API_BASE}/api/verify-code`,  // fallback
-        ];
-      },
-      resendCode() {
-        return [
-          `${API_BASE}/resend-code`,
-          `${API_BASE}/api/resend-code`,
-        ];
-      }
+      verifyCode(){ return [ `${API_BASE}/verify-code`, `${API_BASE}/api/verify-code` ]; },
+      resendCode(){ return [ `${API_BASE}/resend-code`, `${API_BASE}/api/resend-code` ]; },
     };
 
-    /* ===== Resilient fetch (skip 404/network, try next) ===== */
-    async function fetchJSONFallback(urls, options) {
-      for (const url of urls) {
-        try {
-          const r = await fetch(url, options);
-          if (r.status === 404) continue;
-          let js = {};
-          try { js = await r.json(); } catch { js = {}; }
-          return { response: r, json: js };
-        } catch {
-          // network fail: try next
-        }
+    function hint(url, resp){
+      let h = '';
+      if (!resp) h = 'Network/CORS error. Set <meta name="api-base" ...> if separate backend.';
+      else if (resp.status === 404) h = '404 Not Found – check server route.';
+      else if (resp.status === 403) h = '403 Forbidden – CORS/auth.';
+      console.warn('[Verify]', {url, status: resp?.status, hint:h}); return h;
+    }
+    async function fetchJSONFallback(urls, options){
+      let last=null;
+      for(const u of urls){
+        try{
+          const r = await fetch(u,{...options,credentials:'same-origin',mode:'cors'});
+          if(r.status===404){ hint(u,r); continue; }
+          let j={}; try{ j=await r.json(); }catch{}
+          return {response:r,json:j,urlTried:u};
+        }catch(e){ last=e; hint(u,null); }
       }
-      throw new Error('All endpoints failed');
+      throw last||new Error('All endpoints failed');
     }
 
-    /* ===== Elements ===== */
-    const inputs = Array.from(document.querySelectorAll(".otp-input"));
-    const verifyForm = document.getElementById("verifyCodeForm");
-    const verifyBtn = document.getElementById("verifyBtn");
-    const verificationError = document.getElementById("verificationError");
-    const resendLink = document.getElementById("resendCode");
-    const resendTimer = document.getElementById("resendTimer");
-    const sentTo = document.getElementById("sentTo");
+    const inputs=[...document.querySelectorAll('.otp-input')];
+    const verifyForm=document.getElementById('verifyCodeForm');
+    const verifyBtn=document.getElementById('verifyBtn');
+    const verificationError=document.getElementById('verificationError');
+    const resendLink=document.getElementById('resendCode');
+    const resendTimer=document.getElementById('resendTimer');
+    const sentTo=document.getElementById('sentTo');
 
-    /* ===== Email from previous step ===== */
-    const email = sessionStorage.getItem("pendingEmail");
-    function maskEmail(email) {
-      if (!email || !email.includes("@")) return email || "";
-      const [local, domain] = email.split("@");
-      if (local.length <= 2) return local[0] + "•••@" + domain;
-      return local.slice(0, 2) + "•••@" + domain;
-    }
-    sentTo.textContent = email
-      ? `We sent a 6-digit code to ${maskEmail(email)}. Please enter it below.`
-      : "We sent a 6-digit code to your email. Please enter it below.";
+    const email=sessionStorage.getItem('pendingEmail');
+    function maskEmail(e){ if(!e||!e.includes('@'))return e||''; const [l,d]=e.split('@'); return (l.length<=2?l[0]:l.slice(0,2))+'•••@'+d; }
+    sentTo.textContent=email?`We sent a 6-digit code to ${maskEmail(email)}. Please enter it below.`:'We sent a 6-digit code to your email. Please enter it below.';
+    const joinCode=()=>inputs.map(i=>i.value.trim()).join('');
 
-    const joinCode = () => inputs.map(i => i.value.trim()).join("");
-
-    /* ===== OTP behaviour ===== */
-    inputs.forEach((input, i) => {
-      input.addEventListener("beforeinput", (e) => {
-        if (e.inputType === "insertText" && !/^\d$/.test(e.data)) e.preventDefault();
-      });
-      input.addEventListener("input", () => {
-        input.value = input.value.replace(/\D/g, "");
-        if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
-        verificationError.textContent = "";
-      });
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && !input.value && i > 0) inputs[i - 1].focus();
-        if (e.key === "ArrowLeft" && i > 0) inputs[i - 1].focus();
-        if (e.key === "ArrowRight" && i < inputs.length - 1) inputs[i + 1].focus();
-      });
-      input.addEventListener("paste", (e) => {
-        const text = (e.clipboardData || window.clipboardData).getData("text");
-        if (/^\d{6}$/.test(text)) {
-          e.preventDefault();
-          for (let k = 0; k < 6; k++) inputs[k].value = text[k];
-          inputs[5].focus();
-        }
-      });
+    inputs.forEach((input,i)=>{
+      input.addEventListener('beforeinput',(e)=>{ if(e.inputType==='insertText' && !/^\d$/.test(e.data)) e.preventDefault(); });
+      input.addEventListener('input',()=>{ input.value=input.value.replace(/\D/g,''); if(input.value && i<inputs.length-1) inputs[i+1].focus(); verificationError.textContent=''; });
+      input.addEventListener('keydown',(e)=>{ if(e.key==='Backspace' && !input.value && i>0) inputs[i-1].focus(); if(e.key==='ArrowLeft' && i>0) inputs[i-1].focus(); if(e.key==='ArrowRight' && i<inputs.length-1) inputs[i+1].focus(); });
+      input.addEventListener('paste',(e)=>{ const t=(e.clipboardData||window.clipboardData).getData('text'); if(/^\d{6}$/.test(t)){ e.preventDefault(); for(let k=0;k<6;k++) inputs[k].value=t[k]; inputs[5].focus(); } });
     });
 
-    /* ===== Resend cooldown ===== */
-    let cooldown = 0;
-    let timerId = null;
-    function setResendState(active) {
-      if (active) {
-        resendLink.classList.remove("disabled-link");
-        resendTimer.textContent = "";
-      } else {
-        resendLink.classList.add("disabled-link");
-      }
+    let cooldown=0, timerId=null;
+    function setResendState(active){ if(active){resendLink.classList.remove('disabled-link');resendTimer.textContent='';} else {resendLink.classList.add('disabled-link');} }
+    function startCooldown(s=60){ if(timerId) clearInterval(timerId); cooldown=s; setResendState(false); updateTimer(); timerId=setInterval(updateTimer,1000); }
+    function updateTimer(){ if(cooldown<=0){ clearInterval(timerId); timerId=null; resendTimer.textContent=''; setResendState(true); return; } resendTimer.textContent=`(${cooldown}s)`; cooldown--; }
+
+    function showSuccessModal({userId=null,teacherId=null,redirectTo=null,autoCloseMs=null}){
+      const el=document.getElementById('successModal'); const m=new bootstrap.Modal(el);
+      document.getElementById('successUserId').textContent=userId||'—';
+      document.getElementById('successTeacherId').textContent=teacherId||'—';
+      document.getElementById('successOkBtn').onclick=()=>{ if(redirectTo) location.href=redirectTo; };
+      el.addEventListener('hidden.bs.modal',function onH(){ el.removeEventListener('hidden.bs.modal',onH); if(redirectTo) location.href=redirectTo; });
+      m.show(); if(autoCloseMs&&Number.isFinite(autoCloseMs)){ setTimeout(()=>{ m.hide(); if(redirectTo) location.href=redirectTo; },autoCloseMs); }
     }
-    function startCooldown(seconds = 60) {
-      if (timerId) clearInterval(timerId);
-      cooldown = seconds;
-      setResendState(false);
-      updateTimer();
-      timerId = setInterval(updateTimer, 1000);
-    }
-    function updateTimer() {
-      if (cooldown <= 0) {
-        clearInterval(timerId);
-        timerId = null;
-        resendTimer.textContent = "";
-        setResendState(true);
-        return;
-      }
-      resendTimer.textContent = `(${cooldown}s)`;
-      cooldown -= 1;
-    }
+    function showFeedbackModal(message,title='Notification'){ document.getElementById('feedbackModalLabel').textContent=title; document.getElementById('feedbackModalBody').textContent=message; new bootstrap.Modal(document.getElementById('feedbackModal')).show(); }
 
-    /* ===== Modals ===== */
-    function showSuccessModal({ userId = null, teacherId = null, redirectTo = null, autoCloseMs = null }) {
-      const el = document.getElementById("successModal");
-      const m  = new bootstrap.Modal(el);
-
-      document.getElementById("successUserId").textContent    = userId    || "—";
-      document.getElementById("successTeacherId").textContent = teacherId || "—";
-
-      document.getElementById("successOkBtn").onclick = () => { if (redirectTo) window.location.href = redirectTo; };
-      el.addEventListener("hidden.bs.modal", function onHidden() {
-        el.removeEventListener("hidden.bs.modal", onHidden);
-        if (redirectTo) window.location.href = redirectTo;
-      });
-
-      m.show();
-
-      if (autoCloseMs && Number.isFinite(autoCloseMs)) {
-        setTimeout(() => {
-          m.hide();
-          if (redirectTo) window.location.href = redirectTo;
-        }, autoCloseMs);
-      }
-    }
-
-    function showFeedbackModal(message, title = "Notification") {
-      document.getElementById("feedbackModalLabel").textContent = title;
-      document.getElementById("feedbackModalBody").textContent  = message;
-      new bootstrap.Modal(document.getElementById("feedbackModal")).show();
-    }
-
-    /* ===== Submit verification ===== */
-    verifyForm.addEventListener("submit", async (e) => {
+    verifyForm.addEventListener('submit',async (e)=>{
       e.preventDefault();
-      const code = joinCode();
+      const code=joinCode();
+      if(!/^\d{6}$/.test(code)){ verificationError.textContent='Please enter a valid 6-digit code.'; inputs[0].focus(); return; }
+      if(!email){ verificationError.textContent='Email not found. Please register again.'; return; }
 
-      if (!/^\d{6}$/.test(code)) {
-        verificationError.textContent = "Please enter a valid 6-digit code.";
-        inputs[0].focus();
-        return;
-      }
-      if (!email) {
-        verificationError.textContent = "Email not found. Please register again.";
-        return;
-      }
-
-      verificationError.textContent = "";
-      verifyBtn.disabled = true;
-      const prevHTML = verifyBtn.innerHTML;
-      verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying...`;
-
-      try {
-        const { response, json:data } = await fetchJSONFallback(
-          ENDPOINTS.verifyCode(),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, code })
-          }
-        );
-
-        if (response.ok) {
-          const userId    = data.userId    || (data.user && data.user.userId);
-          const teacherId = data.teacherId || (data.user && data.user.teacherId);
-          const studentId = data.studentId || (data.user && data.user.studentId);
-
-          if (userId)    sessionStorage.setItem("verifiedUserId", userId);
-          if (teacherId) sessionStorage.setItem("teacherId", teacherId);
-          if (studentId) sessionStorage.setItem("studentId", studentId);
-
-          sessionStorage.removeItem("pendingEmail");
-          sessionStorage.removeItem("pendingUserData");
-
-          showSuccessModal({
-            userId,
-            teacherId,
-            redirectTo: "/TEACHER/login/login.html"
-          });
-
+      verificationError.textContent=''; verifyBtn.disabled=true;
+      const prev=verifyBtn.innerHTML; verifyBtn.innerHTML=`<span class="spinner-border spinner-border-sm me-2"></span>Verifying...`;
+      try{
+        const {response,json:data,urlTried}=await fetchJSONFallback(ENDPOINTS.verifyCode(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code})});
+        if(response.ok){
+          const userId=data.userId || data.user?.userId;
+          const teacherId=data.teacherId || data.user?.teacherId;
+          if(userId) sessionStorage.setItem('verifiedUserId',userId);
+          if(teacherId) sessionStorage.setItem('teacherId',teacherId);
+          sessionStorage.removeItem('pendingEmail'); sessionStorage.removeItem('pendingUserData');
+          showSuccessModal({ userId, teacherId, redirectTo:'/TEACHER/login/login.html' });
         } else {
-          verificationError.textContent = data.error || "Invalid or expired code.";
-          if (!timerId) startCooldown(30);
+          verificationError.textContent=(data && data.error) ? data.error : `Invalid or expired code. (Endpoint: ${urlTried||'unknown'})`;
+          if(!timerId) startCooldown(30);
         }
-      } catch (err) {
+      }catch(err){
         console.error(err);
-        verificationError.textContent = "Failed to connect to server.";
-      } finally {
-        verifyBtn.disabled = false;
-        verifyBtn.innerHTML = prevHTML;
+        verificationError.textContent='Failed to connect to server. Configure <meta name="api-base" ...> if backend is separate.';
+      }finally{
+        verifyBtn.disabled=false; verifyBtn.innerHTML=prev;
       }
     });
 
-    /* ===== Resend code ===== */
-    resendLink.addEventListener("click", async (e) => {
+    document.getElementById('resendCode').addEventListener('click',async (e)=>{
       e.preventDefault();
-      if (resendLink.classList.contains("disabled-link")) return;
-      if (!email) {
-        verificationError.textContent = "Missing email from session.";
-        return;
-      }
-      try {
+      if(resendLink.classList.contains('disabled-link')) return;
+      if(!email){ verificationError.textContent='Missing email from session.'; return; }
+      try{
         setResendState(false);
-        const { response, json:data } = await fetchJSONFallback(
-          ENDPOINTS.resendCode(),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-          }
-        );
-        if (response.ok) {
-          showFeedbackModal("New verification code sent to your email.", "Code Resent");
-          inputs.forEach(i => i.value = "");
-          inputs[0].focus();
-          startCooldown(60);
+        const {response,json:data,urlTried}=await fetchJSONFallback(ENDPOINTS.resendCode(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+        if(response.ok){
+          showFeedbackModal('New verification code sent to your email.','Code Resent');
+          inputs.forEach(i=>i.value=''); inputs[0].focus(); startCooldown(60);
         } else {
           setResendState(true);
-          showFeedbackModal(data.error || "Could not resend code.", "Resend Failed");
+          showFeedbackModal((data&&data.error)?data.error:`Could not resend code. (Endpoint: ${urlTried||'unknown'})`,'Resend Failed');
         }
-      } catch (error) {
-        console.error(error);
+      }catch(err){
+        console.error(err);
         setResendState(true);
-        showFeedbackModal("Server error while resending verification code.", "Server Error");
+        showFeedbackModal('Server error while resending verification code. If backend is separate, set <meta name="api-base" ...>.','Server Error');
       }
     });
 
-    window.addEventListener("DOMContentLoaded", () => {
-      inputs[0].focus();
-      startCooldown(30);
-    });
+    window.addEventListener('DOMContentLoaded',()=>{ inputs[0].focus(); startCooldown(30); });
   </script>
 </body>
 </html>
