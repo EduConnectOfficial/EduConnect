@@ -36,7 +36,7 @@
         </div>
         <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
           <i class="fas fa-user-circle fa-2x"></i>
-          <span id="Username" class="username ms-2 fw-semibold">Teacher</span>
+          <span id="Username" class="username ms-2 fw-semibold">T</span>
         </button>
       </header>
 
@@ -302,7 +302,17 @@
     if (!user || !user.userId || !user.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
     } else {
-      document.getElementById("Username").textContent = user.username || "Teacher";
+      // Initial-only username in header (no other changes)
+      const uname =
+        (user.username ||
+         user.fullName ||
+         user.name ||
+         (user.email || '').split('@')[0] ||
+         'Teacher').trim();
+      const initial = (uname.match(/[A-Za-z]/)?.[0] || uname.charAt(0) || 'T').toUpperCase();
+      const uEl = document.getElementById("Username");
+      uEl.textContent = initial;   // show just the initial
+      uEl.title = uname;           // keep full name on hover
     }
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
     window.logoutUser = logoutUser;
@@ -487,7 +497,7 @@
       if (typeof s === 'number') return (s*1000)+Math.floor(ns/1e6);
       return null;
     }
-    function toDate(v){ const ms = tsToMs(v); if (ms==null) return null; const d=new Date(ms); return Number.isNaN(d.getTime())?null:d; }
+    function toDate(v){ const ms = tsToMs(v); if (ms==null) return null; const d=new Date(ms); return Number.isNaN(d.getTime())?'—':d; }
     function fmt(dt){ if (!dt) return '—'; const d=dt instanceof Date?dt:new Date(dt); return isNaN(d.getTime())?'—':d.toLocaleString(); }
     function toApiUrl(pathOrUrl){
       const s = String(pathOrUrl || "");
