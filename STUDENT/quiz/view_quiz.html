@@ -24,11 +24,10 @@
     .rubric-preview { border:1px solid #e5e7eb; border-radius:.5rem; overflow:hidden; background:#fff; }
     .rubric-meta { font-size:.875rem; color:#6b7280; }
 
-    /* Long text safety */
     .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
     #quizDesc { white-space:pre-wrap; }
 
-    /* ===== Full-screen-ish File Preview Modal ===== */
+    /* File Preview Modal */
     #filePreviewModal .modal-dialog { max-width: 96vw; }
     #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
     #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
@@ -51,7 +50,6 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -123,7 +121,6 @@
                   </div>
                 </div>
 
-                <!-- Rubric section (meta + preview slot; we will open modal instead of inline) -->
                 <div id="rubricSection" class="mt-3 d-none">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="fw-semibold"><i class="bi bi-file-earmark-text"></i> Rubric</div>
@@ -249,15 +246,13 @@
 
       if (!isValid) {
         try { localStorage.removeItem('user'); } catch {}
-        window.location.replace("../login/login.html"); // page is under /STUDENT/quiz/
+        window.location.replace("../login/login.html");
         return;
       }
 
-      // Expose for other scripts
       window.currentUser = u;
       window.userData = u;
 
-      // Header initials
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
@@ -281,7 +276,6 @@
         el.setAttribute("aria-label", displayName);
       }
 
-      // Cross-tab tamper guard
       window.addEventListener("storage", (e) => {
         if (e.key === "user") {
           try {
@@ -305,17 +299,19 @@
 
   <!-- App -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    // ===== Railway-aware base + auth =====
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : ""; // same-origin on Railway
+    const API = `${SERVER_BASE}/api`;
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+    }
 
     function getParam(name){ const url = new URL(location.href); return url.searchParams.get(name); }
     function ts(v){ if(!v) return null; if(v instanceof Date) return v; if(typeof v === 'number' || typeof v === 'string') return new Date(v); if(v?.toDate) return v.toDate(); if(typeof v?.seconds === 'number') return new Date(v.seconds*1000); if(typeof v?._seconds === 'number') return new Date(v._seconds*1000); return null; }
     function fmtDate(v){ const d=ts(v); return d? d.toLocaleString(): "—"; }
-
-    // Insert zero-width space every 40 chars to allow breaking
-    function softWrap(s, limit=40){
-      if (!s) return s;
-      return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
-    }
+    function softWrap(s, limit=40){ if (!s) return s; return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B'); }
 
     const quizId = getParam('id');
 
@@ -417,7 +413,7 @@
       try{
         const params = new URLSearchParams();
         params.set('quizIds', quizId);
-        const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(userId)}/quiz-attempts?${params.toString()}`);
+        const res = await fetch(`${API}/students/${encodeURIComponent(userId)}/quiz-attempts?${params.toString()}`, { headers: authHeaders() });
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
         const js = await res.json();
         const record = js?.data?.[quizId] || {};
@@ -446,7 +442,7 @@
       if (kb >= 1) return `${kb.toFixed(0)} KB`;
       return `${bytes} B`;
     }
-    // Prefer downloadUrl; gracefully fall back to publicUrl or filePath.
+    // Resolve rubric to a viewable URL (Railway-safe)
     function resolveRubricFromQuiz(quiz){
       const rf = quiz?.rubricFile || null;
       if (!rf) return null;
@@ -458,13 +454,12 @@
       }
       if (typeof rf.filePath === 'string' && rf.filePath.trim()) {
         const path = rf.filePath.trim();
-        const href = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+        const href = path.startsWith('http') ? path : `${SERVER_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
         return { url: href, mime: rf.mime || '', originalName: rf.originalName || '', size: rf.size ?? null };
       }
       return null;
     }
 
-    // OPEN RUBRIC IN MODAL
     function showRubric(r){
       rubricSection.classList.remove('d-none');
 
@@ -507,7 +502,7 @@
       }
 
       try{
-        const res = await fetch(`${API_BASE}/quizzes/${encodeURIComponent(quizId)}`);
+        const res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`, { headers: authHeaders() });
         const data = await res.json();
 
         if(!data?.success || !data.quiz){
@@ -541,7 +536,7 @@
         paginationEl.textContent = pag;
         timerEnabledEl.textContent = (settings.timerEnabled && Number(settings.durationMinutes) > 0) ? 'Enabled' : 'Disabled';
 
-        // Rubric (downloadUrl preferred, fallback supported)
+        // Rubric
         const rubric = resolveRubricFromQuiz(quiz);
         showRubric(rubric);
         fillInstructions(settings);
