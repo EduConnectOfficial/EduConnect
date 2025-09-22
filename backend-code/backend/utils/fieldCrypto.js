@@ -1,4 +1,4 @@
-// utils/fieldCrypto.js
+// backend/utils/fieldCrypto.js
 'use strict';
 const crypto = require('crypto');
 
@@ -18,7 +18,7 @@ function parseKey(str) {
     if ([16, 24, 32].includes(b.length)) return b;
   }
 
-  // base64
+  // base64 (fallback)
   try {
     const b = Buffer.from(raw, 'base64');
     if ([16, 24, 32].includes(b.length)) return b;
@@ -31,6 +31,7 @@ function parseKey(str) {
 function getKeyRing() {
   const raw = (process.env.PII_ENC_KEYS || process.env.PII_ENC_KEY || '').trim();
   if (!raw) {
+    console.warn('[fieldCrypto] Missing PII_ENC_KEYS/PII_ENC_KEY');
     console.warn('[fieldCrypto] Missing PII_ENC_KEYS/PII_ENC_KEY');
     return [];
   }
@@ -154,6 +155,16 @@ function safeDecrypt(token, fallback = '') {
   try {
     return decryptField(token);
   } catch (e) {
+    if (LOG_ENABLED && !suppressed) {
+      warnCount++;
+      if (warnCount <= MAX_WARN) {
+        console.warn('[fieldCrypto] decrypt failed:', e.message);
+        if (warnCount === MAX_WARN) {
+          suppressed = true;
+          console.warn('[fieldCrypto] further decrypt warnings suppressed…');
+        }
+      }
+    }
     if (LOG_ENABLED && !suppressed) {
       warnCount++;
       if (warnCount <= MAX_WARN) {
