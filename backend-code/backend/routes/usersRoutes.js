@@ -5,14 +5,13 @@ const bcrypt = require('bcrypt');
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 
-// ⬇️ switch from disk -> memory uploader
+// memory uploader
 const { uploadMemory } = require('../config/multerConfig');
 
-// ⬇️ Cloud Storage helpers
+// Cloud Storage helpers
 const { saveBufferToStorage, buildStoragePath } = require('../services/storageService');
 
 const { generateRoleId } = require('../utils/idUtils');
-// ⬇️ use safeDecrypt for reads (never throws), encryptField for writes
 const { encryptField, safeDecrypt } = require('../utils/fieldCrypto');
 
 const USERS_COL = 'users';
@@ -21,16 +20,10 @@ const USERS_COL = 'users';
 const normalizeEmail = (v) => String(v || '').trim().toLowerCase();
 
 function decryptNamesFromDoc(d = {}) {
-  // Prefer encrypted fields; fall back to any existing plaintext fields
-  const dec = (encKey, plainKey) => {
-    const v = safeDecrypt(d[encKey], '');
-    return (v && typeof v === 'string') ? v : (d[plainKey] || '');
-  };
   return {
-    firstName:  dec('firstNameEnc',  'firstName'),
-    middleName: dec('middleNameEnc', 'middleName'),
-    lastName:   dec('lastNameEnc',   'lastName'),
-    email:      dec('emailEnc',      'email'),
+    firstName:  safeDecrypt(d.firstNameEnc  || d.firstName  || ''),
+    middleName: safeDecrypt(d.middleNameEnc || d.middleName || ''),
+    lastName:   safeDecrypt(d.lastNameEnc   || d.lastName   || ''),
   };
 }
 
@@ -39,18 +32,11 @@ function shapeUserDecrypted(d, id) {
   if (!d) return null;
   const { password, firstNameEnc, middleNameEnc, lastNameEnc, ...rest } = d;
   const names = decryptNamesFromDoc(d);
-
-  // Prefer stored fullName if present, else build
-  const fullName = (typeof d.fullName === 'string' && d.fullName.trim())
-    ? d.fullName.trim()
-    : [names.firstName, names.middleName, names.lastName].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-
   return {
     id,
     userId: d.userId || id,
     ...rest,
-    ...names,
-    fullName: fullName || rest.username || 'User',
+    ...names, // expose decrypted names as firstName/middleName/lastName
   };
 }
 
@@ -85,10 +71,7 @@ async function assertUsernameAvailable(username, excludeUserId = null) {
   }
 }
 
-/**
- * Small helper: only run Multer if multipart.
- * Keeps JSON-only requests happy on the profile route.
- */
+/** Only run Multer if multipart. */
 function maybeRunUploadSingle(field) {
   const mw = uploadMemory.single(field);
   return (req, res, next) => {
@@ -107,12 +90,8 @@ function maybeRunUploadSingle(field) {
   };
 }
 
-// --- availability checks MUST come before "/:userId" so they aren't shadowed ---
+// --- availability checks MUST come before "/:userId" ---
 
-/**
- * GET /api/users/check-username?username=foo
- * Returns { taken: boolean }
- */
 router.get('/check-username', asyncHandler(async (req, res) => {
   const username = String((req.query || {}).username || '').trim();
   if (!username) return res.status(400).json({ error: 'Username is required' });
@@ -124,15 +103,10 @@ router.get('/check-username', asyncHandler(async (req, res) => {
     return res.json({ taken: !snap.empty });
   } catch (err) {
     console.error('check-username failed:', err?.message || err);
-    // soft-fail so frontend can proceed or fall back
     return res.json({ taken: false, _softFail: true });
   }
 }));
 
-/**
- * GET /api/users/check-email?email=foo@bar
- * Returns { taken: boolean }
- */
 router.get('/check-email', asyncHandler(async (req, res) => {
   const emailLower = normalizeEmail((req.query || {}).email);
   if (!emailLower) return res.status(400).json({ error: 'Email is required' });
@@ -150,10 +124,7 @@ router.get('/check-email', asyncHandler(async (req, res) => {
 
 // ---------- ROUTES ----------
 
-/**
- * GET /api/users/:userId
- * Return a single user (decrypted names, no password)
- */
+/** GET /api/users/:userId */
 router.get('/:userId', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const doc = await firestore.collection(USERS_COL).doc(userId).get();
@@ -163,13 +134,7 @@ router.get('/:userId', asyncHandler(async (req, res) => {
   return res.json({ success: true, user: shapeUserDecrypted(doc.data(), doc.id) });
 }));
 
-/**
- * GET /api/users
- * Optional filters:
- *   ?role=user|itsupport|admin|teacher|student
- *   ?mobileOnly=true
- *   ?isAdmin=true
- */
+/** GET /api/users */
 router.get('/', asyncHandler(async (req, res) => {
   const role = (req.query.role || '').toString().toLowerCase();
   const mobileOnly = String(req.query.mobileOnly || '') === 'true';
@@ -196,29 +161,21 @@ router.get('/', asyncHandler(async (req, res) => {
   res.json({ success: true, users });
 }));
 
-/**
- * POST /api/users/:userId/profile
- * multipart/form-data with optional profilePic
- * fields: firstName?, middleName?, lastName?, username?
- *
- * Stores profilePic in Firebase Cloud Storage
- */
+/** POST /api/users/:userId/profile (multipart or JSON) */
 router.post(
   '/:userId/profile',
-  maybeRunUploadSingle('profilePic'), // only parses if multipart
+  maybeRunUploadSingle('profilePic'),
   asyncHandler(async (req, res) => {
     const { userId } = req.params;
-    const file = req.file; // from uploadMemory.single('profilePic'), if present
+    const file = req.file;
 
     const raw = {
-      firstName:  req.body.firstName,
+      firstName: req.body.firstName,
       middleName: req.body.middleName,
-      lastName:   req.body.lastName,
+      lastName: req.body.lastName,
     };
 
-    const updates = {
-      ...maybeEncryptNameUpdates(raw),
-    };
+    const updates = { ...maybeEncryptNameUpdates(raw) };
 
     if (req.body.username != null) {
       const username = String(req.body.username);
@@ -238,10 +195,7 @@ router.post(
           },
         });
 
-        // Prefer tokenized download URL for reliability
         updates.photoURL = saved.downloadUrl;
-
-        // Optional storage pointer info
         updates.photo = {
           originalName: file.originalname,
           size: file.size,
@@ -270,18 +224,12 @@ router.post(
   })
 );
 
-/**
- * PATCH /api/users/:userId
- * JSON body: firstName?, middleName?, lastName?, username?, password?
- * (names are written encrypted; password is hashed)
- */
+/** PATCH /api/users/:userId (names encrypted; password hashed) */
 router.patch('/:userId', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { firstName, middleName, lastName, username, password } = req.body || {};
 
-  const updates = {
-    ...maybeEncryptNameUpdates({ firstName, middleName, lastName })
-  };
+  const updates = { ...maybeEncryptNameUpdates({ firstName, middleName, lastName }) };
 
   if (username != null) {
     const uname = String(username);
@@ -299,10 +247,7 @@ router.patch('/:userId', asyncHandler(async (req, res) => {
   res.json({ success: true, user: shaped, updatedUser: shaped });
 }));
 
-/**
- * POST /api/users/:userId/change-password
- * JSON body: { currentPassword, newPassword }
- */
+/** POST /api/users/:userId/change-password */
 router.post('/:userId/change-password', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { currentPassword, newPassword } = req.body || {};
@@ -329,39 +274,28 @@ router.post('/:userId/change-password', asyncHandler(async (req, res) => {
   return res.json({ success: true, message: 'Password updated.' });
 }));
 
-/**
- * GET /api/users/admins/list
- * Returns decrypted names, no passwords
- */
+/** GET /api/users/admins/list */
 router.get('/admins/list', asyncHandler(async (_req, res) => {
   const snap = await firestore.collection(USERS_COL).where('isAdmin', '==', true).get();
   const users = snap.docs.map(doc => shapeUserDecrypted(doc.data(), doc.id));
   res.json({ success: true, users });
 }));
 
-/**
- * GET /api/users/itsupport
- * Returns decrypted names, no passwords
- */
+/** GET /api/users/itsupport */
 router.get('/itsupport', asyncHandler(async (_req, res) => {
   const snap = await firestore.collection(USERS_COL).where('isITsupport', '==', true).get();
   const users = snap.docs.map(doc => shapeUserDecrypted(doc.data(), doc.id));
   res.json({ success: true, users });
 }));
 
-/**
- * DELETE /api/users/:id
- */
+/** DELETE /api/users/:id */
 router.delete('/:id', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   await firestore.collection(USERS_COL).doc(userId).delete();
   res.json({ success: true, message: 'User deleted successfully.' });
 }));
 
-/**
- * PATCH /api/users/:id/status
- * body: { active: boolean }
- */
+/** PATCH /api/users/:id/status */
 router.patch('/:id/status', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { active } = req.body || {};
@@ -377,10 +311,7 @@ router.patch('/:id/status', asyncHandler(async (req, res) => {
   });
 }));
 
-/**
- * PATCH /api/users/:id/active
- * Alias of /:id/status
- */
+/** PATCH /api/users/:id/active (alias) */
 router.patch('/:id/active', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { active } = req.body || {};
@@ -396,13 +327,7 @@ router.patch('/:id/active', asyncHandler(async (req, res) => {
   });
 }));
 
-/**
- * PATCH /api/users/:id/edit
- * Admin edit of user fields (no admin revocation here).
- * Body supports (all optional):
- *   { username, email, firstName, middleName, lastName,
- *     isMobile, isUser, isTeacher, isStudent, isITsupport, photoURL }
- */
+/** PATCH /api/users/:id/edit (admin edit; encrypted names; uniqueness checks) */
 router.patch('/:id/edit', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const {
@@ -435,25 +360,22 @@ router.patch('/:id/edit', asyncHandler(async (req, res) => {
     updates.email = emailLower;
   }
 
-  // Optional booleans
-  if (typeof isMobile === 'boolean')   updates.isMobile   = isMobile;
-  if (typeof isUser === 'boolean')     updates.isUser     = isUser;
-  if (typeof isTeacher === 'boolean')  updates.isTeacher  = isTeacher;
-  if (typeof isStudent === 'boolean')  updates.isStudent  = isStudent;
+  if (typeof isMobile === 'boolean') updates.isMobile = isMobile;
+  if (typeof isUser === 'boolean') updates.isUser = isUser;
+  if (typeof isTeacher === 'boolean') updates.isTeacher = isTeacher;
+  if (typeof isStudent === 'boolean') updates.isStudent = isStudent;
   if (typeof isITsupport === 'boolean') updates.isITsupport = isITsupport;
 
-  if (photoURL != null) updates.photoURL = String(photoURL);
+  if (photoURL != null) {
+    updates.photoURL = String(photoURL);
+  }
 
   await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });
-
   const doc = await firestore.collection(USERS_COL).doc(userId).get();
   res.json({ success: true, user: shapeUserDecrypted(doc.data(), doc.id) });
 }));
 
-/**
- * PATCH /api/users/:id/admin
- * body: { isAdmin: boolean }
- */
+/** PATCH /api/users/:id/admin */
 router.patch('/:id/admin', asyncHandler(async (req, res) => {
   const userId = decodeURIComponent(req.params.id);
   const { isAdmin: isAdminFlag } = req.body || {};
@@ -470,10 +392,7 @@ router.patch('/:id/admin', asyncHandler(async (req, res) => {
   });
 }));
 
-/**
- * PATCH /api/users/:id/itsupport
- * body: { isITsupport: boolean }
- */
+/** PATCH /api/users/:id/itsupport */
 router.patch('/:id/itsupport', asyncHandler(async (req, res) => {
   const userId = decodeURIComponent(req.params.id);
   const { isITsupport } = req.body || {};
@@ -492,11 +411,7 @@ router.patch('/:id/itsupport', asyncHandler(async (req, res) => {
   });
 }));
 
-/**
- * PATCH /api/users/:id/teacher
- * body: { isTeacher: boolean }
- * - assigns/removes teacherId
- */
+/** PATCH /api/users/:id/teacher */
 router.patch('/:id/teacher', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { isTeacher } = req.body || {};
@@ -514,7 +429,7 @@ router.patch('/:id/teacher', asyncHandler(async (req, res) => {
   const updates = { isTeacher };
 
   if (isTeacher) {
-    updates.teacherId = data.teacherId || (await generateRoleId('teacher')); // T-YYYY-xxxxx
+    updates.teacherId = data.teacherId || (await generateRoleId('teacher'));
     if (data.isUser === undefined) updates.isUser = true;
   } else {
     updates.teacherId = admin.firestore.FieldValue.delete();
@@ -525,11 +440,7 @@ router.patch('/:id/teacher', asyncHandler(async (req, res) => {
   res.json({ success: true, user: shapeUserDecrypted(updated, userId) });
 }));
 
-/**
- * PATCH /api/users/:id/student
- * body: { isStudent: boolean }
- * - assigns studentId when enabling
- */
+/** PATCH /api/users/:id/student */
 router.patch('/:id/student', asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { isStudent } = req.body || {};
@@ -544,9 +455,8 @@ router.patch('/:id/student', asyncHandler(async (req, res) => {
   const data = snap.data() || {};
   const updates = { isStudent };
   if (isStudent && !data.studentId) {
-    updates.studentId = await generateRoleId('student'); // S-YYYY-xxxxx
+    updates.studentId = await generateRoleId('student');
   }
-  // Optional: keep studentId for history
 
   await ref.update(updates);
   const updated = (await ref.get()).data();

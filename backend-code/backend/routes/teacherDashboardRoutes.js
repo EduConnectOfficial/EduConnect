@@ -1,11 +1,9 @@
 // backend/routes/teacherDashboardRoutes.js
-'use strict';
-
 const router = require('express').Router();
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { safeDecrypt } = require('../utils/fieldCrypto'); // ✅ use safeDecrypt
+const { safeDecrypt } = require('../utils/fieldCrypto'); // switched
 
 // ---- tiny helpers (route-local) ----
 const chunk = (arr, size = 10) => {
@@ -18,12 +16,8 @@ const toDateMs = (ts) => ts?.toMillis?.() ?? (typeof ts === 'number' ? ts : null
 // Hydrate/decrypt a user doc's name/email fields into plaintext fields
 function hydrateUserNames(uRaw) {
   const u = uRaw || {};
-
-  // prefer encrypted -> safeDecrypt; otherwise fallback to plaintext field if present
-  const dec = (encKey, plainKey) => {
-    const v = safeDecrypt(u[encKey], '');
-    return (typeof v === 'string' && v.length) ? v : (u[plainKey] || '');
-  };
+  const dec = (encKey, plainKey) =>
+    safeDecrypt(u[encKey] || u[plainKey] || '', u[plainKey] || '');
 
   const firstName  = dec('firstNameEnc',  'firstName');
   const middleName = dec('middleNameEnc', 'middleName');
@@ -34,7 +28,6 @@ function hydrateUserNames(uRaw) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Prefer existing fullName if it's non-empty; else build it from decrypted parts
   const fullName = (typeof u.fullName === 'string' && u.fullName.trim())
     ? u.fullName.trim()
     : (fullNameFromParts || 'Student');
@@ -56,7 +49,7 @@ const safeName = (u) =>
 
 const fmtDate = (ms) => (ms ? new Date(ms).toISOString().slice(0,10) : '—');
 
-// ==== TEACHER DASHBOARD STATS (real data) ====
+// ==== TEACHER DASHBOARD STATS ====
 // GET /api/teacher/dashboard-stats?teacherId=...
 router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   const teacherId = String(req.query.teacherId || '').trim();
@@ -128,7 +121,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     qSnap.forEach(doc => quizzes.push({ id: doc.id, ...doc.data() }));
   }
 
-  // 4) ASSIGNMENTS (two owner fields)
+  // 4) ASSIGNMENTS
   const assignments = [];
   const seenAssign = new Set();
 
@@ -193,7 +186,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   recentSubs.sort((x, y) => (y.submittedAt || 0) - (x.submittedAt || 0));
   const recentSubmissions = [];
   for (const item of recentSubs.slice(0, 6)) {
-    const u = await getUserDataByAnyId(item.studentKey); // hydrated user
+    const u = await getUserDataByAnyId(item.studentKey);
     let className = '—';
     if (item.courseId && courseById[item.courseId]?.assignedClasses?.length) {
       const cls = courseById[item.courseId].assignedClasses
@@ -225,7 +218,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     (quizzesByCourse[cid] ||= []).push(q);
   });
 
-  const allUserDocs = Object.values(studentIdToUserDoc).map(x => x.data); // hydrated
+  const allUserDocs = Object.values(studentIdToUserDoc).map(x => x.data);
   const scoreBuckets = [0,0,0,0,0];
   const pushBucket = (pct) => {
     if (pct == null || Number.isNaN(pct)) return;
@@ -250,7 +243,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     // avg grade
     let sum = 0, cnt = 0;
     for (const sid of rosterIds) {
-      const u = studentIdToUserDoc[sid]?.data; // hydrated
+      const u = studentIdToUserDoc[sid]?.data;
       const g = (typeof u?.averageQuizScore === 'number')
         ? u.averageQuizScore
         : (typeof u?.averageAssignmentGrade === 'number' ? u.averageAssignmentGrade : null);
@@ -349,7 +342,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   const chartsData = {
     gradeDistribution: {
       labels: ['0-59','60-69','70-79','80-89','90-100'],
-      datasets: [{ label: 'Students', data: [0,0,0,0,0] /* not used on front right now */ }]
+      datasets: [{ label: 'Students', data: scoreBuckets }]
     },
     completionRate: {
       labels: classesOverview.map(c => c.name),
@@ -357,13 +350,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     },
     timeOnTask: await (async () => {
       const out = { labels: [], datasets: [{ label: 'Avg mins', data: [] }] };
-      const quizzesByCourse = {}; // rebuild quick for local scope
-      const courses = Object.values(courseById);
-      for (const c of courses) {
-        const qs = await firestore.collection('quizzes').where('courseId', '==', c.id).get();
-        quizzesByCourse[c.id] = qs.docs.map(d => ({ id: d.id, ...d.data() }));
-      }
-      const topCourses = [...Object.entries(quizzesByCourse)]
+      const topCourses = [...(Object.entries(quizzesByCourse))]
         .sort((a, b) => (b[1]?.length || 0) - (a[1]?.length || 0))
         .slice(0, 3)
         .map(([cid]) => cid);

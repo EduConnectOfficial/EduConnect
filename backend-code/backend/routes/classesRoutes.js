@@ -1,4 +1,4 @@
-// ==== routes/classesRoutes.js ==== //
+// backend/routes/classesRoutes.js
 const router = require('express').Router();
 const XLSX = require('xlsx');
 const multer = require('multer');
@@ -7,15 +7,14 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-// ⬇️ use safeDecrypt (non-throwing), not decryptField
-const { safeDecrypt } = require('../utils/fieldCrypto');
+const { safeDecrypt } = require('../utils/fieldCrypto'); // switched
 
-// ====== In-memory uploader (no disk), accepts xlsx/xls/csv for bulk ======
+// ====== In-memory uploader for bulk ======
 const memoryStorage = multer.memoryStorage();
 const SPREADSHEET_MIMES = new Set([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel',   // .xls (and sometimes csv on some browsers)
-  'text/csv',                   // .csv (explicit)
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/csv',
 ]);
 const SPREADSHEET_EXT = /\.(xlsx|xls|csv)$/i;
 
@@ -29,7 +28,7 @@ function bulkFileFilter(_req, file, cb) {
 const uploadBulkMemory = multer({
   storage: memoryStorage,
   limits: {
-    fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024, // default 25 MB
+    fileSize: parseInt(process.env.BULK_ENROLL_FILE_LIMIT_MB || '25', 10) * 1024 * 1024,
   },
   fileFilter: bulkFileFilter,
 });
@@ -37,31 +36,20 @@ const uploadBulkMemory = multer({
 // --- helpers: role guards (strict students-only) ---
 function isStudentUser(u = {}) {
   const role = String(u.role || u.userType || '').toLowerCase();
-
-  // must have a real studentId
-  const hasStudentId =
-    typeof u.studentId === 'string' && u.studentId.trim() !== '';
-
-  // any teacher signal -> block
+  const hasStudentId = typeof u.studentId === 'string' && u.studentId.trim() !== '';
   const isTeacherSignal =
     u.isTeacher === true ||
     role === 'teacher' ||
     (typeof u.teacherId === 'string' && u.teacherId.trim() !== '');
-
-  // allow unknown/mixed roles as long as not teacher and has studentId
   return hasStudentId && !isTeacherSignal;
 }
 
-// Small helper to decrypt names from a user doc (safe + fallback to plaintext fields)
+// Small helper to decrypt names from a user doc
 function decryptNamesFromUser(u = {}) {
-  const dec = (encKey, plainKey) => {
-    const v = safeDecrypt(u[encKey], '');
-    return (v && typeof v === 'string') ? v : (u[plainKey] || '');
-  };
   return {
-    firstName:  dec('firstNameEnc',  'firstName'),
-    middleName: dec('middleNameEnc', 'middleName'),
-    lastName:   dec('lastNameEnc',   'lastName'),
+    firstName:  safeDecrypt(u.firstNameEnc  || u.firstName  || ''),
+    middleName: safeDecrypt(u.middleNameEnc || u.middleName || ''),
+    lastName:   safeDecrypt(u.lastNameEnc   || u.lastName   || ''),
   };
 }
 
@@ -76,7 +64,6 @@ router.get('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === GET /api/classes (filterable) ===
-// Optional query params: teacherId, schoolYear, semester, archived=(exclude|only|include)
 router.get('/api/classes', asyncHandler(async (req, res) => {
   let q = firestore.collection('classes');
 
@@ -84,12 +71,12 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
   if (req.query.schoolYear) q = q.where('schoolYear', '==', req.query.schoolYear);
   if (req.query.semester) q = q.where('semester', '==', req.query.semester);
 
-  const archivedParam = String(req.query.archived || 'exclude'); // exclude | include | only
+  const archivedParam = String(req.query.archived || 'exclude');
   if (archivedParam === 'exclude') {
     q = q.where('archived', '==', false);
   } else if (archivedParam === 'only') {
     q = q.where('archived', '==', true);
-  } // include => no archived filter
+  }
 
   q = q.orderBy('createdAt', 'desc');
 
@@ -117,7 +104,6 @@ router.get('/api/classes', asyncHandler(async (req, res) => {
 }));
 
 // === POST /api/classes ===
-// body: { name, gradeLevel, section, teacherId, schoolYear, semester }
 router.post('/api/classes', asyncHandler(async (req, res) => {
   const { name, gradeLevel, section, teacherId, schoolYear, semester } = req.body;
 
@@ -165,7 +151,6 @@ router.post('/api/classes', asyncHandler(async (req, res) => {
 }));
 
 // === PUT /api/classes/:id ===
-// body: { title?, gradeLevel?, section?, schoolYear?, semester? }
 router.put('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, gradeLevel, section, schoolYear, semester } = req.body;
@@ -204,7 +189,6 @@ router.put('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === ARCHIVE class ===
-// PATCH /api/classes/:id/archive   body: { by?: teacherId }
 router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { by } = req.body || {};
@@ -227,7 +211,6 @@ router.patch('/api/classes/:id/archive', asyncHandler(async (req, res) => {
 }));
 
 // === UNARCHIVE class ===
-// PATCH /api/classes/:id/unarchive
 router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const ref = firestore.collection('classes').doc(id);
@@ -249,7 +232,6 @@ router.patch('/api/classes/:id/unarchive', asyncHandler(async (req, res) => {
 }));
 
 // === DELETE /api/classes/:id ===
-// Optional query param: ?cascade=true  -> also deletes subcollections
 router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const cascade = String(req.query.cascade || '').toLowerCase() === 'true';
@@ -280,7 +262,6 @@ router.delete('/api/classes/:id', asyncHandler(async (req, res) => {
 }));
 
 // === ROSTER: GET /api/classes/:id/students ===
-// Hidden when archived unless ?archived=include is passed.
 router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classRef = firestore.collection('classes').doc(req.params.id);
   const classDoc = await classRef.get();
@@ -296,9 +277,8 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
 
   const base = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // Join each roster entry with its user doc (by studentId or userId)
   const students = await Promise.all(base.map(async (row) => {
-    let active = !!row.active; // fallback
+    let active = !!row.active;
     let email = row.email || '';
     let fullName = row.fullName || '';
     let photoURL = row.photoURL || '';
@@ -311,7 +291,6 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           const names = decryptNamesFromUser(u);
           active = (u.active !== false);
           email = email || u.email || '';
-          // Prefer decrypted names; fallback to username
           const candidate = `${names.firstName || ''} ${names.lastName || ''}`.trim();
           fullName = fullName || candidate || u.username || fullName || '';
           photoURL = photoURL || u.photoURL || '';
@@ -331,7 +310,7 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
           photoURL = photoURL || u.photoURL || '';
         }
       }
-    } catch (_) {
+    } catch {
       // keep fallbacks
     }
 
@@ -347,7 +326,7 @@ router.get('/api/classes/:id/students', asyncHandler(async (req, res) => {
   res.json({ success: true, students });
 }));
 
-// === ROSTER: POST /api/classes/:id/students (single enroll) ===
+// === ROSTER: POST /api/classes/:id/students ===
 router.post('/api/classes/:id/students', asyncHandler(async (req, res) => {
   const classId = req.params.id;
 
@@ -395,13 +374,12 @@ router.post(
 
     const preferredCol = String(req.body.column || 'studentId').trim().toLowerCase();
 
-    // Read from memory buffer (works for .xlsx/.xls/.csv)
     let rows = [];
     try {
       const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    } catch (e) {
+    } catch {
       return res.status(400).json({ success: false, message: 'Failed to parse spreadsheet. Ensure it is a valid .xlsx, .xls, or .csv file.' });
     }
 
@@ -447,7 +425,6 @@ router.post(
           report.errors++; report.details.push({ studentId: sid, status: 'error', error: result.reason || 'unknown' });
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.error('Bulk enroll error for', sid, e);
         report.errors++; report.details.push({ studentId: sid, status: 'error', error: 'exception' });
       }
@@ -469,24 +446,20 @@ router.delete('/api/classes/:id/students/:studentId', asyncHandler(async (req, r
     return res.status(403).json({ success: false, message: 'Class is archived; modifications are disabled.' });
   }
 
-  // 1) Remove from roster
   await classRef.collection('roster').doc(studentId).delete();
-
-  // 2) Decrement count
   await classRef.update({ students: admin.firestore.FieldValue.increment(-1) });
 
-  // 3) Remove enrollment record from user's doc
   const userSnap = await firestore.collection('users').where('studentId', '==', studentId).limit(1).get();
   if (!userSnap.empty) {
     const userDocId = userSnap.docs[0].id;
     const enrollmentRef = firestore.collection('users').doc(userDocId).collection('enrollments').doc(classId);
-    await enrollmentRef.delete().catch(() => {}); // ignore if not present
+    await enrollmentRef.delete().catch(() => {});
   }
 
   return res.json({ success: true });
 }));
 
-// === Student lookup (exact studentId) — hardened to students-only
+// === Student lookup ===
 router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   const { studentId } = req.query;
   if (!studentId || String(studentId).trim() === '') {
@@ -516,21 +489,19 @@ router.get('/api/students/lookup', asyncHandler(async (req, res) => {
   });
 }));
 
-// === Student SEARCH (by ID or name; STRICT STUDENTS ONLY, DECRYPT NAMES) ===
+// === Student search ===
 router.get('/api/students/search', asyncHandler(async (req, res) => {
   const qRaw = String(req.query.query || '').trim();
   if (!qRaw) {
     return res.status(400).json({ success: false, message: 'query is required.' });
   }
   if (qRaw.length < 2) {
-    // keep a small floor to avoid scanning for single letters
     return res.json({ success: true, students: [] });
   }
 
   const usersCol = firestore.collection('users');
   const qLower = qRaw.toLowerCase();
 
-  // Helper to build decrypted payload
   const buildDecrypted = (u = {}) => {
     const names = decryptNamesFromUser(u);
     const studentId = u.studentId || '';
@@ -544,14 +515,12 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     };
   };
 
-  // Helper: looks like an ID?
   const idLike =
-    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(qRaw) ||  // e.g., S-2025-00001 or A-2025-00001
+    /^[A-Za-z]-?\d{4}-?\d{5}$/i.test(qRaw) ||
     /^S-\d{4}-\d{5}$/i.test(qRaw)        ||
     /^S\d+$/i.test(qRaw)                 ||
     /^\d{4}-\d{5}$/.test(qRaw);
 
-  // ---- 1) Fast path: exact studentId match
   if (idLike) {
     try {
       const exactSnap = await usersCol.where('studentId', '==', qRaw).limit(1).get();
@@ -564,22 +533,18 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
           }
         }
       }
-    } catch {
-      // ignore; we'll fall back to the name scan
-    }
+    } catch {}
   }
 
-  // ---- 2) Bounded scan of student users, decrypt names, filter in memory
-  const LIMIT = 500; // tune for your dataset
+  const LIMIT = 500;
   const snap = await usersCol.where('isStudent', '==', true).limit(LIMIT).get();
 
   const matches = [];
   for (const doc of snap.docs) {
     const u = doc.data() || {};
-    if (!isStudentUser(u)) continue;                 // must be a proper student
-    if (!u.studentId || String(u.studentId).trim() === '') continue; // must have studentId
+    if (!isStudentUser(u)) continue;
+    if (!u.studentId || String(u.studentId).trim() === '') continue;
 
-    // Decrypt names for matching
     const names = decryptNamesFromUser(u);
     const fn = String(names.firstName || '').toLowerCase();
     const mn = String(names.middleName || '').toLowerCase();
@@ -588,15 +553,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     const em = String(u.email || '').toLowerCase();
     const sid = String(u.studentId || '').toLowerCase();
 
-    // Match by studentId, any name part, full name, or email (substring)
-    if (
-      sid.includes(qLower) ||
-      fn.includes(qLower)  ||
-      mn.includes(qLower)  ||
-      ln.includes(qLower)  ||
-      full.includes(qLower)||
-      em.includes(qLower)
-    ) {
+    if (sid.includes(qLower) || fn.includes(qLower) || mn.includes(qLower) || ln.includes(qLower) || full.includes(qLower) || em.includes(qLower)) {
       matches.push({
         studentId: u.studentId || '',
         firstName: names.firstName || '',
@@ -610,7 +567,6 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
 }));
 
 // === STUDENT: GET ENROLLMENTS ===
-// GET /api/students/:userId/enrollments?includeTeacher=true
 router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const includeTeacher = String(req.query.includeTeacher || '').toLowerCase() === 'true';
@@ -622,7 +578,7 @@ router.get('/api/students/:userId/enrollments', asyncHandler(async (req, res) =>
   }
 
   const snap = await userRef.collection('enrollments').get();
-  let enrollments = snap.docs.map(d => ({ id: d.id, ...d.data() })); // id == classId
+  let enrollments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   if (includeTeacher) {
     const teacherIds = Array.from(new Set(enrollments.map(e => e.teacherId).filter(Boolean)));
