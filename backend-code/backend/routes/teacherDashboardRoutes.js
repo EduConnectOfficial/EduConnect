@@ -1,9 +1,11 @@
 // backend/routes/teacherDashboardRoutes.js
+'use strict';
+
 const router = require('express').Router();
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { safeDecrypt } = require('../utils/fieldCrypto'); // <-- added
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ✅ use safeDecrypt
 
 // ---- tiny helpers (route-local) ----
 const chunk = (arr, size = 10) => {
@@ -16,14 +18,11 @@ const toDateMs = (ts) => ts?.toMillis?.() ?? (typeof ts === 'number' ? ts : null
 // Hydrate/decrypt a user doc's name/email fields into plaintext fields
 function hydrateUserNames(uRaw) {
   const u = uRaw || {};
+
+  // prefer encrypted -> safeDecrypt; otherwise fallback to plaintext field if present
   const dec = (encKey, plainKey) => {
-    try {
-      if (u[encKey]) {
-        const v = safeDecrypt(u[encKey]);
-        if (typeof v === 'string') return v;
-      }
-    } catch {}
-    return u[plainKey] || '';
+    const v = safeDecrypt(u[encKey], '');
+    return (typeof v === 'string' && v.length) ? v : (u[plainKey] || '');
   };
 
   const firstName  = dec('firstNameEnc',  'firstName');
@@ -194,7 +193,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   recentSubs.sort((x, y) => (y.submittedAt || 0) - (x.submittedAt || 0));
   const recentSubmissions = [];
   for (const item of recentSubs.slice(0, 6)) {
-    const u = await getUserDataByAnyId(item.studentKey); // <-- hydrated user
+    const u = await getUserDataByAnyId(item.studentKey); // hydrated user
     let className = '—';
     if (item.courseId && courseById[item.courseId]?.assignedClasses?.length) {
       const cls = courseById[item.courseId].assignedClasses
@@ -350,7 +349,7 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
   const chartsData = {
     gradeDistribution: {
       labels: ['0-59','60-69','70-79','80-89','90-100'],
-      datasets: [{ label: 'Students', data: scoreBuckets }]
+      datasets: [{ label: 'Students', data: [0,0,0,0,0] /* not used on front right now */ }]
     },
     completionRate: {
       labels: classesOverview.map(c => c.name),
@@ -358,7 +357,13 @@ router.get('/dashboard-stats', asyncHandler(async (req, res) => {
     },
     timeOnTask: await (async () => {
       const out = { labels: [], datasets: [{ label: 'Avg mins', data: [] }] };
-      const topCourses = [...(Object.entries(quizzesByCourse))]
+      const quizzesByCourse = {}; // rebuild quick for local scope
+      const courses = Object.values(courseById);
+      for (const c of courses) {
+        const qs = await firestore.collection('quizzes').where('courseId', '==', c.id).get();
+        quizzesByCourse[c.id] = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+      const topCourses = [...Object.entries(quizzesByCourse)]
         .sort((a, b) => (b[1]?.length || 0) - (a[1]?.length || 0))
         .slice(0, 3)
         .map(([cid]) => cid);
