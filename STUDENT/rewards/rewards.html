@@ -5,6 +5,9 @@
   <title>EduConnect Student - Rewards & Leaderboards</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
@@ -180,15 +183,69 @@
     });
   </script>
 
-  <!-- User + API -->
+  <!-- User + API (Railway-friendly resolver + endpoints) -->
   <script>
-    const API_BASE = 'http://localhost:5000'; // unify with other pages
+    /* ===================== API BASE (Railway-friendly) ===================== *
+     * Priority:
+     * 1) <meta name="api-base" ...>
+     * 2) window.API_URL (string) if provided globally
+     * 3) localStorage.API_BASE (manual override)
+     * 4) If not localhost, same-origin ('' => relative calls)
+     * 5) Dev fallback: http://localhost:5000
+     * Enforce HTTPS on prod (non-local).
+     * ====================================================================== */
+    (function decideApiBase(){
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta?.getAttribute('content')?.trim() || null;
+      const manual   = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      const store    = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : null;
+
+      const isLocal  = (h) => ['localhost','127.0.0.1'].includes(h);
+      const sanitize = (u) => (u || '').replace(/\/+$/, '');
+
+      let base = metaBase || manual || store || (isLocal(location.hostname) ? 'http://localhost:5000' : '');
+      if (!isLocal(location.hostname) && base.startsWith('http://')) {
+        base = base.replace(/^http:\/\//i, 'https://');
+      }
+      window.API_BASE = sanitize(base);
+    })();
+
+    const API = {
+      url(path) {
+        const p = path.startsWith('/') ? path : '/' + path;
+        return (window.API_BASE || '') + p;
+      },
+      endpoints: {
+        rewards(uid) {
+          const u = encodeURIComponent(uid);
+          return [
+            API.url(`/api/students/${u}/rewards`),
+            API.url(`/students/${u}/rewards`),
+            API.url(`/api/student/rewards?student=${u}`), // extra fallback
+          ];
+        },
+        leaderboard(params) {
+          const q = new URLSearchParams(params).toString();
+          return [
+            API.url(`/api/leaderboard?${q}`),
+            API.url(`/leaderboard?${q}`)
+          ];
+        },
+        optIn(uid) {
+          const u = encodeURIComponent(uid);
+          return [
+            API.url(`/api/students/${u}/leaderboard-optin`),
+            API.url(`/students/${u}/leaderboard-optin`)
+          ];
+        }
+      }
+    };
 
     // ---- Auth guard + initials header ----
     (function guardAndHeader(){
       const raw = JSON.parse(localStorage.getItem("user") || "{}");
       const u = raw.user || raw;
-      if (!u?.userId) {
+      if (!u || (!u.userId && !u.uid && !u.email)) {
         window.location.replace("../login/login.html");
         return;
       }
@@ -214,24 +271,38 @@
       }
     })();
 
-    async function apiGet(url) {
-      const res = await fetch(url, { headers: { 'Content-Type':'application/json' }});
-      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(()=> '')}`);
-      return res.json();
-    }
-    async function apiPatch(url, body) {
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(body || {})
-      });
-      if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(()=> '')}`);
-      return res.json();
+    function logoutUser() {
+      localStorage.clear(); sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
     }
   </script>
 
-  <!-- Rewards & Leaderboard Logic -->
+  <!-- Rewards & Leaderboard Logic (Railway-safe fetch with fallbacks) -->
   <script>
+    // ===== Debug hint + fallback fetch =====
+    function hint(url, resp){
+      let h = '';
+      if (!resp) h = 'Network/CORS error. If backend is separate, set <meta name="api-base" ...>.';
+      else if (resp.status === 404) h = '404 Not Found – check route/mount path.';
+      else if (resp.status === 403) h = '403 Forbidden – CORS/auth.';
+      console.warn('[Rewards/LB]', { url, status: resp?.status, hint: h });
+      return h;
+    }
+
+    async function fetchJSONFallback(urls, options){
+      let lastErr = null;
+      for (const url of urls){
+        try{
+          const res = await fetch(url, { ...options, credentials:'same-origin', mode:'cors' });
+          if (res.status === 404) { hint(url, res); continue; }
+          const txt = await res.text(); let json = {};
+          try { json = txt ? JSON.parse(txt) : {}; } catch {}
+          return { response: res, json };
+        }catch(e){ lastErr = e; hint(url, null); }
+      }
+      throw lastErr || new Error('All endpoints failed');
+    }
+
     // Local cache keys
     const LS = {
       rewards: (uid)=>`rewards-cache:${uid}`,
@@ -295,11 +366,11 @@
       }
 
       items.forEach((row, i)=>{
-        const isYou = row.userId === userData.userId;
+        const you = (row.userId && window.userData?.userId && String(row.userId) === String(window.userData.userId));
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${i+1}</strong></td>
-          <td class="wrap-anywhere">${row.name || '—'} ${isYou?'<span class="badge bg-secondary-subtle text-secondary border ms-1">You</span>':''}</td>
+          <td class="wrap-anywhere">${row.name || '—'} ${you?'<span class="badge bg-secondary-subtle text-secondary border ms-1">You</span>':''}</td>
           <td class="text-end">${(row.points || 0).toLocaleString()}</td>
           <td><span class="badge-chip"><i class="bi bi-award"></i>${row.topBadge || '-'}</span></td>
         `;
@@ -307,9 +378,9 @@
       });
     }
 
-    // Load rewards & badges (with cache)
+    // Load rewards & badges (with cache + fallbacks)
     async function loadRewards(useCacheFirst = true){
-      const uid = userData.userId;
+      const uid = window.userData?.userId || window.userData?.uid || window.userData?.email;
       const ckey = LS.rewards(uid);
 
       if (useCacheFirst) {
@@ -320,27 +391,33 @@
       }
 
       try{
-        const url = `${API_BASE}/api/students/${encodeURIComponent(uid)}/rewards`;
-        const data = await apiGet(url);
-        renderProfileSummary(data);
-        try { localStorage.setItem(ckey, JSON.stringify(data)); } catch {}
+        const { response, json } = await fetchJSONFallback(
+          API.endpoints.rewards(uid),
+          { method: 'GET' }
+        );
+        if (!response.ok) throw new Error('Rewards endpoint failed');
+        renderProfileSummary(json || {});
+        try { localStorage.setItem(ckey, JSON.stringify(json || {})); } catch {}
       }catch(err){
         console.error(err);
         // keep cache/previous UI
       }
     }
 
-    // Load leaderboard (with cache)
+    // Load leaderboard (with cache + fallbacks)
     async function loadLeaderboard(useCacheFirst = true){
-      const scope = document.getElementById('scopeSelect').value;
-      const timeframe = document.getElementById('timeframeSelect').value;
+      const scopeSel = document.getElementById('scopeSelect');
+      const timeframeSel = document.getElementById('timeframeSelect');
       const subjectSel = document.getElementById('subjectSelect');
 
       // toggle subject dropdown
-      subjectSel.classList.toggle('d-none', scope!=='subject');
+      subjectSel.classList.toggle('d-none', scopeSel.value!=='subject');
 
-      const subject = scope==='subject' ? subjectSel.value : '';
-      const uid = userData.userId;
+      const scope = scopeSel.value;
+      const timeframe = timeframeSel.value;
+      const subject = scope === 'subject' ? subjectSel.value : '';
+
+      const uid = window.userData?.userId || window.userData?.uid || window.userData?.email;
       const ckey = LS.leaderboard(uid, scope, timeframe, subject);
 
       if (useCacheFirst) {
@@ -354,23 +431,35 @@
       }
 
       try{
-        const params = new URLSearchParams({ userId: uid, scope, timeframe });
-        if (subject) params.set('subject', subject);
-        const url = `${API_BASE}/api/leaderboard?${params.toString()}`;
-        const data = await apiGet(url); // { success, entries:[...] }
-        renderLeaderboard(data.entries || []);
-        try { localStorage.setItem(ckey, JSON.stringify(data.entries || [])); } catch {}
+        const params = { userId: uid, scope, timeframe };
+        if (subject) params.subject = subject;
+        const { response, json } = await fetchJSONFallback(
+          API.endpoints.leaderboard(params),
+          { method: 'GET' }
+        );
+        if (!response.ok) throw new Error('Leaderboard endpoint failed');
+        const entries = json?.entries || [];
+        renderLeaderboard(entries);
+        try { localStorage.setItem(ckey, JSON.stringify(entries)); } catch {}
       }catch(err){
         console.error(err);
         // keep cache/skeleton
       }
     }
 
-    // Toggle opt-in
+    // Toggle opt-in (PATCH with fallbacks)
     async function updateOptIn(checked){
       try{
-        const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/leaderboard-optin`;
-        await apiPatch(url, { optIn: !!checked });
+        const uid = window.userData?.userId || window.userData?.uid || window.userData?.email;
+        const { response } = await fetchJSONFallback(
+          API.endpoints.optIn(uid),
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ optIn: !!checked })
+          }
+        );
+        if (!response.ok) throw new Error('Opt-in update failed');
         // refresh leaderboard (your row may vanish if you opted out)
         loadLeaderboard(false).catch(console.error);
       }catch(err){
@@ -398,13 +487,6 @@
         alert('Coming soon: full badge history!');
       });
     });
-  </script>
-
-  <script>
-    function logoutUser() {
-      localStorage.clear(); sessionStorage.clear();
-      window.location.href = "/STUDENT/login/login.html";
-    }
   </script>
 
   <!-- Bootstrap JS -->

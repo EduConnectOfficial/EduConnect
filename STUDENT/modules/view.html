@@ -208,9 +208,17 @@
 
   <!-- Page Logic -->
   <script>
-    const API_BASE = 'http://localhost:5000';
+    // ===== Railway-aware base + auth =====
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : ""; // same-origin on Railway
+    const API = `${SERVER_BASE}/api`;
 
-    /* ===== Students-only guard (requires isStudent and S- studentId) + header initials ===== */
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
+
+    // Students-only guard (requires isStudent and S- studentId) + header initials
     (function guardStudentSession() {
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       const u = stored.user || stored;
@@ -222,16 +230,13 @@
 
       if (!isValid) {
         try { localStorage.removeItem('user'); } catch {}
-        // view.html lives under /STUDENT/modules/
         window.location.replace('../login/login.html');
         return;
       }
 
-      // Expose session globally
       window.currentUser = u;
       window.userData = u;
 
-      // Header initials
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
@@ -255,7 +260,6 @@
         el.setAttribute("aria-label", displayName);
       }
 
-      // Cross-tab tamper guard
       window.addEventListener("storage", (e) => {
         if (e.key === "user") {
           try {
@@ -367,13 +371,13 @@
       setTimeout(done, 1000);
     }
     function isStorageDomain(u='') { return /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(u); }
-    function isExternalHttp(u='') { return /^https?:\/\//i.test(u) && !isStorageDomain(u) && !/localhost|127\.0\.0\.1:5000/i.test(u); }
+    function isExternalHttp(u='') { return /^https?:\/\//i.test(u) && !isStorageDomain(u) && !/localhost|127\.0\.0\.1(:\d+)?/i.test(u); }
     function bestFileUrl(att) {
       if (att.url && isExternalHttp(att.url)) return att.url;
       if (att.previewUrl) return att.previewUrl;
       if (att.url)       return att.url;
       if (att.publicUrl) return att.publicUrl;
-      if (att.filePath)  return `http://127.0.0.1:5000${att.filePath}`;
+      if (att.filePath)  return `${SERVER_BASE}${att.filePath}`;
       return '';
     }
     function openFilePreview(title, url){
@@ -430,7 +434,8 @@
     async function fetchStudentClassIds() {
       try {
         const res = await fetch(
-          `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`
+          `${API}/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`,
+          { headers: authHeaders() }
         );
         const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
         if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
@@ -441,7 +446,7 @@
       const classIds = await fetchStudentClassIds();
       if (!classIds.length) return [];
       const perClass = classIds.map(async cid => {
-        const res = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`);
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`, { headers: authHeaders() });
         if (!res.ok) return [];
         return res.json();
       });
@@ -477,7 +482,7 @@
 
     async function fetchModule() {
       if (!moduleId) { alert('No moduleId provided.'); window.location.href = '/STUDENT/courses/courses.html'; return; }
-      const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}?t=${Date.now()}`, { cache: 'no-store', headers: authHeaders() });
       if (!res.ok) throw new Error('Failed to load module');
       moduleDoc = await res.json();
       courseId = moduleDoc.courseId || null;
@@ -508,7 +513,7 @@
 
       try {
         if (courseId) {
-          const cr = await fetch(`${API_BASE}/courses/${encodeURIComponent(courseId)}`);
+          const cr = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: authHeaders() });
           if (cr.ok) {
             const c = await cr.json();
             document.getElementById('metaCourse').textContent = `Course: ${c.title || '—'}`;
@@ -517,7 +522,7 @@
       } catch {}
 
       try {
-        const qRes = await fetch(`${API_BASE}/quizzes`);
+        const qRes = await fetch(`${API}/quizzes`, { headers: authHeaders() });
         if (qRes.ok) {
           const qJs = await qRes.json();
           const found = (qJs.quizzes || []).find(q => q.moduleId === moduleId);
@@ -537,7 +542,7 @@
 
     async function refreshProgress() {
       try {
-        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/completion`);
+        const r = await fetch(`${API}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/completion`, { headers: authHeaders() });
         const j = await r.json().catch(()=>({completedIdx:[],lessonCount}));
         const pill = document.getElementById('progressPill');
         if (j.lessonCount > 0) {
@@ -553,7 +558,7 @@
 
     async function refreshLessonCompletion(idx) {
       try {
-        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/${idx}/isCompleted`);
+        const r = await fetch(`${API}/users/${encodeURIComponent(userData.email)}/modules/${encodeURIComponent(moduleId)}/lessons/${idx}/isCompleted`, { headers: authHeaders() });
         const j = await r.json().catch(()=>({completed:false}));
         const badge = document.getElementById('completeBadge');
         const btn = document.getElementById('completeBtn');
@@ -632,9 +637,9 @@
 
     async function markLessonComplete() {
       try {
-        const res = await fetch(`${API_BASE}/mark-lesson-complete`, {
+        const res = await fetch(`${API}/mark-lesson-complete`, {
           method:'POST',
-          headers:{'Content-Type':'application/json'},
+          headers: authHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ email: userData.email, moduleId, lessonIdx: currentIdx })
         });
         const js = await res.json().catch(()=>({success:false}));
