@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Course Upload</title>
 
+  <!-- OPTIONAL: set this if backend is a different Railway service -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
@@ -25,7 +28,6 @@
       <!-- Header -->
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -113,7 +115,6 @@
             <div class="mt-3">
               <label class="form-label fw-semibold">Assign to Classes</label>
 
-              <!-- Loading / status -->
               <div id="assigned-status" class="small-muted mb-2">Loading your classes…</div>
               <div id="assigned-empty" class="alert alert-warning py-2 px-3 mb-2" style="display:none;">
                 No classes found for your account.
@@ -201,9 +202,9 @@
         const initials = getInitials(u);
 
         window.addEventListener("DOMContentLoaded", () => {
-          const el = document.getElementById("Username");   // 👈 header span on this page
+          const el = document.getElementById("Username");
           if (!el) return;
-          el.textContent = initials;                        // initials only
+          el.textContent = initials;
           const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
             || u.username || u.email || 'Profile';
           el.setAttribute('title', fullLabel);
@@ -235,7 +236,17 @@
   <!-- Page Logic -->
   <script>
     (function () {
-      const API = "http://localhost:5000";
+      /* ========= Railway-friendly API base ========= */
+      function resolveApiBase() {
+        const meta = document.querySelector('meta[name="api-base"]');
+        if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+        if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+        const host = location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:5000';
+        // same-origin on Railway/production
+        return '';
+      }
+      const API_BASE = resolveApiBase();
 
       // Reuse user from initials IIFE (already guarded)
       const userData = window.currentUser;
@@ -339,7 +350,7 @@
             return;
           }
 
-          const url = `${API}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
+          const url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`;
           const res = await fetch(url, { headers: { "Accept": "application/json" } });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
@@ -455,7 +466,8 @@
         if (publishAtIso) payload.publishAtIso = publishAtIso;
 
         try {
-          const res = await fetch(`${API}/upload-course`, {
+          // NOTE: If your backend route differs, adjust this path.
+          const res = await fetch(`${API_BASE}/api/upload-course`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
