@@ -5,6 +5,9 @@
   <title>EduConnect Student - Course Modules</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- Optional override if your API is a separate Railway service -->
+  <!-- <meta name="x-api-base" content="https://your-api.up.railway.app"> -->
+
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -23,9 +26,9 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
-          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+          <!-- Use relative paths so they work on Railway subpaths -->
+          <img src="components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
           <input type="text" id="moduleSearch" placeholder="Search modules..." />
@@ -41,7 +44,7 @@
       <div class="content container-fluid">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h1 class="page-title brand mb-0" id="courseTitle">Course Modules</h1>
-          <a id="backBtn" class="btn btn-sm btn-amber-outline" href="/STUDENT/courses/courses.html">
+          <a id="backBtn" class="btn btn-sm btn-amber-outline" href="courses/courses.html">
             <i class="bi bi-arrow-left"></i> Back to My Courses
           </a>
         </div>
@@ -90,7 +93,8 @@
   <!-- Sidebar Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      fetch("/STUDENT/components/sidebar.html")
+      // Relative include so it works under Railway subpaths
+      fetch("components/sidebar.html")
         .then(res => res.text())
         .then(html => {
           document.getElementById("sidebar-container").innerHTML = html;
@@ -118,7 +122,15 @@
 
   <!-- Page Logic -->
   <script>
-    const API_BASE = 'http://localhost:5000';
+    /* ===== Railway-safe API base ===== */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="x-api-base"]');
+      const override = meta?.content?.trim();
+      if (override) return override.replace(/\/+$/, '');
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:5000';
+      return ''; // same-origin in production
+    }
+    const API_BASE = resolveApiBase();
 
     /* ========== Auth (Students-only, enforce S- prefix, expose global userData) ========== */
     (function guardStudentSession() {
@@ -133,15 +145,13 @@
       if (!isValid) {
         try { localStorage.removeItem('user'); } catch {}
         // This file is under /STUDENT/modules/, go up one level
-        window.location.replace('../login/login.html');
+        window.location.replace('login/login.html');
         return;
       }
 
-      // Make session available globally
       window.currentUser = u;
       window.userData = u;
 
-      // Header initials
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim();
@@ -172,9 +182,9 @@
             const next = JSON.parse(e.newValue || "null");
             const nu = (next && (next.user || next)) || null;
             const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
-            if (!ok) window.location.replace('../login/login.html');
+            if (!ok) window.location.replace('login/login.html');
           } catch {
-            window.location.replace('../login/login.html');
+            window.location.replace('login/login.html');
           }
         }
       });
@@ -217,7 +227,7 @@
     const courseId = urlParams.get('id');
     if (!courseId) {
       alert("No course id provided.");
-      window.location.href = "/STUDENT/courses/courses.html";
+      window.location.href = "courses/courses.html";
     }
 
     let modules = [];
@@ -384,7 +394,7 @@
               </div>
               <div class="d-flex flex-column justify-content-between align-items-end ms-md-4 mt-3 mt-md-0">
                 ${renderProgressPill(m)}
-                <a class="btn btn-amber btn-sm mt-2" href="/STUDENT/modules/view.html?moduleId=${encodeURIComponent(m.id)}">
+                <a class="btn btn-amber btn-sm mt-2" href="modules/view.html?moduleId=${encodeURIComponent(m.id)}">
                   <i class="bi bi-play-circle me-1"></i> ${primaryCtaText(m)}
                 </a>
               </div>
@@ -417,7 +427,7 @@
     function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = "/STUDENT/login/login.html";
+      window.location.href = "login/login.html";
     }
   </script>
 
