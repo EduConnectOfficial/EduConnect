@@ -3,7 +3,7 @@ const router = require('express').Router();
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
-const { decryptField } = require('../utils/fieldCrypto'); // <-- added
+const { safeDecrypt } = require('../utils/fieldCrypto'); // <-- added
 
 // ---- tiny helpers (route-local) ----
 const chunk = (arr, size = 10) => {
@@ -19,7 +19,7 @@ function hydrateUserNames(uRaw) {
   const dec = (encKey, plainKey) => {
     try {
       if (u[encKey]) {
-        const v = decryptField(u[encKey]);
+        const v = safeDecrypt(u[encKey]);
         if (typeof v === 'string') return v;
       }
     } catch {}
