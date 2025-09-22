@@ -34,9 +34,9 @@
           <input id="searchInput" type="text" class="form-control" placeholder="Search (student, title, module, class)…"/>
           <i class="fas fa-search position-absolute" style="top:50%; right:15px; transform:translateY(-50%);"></i>
         </div>
-        <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
+        <button class="profile-btn btn btn-link text-decoration-none" >
           <i class="fas fa-user-circle fa-2x"></i>
-          <span id="Username" class="username ms-2 fw-semibold">T</span>
+          <span id="Username" class="username ms-2 fw-semibold">Teacher</span>
         </button>
       </header>
 
@@ -302,20 +302,62 @@
     if (!user || !user.userId || !user.isTeacher) {
       window.location.href = "/TEACHER/login/login.html";
     } else {
-      // Initial-only username in header (no other changes)
-      const uname =
-        (user.username ||
-         user.fullName ||
-         user.name ||
-         (user.email || '').split('@')[0] ||
-         'Teacher').trim();
-      const initial = (uname.match(/[A-Za-z]/)?.[0] || uname.charAt(0) || 'T').toUpperCase();
-      const uEl = document.getElementById("Username");
-      uEl.textContent = initial;   // show just the initial
-      uEl.title = uname;           // keep full name on hover
+      document.getElementById("Username").textContent = user.username || "Teacher";
     }
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href="/TEACHER/login/login.html"; }
     window.logoutUser = logoutUser;
+
+    /* ------- Header initials (teacher-only) ------- */
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
+
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+
+        const initials = getInitials(u);
+
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+
+          el.textContent = initials;
+
+          const fullLabel = [u.firstName, u.middleName, u.lastName]
+            .filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        console.error('initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+      }
+
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
 
     /* ---------- Params ---------- */
     const url = new URL(location.href);
@@ -479,7 +521,7 @@
         };
 
         okBtn.addEventListener('click', onOk);
-        cancelBtn && cancelBtn.addEventListener('click', onCancel);
+        cancelBtn && addEventListener('click', onCancel);
         modalEl.addEventListener('hidden.bs.modal', onHidden, { once:true });
 
         modal.show();
@@ -497,7 +539,7 @@
       if (typeof s === 'number') return (s*1000)+Math.floor(ns/1e6);
       return null;
     }
-    function toDate(v){ const ms = tsToMs(v); if (ms==null) return null; const d=new Date(ms); return Number.isNaN(d.getTime())?'—':d; }
+    function toDate(v){ const ms = tsToMs(v); if (ms==null) return null; const d=new Date(ms); return Number.isNaN(d.getTime())?null:d; }
     function fmt(dt){ if (!dt) return '—'; const d=dt instanceof Date?dt:new Date(dt); return isNaN(d.getTime())?'—':d.toLocaleString(); }
     function toApiUrl(pathOrUrl){
       const s = String(pathOrUrl || "");

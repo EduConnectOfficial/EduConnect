@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher – Quizzes</title>
 
+  <!-- Optional on Railway if your API is on a different host -->
+  <!-- <meta name="api-base" content="https://your-api.onrailway.app"> -->
+
   <!-- Bootstrap / Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-  <!-- Page CSS (optional, your existing styles) -->
+  <!-- Page CSS -->
   <link rel="stylesheet" href="quiz.list.css" />
   <link rel="stylesheet" href="../quizzes/quiz.list.css" />
-  
 </head>
 <body>
   <div class="dashboard">
@@ -134,7 +136,12 @@
 
   <!-- Page logic -->
   <script>
-    const API = "http://localhost:5000";
+    // Railway-friendly API base resolution
+    const API = (
+      document.querySelector('meta[name="api-base"]')?.content ||
+      window.API_BASE ||
+      ((location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:5000' : '/api')
+    );
 
     /* ------- initials-only helper ------- */
     function getInitials(u = {}) {
@@ -216,7 +223,7 @@
       statusModal().show();
     }
 
-    // ---------- Delete Confirmation Modal (TYPE EXACT QUIZ TITLE) ----------
+    // ---------- Delete Confirmation Modal ----------
     const deleteModalWrap = document.createElement('div');
     deleteModalWrap.innerHTML = `
       <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true" aria-labelledby="deleteConfirmTitle">
@@ -231,8 +238,6 @@
                 Confirm you want to delete this quiz and all associated data by typing:
                 <strong class="no-copy">Quiz Title</strong> (case-sensitive).
               </p>
-
-              <!-- Static “Type exactly” pill (no-copy) -->
               <div class="mb-2">
                 <div class="form-control confirm-pill no-copy" id="deleteExactPill" aria-hidden="true"
                      style="display:flex;align-items:center;gap:.5rem;">
@@ -240,12 +245,9 @@
                   <strong id="deleteExactText" class="no-copy">—</strong>
                 </div>
               </div>
-
-              <!-- User input -->
               <label for="confirmDeleteInput" class="form-label small mb-1">Type Quiz Title here</label>
               <input id="confirmDeleteInput" type="text" class="form-control" autocomplete="off"
                      aria-describedby="deleteHelp" placeholder="Exact quiz title"/>
-
               <div id="deleteHelp" class="invalid-feedback no-copy">
                 Input does not match. Please type
                 <strong id="deleteExactHint" class="no-copy">—</strong> to proceed.
@@ -568,8 +570,8 @@
 
       elGrid.innerHTML = filtered.map((qz, idx) => {
         const s = qz.settings || {};
-        const hasTimer = !!s.timerEnabled;
-        const timerTxt = hasTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
+        theTimer = !!s.timerEnabled;
+        const timerTxt = theTimer ? `${s.durationMinutes || 0}m + ${s.graceSeconds || 0}s` : 'Disabled';
         const dueTxt = qz._dueMs ? new Date(qz._dueMs).toLocaleString() : '—';
         const attemptsTxt = (qz.attemptsAllowed == null || qz.attemptsAllowed === 0) ? 'Unlimited' : qz.attemptsAllowed;
 
@@ -602,7 +604,6 @@
             <span class="badge-soft"><i class="bi bi-stopwatch"></i>${timerTxt}</span>
           </div>`;
 
-        // Safely pass the title to deleteQuiz (avoid breaking quotes)
         const titleArg = JSON.stringify(qz.title || '');
 
         return `
@@ -672,7 +673,7 @@
     elSort.addEventListener('change', applyFilters);
     elSearch.addEventListener('input', applyFilters);
 
-    // === COPY HARDENING LOGIC FOR DELETE MODAL ===
+    // Copy hardening for delete modal
     function hardenDeleteModal(modalEl){
       if (!modalEl) return;
       const bodyEl = modalEl.querySelector('.modal-body');
@@ -689,20 +690,16 @@
       const kill = (e) => { e.preventDefault(); e.stopPropagation(); };
 
       const blockClipboard = (e) => {
-        // Only block if the action is within the modal
         if (bodyEl && (bodyEl.contains(e.target))) kill(e);
       };
 
-      // Block copy/cut/context menu at modal scope
       modalEl.addEventListener('copy', blockClipboard);
       modalEl.addEventListener('cut', blockClipboard);
       modalEl.addEventListener('contextmenu', blockClipboard);
 
-      // Block selection attempts on protected nodes
       const events = ['dragstart','selectstart','mousedown','pointerdown','mouseup','pointerup','contextmenu','copy','cut'];
       blockers.forEach(node => events.forEach(evt => node.addEventListener(evt, kill)));
 
-      // Clear any accidental selection inside protected nodes
       const selGuard = () => {
         const sel = window.getSelection && window.getSelection();
         if (!sel || !sel.rangeCount) return;
@@ -713,7 +710,6 @@
       };
       document.addEventListener('selectionchange', selGuard);
 
-      // Clean up when the modal is hidden
       const onHidden = () => {
         modalEl.classList.remove('confirm-hardened');
         modalEl.removeEventListener('copy', blockClipboard);

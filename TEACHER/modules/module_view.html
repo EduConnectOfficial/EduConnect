@@ -331,7 +331,7 @@
     async function fetchModule() {
       if (!moduleId) {
         alert('No moduleId provided.');
-        window.location.href = '/TEACHER/Modules/module_list.html';
+        window.location.href = '/TEACHER/modules/module_list.html';
         return;
       }
 
@@ -347,12 +347,12 @@
 
       // Back button target
       const back = document.getElementById('backToCourseBtn');
-      if (courseId) back.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
+      if (courseId) back.href = `/TEACHER/modules/module_list.html?courseId=${encodeURIComponent(courseId)}`;
       else {
         back.addEventListener('click', (e) => {
           e.preventDefault();
           if (document.referrer) history.back();
-          else location.href = '/TEACHER/Modules/module_list.html';
+          else location.href = '/TEACHER/modules/module_list.html';
         });
       }
 
@@ -485,7 +485,7 @@
       catch (e) {
         console.error(e);
         alert('Failed to load module.');
-        window.location.href = '/TEACHER/Modules/module_list.html';
+        window.location.href = '/TEACHER/modules/module_list.html';
       }
     });
   </script>

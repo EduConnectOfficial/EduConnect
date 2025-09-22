@@ -178,7 +178,7 @@
 
             <!-- Actions -->
             <div class="d-flex justify-content-end gap-2 mt-4">
-              <a id="backBtn" href="/TEACHER/Modules/module_list.html" class="btn btn-close-footer">← Back</a>
+              <a id="backBtn" href="/TEACHER/modules/module_list.html" class="btn btn-close-footer">← Back</a>
               <button id="submitBtn" type="button" class="btn btn-amber">
                 <span class="submit-text">Add Lessons</span>
                 <span class="spinner-border spinner-border-sm ms-2 visually-hidden" role="status" aria-hidden="true"></span>
@@ -711,7 +711,7 @@
         moduleTitleTag.textContent = `— ${title}`;
         currentCountEl.textContent = String(baseLessonIdx);
 
-        if (courseIdForBack) backBtn.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseIdForBack)}`;
+        if (courseIdForBack) backBtn.href = `/TEACHER/modules/module_list.html?courseId=${encodeURIComponent(courseIdForBack)}`;
 
         // start with one lesson page
         addLesson(false);
@@ -802,9 +802,9 @@
           autoHideMs: 900,
           onHidden: () => {
             if (courseIdForBack) {
-              window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseIdForBack)}`;
+              window.location.href = `/TEACHER/modules/module_list.html?courseId=${encodeURIComponent(courseIdForBack)}`;
             } else {
-              window.location.href = `/TEACHER/Modules/module_list.html`;
+              window.location.href = `/TEACHER/modules/module_list.html`;
             }
           }
         });

@@ -1047,7 +1047,7 @@
           ? '✅ Module uploaded and scheduled.'
           : '✅ Module uploaded and published!'
         );
-        setTimeout(()=>{ window.location.href = `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(courseId)}`; }, 900);
+        setTimeout(()=>{ window.location.href = `/TEACHER/modules/module_list.html?courseId=${encodeURIComponent(courseId)}`; }, 900);
       } catch (err) {
         console.error(err);
         formError.textContent = "Server error while uploading module.";

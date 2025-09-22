@@ -1319,8 +1319,8 @@
 
     function computeBackUrl() {
       const cid = backCourseId || initialModule?.courseId || '';
-      if (cid) return `/TEACHER/Modules/module_list.html?courseId=${encodeURIComponent(cid)}`;
-      return `/TEACHER/Modules/module_list.html`;
+      if (cid) return `/TEACHER/modules/module_list.html?courseId=${encodeURIComponent(cid)}`;
+      return `/TEACHER/modules/module_list.html`;
     }
 
     document.getElementById('btnBack').addEventListener('click', async ()=>{

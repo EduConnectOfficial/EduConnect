@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher – Essay Grading (Grouped by Quiz)</title>
 
+  <!-- Optional: set your Railway backend base explicitly (overrides auto-detect) -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
@@ -13,7 +16,6 @@
 
   <!-- Shared theme (your brand styles, incl .btn-amber) -->
   <link rel="stylesheet" href="essay.css" />
-
 </head>
 
 <body>
@@ -35,9 +37,9 @@
           <input type="text" class="form-control" id="freeSearch" placeholder="Search student, quiz, or answer…" />
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
-        <button class="profile-btn btn btn-link text-decoration-none">
+        <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
           <i class="fas fa-user-circle fa-2x"></i>
-          <span id="Username" class="username ms-2 fw-semibold"></span>
+          <span id="Username" class="username ms-2 fw-semibold">T</span>
         </button>
       </header>
 
@@ -311,30 +313,38 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Page Logic -->
+  <!-- Page Logic (Railway-ready) -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    /* ===== Railway-friendly API base resolver =====
+       Priority: 1) <meta name="api-base">, 2) window.__API_BASE, 3) localStorage.API_BASE,
+                 4) same-origin when on *.railway.app, 5) http://localhost:5000 (dev)
+    ================================================= */
+    const API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+
+    function toApiUrl(pathOrUrl = '') {
+      const s = String(pathOrUrl || '');
+      if (/^https?:\/\/|^blob:/i.test(s)) return s;
+      return API + (s.startsWith('/') ? s : '/' + s);
+    }
 
     /* ---------- Initials-only helpers ---------- */
     function getInitials(u = {}) {
-      const fn = (u.firstName || "").trim();
-      const ln = (u.lastName || "").trim();
-      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-
-      const nameish = (u.username || u.displayName || u.name || "").trim();
-      if (nameish) {
-        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, " ")
-          .split(/[\s._-]+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return parts[0][0].toUpperCase();
-      }
-      const em = (u.email || "").trim();
-      return em ? em[0].toUpperCase() : "U";
+      // ONE initial (first alphabetic char from name/username/email)
+      const source = (u.username || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Teacher').trim();
+      const match = (source.match(/[A-Za-z]/) || [source.charAt(0) || 'T'])[0];
+      return match.toUpperCase();
     }
     function setHeaderInitials(u = {}) {
       const el = document.getElementById("Username");
       if (!el) return;
-      el.textContent = getInitials(u); // initials only
+      el.textContent = getInitials(u);
       const full = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
         || u.username || u.email || "Profile";
       el.setAttribute("title", full);
@@ -350,7 +360,7 @@
         return;
       }
       window.currentUser = u;
-      setHeaderInitials(u); // 👈 initials-only in header
+      setHeaderInitials(u);
     })();
 
     function logoutUser() {
@@ -409,36 +419,39 @@
     const courseLabelCache = new Map();
     const moduleLabelCache = new Map();
 
-    /* ---------- helpers ---------- */
-    function withTeacher(urlOrPath) {
-      const base = urlOrPath.startsWith('http') ? urlOrPath : `${API_BASE}${urlOrPath}`;
-      const u = new URL(base);
-      if (!u.searchParams.get('teacherId')) u.searchParams.set('teacherId', teacherId);
+    /* ---------- fetch helpers (Railway-aware) ---------- */
+    function withTeacher(pathOrUrl) {
+      const full = toApiUrl(pathOrUrl);
+      const u = new URL(full);
+      if (!u.searchParams.get('teacherId') && teacherId) u.searchParams.set('teacherId', teacherId);
       return u.toString();
     }
 
-    async function getJson(urlOrPath) {
-      const res = await fetch(withTeacher(urlOrPath));
+    async function getJson(pathOrUrl) {
+      const url = withTeacher(pathOrUrl);
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
       const text = await res.text();
-      if (!res.ok) throw new Error(`GET ${urlOrPath} -> ${res.status}: ${text.slice(0, 200)}`);
+      if (!res.ok) throw new Error(`GET ${url} -> ${res.status}: ${text.slice(0, 200)}`);
       try { return JSON.parse(text); } catch { return {}; }
     }
 
-    async function postJson(urlOrPath, body) {
-      const res = await fetch(withTeacher(urlOrPath), {
+    async function postJson(pathOrUrl, body) {
+      const url = withTeacher(pathOrUrl);
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(body || {})
       });
       const text = await res.text();
       let data = {};
       try { data = JSON.parse(text); } catch { }
       if (!res.ok || data.success === false) {
-        throw new Error(data.message || `POST ${urlOrPath} failed`);
+        throw new Error(data.message || `POST ${url} failed`);
       }
       return data;
     }
 
+    /* ---------- misc helpers ---------- */
     function escapeHTML(str = '') {
       return String(str)
         .replaceAll('&', '&amp;')
@@ -597,6 +610,7 @@
       const status = statusSelectEl.value;
       pageSize = parseInt(pageSizeSelectEl.value, 10) || 20;
 
+      // Unified API path (works with same-origin on Railway or explicit API base)
       const base = `/api/teacher/quiz-essays?status=${encodeURIComponent(status)}&page=${page}&pageSize=${pageSize}`;
       try {
         const resp = await getJson(base);
