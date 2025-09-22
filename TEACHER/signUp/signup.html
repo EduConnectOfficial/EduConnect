@@ -207,37 +207,60 @@
     const normalizeEmail = v => trimmed(v).toLowerCase();
     function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
-    /* ===== Endpoints (your backend first) ===== */
+    /* ===== Endpoints (try multiple common mounts) ===== */
     const ENDPOINTS = {
       checkUsername(u) {
         const q = `username=${encodeURIComponent(u)}`;
-        return [
+        const bases = [
           `${API_BASE}/check-username`,
+          `${API_BASE}/api/check-username`,
           `${API_BASE}/api/users/check-username`,
-        ].map(u => u + (u.includes('?') ? `&${q}` : `?${q}`));
+          `${API_BASE}/auth/check-username`,
+          `${API_BASE}/api/v1/check-username`,
+        ];
+        return bases.map(b => b + (b.includes('?') ? `&${q}` : `?${q}`));
       },
       checkEmail(e) {
         const q = `email=${encodeURIComponent(e)}`;
-        return [
+        const bases = [
           `${API_BASE}/check-email`,
+          `${API_BASE}/api/check-email`,
           `${API_BASE}/api/users/check-email`,
-        ].map(u => u + (u.includes('?') ? `&${q}` : `?${q}`));
+          `${API_BASE}/auth/check-email`,
+          `${API_BASE}/api/v1/check-email`,
+        ];
+        return bases.map(b => b + (b.includes('?') ? `&${q}` : `?${q}`));
       },
       signup() {
         return [
           `${API_BASE}/signup`,
           `${API_BASE}/api/signup`,
+          `${API_BASE}/api/auth/signup`,
+          `${API_BASE}/auth/signup`,
+          `${API_BASE}/api/v1/signup`,
         ];
       }
     };
 
-    function hintForNetworkFailure(url, resp) {
+    /* ===== Resilient fetch with "soft 404" handling ===== */
+    function notFoundLike(resp, js) {
+      if (!resp) return false;
+      if (resp.status === 404 || resp.status === 405) return true;
+      const msg = (js && (js.message || js.error || js.msg || js.detail)) || '';
+      const bad = js && (js.success === false || js.ok === false);
+      return bad && /not\s*found|no route|unknown|doesn'?t exist/i.test(String(msg));
+    }
+
+    function hintForNetworkFailure(url, resp, js) {
       let hint = '';
       if (!resp) {
         hint = 'Network/CORS error. If backend is separate, set <meta name="api-base" ...> or window.API_URL.';
-      } else if (resp.status === 404) hint = '404 Not Found – check server route + mount path.';
-      else if (resp.status === 403) hint = '403 Forbidden – check CORS/auth on server.';
-      console.warn('[Signup] Request failed:', { tried: url, status: resp?.status, hint });
+      } else if (resp.status === 404 || resp.status === 405 || notFoundLike(resp, js)) {
+        hint = 'Endpoint not found here; trying next variant...';
+      } else if (resp.status === 403) {
+        hint = '403 Forbidden – check CORS/auth on server.';
+      }
+      console.warn('[Signup] Request info:', { tried: url, status: resp?.status, body: js, hint });
       return hint;
     }
 
@@ -250,13 +273,18 @@
             credentials: 'same-origin',
             mode: 'cors',
           });
-          if (r.status === 404) { hintForNetworkFailure(url, r); continue; }
           let js = {};
-          try { js = await r.json(); } catch {}
+          try { js = await r.clone().json(); } catch { /* may not be JSON */ }
+
+          // Skip soft 404 / 405 and real 404
+          if (r.status === 404 || r.status === 405 || notFoundLike(r, js)) {
+            hintForNetworkFailure(url, r, js);
+            continue;
+          }
           return { response: r, json: js, urlTried: url };
         } catch (e) {
           lastErr = e;
-          hintForNetworkFailure(url, null);
+          hintForNetworkFailure(url, null, null);
         }
       }
       throw lastErr || new Error('All endpoints failed');
@@ -446,12 +474,9 @@
           }
         );
 
-        if (!response.ok) {
-          const msg = js?.error || "Signup failed.";
-          signupErrorDiv.textContent = (response.status === 404 || response.status === 500)
-            ? `${msg} (Endpoint: ${urlTried || 'unknown'})`
-            : msg;
-
+        if (!response.ok || (js && js.success === false)) {
+          const msg = (js && (js.error || js.message)) || "Signup failed.";
+          signupErrorDiv.textContent = `${msg}${urlTried ? ` (Endpoint: ${urlTried})` : ''}`;
           submitBtn.disabled = false;
           submitBtn.textContent = prevText;
           return;

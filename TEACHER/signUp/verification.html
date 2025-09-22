@@ -5,15 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Verify Code</title>
 
-  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- OPTIONAL -->
   <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="signup1.css"/>
 </head>
-
 <body>
-  <!-- Top Logo -->
   <div class="top-logo text-center brand">
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
@@ -36,13 +34,11 @@
 
         <div id="verificationError" class="text-danger mb-3"></div>
 
-        <button id="verifyBtn" type="submit" class="btn login-btn w-100 mb-2">
-          Verify
-        </button>
+        <button id="verifyBtn" type="submit" class="btn login-btn w-100 mb-2">Verify</button>
 
         <div class="d-flex justify-content-center gap-2 align-items-center">
           <span class="text-white">Didn't receive the code?</span>
-          <a href="#" id="resendCode" class="">Resend</a>
+          <a href="#" id="resendCode">Resend</a>
           <span id="resendTimer" class="text-white-50 small"></span>
         </div>
       </form>
@@ -75,7 +71,7 @@
     </div>
   </div>
 
-  <!-- Feedback Modal (resend/info/errors) -->
+  <!-- Feedback Modal -->
   <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -106,26 +102,39 @@
     })();
 
     const ENDPOINTS = {
-      verifyCode(){ return [ `${API_BASE}/verify-code`, `${API_BASE}/api/verify-code` ]; },
-      resendCode(){ return [ `${API_BASE}/resend-code`, `${API_BASE}/api/resend-code` ]; },
+      verifyCode(){ return [
+        `${API_BASE}/verify-code`,
+        `${API_BASE}/api/verify-code`,
+        `${API_BASE}/api/auth/verify-code`,
+        `${API_BASE}/auth/verify-code`,
+        `${API_BASE}/api/v1/verify-code`,
+      ]; },
+      resendCode(){ return [
+        `${API_BASE}/resend-code`,
+        `${API_BASE}/api/resend-code`,
+        `${API_BASE}/api/auth/resend-code`,
+        `${API_BASE}/auth/resend-code`,
+        `${API_BASE}/api/v1/resend-code`,
+      ]; },
     };
 
-    function hint(url, resp){
-      let h = '';
-      if (!resp) h = 'Network/CORS error. Set <meta name="api-base" ...> if separate backend.';
-      else if (resp.status === 404) h = '404 Not Found – check server route.';
-      else if (resp.status === 403) h = '403 Forbidden – CORS/auth.';
-      console.warn('[Verify]', {url, status: resp?.status, hint:h}); return h;
+    function notFoundLike(resp, js){
+      if (!resp) return false;
+      if (resp.status === 404 || resp.status === 405) return true;
+      const msg = (js && (js.message || js.error || js.msg || js.detail)) || '';
+      const bad = js && (js.success === false || js.ok === false);
+      return bad && /not\s*found|no route|unknown|doesn'?t exist/i.test(String(msg));
     }
+
     async function fetchJSONFallback(urls, options){
       let last=null;
       for(const u of urls){
         try{
           const r = await fetch(u,{...options,credentials:'same-origin',mode:'cors'});
-          if(r.status===404){ hint(u,r); continue; }
-          let j={}; try{ j=await r.json(); }catch{}
+          let j={}; try{ j=await r.clone().json(); }catch{}
+          if (r.status===404 || r.status===405 || notFoundLike(r,j)) continue;
           return {response:r,json:j,urlTried:u};
-        }catch(e){ last=e; hint(u,null); }
+        }catch(e){ last=e; }
       }
       throw last||new Error('All endpoints failed');
     }
@@ -175,7 +184,7 @@
       const prev=verifyBtn.innerHTML; verifyBtn.innerHTML=`<span class="spinner-border spinner-border-sm me-2"></span>Verifying...`;
       try{
         const {response,json:data,urlTried}=await fetchJSONFallback(ENDPOINTS.verifyCode(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,code})});
-        if(response.ok){
+        if(response.ok && !(data && data.success === false)){
           const userId=data.userId || data.user?.userId;
           const teacherId=data.teacherId || data.user?.teacherId;
           if(userId) sessionStorage.setItem('verifiedUserId',userId);
@@ -183,7 +192,7 @@
           sessionStorage.removeItem('pendingEmail'); sessionStorage.removeItem('pendingUserData');
           showSuccessModal({ userId, teacherId, redirectTo:'/TEACHER/login/login.html' });
         } else {
-          verificationError.textContent=(data && data.error) ? data.error : `Invalid or expired code. (Endpoint: ${urlTried||'unknown'})`;
+          verificationError.textContent=(data && (data.error||data.message)) ? data.error||data.message : `Invalid or expired code. (Endpoint tried: ${urlTried||'unknown'})`;
           if(!timerId) startCooldown(30);
         }
       }catch(err){
@@ -201,17 +210,17 @@
       try{
         setResendState(false);
         const {response,json:data,urlTried}=await fetchJSONFallback(ENDPOINTS.resendCode(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-        if(response.ok){
+        if(response.ok && !(data && data.success === false)){
           showFeedbackModal('New verification code sent to your email.','Code Resent');
           inputs.forEach(i=>i.value=''); inputs[0].focus(); startCooldown(60);
         } else {
           setResendState(true);
-          showFeedbackModal((data&&data.error)?data.error:`Could not resend code. (Endpoint: ${urlTried||'unknown'})`,'Resend Failed');
+          showFeedbackModal((data&&(data.error||data.message))? (data.error||data.message) : `Could not resend code. (Endpoint: ${urlTried||'unknown'})`,'Resend Failed');
         }
-      }catch(err){
-        console.error(err);
+      }catch(error){
+        console.error(error);
         setResendState(true);
-        showFeedbackModal('Server error while resending verification code. If backend is separate, set <meta name="api-base" ...>.','Server Error');
+        showFeedbackModal('Server error while resending verification code.','Server Error');
       }
     });
 
