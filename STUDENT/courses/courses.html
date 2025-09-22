@@ -5,6 +5,10 @@
   <title>EduConnect Student - My Courses</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- Example: https://educonnect-api-production.up.railway.app -->
+  <meta name="api-base" content="">
+
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -34,7 +38,7 @@
           <input type="text" id="courseSearch" placeholder="Search enrolled classes..." />
           <i class="fas fa-search"></i>
         </div>
-        <button class="profile-btn">
+        <button class="profile-btn" aria-label="Open profile menu">
           <i class="fas fa-user-circle"></i>
           <span id="Username" class="username align-items-center" style="font-size: 14px;"></span>
         </button>
@@ -112,395 +116,422 @@
     });
   </script>
 
+  <!-- Auth + API base helpers -->
+  <script>
+    // ---------- API base detection (Railway-friendly) ----------
+    function getApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]')?.content?.trim();
+      if (meta) return meta.replace(/\/+$/, ''); // prefer explicit meta
+
+      const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
+      if (isLocal) return 'http://localhost:5000';
+
+      // Production default: same-origin (works if frontend reverse-proxies to backend).
+      // If using a separate Railway service, set the meta tag above.
+      return location.origin;
+    }
+    const API_BASE = getApiBase();
+
+    // Centralized fetch options; toggle credentials if using cookie sessions.
+    const FETCH_OPTIONS_BASE = {
+      headers: { 'Content-Type': 'application/json' },
+      // credentials: 'include',
+    };
+
+    async function apiGet(url) {
+      const r = await fetch(url, { ...FETCH_OPTIONS_BASE });
+      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+      return r.json();
+    }
+  </script>
+
   <!-- Auth + Data (Students-only, enforces S- prefix, exposes global userData) -->
-<script>
-  const API_BASE = 'http://localhost:5000';
+  <script>
+    (function guardStudentSession() {
+      // Read stored session (supports either {user:{...}} or plain {...})
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const u = stored.user || stored;
 
-  (function guardStudentSession() {
-    // Read stored session (supports either {user:{...}} or plain {...})
-    const stored = JSON.parse(localStorage.getItem('user') || '{}');
-    const u = stored.user || stored;
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        /^S-/.test(String(u?.studentId || ''));
 
-    const isValid =
-      !!u?.userId &&
-      u?.isStudent === true &&
-      /^S-/.test(String(u?.studentId || ''));
+      if (!isValid) {
+        try { localStorage.removeItem('user'); } catch {}
+        // This file is under /STUDENT/courses/, so go up to /STUDENT/login/
+        window.location.replace('../login/login.html');
+        return;
+      }
 
-    if (!isValid) {
-      try { localStorage.removeItem('user'); } catch {}
-      // This file is under /STUDENT/courses/, so go up to /STUDENT/login/
-      window.location.replace('../login/login.html');
-      return;
-    }
+      // Make available to all later scripts
+      window.currentUser = u;
+      window.userData = u;
 
-    // Make available to all later scripts
-    window.currentUser = u;
-    window.userData = u;
-
-    // Header initials
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
+      // Header initials
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+          return local.slice(0, 2).toUpperCase();
+        }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
         if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        return local.slice(0, 2).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
       }
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      return parts[0].slice(0, 2).toUpperCase();
-    }
 
-    const el = document.getElementById("Username");
-    if (el) {
-      const displayName = u.fullName || u.username || u.email || "";
-      const initials = initialsFrom(displayName) || "?";
-      el.textContent = initials;
-      el.title = displayName;
-      el.setAttribute("aria-label", displayName);
-    }
+      const el = document.getElementById("Username");
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
 
-    // Cross-tab tamper guard
-    window.addEventListener("storage", (e) => {
-      if (e.key === "user") {
-        try {
-          const next = JSON.parse(e.newValue || "null");
-          const nu = (next && (next.user || next)) || null;
-          const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
-          if (!ok) window.location.replace('../login/login.html');
-        } catch {
-          window.location.replace('../login/login.html');
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && /^S-/.test(String(nu?.studentId || ''));
+            if (!ok) window.location.replace('../login/login.html');
+          } catch {
+            window.location.replace('../login/login.html');
+          }
+        }
+      });
+    })();
+  </script>
+
+  <!-- Data & Page Logic (Railway-aware endpoints) -->
+  <script>
+    // Local state
+    const favKey = 'courseFavs';
+    const favs = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
+    let myCourses = [];
+    let studentClassIds = [];
+    const courseProgressCache = new Map(); // courseId -> { pct, completedLessons, totalLessons }
+
+    // --- robust timestamp parsing ---
+    function toDateMaybe(v) {
+      if (v == null && v !== 0) return null;
+      if (v && typeof v === 'object') {
+        if (typeof v.toDate === 'function') { try { return v.toDate(); } catch {} }
+        if (v._seconds != null) {
+          return new Date(v._seconds * 1000 + (v._nanoseconds ? Math.floor(v._nanoseconds/1e6) : 0));
+        }
+        if ('seconds' in v) {
+          return new Date((v.seconds || 0) * 1000 + (v.nanoseconds ? Math.floor(v.nanoseconds/1e6) : 0));
         }
       }
-    });
-  })();
+      if (typeof v === 'number') return new Date(v < 1e12 ? v * 1000 : v);
+      const d = new Date(String(v));
+      return isNaN(d.getTime()) ? null : d;
+    }
 
-  // ================== Data & page logic (unchanged below) ==================
-
-  // Local state
-  const favKey = 'courseFavs';
-  const favs = new Set(JSON.parse(localStorage.getItem(favKey) || '[]'));
-  let myCourses = [];
-  let studentClassIds = [];
-  const courseProgressCache = new Map(); // courseId -> { pct, completedLessons, totalLessons }
-
-  // --- robust timestamp parsing ---
-  function toDateMaybe(v) {
-    if (v == null && v !== 0) return null;
-    if (v && typeof v === 'object') {
-      if (typeof v.toDate === 'function') { try { return v.toDate(); } catch {} }
-      if (v._seconds != null) {
-        return new Date(v._seconds * 1000 + (v._nanoseconds ? Math.floor(v._nanoseconds/1e6) : 0));
+    function tsToMs(ts){
+      if (!ts) return null;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts === 'string') {
+        const t = Date.parse(ts);
+        return Number.isFinite(t) ? t : null;
       }
-      if ('seconds' in v) {
-        return new Date((v.seconds || 0) * 1000 + (v.nanoseconds ? Math.floor(v.nanoseconds/1e6) : 0));
+      const s = ts._seconds ?? ts.seconds;
+      const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
+      if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
+      const d = new Date(ts);
+      return Number.isFinite(d.getTime()) ? d.getTime() : null;
+    }
+    function isPublished(m){
+      const at = tsToMs(m.publishAt);
+      return at === null || at <= Date.now();
+    }
+    function isVisibleModule(m){
+      return (m.archived !== true) && isPublished(m);
+    }
+    function getPublishDate(course) {
+      const fields = [
+        'publishAt','scheduledAt','scheduleAt','startAt','startDate',
+        'goLiveAt','goLiveDate','publishDate','publishOn'
+      ];
+      for (const f of fields) {
+        if (course && course[f] != null) {
+          const d = toDateMaybe(course[f]);
+          if (d) return d;
+        }
       }
-    }
-    if (typeof v === 'number') return new Date(v < 1e12 ? v * 1000 : v);
-    const d = new Date(String(v));
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  function tsToMs(ts){
-    if (!ts) return null;
-    if (typeof ts === 'number') return ts;
-    if (typeof ts === 'string') {
-      const t = Date.parse(ts);
-      return Number.isFinite(t) ? t : null;
-    }
-    const s = ts._seconds ?? ts.seconds;
-    const ns = ts._nanoseconds ?? ts.nanoseconds ?? 0;
-    if (typeof s === 'number') return (s * 1000) + Math.floor(ns / 1e6);
-    const d = new Date(ts);
-    return Number.isFinite(d.getTime()) ? d.getTime() : null;
-  }
-  function isPublished(m){
-    const at = tsToMs(m.publishAt);
-    return at === null || at <= Date.now();
-  }
-  function isVisibleModule(m){
-    return (m.archived !== true) && isPublished(m);
-  }
-  function getPublishDate(course) {
-    const fields = [
-      'publishAt','scheduledAt','scheduleAt','startAt','startDate',
-      'goLiveAt','goLiveDate','publishDate','publishOn'
-    ];
-    for (const f of fields) {
-      if (course && course[f] != null) {
-        const d = toDateMaybe(course[f]);
-        if (d) return d;
-      }
-    }
-    return null;
-  }
-
-  async function fetchStudentClassIds() {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`
-      );
-      const json = await res.json().catch(() => ({ success:false, enrollments:[] }));
-      if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
-      return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
-    } catch { return []; }
-  }
-
-  async function fetchCoursesForStudent() {
-    const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true&visibility=student&onlyPublished=true`;
-    const res = await fetch(url);
-    const js  = await res.json().catch(() => ({}));
-    if (!res.ok || !js.success) throw new Error(js.message || 'Failed to load courses');
-
-    const now = Date.now();
-    myCourses = (js.courses || [])
-      .map(c => {
-        const createdAt = toDateMaybe(c.createdAt);
-        const publishAt = getPublishDate(c);
-        const archived  = !!c.archived;
-        return {
-          id: c.id,
-          title: c.title || 'Untitled Course',
-          description: c.description || '',
-          category: c.category || 'General',
-          teacherName: c.teacherName || 'Teacher',
-          courseNumber: c.courseNumber || null,
-          createdAt,
-          publishAt,
-          archived
-        };
-      })
-      .filter(c => !c.archived && !(c.publishAt && c.publishAt.getTime() > now));
-
-    populateSchoolYearFromCategories(myCourses);
-    await ensureClassIdsLoaded();
-    await prefetchCourseProgress(myCourses);
-    renderGrid();
-  }
-
-  async function ensureClassIdsLoaded() {
-    if (!studentClassIds.length) {
-      studentClassIds = await fetchStudentClassIds();
-    }
-  }
-
-  async function fetchVisibleModulesForCourse(courseId) {
-    if (!studentClassIds.length) return [];
-    const perClassFetches = studentClassIds.map(async cid => {
-      const res = await fetch(
-        `${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`
-      );
-      if (!res.ok) return [];
-      return res.json();
-    });
-    const results = await Promise.all(perClassFetches);
-    const byId = new Map();
-    results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
-    return Array.from(byId.values()).filter(isVisibleModule);
-  }
-
-  async function computeCourseProgress(courseId) {
-    const email = userData.email;
-    const modules = await fetchVisibleModulesForCourse(courseId);
-
-    if (!modules.length) {
-      return { pct: 0, completedLessons: 0, totalLessons: 0 };
+      return null;
     }
 
-    const items = await Promise.all(modules.map(async m => {
+    // ---------- API calls (now using API_BASE + helpers) ----------
+    async function fetchStudentClassIds() {
       try {
-        const r = await fetch(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/lessons/completion`);
-        const j = await r.json().catch(()=>({completedIdx:[], lessonCount: m.moduleSubTitles?.length || m.lessonCount || 0}));
-        const lessonCount = Number.isFinite(j.lessonCount) ? j.lessonCount : 0;
-        const completedCount = Array.isArray(j.completedIdx) ? j.completedIdx.length : 0;
-        return { completed: completedCount, total: lessonCount };
-      } catch {
-        const lc = m.moduleSubTitles?.length || m.lessonCount || 0;
-        return { completed: 0, total: lc };
+        const json = await apiGet(
+          `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/enrollments?includeTeacher=true`
+        );
+        if (!json || json.success === false || !Array.isArray(json.enrollments)) return [];
+        return json.enrollments.map(e => e.id || e.classId).filter(Boolean);
+      } catch { return []; }
+    }
+
+    async function fetchCoursesForStudent() {
+      const url = `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true&visibility=student&onlyPublished=true`;
+      const js  = await apiGet(url).catch(() => ({}));
+      if (!js || js.success === false) throw new Error(js?.message || 'Failed to load courses');
+
+      const now = Date.now();
+      myCourses = (js.courses || [])
+        .map(c => {
+          const createdAt = toDateMaybe(c.createdAt);
+          const publishAt = getPublishDate(c);
+          const archived  = !!c.archived;
+          return {
+            id: c.id,
+            title: c.title || 'Untitled Course',
+            description: c.description || '',
+            category: c.category || 'General',
+            teacherName: c.teacherName || 'Teacher',
+            courseNumber: c.courseNumber || null,
+            createdAt,
+            publishAt,
+            archived
+          };
+        })
+        .filter(c => !c.archived && !(c.publishAt && c.publishAt.getTime() > now));
+
+      populateSchoolYearFromCategories(myCourses);
+      await ensureClassIdsLoaded();
+      await prefetchCourseProgress(myCourses);
+      renderGrid();
+    }
+
+    async function ensureClassIdsLoaded() {
+      if (!studentClassIds.length) {
+        studentClassIds = await fetchStudentClassIds();
       }
-    }));
+    }
 
-    const completedLessons = items.reduce((a,b)=>a+b.completed, 0);
-    const totalLessons     = items.reduce((a,b)=>a+b.total, 0);
-    const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-
-    return { pct, completedLessons, totalLessons };
-  }
-
-  async function prefetchCourseProgress(courses) {
-    const tasks = courses.map(async c => {
-      const prog = await computeCourseProgress(c.id);
-      courseProgressCache.set(c.id, prog);
-    });
-    await Promise.all(tasks);
-  }
-
-  function populateSchoolYearFromCategories(list) {
-    const sel = document.getElementById('filterSchoolYear');
-    const cats = Array.from(new Set(list.map(c => c.category))).sort((a,b)=>a.localeCompare(b));
-    sel.innerHTML = '<option value="All">All School Years</option>';
-    cats.forEach(cat => {
-      const o = document.createElement('option');
-      o.value = `cat:${cat}`;
-      o.textContent = cat;
-      sel.appendChild(o);
-    });
-    const semSel = document.getElementById('filterSemester');
-    if (semSel) semSel.value = 'All';
-  }
-
-  function escapeHTML(str='') {
-    return String(str)
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'",'&#039;');
-  }
-
-  function progressPillHtml(courseId) {
-    const prog = courseProgressCache.get(courseId);
-    const pct = prog ? prog.pct : 0;
-    const label = (pct === 100) ? 'Completed' : (pct > 0 ? 'In progress' : 'Not started');
-    const stateClass =
-      pct === 100 ? 'text-bg-success' :
-      pct > 0     ? 'text-bg-secondary' : 'text-bg-secondary';
-    const countText = prog ? `${prog.completedLessons}/${prog.totalLessons} lessons` : '—';
-    return `
-      <div class="course-progress-wrap text-end">
-        <div class="progress progress-xs mb-1" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
-          <div class="progress-bar ${pct===100?'bg-success':''}" style="width:${pct}%"></div>
-        </div>
-        <div class="progress-label text-muted">
-          ${pct}% • ${countText} • <span class="badge ${stateClass}">${label}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  function primaryCtaText(courseId) {
-    const prog = courseProgressCache.get(courseId);
-    if (!prog || prog.totalLessons === 0) return 'View Course';
-    if (prog.pct >= 100) return 'Review';
-    if (prog.pct > 0) return 'Continue';
-    return 'Start';
-  }
-
-  function renderGrid() {
-    const q   = (document.getElementById('searchInput').value || '').toLowerCase();
-    const sy  = document.getElementById('filterSchoolYear').value;
-    const sort = document.getElementById('sortBy').value;
-
-    let list = myCourses.slice()
-      .filter(c => {
-        if (sy === 'All') return true;
-        if (sy.startsWith('cat:')) {
-          const cat = sy.slice(4);
-          return c.category === cat;
+    async function fetchVisibleModulesForCourse(courseId) {
+      if (!studentClassIds.length) return [];
+      const perClassFetches = studentClassIds.map(async cid => {
+        try {
+          return await apiGet(`${API_BASE}/courses/${encodeURIComponent(courseId)}/modules?classId=${encodeURIComponent(cid)}`);
+        } catch {
+          return [];
         }
-        return true;
-      })
-      .filter(c => (c.title + ' ' + c.description + ' ' + c.teacherName).toLowerCase().includes(q));
-
-    if (sort === 'az') {
-      list.sort((a,b)=> a.title.localeCompare(b.title));
-    } else if (sort === 'sy') {
-      list.sort((a,b)=> (a.category || '').localeCompare(b.category || ''));
+      });
+      const results = await Promise.all(perClassFetches);
+      const byId = new Map();
+      results.flat().forEach(m => { if (m && m.id) byId.set(m.id, m); });
+      return Array.from(byId.values()).filter(isVisibleModule);
     }
 
-    const grid = document.getElementById('coursesGrid');
-    grid.innerHTML = '';
+    async function computeCourseProgress(courseId) {
+      const email = userData.email;
+      const modules = await fetchVisibleModulesForCourse(courseId);
 
-    if (!list.length) {
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No courses found.</div></div>`;
-      return;
+      if (!modules.length) {
+        return { pct: 0, completedLessons: 0, totalLessons: 0 };
+      }
+
+      const items = await Promise.all(modules.map(async m => {
+        try {
+          const j = await apiGet(`${API_BASE}/users/${encodeURIComponent(email)}/modules/${encodeURIComponent(m.id)}/lessons/completion`)
+            .catch(() => ({ completedIdx: [], lessonCount: m.moduleSubTitles?.length || m.lessonCount || 0 }));
+          const lessonCount = Number.isFinite(j.lessonCount) ? j.lessonCount : 0;
+          const completedCount = Array.isArray(j.completedIdx) ? j.completedIdx.length : 0;
+          return { completed: completedCount, total: lessonCount };
+        } catch {
+          const lc = m.moduleSubTitles?.length || m.lessonCount || 0;
+          return { completed: 0, total: lc };
+        }
+      }));
+
+      const completedLessons = items.reduce((a,b)=>a+b.completed, 0);
+      const totalLessons     = items.reduce((a,b)=>a+b.total, 0);
+      const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+      return { pct, completedLessons, totalLessons };
     }
 
-    list.forEach(c => {
-      const isFav  = favs.has(c.id);
-      const col = document.createElement('div');
-      col.className = 'col-12 col-sm-6 col-xl-4 col-xxl-3';
-      col.innerHTML = `
-        <div class="course-card">
-          <div class="course-head">
-            <div class="d-flex align-items-center gap-2">
-              <div class="rounded-circle border d-flex align-items-center justify-content-center" style="width:40px;height:40px;background:#fff;">
-                <i class="bi bi-journal-text"></i>
-              </div>
-              <div>
-                <h3 class="course-title">${escapeHTML(c.title)}</h3>
-                <div class="course-meta">Teacher: ${escapeHTML(c.teacherName)}${c.courseNumber ? ' • #'+c.courseNumber : ''}</div>
-              </div>
-            </div>
-            <button class="favorite ${isFav ? 'active' : ''}" title="Favorite" data-id="${c.id}">
-              <i class="bi ${isFav ? 'bi-star-fill' : 'bi-star'} fs-5"></i>
-            </button>
+    async function prefetchCourseProgress(courses) {
+      const tasks = courses.map(async c => {
+        const prog = await computeCourseProgress(c.id);
+        courseProgressCache.set(c.id, prog);
+      });
+      await Promise.all(tasks);
+    }
+
+    // ---------- UI helpers ----------
+    function populateSchoolYearFromCategories(list) {
+      const sel = document.getElementById('filterSchoolYear');
+      const cats = Array.from(new Set(list.map(c => c.category))).sort((a,b)=>a.localeCompare(b));
+      sel.innerHTML = '<option value="All">All School Years</option>';
+      cats.forEach(cat => {
+        const o = document.createElement('option');
+        o.value = `cat:${cat}`;
+        o.textContent = cat;
+        sel.appendChild(o);
+      });
+      const semSel = document.getElementById('filterSemester');
+      if (semSel) semSel.value = 'All';
+    }
+
+    function escapeHTML(str='') {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    function progressPillHtml(courseId) {
+      const prog = courseProgressCache.get(courseId);
+      const pct = prog ? prog.pct : 0;
+      const label = (pct === 100) ? 'Completed' : (pct > 0 ? 'In progress' : 'Not started');
+      const stateClass =
+        pct === 100 ? 'text-bg-success' :
+        pct > 0     ? 'text-bg-secondary' : 'text-bg-secondary';
+      const countText = prog ? `${prog.completedLessons}/${prog.totalLessons} lessons` : '—';
+      return `
+        <div class="course-progress-wrap text-end">
+          <div class="progress progress-xs mb-1" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar ${pct===100?'bg-success':''}" style="width:${pct}%"></div>
           </div>
-
-          <p class="mt-2 mb-2">${escapeHTML(c.description)}</p>
-
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <span class="badge-soft"><i class="bi bi-bookmark"></i>${escapeHTML(c.category)}</span>
-            <span class="text-muted small">${c.createdAt ? 'Added: ' + c.createdAt.toLocaleDateString() : ''}</span>
-          </div>
-
-          <!-- Progress (async) -->
-          <div class="mb-2" id="prog-${c.id}">
-            ${progressPillHtml(c.id)}
-          </div>
-
-          <div class="d-flex flex-wrap gap-2">
-            <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">
-              <i class="bi bi-play-circle me-1"></i> ${primaryCtaText(c.id)}
-            </a>
-            <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber-outline">View Course</a>
+          <div class="progress-label text-muted">
+            ${pct}% • ${countText} • <span class="badge ${stateClass}">${label}</span>
           </div>
         </div>
       `;
-      grid.appendChild(col);
-    });
-
-    // Favorite handlers
-    document.querySelectorAll('.favorite').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        if (favs.has(id)) favs.delete(id); else favs.add(id);
-        localStorage.setItem(favKey, JSON.stringify(Array.from(favs)));
-        renderGrid();
-      });
-    });
-  }
-
-  // Boot / Wiring
-  document.addEventListener('DOMContentLoaded', async () => {
-    const headerSearch = document.getElementById('courseSearch');
-    const bodySearch   = document.getElementById('searchInput');
-    headerSearch.addEventListener('input', (e) => { bodySearch.value = e.target.value; renderGrid(); });
-    bodySearch.addEventListener('input', renderGrid);
-
-    document.getElementById('filterSchoolYear').addEventListener('change', renderGrid);
-    document.getElementById('filterSemester').addEventListener('change', renderGrid);
-    document.getElementById('sortBy').addEventListener('change', renderGrid);
-
-    try {
-      await fetchCoursesForStudent();
-      renderGrid();
-    } catch (err) {
-      console.error(err);
-      const grid = document.getElementById('coursesGrid');
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load your courses.</div></div>`;
     }
-  });
 
-  function logoutUser() {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = "/STUDENT/login/login.html";
-  }
-</script>
+    function primaryCtaText(courseId) {
+      const prog = courseProgressCache.get(courseId);
+      if (!prog || prog.totalLessons === 0) return 'View Course';
+      if (prog.pct >= 100) return 'Review';
+      if (prog.pct > 0) return 'Continue';
+      return 'Start';
+    }
 
+    function renderGrid() {
+      const q   = (document.getElementById('searchInput').value || '').toLowerCase();
+      const sy  = document.getElementById('filterSchoolYear').value;
+      const sort = document.getElementById('sortBy').value;
+
+      let list = myCourses.slice()
+        .filter(c => {
+          if (sy === 'All') return true;
+          if (sy.startsWith('cat:')) {
+            const cat = sy.slice(4);
+            return c.category === cat;
+          }
+          return true;
+        })
+        .filter(c => (c.title + ' ' + c.description + ' ' + c.teacherName).toLowerCase().includes(q));
+
+      if (sort === 'az') {
+        list.sort((a,b)=> a.title.localeCompare(b.title));
+      } else if (sort === 'sy') {
+        list.sort((a,b)=> (a.category || '').localeCompare(b.category || ''));
+      }
+
+      const grid = document.getElementById('coursesGrid');
+      grid.innerHTML = '';
+
+      if (!list.length) {
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No courses found.</div></div>`;
+        return;
+      }
+
+      list.forEach(c => {
+        const isFav  = favs.has(c.id);
+        const col = document.createElement('div');
+        col.className = 'col-12 col-sm-6 col-xl-4 col-xxl-3';
+        col.innerHTML = `
+          <div class="course-card">
+            <div class="course-head">
+              <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle border d-flex align-items-center justify-content-center" style="width:40px;height:40px;background:#fff;">
+                  <i class="bi bi-journal-text"></i>
+                </div>
+                <div>
+                  <h3 class="course-title">${escapeHTML(c.title)}</h3>
+                  <div class="course-meta">Teacher: ${escapeHTML(c.teacherName)}${c.courseNumber ? ' • #'+c.courseNumber : ''}</div>
+                </div>
+              </div>
+              <button class="favorite ${isFav ? 'active' : ''}" title="Favorite" data-id="${c.id}">
+                <i class="bi ${isFav ? 'bi-star-fill' : 'bi-star'} fs-5"></i>
+              </button>
+            </div>
+
+            <p class="mt-2 mb-2">${escapeHTML(c.description)}</p>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="badge-soft"><i class="bi bi-bookmark"></i>${escapeHTML(c.category)}</span>
+              <span class="text-muted small">${c.createdAt ? 'Added: ' + c.createdAt.toLocaleDateString() : ''}</span>
+            </div>
+
+            <!-- Progress (async) -->
+            <div class="mb-2" id="prog-${c.id}">
+              ${progressPillHtml(c.id)}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber">
+                <i class="bi bi-play-circle me-1"></i> ${primaryCtaText(c.id)}
+              </a>
+              <a href="/STUDENT/modules/list.html?id=${encodeURIComponent(c.id)}" class="btn btn-sm btn-amber-outline">View Course</a>
+            </div>
+          </div>
+        `;
+        grid.appendChild(col);
+      });
+
+      // Favorite handlers
+      document.querySelectorAll('.favorite').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          if (favs.has(id)) favs.delete(id); else favs.add(id);
+          localStorage.setItem(favKey, JSON.stringify(Array.from(favs)));
+          renderGrid();
+        });
+      });
+    }
+
+    // Boot / Wiring
+    document.addEventListener('DOMContentLoaded', async () => {
+      const headerSearch = document.getElementById('courseSearch');
+      const bodySearch   = document.getElementById('searchInput');
+      headerSearch.addEventListener('input', (e) => { bodySearch.value = e.target.value; renderGrid(); });
+      bodySearch.addEventListener('input', renderGrid);
+
+      document.getElementById('filterSchoolYear').addEventListener('change', renderGrid);
+      document.getElementById('filterSemester').addEventListener('change', renderGrid);
+      document.getElementById('sortBy').addEventListener('change', renderGrid);
+
+      try {
+        await fetchCoursesForStudent();
+        renderGrid();
+      } catch (err) {
+        console.error(err);
+        const grid = document.getElementById('coursesGrid');
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load your courses.</div></div>`;
+      }
+    });
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+  </script>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

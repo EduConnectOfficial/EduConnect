@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EduConnect Student - View Thread (with Modals)</title>
+  <title>EduConnect Student - View Thread </title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Bootstrap & Icons -->
@@ -225,12 +225,27 @@
 
   <!-- Page Logic -->
   <script>
-    const API_BASE = (location.port === '5501') ? 'http://localhost:5000/api/forum' : '/api/forum';
+    // ===== Railway-aware base =====
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : ""; // same-origin on Railway
+    const API_BASE = `${SERVER_BASE}/api/forum`;
+
     const qs = sel => document.querySelector(sel);
+
+    // Bearer auth (if token is stored)
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
 
     // Safe helpers
     function escapeHtml(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])).replace(/'/g,'&#39;');}
-    function toLocal(dt){ if(!dt) return ''; if(dt._seconds) return new Date(dt._seconds*1000).toLocaleString(); const t=Date.parse(dt); return Number.isFinite(t)?new Date(t).toLocaleString():''; }
+    function toLocal(dt){
+      if(!dt) return '';
+      if(dt._seconds) return new Date(dt._seconds*1000).toLocaleString();
+      const t=Date.parse(dt);
+      return Number.isFinite(t)?new Date(t).toLocaleString():'';
+    }
     function initialsFrom(str){
       if(!str) return "?";
       const s=String(str).trim();
@@ -244,9 +259,13 @@
       return (parts.length>=2?(parts[0][0]+parts[parts.length-1][0]):parts[0].slice(0,2)).toUpperCase();
     }
 
-    // Robust JSON fetch (handles non-JSON gracefully)
-    async function fetchJSON(url, opts){
-      const res = await fetch(url, opts);
+    // Robust JSON fetch (adds auth + handles non-JSON gracefully)
+    async function fetchJSON(url, opts={}){
+      const merged = {
+        ...opts,
+        headers: { ...authHeaders(), ...(opts.headers || {}) }
+      };
+      const res = await fetch(url, merged);
       const ct = res.headers.get('content-type') || '';
       const text = await res.text();
       let json = {};
@@ -504,7 +523,8 @@
 
       try{
         await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}`,{
-          method:'PATCH', headers:{'Content-Type':'application/json'},
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ title, text })
         });
         threadEditModal?.hide();
@@ -555,7 +575,9 @@
 
       try{
         await fetchJSON(`${API_BASE}/threads/${encodeURIComponent(threadId)}/replies/${encodeURIComponent(currentReply.id)}`,{
-          method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: updated })
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ text: updated })
         });
         replyEditModal?.hide();
         currentReply = null;
