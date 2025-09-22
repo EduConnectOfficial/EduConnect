@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -69,7 +70,8 @@
                     <div class="small-muted">
                       Shows only the classes enrolled in the selected course.
                       <span class="d-block">Tip: click a card to toggle selection. Space/Enter also works.</span>
-                      <span class="d-block mt-1">If you select none, the quiz is visible to the entire course (all active classes in it).</span>
+                      <span class="d-block mt-1">If you select none, the quiz is visible to the entire course (all
+                        active classes in it).</span>
                     </div>
                   </div>
                   <div id="assigned-status" class="small-muted">Pick a course to see its classes…</div>
@@ -84,11 +86,13 @@
               <div class="row g-3 mt-1">
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Quiz Title</label>
-                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz" required>
+                  <input type="text" id="quizTitleInput" class="form-control" placeholder="e.g., Lighting Basics Quiz"
+                    required>
                 </div>
                 <div class="col-12 col-lg-6">
                   <label class="form-label fw-bold">Description <span class="text-muted">(optional)</span></label>
-                  <input type="text" id="quizDescInput" class="form-control" placeholder="Short description shown to students">
+                  <input type="text" id="quizDescInput" class="form-control"
+                    placeholder="Short description shown to students">
                 </div>
               </div>
 
@@ -119,27 +123,31 @@
                     Rubric File <span class="text-muted">(applies to Essay questions)</span>
                   </label>
                   <input type="file" id="rubricsFile" class="form-control"
-                         accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" />
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" />
                   <div class="d-flex flex-wrap gap-2 align-items-center mt-1 rubric-note">
                     <span>Essay questions detected: <strong id="essayCountText">0</strong>.</span>
                     <span>Per-file limit: <strong id="sizeLimitText"></strong>.</span>
-                    <span id="rubricStateNote" class="on">You can stage a rubric anytime. It will only be uploaded if the quiz includes at least one Essay question.</span>
+                    <span id="rubricStateNote" class="on">You can stage a rubric anytime. It will only be uploaded if
+                      the quiz includes at least one Essay question.</span>
                   </div>
 
                   <div id="rubricRow" class="rubric-row mt-2 d-none">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                       <span class="badge-soft"><i class="bi bi-clipboard-check me-1"></i>Rubric</span>
-                      <button id="rubricNameBtn" type="button" class="btn btn-link p-0 align-baseline text-decoration-none"></button>
+                      <button id="rubricNameBtn" type="button"
+                        class="btn btn-link p-0 align-baseline text-decoration-none"></button>
                     </div>
                     <div class="d-flex align-items-center gap-2 mt-2">
                       <span id="rubricChip" class="pill text-truncate" style="max-width:220px;"></span>
-                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm" title="Preview"><i class="bi bi-eye"></i></button>
+                      <button id="rubricPreviewBtn" type="button" class="btn btn-outline-secondary btn-sm"
+                        title="Preview"><i class="bi bi-eye"></i></button>
                       <label class="btn btn-outline-secondary btn-sm mb-0" title="Replace">
                         <i class="bi bi-arrow-repeat"></i>
                         <input id="rubricReplaceInput" type="file" class="d-none"
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                       </label>
-                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i class="bi bi-trash"></i></button>
+                      <button id="rubricDeleteBtn" type="button" class="btn btn-outline-danger btn-sm" title="Remove"><i
+                          class="bi bi-trash"></i></button>
                     </div>
                   </div>
                 </div>
@@ -161,12 +169,15 @@
                 </div>
                 <div class="col-12 col-md-4">
                   <label for="timerMinutes" class="form-label fw-bold">Time Limit (minutes)</label>
-                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30" disabled>
+                  <input type="number" min="1" step="1" class="form-control" id="timerMinutes" placeholder="e.g., 30"
+                    disabled>
                   <div class="hint mt-1">Whole minutes, minimum 1.</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span class="text-muted">(optional)</span></label>
-                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10" disabled>
+                  <label for="gracePeriod" class="form-label fw-bold">Grace Period (seconds) <span
+                      class="text-muted">(optional)</span></label>
+                  <input type="number" min="0" step="1" class="form-control" id="gracePeriod" placeholder="e.g., 10"
+                    disabled>
                   <div class="hint mt-1">Extra seconds before auto-submit.</div>
                 </div>
               </div>
@@ -220,7 +231,7 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                   <div class="fw-semibold"><span class="text-muted">Step 1:</span> Download a CSV Template</div>
                   <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
-                          data-bs-target="#bulkHelpModal">
+                    data-bs-target="#bulkHelpModal">
                     <i class="bi bi-question-circle me-1"></i> Show Quiz Bulking Instruction
                   </button>
                 </div>
@@ -235,8 +246,10 @@
                       class="bi bi-download me-1"></i> CSV: All Types</button>
                 </div>
                 <div class="hint mt-2">
-                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD, correct</span>.
-                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span class="mono">FALSE</span>.
+                  Columns (case-insensitive): <span class="mono">type, question, choiceA, choiceB, choiceC, choiceD,
+                    correct</span>.
+                  For True/False, set <span class="mono">correct</span> to <span class="mono">TRUE</span> or <span
+                    class="mono">FALSE</span>.
                 </div>
 
                 <hr class="my-3">
@@ -332,7 +345,8 @@
               </div>
               <div id="uploadWarnings" class="alert alert-warning d-none small"></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-amber" data-bs-dismiss="modal">Done</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-amber" data-bs-dismiss="modal">Done</button>
+            </div>
           </div>
         </div>
       </div>
@@ -461,7 +475,19 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const API = "http://localhost:5000";
+    // NEW (Railway-friendly):
+    const API_BASE = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const host = location.hostname;
+      const onLocal = (host === 'localhost' || host === '127.0.0.1');
+      // If nothing explicit is set, use localhost in dev, same-origin in prod (Railway/custom domain).
+      const chosen = byMeta || byWindow || byStorage || (onLocal ? 'http://127.0.0.1:5000' : '');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+
+
     const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
     const MAX_ASSIGNED_CLASSES = 500;
@@ -607,19 +633,19 @@
     function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
     function kindFrom({ url = '', name = '', mime = '' }) {
       const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
-      if ((mime || '').startsWith('image/') || ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
+      if ((mime || '').startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
       if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
-      if ((mime || '').startsWith('video/') || ['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if ((mime || '').startsWith('audio/') || ['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
-      if ((mime || '').startsWith('text/') || ['txt','csv','log'].includes(ext)) return 'text';
-      if (['doc','docx','ppt','pptx','xls','xlsx','csv'].includes(ext)) return 'office';
+      if ((mime || '').startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if ((mime || '').startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
+      if ((mime || '').startsWith('text/') || ['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(ext)) return 'office';
       return 'other';
     }
     function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
     function setFileInfoUI(kind, url) {
       const info = document.getElementById('fileInfoText');
       const hdr = document.getElementById('filePreviewModalLabel');
-      const labelMap = { video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File' };
+      const labelMap = { video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
       let badge = document.getElementById('fileKindBadge'); if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
       badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
       badge.textContent = labelMap[kind] || 'File';
@@ -795,7 +821,7 @@
     const assignedEmpty = document.getElementById("assigned-empty");
     let selectedClassIds = new Set();
 
-    function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function esc(s) { return String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
     function updateAssignedStatus() {
       const n = selectedClassIds.size;
       assignedStatus.textContent = `${n} selected${n >= MAX_ASSIGNED_CLASSES ? ' (max reached)' : ''}`;
@@ -862,7 +888,7 @@
     async function fetchCourseById(courseId) {
       try {
         const r = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
-        const js = await r.json().catch(()=>null);
+        const js = await r.json().catch(() => null);
         const course = js?.course || js || null;
         return course;
       } catch { return null; }
@@ -888,7 +914,7 @@
         // 1) Load teacher’s classes
         const url1 = `${API}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`;
         const resp1 = await fetch(url1, { headers: { "Accept": "application/json" } });
-        const json1 = await resp1.json().catch(()=>({success:false, classes:[]}));
+        const json1 = await resp1.json().catch(() => ({ success: false, classes: [] }));
         const teacherClasses = Array.isArray(json1?.classes) ? json1.classes : [];
         dbg('teacherClasses:', teacherClasses.length);
 
@@ -909,13 +935,13 @@
             const url2 = `${API}/courses/${encodeURIComponent(courseId)}/classes`;
             const resp2 = await fetch(url2, { headers: { "Accept": "application/json" } });
             if (resp2.ok) {
-              const j2 = await resp2.json().catch(()=>({}));
+              const j2 = await resp2.json().catch(() => ({}));
               const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
               // still intersect with assignedClasses if present
               filtered = classes2.filter(c => allowedIds.size ? allowedIds.has(String(c.id || c._id || c.classId || "")) : true);
               dbg('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
             }
-          } catch {}
+          } catch { }
         }
 
         // 4) Trim current selections to visible list
@@ -941,7 +967,7 @@
         assignedStatus.textContent = "Could not load your classes. Please refresh.";
         assignedStatus.classList.remove('small-muted');
         assignedStatus.classList.add('text-danger');
-        openBrandAlert({ title:'Network Error', message:'Could not load your classes. Please refresh and try again.' });
+        openBrandAlert({ title: 'Network Error', message: 'Could not load your classes. Please refresh and try again.' });
       }
     }
 
@@ -966,7 +992,7 @@
     let currentPreviewRevoke = null;
 
     document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', () => {
-      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch {} }
+      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch { } }
       currentPreviewRevoke = null;
       previewStageCtx = null;
       showStageBtn(false);
@@ -1207,38 +1233,38 @@
     function normalizeHeader(s) { return String(s || '').trim().toLowerCase(); }
     function normalizeType(t) {
       const x = String(t || '').trim().toLowerCase();
-      if (['mcq','multiple choice','multiple-choice','multiplechoice'].includes(x)) return 'mcq';
-      if (['tf','true/false','truefalse','true-false'].includes(x)) return 'tf';
-      if (['essay','open','long','long answer','long-answer'].includes(x)) return 'essay';
+      if (['mcq', 'multiple choice', 'multiple-choice', 'multiplechoice'].includes(x)) return 'mcq';
+      if (['tf', 'true/false', 'truefalse', 'true-false'].includes(x)) return 'tf';
+      if (['essay', 'open', 'long', 'long answer', 'long-answer'].includes(x)) return 'essay';
       return '';
     }
     function normalizeCorrectForTF(v) {
       const x = String(v || '').trim().toLowerCase();
-      if (['true','t','a','1','yes','y'].includes(x)) return 'A';
-      if (['false','f','b','0','no','n'].includes(x)) return 'B';
+      if (['true', 't', 'a', '1', 'yes', 'y'].includes(x)) return 'A';
+      if (['false', 'f', 'b', '0', 'no', 'n'].includes(x)) return 'B';
       return '';
     }
     function normalizeCorrectForMCQ(v) {
       const x = String(v || '').trim().toUpperCase();
-      return ['A','B','C','D'].includes(x) ? x : '';
+      return ['A', 'B', 'C', 'D'].includes(x) ? x : '';
     }
 
     function buildCsvTemplate(kind) {
-      const header = ['type','question','choiceA','choiceB','choiceC','choiceD','correct'];
+      const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
       let rows = [header];
       if (kind === 'mcq') {
-        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
-        rows.push(['mcq','Which color is the sky?','Blue','Green','Red','Yellow','A']);
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
       } else if (kind === 'tf') {
-        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
-        rows.push(['tf','The Earth is flat','','','','','FALSE']);
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['tf', 'The Earth is flat', '', '', '', '', 'FALSE']);
       } else if (kind === 'essay') {
-        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
-        rows.push(['essay','Describe Newton’s three laws of motion.','','','','','']);
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
+        rows.push(['essay', 'Describe Newton’s three laws of motion.', '', '', '', '', '']);
       } else {
-        rows.push(['mcq','What is 2 + 2?','4','3','5','2','A']);
-        rows.push(['tf','Light travels faster than sound','','','','','TRUE']);
-        rows.push(['essay','Explain the exposure triangle in photography.','','','','','']);
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
       }
       return toCSV(rows);
     }
@@ -1662,4 +1688,5 @@
     }
   </script>
 </body>
+
 </html>

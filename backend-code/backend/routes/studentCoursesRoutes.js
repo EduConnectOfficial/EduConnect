@@ -5,7 +5,7 @@ const router = express.Router();
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore } = require('../config/firebase');
 const { getEnrollmentsClassIds, getCoursesForClassIds } = require('../utils/studentUtils');
-const { decryptField } = require('../utils/fieldCrypto'); // ✅ decrypt names
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ✅ use safeDecrypt
 
 /* ----------------------- helpers ----------------------- */
 const chunk = (arr, size = 10) => {
@@ -39,9 +39,9 @@ function isPublished(course, nowMs) {
 }
 
 function decryptNames(u = {}) {
-  const first  = decryptField(u.firstNameEnc  || '');
-  const middle = decryptField(u.middleNameEnc || '');
-  const last   = decryptField(u.lastNameEnc   || '');
+  const first  = safeDecrypt(u.firstNameEnc  || '', '');
+  const middle = safeDecrypt(u.middleNameEnc || '', '');
+  const last   = safeDecrypt(u.lastNameEnc   || '', '');
   const full = [first, middle, last].map(s => String(s || '').trim()).filter(Boolean).join(' ').trim();
   return { firstName: first, middleName: middle, lastName: last, fullName: full || (u.username || 'Teacher') };
 }

@@ -4,7 +4,7 @@ const router = express.Router();
 
 const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore } = require('../config/firebase');
-const { decryptField } = require('../utils/fieldCrypto'); // <-- NEW: use same decrypt as in auth
+const { safeDecrypt } = require('../utils/fieldCrypto'); // ⬅️ use safeDecrypt
 
 const {
   getEnrollmentsClassIds,
@@ -24,15 +24,13 @@ const toDateMs = (ts) => ts?.toMillis?.() ?? (typeof ts === 'number' ? ts : null
 
 // Decrypt full name from a users/{id} doc that stores encrypted names
 function getDecryptedFullName(u = {}) {
-  try {
-    const first = decryptField(u.firstNameEnc || '');
-    const middle = decryptField(u.middleNameEnc || '');
-    const last = decryptField(u.lastNameEnc || '');
-    const full = [first, middle, last].map(s => String(s || '').trim()).filter(Boolean).join(' ');
-    if (full) return full;
-  } catch { /* fall through */ }
+  const first  = safeDecrypt(u.firstNameEnc  || '', '');
+  const middle = safeDecrypt(u.middleNameEnc || '', '');
+  const last   = safeDecrypt(u.lastNameEnc   || '', '');
+  const full = [first, middle, last].map(s => String(s || '').trim()).filter(Boolean).join(' ').trim();
+  if (full) return full;
 
-  // legacy/fallbacks if anything’s missing or decrypt fails
+  // legacy/fallbacks if anything’s missing
   const legacy = `${u.firstName || ''} ${u.lastName || ''}`.trim();
   return legacy || u.username || u.email || 'Student';
 }
@@ -189,7 +187,7 @@ router.get('/leaderboard', asyncHandler(async (req, res) => {
       const badges = await computeBadges(uid);
       const topBadge = badges[0]?.label || '-';
 
-      const name = getDecryptedFullName(u); // <-- decrypted full name
+      const name = getDecryptedFullName(u); // ⬅️ decrypted full name
 
       entries.push({ userId: uid, name, points, topBadge });
     } catch {}
