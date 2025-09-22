@@ -5,17 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Admin - Verify Code</title>
 
-  <!-- Bootstrap CSS -->
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="signup1.css" />
-
- 
 </head>
 
 <body>
   <!-- Top Logo -->
   <div class="top-logo text-center brand">
-    <!-- CSIS logo beside EduConnect -->
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
@@ -95,8 +94,75 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const API_BASE = "http://localhost:5000";
+    /* ---------------- API base detection (Railway-friendly) ---------------- */
+    (function decideApiBase(){
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
+      const manual  = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      const isLocal = (h) => ['localhost','127.0.0.1'].includes(h);
+      const sanitize=(u)=>(u||'').replace(/\/+$/,'');
+      let base = metaBase || manual || (isLocal(location.hostname) ? 'http://localhost:5000' : '');
+      if (!isLocal(location.hostname) && base && base.startsWith('http://')) {
+        base = base.replace(/^http:\/\//i,'https://');
+      }
+      window.API_BASE = sanitize(base);
+    })();
 
+    /* --------- Cross-origin credentials mode (cookies across domains) --------- */
+    function computeCredentialsMode() {
+      try {
+        if (!API_BASE) return 'same-origin';
+        const api = new URL(API_BASE, location.href);
+        return api.origin === location.origin ? 'same-origin' : 'include';
+      } catch { return 'same-origin'; }
+    }
+    const FETCH_CREDENTIALS = computeCredentialsMode();
+
+    /* ---------------- Endpoint fallbacks (cover common mounts) ---------------- */
+    const ENDPOINTS = {
+      verifyCode() {
+        return [
+          `${API_BASE}/verify-code`,
+          `${API_BASE}/api/verify-code`,
+          `${API_BASE}/api/admin/verify-code`,
+          `${API_BASE}/api/auth/verify-code`,
+        ];
+      },
+      resendCode() {
+        return [
+          `${API_BASE}/resend-code`,
+          `${API_BASE}/api/resend-code`,
+          `${API_BASE}/api/admin/resend-code`,
+          `${API_BASE}/api/auth/resend-code`,
+        ];
+      }
+    };
+
+    function hint(url, resp){
+      let h='';
+      if(!resp) h='Network/CORS error. If backend is separate, set <meta name="api-base" ...> and enable CORS.';
+      else if(resp.status===404) h='404 Not Found – check route/mount path.';
+      else if(resp.status===403) h='403 Forbidden – CORS/auth.';
+      console.warn('[Admin Verify]',{url,status:resp?.status,hint:h});
+      return h;
+    }
+
+    async function fetchJSONFallback(urls, options) {
+      let lastErr=null;
+      for(const url of urls){
+        try{
+          const r = await fetch(url, { ...options, credentials: FETCH_CREDENTIALS, mode:'cors' });
+          if (r.status === 404) { hint(url,r); continue; }
+          let json = {}; try { json = await r.json(); } catch {}
+          return { response: r, json };
+        } catch (e) {
+          lastErr=e; hint(url,null);
+        }
+      }
+      throw lastErr || new Error('All endpoints failed');
+    }
+
+    /* ---------------- Elements ---------------- */
     const inputs = Array.from(document.querySelectorAll(".otp-input"));
     const verifyForm = document.getElementById("verifyCodeForm");
     const verifyBtn = document.getElementById("verifyBtn");
@@ -226,14 +292,16 @@
       verifyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying...`;
 
       try {
-        const res = await fetch(`${API_BASE}/verify-code`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code })
-        });
-        const data = await res.json();
+        const { response, json: data } = await fetchJSONFallback(
+          ENDPOINTS.verifyCode(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, code })
+          }
+        );
 
-        if (res.ok) {
+        if (response.ok) {
           // read ids (either top-level or nested under data.user)
           const userId  = data.userId  || (data.user && data.user.userId);
           const adminId = data.adminId || (data.user && data.user.adminId);
@@ -250,16 +318,22 @@
             userId,
             adminId,
             redirectTo: "/ADMIN/login/login.html"
-            // autoCloseMs: 2000,
           });
 
         } else {
-          verificationError.textContent = data.error || "Invalid or expired code.";
+          // Common failure status handling
+          if (response.status === 410) {
+            verificationError.textContent = data.error || "Code expired. Please request a new one.";
+          } else if (response.status === 429) {
+            verificationError.textContent = data.error || "Too many attempts. Please wait and try again.";
+          } else {
+            verificationError.textContent = data.error || "Invalid or expired code.";
+          }
           if (!timerId) startCooldown(30);
         }
       } catch (err) {
         console.error(err);
-        verificationError.textContent = "Failed to connect to server.";
+        verificationError.textContent = "Failed to connect to server. If backend is separate, set <meta name=\"api-base\" ...> and enable CORS.";
       } finally {
         verifyBtn.disabled = false;
         verifyBtn.innerHTML = prevHTML;
@@ -276,20 +350,22 @@
       }
       try {
         setResendState(false);
-        const res = await fetch(`${API_BASE}/resend-code`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if (res.ok) {
+        const { response, json: data } = await fetchJSONFallback(
+          ENDPOINTS.resendCode(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+          }
+        );
+        if (response.ok) {
           showFeedbackModal("New verification code sent to your email.", "Code Resent");
           inputs.forEach(i => i.value = "");
           inputs[0].focus();
           startCooldown(60);
         } else {
           setResendState(true);
-          showFeedbackModal(data.error || "Could not resend code.", "Resend Failed");
+          showFeedbackModal(data?.error || "Could not resend code.", "Resend Failed");
         }
       } catch (error) {
         console.error(error);
