@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Student - Login</title>
 
-  <!-- OPTIONAL: if your API is a separate Railway service, set this -->
-  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -28,7 +28,7 @@
       <form id="loginForm" autocomplete="off" novalidate>
         <div class="mb-3 text-start">
           <label for="username" class="form-label text-light">Username</label>
-          <input type="text" id="username" class="form-control" placeholder="Enter your username" inputmode="email" />
+          <input type="text" id="username" class="form-control" placeholder="Enter your username" inputmode="email"/>
         </div>
 
         <div class="mb-2 text-start">
@@ -37,7 +37,10 @@
             <input type="password" id="password" class="form-control" placeholder="Enter your password" aria-describedby="capsHint"/>
             <button class="btn btn-outline-light" type="button" id="togglePw" aria-pressed="false" aria-label="Show password">
               <span class="visually-hidden">Show</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8"/></svg>
+              <!-- Bootstrap icon (eye) -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8"/>
+              </svg>
             </button>
           </div>
           <div id="capsHint" class="form-text text-warning d-none">Caps Lock is ON</div>
@@ -66,7 +69,7 @@
   <!-- Attempts / Policy Modal -->
   <div class="modal fade" id="attemptModal" tabindex="-1" aria-hidden="true" aria-labelledby="attemptModalLabel">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content text-center">
         <div class="modal-header">
           <h5 id="attemptModalLabel" class="modal-title">Login Notice</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -75,7 +78,7 @@
           <p class="text-dark mb-0" id="attemptMessage"></p>
         </div>
         <div class="modal-footer">
-          <button type="button" id="attemptOkBtn" class="btn" data-bs-dismiss="modal">OK</button>
+          <button type="button" id="attemptOkBtn" class="btn w-100" data-bs-dismiss="modal">OK</button>
         </div>
       </div>
     </div>
@@ -84,57 +87,89 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Login Logic -->
+  <!-- Login Logic (Railway-friendly, with endpoint fallbacks) -->
   <script>
-    /* ===== Railway-friendly API base resolver =====
-       Order of precedence:
-       1) <meta name="api-base"> (explicit override)
-       2) window.__API_BASE (if you set it before this script)
-       3) localStorage.API_BASE (manual override for testing)
-       4) If deployed on *.railway.app, use same-origin
-       5) Fallback to http://localhost:5000 (dev)
-    ================================================= */
-    const API_BASE = (() => {
-      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
-      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
-      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
-      const onRailway = /\.railway\.app$/i.test(location.hostname);
-      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
-      return String(chosen).replace(/\/+$/, '');
+    /* ===================== API BASE (Railway-friendly) ===================== *
+     * Priority:
+     * 1) <meta name="api-base" ...>
+     * 2) window.API_URL (string) if provided globally
+     * 3) localStorage.API_BASE (manual override)
+     * 4) If not localhost, same-origin (empty base => relative calls)
+     * 5) Dev fallback: http://localhost:5000
+     * Enforce HTTPS on prod (non-local).
+     * ====================================================================== */
+    (function decideApiBase(){
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
+      const manual   = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      const store    = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : null;
+
+      const isLocal  = (h) => ['localhost','127.0.0.1'].includes(h);
+      const sanitize = (u) => (u || '').replace(/\/+$/, '');
+
+      let base = metaBase || manual || store || (isLocal(location.hostname) ? 'http://localhost:5000' : '');
+
+      if (!isLocal(location.hostname) && base.startsWith('http://')) {
+        base = base.replace(/^http:\/\//i, 'https://');
+      }
+      window.API_BASE = sanitize(base);
     })();
-    const api = (path) => `${API_BASE}${path.startsWith('/') ? path : '/' + path}`;
+
+    const API = {
+      // Build URL against API_BASE ('' means same-origin)
+      url(path) {
+        const p = path.startsWith('/') ? path : '/' + path;
+        return (window.API_BASE || '') + p;
+      },
+      // Candidate endpoints (fall back across common mounts)
+      endpoints: {
+        checkUsername(username) {
+          const q = `username=${encodeURIComponent(username)}`;
+          return [
+            API.url(`/api/check-username?${q}`),
+            API.url(`/check-username?${q}`),
+            API.url(`/api/users/check-username?${q}`)
+          ];
+        },
+        login() {
+          return [
+            API.url(`/api/login`),
+            API.url(`/login`),
+            API.url(`/api/auth/login`)
+          ];
+        }
+      }
+    };
 
     // ===== DOM =====
-    const form = document.getElementById("loginForm");
-    const btn = document.getElementById("loginBtn");
-    const btnLabel = btn.querySelector(".btn-label");
-    const btnSpinner = btn.querySelector(".spinner-border");
-    const errorBox = document.getElementById("loginError");
-    const attemptModal = new bootstrap.Modal(document.getElementById("attemptModal"));
-    const attemptMessage = document.getElementById("attemptMessage");
-    const usernameEl = document.getElementById("username");
-    const passwordEl = document.getElementById("password");
-    const capsHint = document.getElementById("capsHint");
-    const togglePwBtn = document.getElementById("togglePw");
+    const form          = document.getElementById("loginForm");
+    const btn           = document.getElementById("loginBtn");
+    const btnLabel      = btn.querySelector(".btn-label");
+    const btnSpinner    = btn.querySelector(".spinner-border");
+    const errorBox      = document.getElementById("loginError");
+    const attemptModal  = new bootstrap.Modal(document.getElementById("attemptModal"));
+    const attemptMsg    = document.getElementById("attemptMessage");
+    const usernameEl    = document.getElementById("username");
+    const passwordEl    = document.getElementById("password");
+    const capsHint      = document.getElementById("capsHint");
+    const togglePwBtn   = document.getElementById("togglePw");
+    const showPwCheck   = document.getElementById("showPassword");
 
-    // ===== Show password toggles (button + checkbox for redundancy) =====
-    const showPwCheck = document.getElementById("showPassword");
-    function setPwType(type) { passwordEl.type = type; }
-    showPwCheck.addEventListener("change", function () {
-      setPwType(this.checked ? "text" : "password");
-    });
+    // ===== Show password (button + checkbox) =====
+    function setPwType(type){ passwordEl.type = type; }
+    showPwCheck.addEventListener("change", function(){ setPwType(this.checked ? "text" : "password"); });
     togglePwBtn.addEventListener("click", () => {
       const isHidden = passwordEl.type === "password";
       setPwType(isHidden ? "text" : "password");
       togglePwBtn.setAttribute("aria-pressed", String(isHidden));
     });
 
-    // ===== Caps Lock detector =====
-    function setCapsHint(show) { capsHint.classList.toggle("d-none", !show); }
-    passwordEl.addEventListener("keydown", (e) => setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
-    passwordEl.addEventListener("keyup",   (e) => setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
+    // ===== Caps Lock hint =====
+    function setCapsHint(show){ capsHint.classList.toggle("d-none", !show); }
+    passwordEl.addEventListener("keydown", (e)=> setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
+    passwordEl.addEventListener("keyup",   (e)=> setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
 
-    // ===== Attempt + lock handling =====
+    // ===== Attempt & lock handling =====
     let countdownTimer = null;
     const MAX_ATTEMPTS = 5;
 
@@ -151,7 +186,7 @@
       } else {
         msg += ` Your account may now be temporarily locked. If you continue failing, it may be deactivated.`;
       }
-      attemptMessage.textContent = msg;
+      attemptMsg.textContent = msg;
       attemptModal.show();
     }
 
@@ -164,9 +199,9 @@
 
     function startCountdown(lockedUntil) {
       let untilMs = 0;
-      if (typeof lockedUntil === "string") untilMs = Date.parse(lockedUntil);
-      else if (lockedUntil > 0 && lockedUntil < 2e10) untilMs = lockedUntil * 1000; // seconds
-      else untilMs = Number(lockedUntil) || 0; // ms
+      if (typeof lockedUntil === "string")      untilMs = Date.parse(lockedUntil);
+      else if (lockedUntil > 0 && lockedUntil < 2e10) untilMs = lockedUntil * 1000; // seconds -> ms
+      else                                       untilMs = Number(lockedUntil) || 0;
 
       if (!untilMs) return;
       if (countdownTimer) clearInterval(countdownTimer);
@@ -191,13 +226,12 @@
     }
 
     // ===== Student-only session guard =====
-    function isValidStudentSession(u) {
+    function isValidStudentSession(u){
       if (!u) return false;
       if (u.isStudent !== true) return false;
       return /^S-/.test(String(u.studentId || ""));
     }
-    function clearSession() { try { localStorage.removeItem("user"); } catch {} }
-
+    function clearSession(){ try { localStorage.removeItem("user"); } catch {} }
     (function guardExistingSession(){
       try {
         const raw = localStorage.getItem("user");
@@ -207,116 +241,136 @@
       } catch { clearSession(); }
     })();
 
-    // ===== Fetch helpers =====
-    async function fetchJSON(url, opts = {}, timeoutMs = 12000) {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const res = await fetch(url, { ...opts, signal: ctrl.signal });
-        const txt = await res.text();
-        let json = {};
-        try { json = txt ? JSON.parse(txt) : {}; } catch {}
-        return { ok: res.ok, status: res.status, data: json };
-      } finally {
-        clearTimeout(t);
-      }
+    // ===== Fetch helpers with fallbacks (Railway/CORS friendly) =====
+    function hint(url, resp){
+      let h = '';
+      if (!resp) h = 'Network/CORS error. If backend is separate, set <meta name="api-base" ...>.';
+      else if (resp.status === 404) h = '404 Not Found – check route/mount path.';
+      else if (resp.status === 403) h = '403 Forbidden – CORS/auth.';
+      console.warn('[Login]', { url, status: resp?.status, hint: h });
+      return h;
     }
 
-    async function usernameExists(username) {
-      try {
-        const q = new URLSearchParams({ username });
-        // Railway: use same-origin in prod or meta-configured base, with /api prefix
-        const { ok, data } = await fetchJSON(api(`/api/check-username?${q.toString()}`), { method: "GET" }, 6000);
-        if (!ok || !data) return true;         // fail-closed to allow attempt
-        return data.taken === true;
-      } catch { return true; }                 // fail-closed
+    async function fetchJSONFallback(urls, options){
+      let lastErr = null;
+      for (const url of urls){
+        try{
+          const res = await fetch(url, { ...options, credentials: 'same-origin', mode: 'cors' });
+          if (res.status === 404) { hint(url, res); continue; }
+          // Try to parse JSON even on non-2xx to read {error, lockedUntil}
+          let json = {};
+          try { json = await res.json(); } catch {}
+          return { response: res, json };
+        } catch (e){
+          lastErr = e; hint(url, null);
+        }
+      }
+      throw lastErr || new Error('All endpoints failed');
+    }
+
+    async function usernameExists(username){
+      try{
+        const { response, json } = await fetchJSONFallback(
+          API.endpoints.checkUsername(username),
+          { method: 'GET' }
+        );
+        if (!response.ok) return true; // fail-closed (let POST /login decide)
+        return json.taken === true || json.exists === true;
+      }catch{
+        return true; // fail-closed
+      }
     }
 
     // ===== Button busy state =====
-    function setBtnBusy(busy) {
-      if (busy) {
+    function setBtnBusy(busy){
+      if (busy){
         btn.disabled = true;
-        btnLabel.classList.add("d-none");
-        btnSpinner.classList.remove("d-none");
+        btnLabel.classList.add('d-none');
+        btnSpinner.classList.remove('d-none');
       } else {
         btn.disabled = false;
-        btnLabel.classList.remove("d-none");
-        btnSpinner.classList.add("d-none");
+        btnLabel.classList.remove('d-none');
+        btnSpinner.classList.add('d-none');
       }
     }
 
-    const normalize = v => String(v || "").trim();
-    const normKey = v => normalize(v).toLowerCase();
+    const normalize = v => String(v || '').trim();
+    const lower = v => normalize(v).toLowerCase();
 
-    // Prevent double submit via Enter while locked
-    form.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && countdownTimer) e.preventDefault();
+    // Prevent Enter while locked
+    form.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && countdownTimer) e.preventDefault();
     });
 
-    // ===== Submit handler =====
-    form.addEventListener("submit", async (e) => {
+    // ===== Submit =====
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (countdownTimer) return;
 
       const username = normalize(usernameEl.value);
       const password = normalize(passwordEl.value);
 
-      if (!username || !password) {
-        attemptMessage.textContent = "Please fill in both fields.";
+      if (!username || !password){
+        attemptMsg.textContent = 'Please fill in both fields.';
         attemptModal.show();
         return;
       }
 
-      errorBox.textContent = "";
+      errorBox.textContent = '';
+      errorBox.classList.remove('minor');
       setBtnBusy(true);
 
-      try {
-        // quick pre-check for nicer UX
+      try{
+        // UX pre-check (non-blocking if the precheck fails)
         const exists = await usernameExists(username);
-        if (!exists) {
-          attemptMessage.textContent = "No account found with that username.";
+        if (!exists){
+          attemptMsg.textContent = 'No account found with that username.';
           attemptModal.show();
           setBtnBusy(false);
           return;
         }
 
-        const { ok, status, data } = await fetchJSON(api(`/api/login`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password })
-        });
+        // Try login across common mounts
+        const { response, json: data } = await fetchJSONFallback(
+          API.endpoints.login(),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          }
+        );
 
-        if (ok) {
+        if (response.ok){
           const u = data.user || {};
-          if (normKey(u.username) !== normKey(username)) {
-            attemptMessage.textContent = "Login response mismatch. Please try again.";
+          if (lower(u.username) !== lower(username)){
+            attemptMsg.textContent = 'Login response mismatch. Please try again.';
             attemptModal.show();
             setBtnBusy(false);
             return;
           }
-          if (!isValidStudentSession(u)) {
-            attemptMessage.textContent = "This portal is for students only. A valid Student ID (starting with S-) is required.";
+          if (!isValidStudentSession(u)){
+            attemptMsg.textContent = 'This portal is for students only. A valid Student ID (starting with S-) is required.';
             attemptModal.show();
             setBtnBusy(false);
             return;
           }
           // success
           clearAttempts(username);
-          localStorage.setItem("user", JSON.stringify(u));
-          window.location.href = "/STUDENT/dashboard/dashboard.html";
+          localStorage.setItem('user', JSON.stringify(u));
+          window.location.href = '/STUDENT/dashboard/dashboard.html';
           return;
         }
 
         // server-driven lock
-        if (status === 423) {
+        if (response.status === 423){
           startCountdown(data.lockedUntil || 0);
           setBtnBusy(false);
           return;
         }
 
         // deactivated
-        if (status === 403) {
-          attemptMessage.textContent = data.error || "Account is deactivated due to multiple failed attempts. Please reset your password.";
+        if (response.status === 403){
+          attemptMsg.textContent = data.error || 'Account is deactivated due to multiple failed attempts. Please reset your password.';
           attemptModal.show();
           setBtnBusy(false);
           return;
@@ -327,9 +381,9 @@
         setAttempts(username, newN);
         showAttemptNotice(username);
 
-      } catch (err) {
-        console.error("Login error:", err);
-        attemptMessage.textContent = "Could not connect to the server.";
+      } catch (err){
+        console.error('Login error:', err);
+        attemptMsg.textContent = 'Could not connect to the server. If backend is separate, set <meta name="api-base" ...>.';
         attemptModal.show();
       } finally {
         if (!countdownTimer) setBtnBusy(false);
