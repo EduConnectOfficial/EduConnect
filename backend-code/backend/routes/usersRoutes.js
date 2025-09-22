@@ -12,7 +12,8 @@ const { uploadMemory } = require('../config/multerConfig');
 const { saveBufferToStorage, buildStoragePath } = require('../services/storageService');
 
 const { generateRoleId } = require('../utils/idUtils');
-const { encryptField, decryptField } = require('../utils/fieldCrypto');
+// ⬇️ use safeDecrypt for reads (never throws), encryptField for writes
+const { encryptField, safeDecrypt } = require('../utils/fieldCrypto');
 
 const USERS_COL = 'users';
 
@@ -20,10 +21,16 @@ const USERS_COL = 'users';
 const normalizeEmail = (v) => String(v || '').trim().toLowerCase();
 
 function decryptNamesFromDoc(d = {}) {
+  // Prefer encrypted fields; fall back to any existing plaintext fields
+  const dec = (encKey, plainKey) => {
+    const v = safeDecrypt(d[encKey], '');
+    return (v && typeof v === 'string') ? v : (d[plainKey] || '');
+  };
   return {
-    firstName: decryptField(d.firstNameEnc || ''),
-    middleName: decryptField(d.middleNameEnc || ''),
-    lastName: decryptField(d.lastNameEnc || ''),
+    firstName:  dec('firstNameEnc',  'firstName'),
+    middleName: dec('middleNameEnc', 'middleName'),
+    lastName:   dec('lastNameEnc',   'lastName'),
+    email:      dec('emailEnc',      'email'),
   };
 }
 
@@ -31,22 +38,28 @@ function decryptNamesFromDoc(d = {}) {
 function shapeUserDecrypted(d, id) {
   if (!d) return null;
   const { password, firstNameEnc, middleNameEnc, lastNameEnc, ...rest } = d;
-
   const names = decryptNamesFromDoc(d);
+
+  // Prefer stored fullName if present, else build
+  const fullName = (typeof d.fullName === 'string' && d.fullName.trim())
+    ? d.fullName.trim()
+    : [names.firstName, names.middleName, names.lastName].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
   return {
     id,
     userId: d.userId || id,
     ...rest,
-    ...names, // expose decrypted names as firstName/middleName/lastName
+    ...names,
+    fullName: fullName || rest.username || 'User',
   };
 }
 
 // Build encrypted name updates from potential plaintext inputs
 function maybeEncryptNameUpdates({ firstName, middleName, lastName } = {}) {
   const updates = {};
-  if (firstName != null) updates.firstNameEnc = encryptField(String(firstName));
+  if (firstName != null)  updates.firstNameEnc  = encryptField(String(firstName));
   if (middleName != null) updates.middleNameEnc = encryptField(String(middleName));
-  if (lastName != null) updates.lastNameEnc = encryptField(String(lastName));
+  if (lastName != null)   updates.lastNameEnc   = encryptField(String(lastName));
   return updates;
 }
 
@@ -135,7 +148,6 @@ router.get('/check-email', asyncHandler(async (req, res) => {
   }
 }));
 
-
 // ---------- ROUTES ----------
 
 /**
@@ -156,7 +168,7 @@ router.get('/:userId', asyncHandler(async (req, res) => {
  * Optional filters:
  *   ?role=user|itsupport|admin|teacher|student
  *   ?mobileOnly=true
- *   ?isAdmin=true  <-- added for convenience
+ *   ?isAdmin=true
  */
 router.get('/', asyncHandler(async (req, res) => {
   const role = (req.query.role || '').toString().toLowerCase();
@@ -189,7 +201,7 @@ router.get('/', asyncHandler(async (req, res) => {
  * multipart/form-data with optional profilePic
  * fields: firstName?, middleName?, lastName?, username?
  *
- * ⬇️ Refactored to store profilePic in Firebase Cloud Storage
+ * Stores profilePic in Firebase Cloud Storage
  */
 router.post(
   '/:userId/profile',
@@ -199,9 +211,9 @@ router.post(
     const file = req.file; // from uploadMemory.single('profilePic'), if present
 
     const raw = {
-      firstName: req.body.firstName,
+      firstName:  req.body.firstName,
       middleName: req.body.middleName,
-      lastName: req.body.lastName,
+      lastName:   req.body.lastName,
     };
 
     const updates = {
@@ -214,44 +226,41 @@ router.post(
       updates.username = username;
     }
 
-    /// ---------- in /:userId/profile ----------
-if (file && file.buffer && file.originalname) {
-  // Path like: profiles/{userId}/{timestamp_safeName.ext}
-  const destPath = buildStoragePath('profiles', userId, file.originalname);
-  try {
-    const saved = await saveBufferToStorage(file.buffer, {
-      destPath,
-      contentType: file.mimetype,
-      metadata: {
-        uploadedBy: userId,
-        source: 'usersRoutes.profile',
-      },
-    });
+    if (file && file.buffer && file.originalname) {
+      const destPath = buildStoragePath('profiles', userId, file.originalname);
+      try {
+        const saved = await saveBufferToStorage(file.buffer, {
+          destPath,
+          contentType: file.mimetype,
+          metadata: {
+            uploadedBy: userId,
+            source: 'usersRoutes.profile',
+          },
+        });
 
-    // ✅ Use downloadUrl for reliable access (token-based)
-    updates.photoURL = saved.downloadUrl;
+        // Prefer tokenized download URL for reliability
+        updates.photoURL = saved.downloadUrl;
 
-    // (Optional) keep storage pointer fields for admin/debugging
-    updates.photo = {
-      originalName: file.originalname,
-      size: file.size,
-      mime: file.mimetype,
-      gsUri: saved.gsUri,
-      storagePath: saved.storagePath,    // 👈 add this
-      publicUrl: saved.publicUrl,        // still stored for completeness
-      downloadUrl: saved.downloadUrl,    // 👈 add this
-      token: saved.token,                // 👈 add this
-      uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-  } catch (e) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to upload profile picture.',
-      error: e.message || 'upload_error',
-    });
-  }
-}
-
+        // Optional storage pointer info
+        updates.photo = {
+          originalName: file.originalname,
+          size: file.size,
+          mime: file.mimetype,
+          gsUri: saved.gsUri,
+          storagePath: saved.storagePath,
+          publicUrl: saved.publicUrl,
+          downloadUrl: saved.downloadUrl,
+          token: saved.token,
+          uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+      } catch (e) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload profile picture.',
+          error: e.message || 'upload_error',
+        });
+      }
+    }
 
     await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });
 
@@ -352,7 +361,6 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 /**
  * PATCH /api/users/:id/status
  * body: { active: boolean }
- * (De/activate account — keep role; no revocation)
  */
 router.patch('/:id/status', asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -371,7 +379,7 @@ router.patch('/:id/status', asyncHandler(async (req, res) => {
 
 /**
  * PATCH /api/users/:id/active
- * Alias of /:id/status for convenience
+ * Alias of /:id/status
  */
 router.patch('/:id/active', asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -394,9 +402,6 @@ router.patch('/:id/active', asyncHandler(async (req, res) => {
  * Body supports (all optional):
  *   { username, email, firstName, middleName, lastName,
  *     isMobile, isUser, isTeacher, isStudent, isITsupport, photoURL }
- * - Names are stored encrypted
- * - Username & email uniqueness enforced
- * - DOES NOT change isAdmin (to avoid revocation here)
  */
 router.patch('/:id/edit', asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -431,17 +436,14 @@ router.patch('/:id/edit', asyncHandler(async (req, res) => {
   }
 
   // Optional booleans
-  if (typeof isMobile === 'boolean') updates.isMobile = isMobile;
-  if (typeof isUser === 'boolean') updates.isUser = isUser;
-  if (typeof isTeacher === 'boolean') updates.isTeacher = isTeacher;
-  if (typeof isStudent === 'boolean') updates.isStudent = isStudent;
+  if (typeof isMobile === 'boolean')   updates.isMobile   = isMobile;
+  if (typeof isUser === 'boolean')     updates.isUser     = isUser;
+  if (typeof isTeacher === 'boolean')  updates.isTeacher  = isTeacher;
+  if (typeof isStudent === 'boolean')  updates.isStudent  = isStudent;
   if (typeof isITsupport === 'boolean') updates.isITsupport = isITsupport;
 
-  if (photoURL != null) {
-    updates.photoURL = String(photoURL);
-  }
+  if (photoURL != null) updates.photoURL = String(photoURL);
 
-  // NOTE: Intentionally not touching isAdmin here (no revocation in "edit")
   await firestore.collection(USERS_COL).doc(userId).set(updates, { merge: true });
 
   const doc = await firestore.collection(USERS_COL).doc(userId).get();
@@ -451,7 +453,6 @@ router.patch('/:id/edit', asyncHandler(async (req, res) => {
 /**
  * PATCH /api/users/:id/admin
  * body: { isAdmin: boolean }
- * (Keep if you still need a separate explicit admin grant/revoke endpoint)
  */
 router.patch('/:id/admin', asyncHandler(async (req, res) => {
   const userId = decodeURIComponent(req.params.id);
@@ -514,7 +515,7 @@ router.patch('/:id/teacher', asyncHandler(async (req, res) => {
 
   if (isTeacher) {
     updates.teacherId = data.teacherId || (await generateRoleId('teacher')); // T-YYYY-xxxxx
-    if (data.isUser === undefined) updates.isUser = true; // optional baseline
+    if (data.isUser === undefined) updates.isUser = true;
   } else {
     updates.teacherId = admin.firestore.FieldValue.delete();
   }
@@ -546,7 +547,6 @@ router.patch('/:id/student', asyncHandler(async (req, res) => {
     updates.studentId = await generateRoleId('student'); // S-YYYY-xxxxx
   }
   // Optional: keep studentId for history
-  // if (!isStudent) updates.studentId = admin.firestore.FieldValue.delete();
 
   await ref.update(updates);
   const updated = (await ref.get()).data();
