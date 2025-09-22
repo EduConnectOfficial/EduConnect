@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Admin - Super Admin Management</title>
+
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -12,12 +15,7 @@
 
   <style>
     .confirm-no-copy,
-    .confirm-no-copy * {
-      -webkit-user-select: none !important;
-      -moz-user-select: none !important;
-      -ms-user-select: none !important;
-      user-select: none !important;
-    }
+    .confirm-no-copy * { user-select: none !important; -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; }
   </style>
 
   <script>
@@ -114,8 +112,7 @@
             <div class="filter-body">
               <div class="search-field">
                 <i class="bi bi-search"></i>
-                <input id="filterSearch" type="text" class="form-control"
-                  placeholder="Search by username, name, email..." />
+                <input id="filterSearch" type="text" class="form-control" placeholder="Search by username, name, email..." />
               </div>
               <select id="filterStatus" class="form-select">
                 <option value="all" selected>All Status</option>
@@ -153,9 +150,7 @@
                 </tr>
               </thead>
               <tbody id="userTableBody">
-                <tr>
-                  <td colspan="9">Loading…</td>
-                </tr>
+                <tr><td colspan="9">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -165,8 +160,7 @@
   </div>
 
   <!-- Status Confirm Modal -->
-  <div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-labelledby="statusConfirmModalLabel"
-    aria-hidden="true">
+  <div class="modal fade" id="statusConfirmModal" tabindex="-1" aria-labelledby="statusConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -183,8 +177,7 @@
   </div>
 
   <!-- Delete Confirm Modal (type-to-delete) -->
-  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
-    aria-hidden="true">
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content confirm-no-copy">
         <div class="modal-header">
@@ -292,33 +285,93 @@
 
   <script>
     /* =========================
-       API base & auth helpers
+       API base & helpers (Railway-friendly)
        ========================= */
-    const isDevHost = /^(localhost|127\.0\.0\.1)$/i.test(location.hostname);
-    const API_ROOT = isDevHost ? "http://localhost:5000/api" : "/api";
-    const USERS_API = `${API_ROOT}/users`;
+    (function decideApiBase(){
+      const meta = document.querySelector('meta[name="api-base"]');
+      const metaBase = meta?.getAttribute('content')?.trim() || null;
+      const manual   = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+      const store    = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : null;
+
+      const isLocal  = (h) => ['localhost','127.0.0.1'].includes(h);
+      const sanitize = (u) => (u || '').replace(/\/+$/, '');
+
+      let base = metaBase || manual || store || (isLocal(location.hostname) ? 'http://localhost:5000' : '');
+      if (!isLocal(location.hostname) && base.startsWith('http://')) {
+        base = base.replace(/^http:\/\//i, 'https://');
+      }
+      window.API_BASE = sanitize(base);
+    })();
+
+    const API = {
+      url(path) {
+        const p = path.startsWith('/') ? path : '/' + path;
+        return (window.API_BASE || '') + p;
+      },
+      endpoints: {
+        listSupers(queryRole = true) {
+          const q = queryRole ? '?role=superadmin' : '';
+          return [
+            API.url(`/api/users${q}`),
+            API.url(`/users${q}`)
+          ];
+        },
+        updateStatus(userId) {
+          const id = encodeURIComponent(userId);
+          return [
+            API.url(`/api/users/${id}/status`),
+            API.url(`/users/${id}/status`)
+          ];
+        },
+        updateProfile(userId) {
+          const id = encodeURIComponent(userId);
+          return [
+            API.url(`/api/users/${id}`),
+            API.url(`/users/${id}`)
+          ];
+        },
+        deleteUser(userId) {
+          const id = encodeURIComponent(userId);
+          return [
+            API.url(`/api/users/${id}`),
+            API.url(`/users/${id}`)
+          ];
+        }
+      }
+    };
 
     function authHeaders(extra = {}) {
       const token = localStorage.getItem("authToken");
       return { Accept: "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
     }
 
-    async function getJSON(url, options = {}) {
-      const res = await fetch(url, { credentials: "include", ...options });
-      const ct = res.headers.get('content-type') || '';
-      const text = await res.text();
-      let json = {};
-      try { json = JSON.parse(text); } catch { /* HTML or plain error text */ }
-      if (!res.ok) {
-        const msg = json?.message || `HTTP ${res.status}`;
-        throw new Error(`${msg}: ${text.slice(0, 200)}`);
-      }
-      if (!ct.includes('application/json')) {
-        throw new Error(`Expected JSON but got "${ct}". Body: ${text.slice(0, 200)}`);
-      }
-      return json;
+    // Console hinting + fallback fetch
+    function hint(url, resp){
+      let h = '';
+      if (!resp) h = 'Network/CORS error. If backend is separate, set <meta name="api-base" ...>.';
+      else if (resp.status === 404) h = '404 Not Found – check route/mount path.';
+      else if (resp.status === 403) h = '403 Forbidden – CORS/auth.';
+      console.warn('[Admin/Supers]', { url, status: resp?.status, hint: h });
+      return h;
     }
 
+    async function fetchJSONFallback(urls, options){
+      let lastErr = null;
+      for (const url of urls){
+        try{
+          const res = await fetch(url, { ...options, credentials:'same-origin', mode:'cors' });
+          if (res.status === 404) { hint(url, res); continue; }
+          const ct = res.headers.get('content-type') || '';
+          const txt = await res.text(); let json = {};
+          try { json = txt ? JSON.parse(txt) : {}; } catch {}
+          return { response: res, json, contentType: ct, raw: txt };
+        }catch(e){ lastErr = e; hint(url, null); }
+      }
+      throw lastErr || new Error('All endpoints failed');
+    }
+  </script>
+
+  <script>
     const tableBody = document.getElementById('userTableBody');
     const adminAlert = document.getElementById('adminAlert');
     const elSearch = document.getElementById('filterSearch');
@@ -571,12 +624,15 @@
           fresh.addEventListener('click', async () => {
             try {
               fresh.disabled = true;
-              const result = await getJSON(
-                `${USERS_API}/${encodeURIComponent(user.userId)}/status`,
-                { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ active: nextActive }) }
+              const { response, json } = await fetchJSONFallback(
+                API.endpoints.updateStatus(user.userId),
+                {
+                  method: 'PATCH',
+                  headers: authHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify({ active: nextActive })
+                }
               );
-
-              if (result && result.success) {
+              if (response.ok && (json?.success !== false)) {
                 user.active = nextActive;
 
                 const badge = row.querySelector('.status-badge');
@@ -594,7 +650,7 @@
 
                 renderTable(supers);
               } else {
-                alert((result && result.message) || 'Failed to update status.');
+                alert((json && json.message) || 'Failed to update status.');
               }
             } catch (err) {
               console.error('Status update failed:', err);
@@ -635,14 +691,12 @@
           if (!ok) return;
 
           try {
-            const res = await fetch(`${USERS_API}/${encodeURIComponent(user.userId)}`, {
-              method: 'DELETE',
-              headers: authHeaders()
-            });
-            const txt = await res.text(); let data = {};
-            try { data = JSON.parse(txt); } catch {}
-            if (!res.ok || !data?.success) {
-              throw new Error(data?.message || `HTTP ${res.status}`);
+            const { response, json } = await fetchJSONFallback(
+              API.endpoints.deleteUser(user.userId),
+              { method: 'DELETE', headers: authHeaders() }
+            );
+            if (!response.ok || (json && json.success === false)) {
+              throw new Error(json?.message || `HTTP ${response.status}`);
             }
 
             supers = supers.filter(u => u.userId !== user.userId);
@@ -666,11 +720,28 @@
 
     async function loadSuperAdmins() {
       try {
-        let payload;
-        try { payload = await getJSON(`${USERS_API}?role=superadmin`, { headers: authHeaders() }); }
-        catch { payload = await getJSON(USERS_API, { headers: authHeaders() }); }
+        // try with role=superadmin, then fall back to all users
+        let payload = null, ok = false;
 
-        const users = Array.isArray(payload?.users) ? payload.users : (Array.isArray(payload) ? payload : []);
+        try {
+          const { response, json } = await fetchJSONFallback(
+            API.endpoints.listSupers(true),
+            { headers: authHeaders() }
+          );
+          ok = response.ok;
+          payload = json;
+          if (!ok) throw new Error('bad status');
+        } catch {
+          const { response, json } = await fetchJSONFallback(
+            API.endpoints.listSupers(false),
+            { headers: authHeaders() }
+          );
+          ok = response.ok;
+          payload = json;
+        }
+
+        const users = Array.isArray(payload?.users) ? payload.users
+                    : (Array.isArray(payload) ? payload : []);
         supers = users
           .filter(u => u && u.isAdmin === true)
           .map((u, i) => ({ ...u, __index: i }));
@@ -728,11 +799,15 @@
           email: document.getElementById('editEmail').value.trim()
         };
         try {
-          const result = await getJSON(
-            `${USERS_API}/${encodeURIComponent(selectedUser.userId)}`,
-            { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(updated) }
+          const { response, json } = await fetchJSONFallback(
+            API.endpoints.updateProfile(selectedUser.userId),
+            {
+              method: 'PATCH',
+              headers: authHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(updated)
+            }
           );
-          if (result && result.success) {
+          if (response.ok && (json?.success !== false)) {
             Object.assign(selectedUser, updated);
             renderTable(supers);
             bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
@@ -740,7 +815,7 @@
             adminAlert.classList.remove('d-none');
             setTimeout(() => adminAlert.classList.add('d-none'), 3000);
           } else {
-            alert((result && result.message) || 'Failed to update profile.');
+            alert((json && json.message) || 'Failed to update profile.');
           }
         } catch (err) {
           console.error('Edit failed:', err);
@@ -758,5 +833,4 @@
     }
   </script>
 </body>
-
 </html>

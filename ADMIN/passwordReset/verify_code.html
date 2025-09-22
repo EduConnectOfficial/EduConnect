@@ -1,23 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EduConnect Admin - Reset Password </title>
+  <title>EduConnect Admin - Reset Password</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="reset.css" />
-
-  
 </head>
-
 <body>
-<!-- Top Logo -->
+  <!-- Top Logo -->
   <div class="top-logo text-center brand">
-    <!-- CSIS logo beside EduConnect -->
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
@@ -28,9 +23,9 @@
       <h4 class="mb-3">Reset Your Password</h4>
       <p class="mb-4 text-white">Enter the 6-digit code sent to your email and choose a new password.</p>
 
-      <form id="verifyCodeForm">
+      <form id="verifyCodeForm" novalidate>
         <div class="otp-container">
-          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
+          <input type="text" maxlength="1" class="otp-input" inputmode="numeric" autocomplete="one-time-code" />
           <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
           <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
           <input type="text" maxlength="1" class="otp-input" inputmode="numeric" />
@@ -42,7 +37,7 @@
           <input type="password" id="newPassword" class="form-control" placeholder="Enter new password" required />
         </div>
 
-        <div id="verificationError" class="text-danger mb-3"></div>
+        <div id="verificationError" class="text-danger mb-3" role="alert"></div>
 
         <button type="submit" class="btn login-btn w-100 mb-3">Reset Password</button>
 
@@ -57,101 +52,103 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const inputs = document.querySelectorAll('.otp-input');
+    // ===== Railway-aware base =====
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    // On Railway we assume same-origin (no host prefix). Locally, hit your dev server.
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : "";
+    const apiUrl = (path) => `${SERVER_BASE}${path.startsWith("/") ? path : "/" + path}`;
+
+    const inputs = document.querySelectorAll(".otp-input");
     const verificationError = document.getElementById("verificationError");
     const resendLink = document.getElementById("resendCode");
+    const form = document.getElementById("verifyCodeForm");
+    const pwInput = document.getElementById("newPassword");
 
-    // Auto-focus behavior
+    // Auto-move focus + numeric guard
     inputs.forEach((input, i) => {
-      input.addEventListener('input', () => {
-        if (input.value.length === 1 && i < inputs.length - 1) {
-          inputs[i + 1].focus();
-        }
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "").slice(0, 1);
+        if (input.value.length === 1 && i < inputs.length - 1) inputs[i + 1].focus();
       });
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !input.value && i > 0) {
-          inputs[i - 1].focus();
-        }
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && i > 0) inputs[i - 1].focus();
+      });
+      input.addEventListener("paste", (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData("text").replace(/\D/g, "").slice(0, 6);
+        if (!text) return;
+        e.preventDefault();
+        [...text].forEach((ch, idx) => { if (inputs[idx]) inputs[idx].value = ch; });
+        const next = Math.min(text.length, inputs.length - 1);
+        inputs[next].focus();
       });
     });
 
-    document.getElementById("verifyCodeForm").addEventListener("submit", async (e) => {
+    function showError(msg) {
+      verificationError.textContent = msg || "";
+    }
+
+    async function postJSON(path, body) {
+      const res = await fetch(apiUrl(path), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const ct = res.headers.get("content-type") || "";
+      const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      const code = Array.from(inputs).map(input => input.value.trim()).join('');
+      const code = Array.from(inputs).map((i) => i.value.trim()).join("");
       const email = sessionStorage.getItem("resetEmail");
-      const newPassword = document.getElementById("newPassword").value.trim();
+      const newPassword = pwInput.value.trim();
 
-      if (!/^\d{6}$/.test(code)) {
-        verificationError.textContent = "Please enter a valid 6-digit code.";
-        return;
-      }
+      if (!/^\d{6}$/.test(code)) return showError("Please enter a valid 6-digit code.");
+      if (!email) return showError("Email not found in session. Please try again.");
+      if (newPassword.length < 8) return showError("Password must be at least 8 characters long.");
 
-      if (!email) {
-        verificationError.textContent = "Email not found in session. Please try again.";
-        return;
-      }
-
-      if (newPassword.length < 8) {
-        verificationError.textContent = "Password must be at least 8 characters long.";
-        return;
-      }
-
-      verificationError.textContent = "";
+      showError("");
 
       try {
-        const response = await fetch("http://localhost:5000/web-verify-reset", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code, newPassword })
-        });
-
-
-        const data = await response.json();
-
-        if (response.ok) {
+        const { ok, data, status } = await postJSON("/web-verify-reset", { email, code, newPassword });
+        if (ok) {
           alert(data.message || "Password reset successful!");
           sessionStorage.removeItem("resetEmail");
           window.location.href = "/ADMIN/login/login.html";
         } else {
-          verificationError.textContent = data.error || "Invalid or expired code.";
+          const msg =
+            data.error ||
+            (status === 429 ? "Too many attempts. Please wait a moment and try again." : "Invalid or expired code.");
+          showError(msg);
         }
       } catch (err) {
         console.error(err);
-        verificationError.textContent = "Failed to connect to server.";
+        showError("Failed to connect to server.");
       }
     });
 
     resendLink.addEventListener("click", async (e) => {
       e.preventDefault();
       const email = sessionStorage.getItem("resetEmail");
+      if (!email) return showError("Email not found in session.");
 
-      if (!email) {
-        verificationError.textContent = "Email not found in session.";
-        return;
-      }
-
+      showError("");
       try {
-        const response = await fetch("http://localhost:5000/send-reset-code", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert("New code sent to your email.");
+        const { ok, data, status } = await postJSON("/send-reset-code", { email });
+        if (ok) {
+          alert(data.message || "New code sent to your email.");
         } else {
-          verificationError.textContent = data.error || "Could not resend code.";
+          const msg =
+            data.error ||
+            (status === 429 ? "You’ve requested too many codes. Please try again later." : "Could not resend code.");
+          showError(msg);
         }
       } catch (err) {
         console.error(err);
-        verificationError.textContent = "Server error while resending code.";
+        showError("Server error while resending code.");
       }
     });
   </script>
 </body>
-
 </html>
