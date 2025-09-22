@@ -7,7 +7,8 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { firestore, admin } = require('../config/firebase');
 const { isValidSchoolYear, isValidSemester } = require('../utils/validators');
 const { enrollStudentIdempotent } = require('../services/enrollment.service');
-const { decryptField } = require('../utils/fieldCrypto'); // <-- NEW
+// ⬇️ use safeDecrypt (non-throwing), not decryptField
+const { safeDecrypt } = require('../utils/fieldCrypto');
 
 // ====== In-memory uploader (no disk), accepts xlsx/xls/csv for bulk ======
 const memoryStorage = multer.memoryStorage();
@@ -51,12 +52,16 @@ function isStudentUser(u = {}) {
   return hasStudentId && !isTeacherSignal;
 }
 
-// Small helper to decrypt names from a user doc
+// Small helper to decrypt names from a user doc (safe + fallback to plaintext fields)
 function decryptNamesFromUser(u = {}) {
+  const dec = (encKey, plainKey) => {
+    const v = safeDecrypt(u[encKey], '');
+    return (v && typeof v === 'string') ? v : (u[plainKey] || '');
+  };
   return {
-    firstName: decryptField(u.firstNameEnc || ''),
-    middleName: decryptField(u.middleNameEnc || ''),
-    lastName: decryptField(u.lastNameEnc || ''),
+    firstName:  dec('firstNameEnc',  'firstName'),
+    middleName: dec('middleNameEnc', 'middleName'),
+    lastName:   dec('lastNameEnc',   'lastName'),
   };
 }
 
@@ -565,8 +570,7 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
   }
 
   // ---- 2) Bounded scan of student users, decrypt names, filter in memory
-  // Tune LIMIT to your dataset. Keep this bounded so it can't blow up.
-  const LIMIT = 500; // adjust sensibly; can expose ?limit= for admins if needed
+  const LIMIT = 500; // tune for your dataset
   const snap = await usersCol.where('isStudent', '==', true).limit(LIMIT).get();
 
   const matches = [];
@@ -602,7 +606,6 @@ router.get('/api/students/search', asyncHandler(async (req, res) => {
     }
   }
 
-  // Cap the response size
   return res.json({ success: true, students: matches.slice(0, 25) });
 }));
 
