@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Student Analytics</title>
 
+  <!-- OPTIONAL: set this if your API is a separate Railway service -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
@@ -256,7 +259,8 @@
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
         const nameish = (u.username || u.displayName || u.name || '').trim();
         if (nameish) {
-          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
           return parts[0][0].toUpperCase();
         }
@@ -297,8 +301,18 @@
 
   <!-- Page Scripts -->
  <script>
-  // ===== Config =====
-  const API_BASE = 'http://localhost:5000';
+  /* ===== Railway-friendly API resolver ===== */
+  function resolveApiBase() {
+    const meta = document.querySelector('meta[name="api-base"]');
+    if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+    if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+    const host = location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:5000';
+    // same-origin by default in production (Railway reverse proxy / server routes)
+    return '';
+  }
+  const API_BASE = resolveApiBase();
+  const api = (path) => `${API_BASE}${path}`;
 
   // ---- Auth guard + username display ----
   (function () {
@@ -332,7 +346,8 @@
     '';
 
   // ---------- utils ----------
-  async function getJson(url) {
+  async function getJson(pathOrUrl) {
+    const url = pathOrUrl.startsWith('http') ? pathOrUrl : api(pathOrUrl);
     const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -340,7 +355,7 @@
     }
     return res.json();
   }
-  async function tryJson(url) { try { return await getJson(url); } catch { return null; } }
+  async function tryJson(u) { try { return await getJson(u); } catch { return null; } }
 
   const el  = (id) => document.getElementById(id);
   const pct = (n) => Number.isFinite(Number(n)) ? `${Math.round(Number(n))}%` : '—';
@@ -354,11 +369,9 @@
 
   // ---- NEW: consistent percent for assignments ----
   function calcAssignPercent(a) {
-    // Prefer server-computed percent if present
     const p = Number(a?.percent);
     if (Number.isFinite(p)) return p;
 
-    // Compute from raw grade + max
     const grade = Number(a?.grade);
     const max =
       Number(a?.maxPoints ?? a?.points ?? a?.assignmentMaxPoints ?? a?.totalPoints);
@@ -367,9 +380,8 @@
       return (grade / max) * 100;
     }
 
-    // Legacy fallbacks
-    if (Number.isFinite(grade) && grade <= 1) return grade * 100; // fraction
-    if (Number.isFinite(grade) && grade <= 100) return grade;     // already percent
+    if (Number.isFinite(grade) && grade <= 1) return grade * 100;
+    if (Number.isFinite(grade) && grade <= 100) return grade;
     return 0;
   }
 
@@ -396,8 +408,9 @@
   let selectedCourseId = '';
 
   async function loadCourses() {
-    const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`;
-    const arr = await tryJson(url);
+    // normalized to /api/courses
+    const payload = await tryJson(`/api/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`);
+    const arr = Array.isArray(payload) ? payload : (payload?.courses || []);
     const sel = el('courseFilter');
 
     if (!Array.isArray(arr) || !arr.length) {
@@ -456,23 +469,21 @@
   async function fetchHeaderAndBase() {
     const params = new URLSearchParams({ teacherId, student: studentKey });
     if (selectedCourseId) params.set('courseId', selectedCourseId);
-    return await tryJson(`${API_BASE}/api/teacher/student-analytics?${params.toString()}`);
+    return await tryJson(`/api/teacher/student-analytics?${params.toString()}`);
   }
 
-  // ---------- Student analytics fallback (for essays/modules & missing summary) ----------
+  // ---------- Student analytics fallback ----------
   async function fetchStudentAnalyticsFallback() {
-    const url = `${API_BASE}/api/student/analytics?student=${encodeURIComponent(studentKey)}`;
-    return await tryJson(url);
+    return await tryJson(`/api/student/analytics?student=${encodeURIComponent(studentKey)}`);
   }
 
-  // ---------- REAL quiz analytics (new API) ----------
+  // ---------- REAL quiz analytics ----------
   async function fetchQuizRowsReal() {
     const params = new URLSearchParams({ teacherId, student: studentKey });
     if (selectedCourseId) params.set('courseId', selectedCourseId);
-    const data = await tryJson(`${API_BASE}/api/teacher/student-quiz-analytics?${params.toString()}`);
+    const data = await tryJson(`/api/teacher/student-quiz-analytics?${params.toString()}`);
 
     const rows = Array.isArray(data?.quizzes?.rows) ? data.quizzes.rows : [];
-    // Normalize shape just in case
     return rows.map(r => ({
       quizId: normId(r.quizId || r.id),
       title: r.title || r.quizTitle || r.quizId || 'Quiz',
@@ -483,7 +494,7 @@
     }));
   }
 
-  // ---------- Fallback quiz analytics (legacy flow via /quizzes + /quiz-results) ----------
+  // ---------- Fallback quiz analytics (legacy flow) ----------
   const QUIZ_DETAIL_CACHE = new Map();
   async function getQuizCourseId(q) {
     const inline = normId(q.courseId);
@@ -492,7 +503,7 @@
     if (!qid) return '';
     if (QUIZ_DETAIL_CACHE.has(qid)) return QUIZ_DETAIL_CACHE.get(qid);
     try {
-      const detail = await getJson(`${API_BASE}/quizzes/${encodeURIComponent(qid)}`);
+      const detail = await getJson(`/api/quizzes/${encodeURIComponent(qid)}`);
       const cid = normId(detail?.quiz?.courseId);
       QUIZ_DETAIL_CACHE.set(qid, cid);
       return cid;
@@ -500,8 +511,7 @@
   }
 
   async function fetchQuizzesEnrichedFallback() {
-    const listUrl = `${API_BASE}/quizzes?forStudent=${encodeURIComponent(studentKey)}&includeArchived=false`;
-    const data = await tryJson(listUrl);
+    const data = await tryJson(`/api/quizzes?forStudent=${encodeURIComponent(studentKey)}&includeArchived=false`);
     const allQuizzes = Array.isArray(data?.quizzes) ? data.quizzes : [];
     const enriched = await Promise.all(allQuizzes.map(async q => {
       const courseId = await getQuizCourseId(q);
@@ -521,7 +531,7 @@
       let lastSubmittedAt = null;
 
       try {
-        const r = await getJson(`${API_BASE}/api/students/${encodeURIComponent(studentKey)}/quiz-results?quizId=${encodeURIComponent(qid)}`);
+        const r = await getJson(`/api/students/${encodeURIComponent(studentKey)}/quiz-results?quizId=${encodeURIComponent(qid)}`);
         const arr = Array.isArray(r?.attempts) ? r.attempts : [];
         attempts = arr.length;
         if (r?.best && Number.isFinite(Number(r.best.percent))) bestPercent = Number(r.best.percent);
@@ -646,14 +656,14 @@
   async function loadAll() {
     if (!teacherId || !studentKey) { showAppAlert('Missing teacherId or student id in URL.'); return; }
 
-    // 1) Teacher base (profile, assignments, summary has avgAssignment; avgQuiz may be null; essays/modules often empty)
+    // 1) Teacher base
     const base = await fetchHeaderAndBase();
     renderHeader(base || {});
     renderAssignments(base || {});
     renderEssaysFrom(base || {});
     renderModulesFrom(base || {});
 
-    // 2) Quizzes — try REAL endpoint first, fallback to legacy if needed
+    // 2) Quizzes — try REAL endpoint first, fallback to legacy
     el('quizTbody').innerHTML = '<tr><td colspan="4" class="text-muted text-center">Loading…</td></tr>';
     let quizRows = await fetchQuizRowsReal();
     if (!quizRows.length) {
@@ -661,13 +671,13 @@
     }
     renderQuizzes(quizRows);
 
-    // 2a) Fix the "Avg Quiz" metric using quiz rows
+    // 2a) Patch avg quiz if needed
     const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
     if (computedAvgQuiz != null) {
       el('s_avg_quiz').textContent = pct(computedAvgQuiz);
     }
 
-    // 3) Fallback for essays/modules & modulesCompleted header if teacher API lacks them
+    // 3) Fallback for essays/modules & header modules summary
     const needFallbackEssays = !(base?.essays?.submissions && base.essays.submissions.length);
     const needFallbackModules = !(base?.modules?.completed && base.modules.completed.length);
     const missingModulesSummary = !(Number.isFinite(+base?.summary?.modulesCompleted) && Number.isFinite(+base?.summary?.totalModules));
@@ -691,11 +701,9 @@
             el('s_modules').textContent = `${mc}`;
           }
         }
-        // If avg assignment missing for any reason, also patch it
         if (!Number.isFinite(+base?.summary?.averageAssignmentGrade) && Number.isFinite(+studentData?.summary?.averageAssignmentGrade)) {
           el('s_avg_asg').textContent = pct(studentData.summary.averageAssignmentGrade);
         }
-        // If avg quiz still missing and student endpoint has it, use it
         if ((el('s_avg_quiz').textContent || '—') === '—' && Number.isFinite(+studentData?.summary?.averageQuizScore)) {
           el('s_avg_quiz').textContent = pct(studentData.summary.averageQuizScore);
         }
@@ -708,11 +716,9 @@
     try {
       const base = await fetchHeaderAndBase();
 
-      // Quiz data from REAL endpoint (fallback to legacy if empty)
       let quizRows = await fetchQuizRowsReal();
       if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
 
-      // Fallback student data if teacher base lacks essays/modules
       let studentData = null;
       if (!(base?.essays?.submissions?.length) || !(base?.modules?.completed?.length)) {
         studentData = await fetchStudentAnalyticsFallback();
@@ -727,7 +733,6 @@
       );
 
       let csv = [];
-      // Header metrics (patch in computed avg quiz if base is null)
       const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
       const avgQuizText = pct( (Number.isFinite(+base?.summary?.averageQuizScore) ? base.summary.averageQuizScore : computedAvgQuiz) );
       const avgAsgText  = pct(base?.summary?.averageAssignmentGrade);
@@ -795,11 +800,9 @@
 
       const base = await fetchHeaderAndBase();
 
-      // Quiz data from REAL endpoint (fallback to legacy if empty)
       let quizRows = await fetchQuizRowsReal();
       if (!quizRows.length) quizRows = await fetchQuizzesEnrichedFallback();
 
-      // Fallback student data if needed
       let studentData = null;
       const needFallbackEssays = !(base?.essays?.submissions && base.essays.submissions.length);
       const needFallbackModules = !(base?.modules?.completed && base.modules.completed.length);
@@ -824,7 +827,6 @@
       if (selectedCourseId) doc.text(`Course: ${selectedCourseId}`, 20, 48);
       doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 56);
 
-      // Summary block uses computed/fallback avg quiz & modules
       const computedAvgQuiz = computeAvgQuizFromRows(quizRows);
       const avgQuizVal = Number.isFinite(+base?.summary?.averageQuizScore) ? base.summary.averageQuizScore
                        : (Number.isFinite(+computedAvgQuiz) ? computedAvgQuiz : null);

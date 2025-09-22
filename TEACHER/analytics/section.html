@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Teacher – Choose Course & Class</title>
 
+  <!-- OPTIONAL: set this if your API is a separate Railway service -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
@@ -25,8 +28,7 @@
     <!-- Main -->
     <div class="main">
       <!-- Header -->
-      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2"
-        >
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
@@ -113,7 +115,19 @@
 
   <!-- Page Scripts -->
   <script>
-    const API_BASE = 'http://localhost:5000';
+    /* ===== Railway-friendly API resolver ===== */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]');
+      if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+      if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+      const host = location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:5000';
+      // same-origin by default in production (Railway, etc.) via reverse proxy or server routes
+      return '';
+    }
+    const API_BASE = resolveApiBase();
+    const api = (path) => `${API_BASE}${path}`;
+
     const DEST_URL = '/TEACHER/analytics/analytics.html';
     const ALL = '__all__'; // sentinel for "All Courses" / "All Classes"
 
@@ -172,7 +186,8 @@
     let selectedCourse = null;
 
     // Helpers
-    const getJson = async (url) => {
+    const getJson = async (pathOrUrl) => {
+      const url = pathOrUrl.startsWith('http') ? pathOrUrl : api(pathOrUrl);
       const r = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
       if (!r.ok) throw new Error(`${url} -> ${r.status}`);
       return r.json();
@@ -185,7 +200,7 @@
 
     // Load teacher classes (once), map by id
     async function loadTeacherClasses() {
-      const resp = await getJson(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
+      const resp = await getJson(`/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
       const list = resp.classes || [];
       classesById = {};
       list.forEach(c => {
@@ -196,9 +211,10 @@
 
     // Load teacher courses (unarchived)
     async function loadTeacherCourses() {
-      // If your API supports includeArchived=false, you can add it; below gets active by default
-      courses = await getJson(`${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}`);
-      courses = (Array.isArray(courses) ? courses : []).filter(c => !c.archived);
+      // Supports {courses:[...]} or array; includeArchived=false to get active only
+      const payload = await getJson(`/api/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=false`);
+      const arr = Array.isArray(payload) ? payload : (payload.courses || []);
+      courses = arr.filter(c => !c.archived);
     }
 
     /* ========== POPULATE SELECTS (with ALL options) ========== */
@@ -256,7 +272,6 @@
         .filter(Boolean)
         .sort((a,b) => classLabel(a).localeCompare(classLabel(b)));
 
-      // Always include "All Classes" (but filtered to the course)
       if (!ids.length) {
         classSelectEl.innerHTML = `<option value="">No classes assigned to this course</option>`;
         classSelectEl.disabled = true;
@@ -280,8 +295,7 @@
 
       classSelectEl.disabled = false;
       classHelpEl.textContent = 'Classes are filtered by course.';
-      // Default to All Classes for this course
-      classSelectEl.value = ALL;
+      classSelectEl.value = ALL; // default to All Classes for this course
       openBtn.disabled = false;
     }
 
@@ -305,14 +319,12 @@
     });
 
     classSelectEl.addEventListener('change', () => {
-      // Valid when a specific class is chosen OR “All Classes”
       openBtn.disabled = !(classSelectEl.value);
     });
 
     openBtn.addEventListener('click', () => {
       const selectedCourseId = courseSelectEl.value;
       const selectedClassId  = classSelectEl.value;
-
       if (!selectedCourseId || !selectedClassId) return;
 
       const url = new URL(DEST_URL, location.origin);
@@ -326,7 +338,6 @@
 
       // Pass class
       if (selectedClassId === ALL) {
-        // Let analytics aggregate across all classes (it understands __all__)
         url.searchParams.set('classId', ALL);
         url.searchParams.set('classLabel', 'All Classes');
         url.searchParams.set('section', 'All Classes');
@@ -341,7 +352,6 @@
     });
 
     resetBtn.addEventListener('click', () => {
-      // Reset to ALL/ALL defaults
       if (!courses.length) return;
       courseSelectEl.value = ALL;
       populateClassSelectForAll();
@@ -353,7 +363,6 @@
       try {
         await Promise.all([loadTeacherClasses(), loadTeacherCourses()]);
         populateCourseSelect();
-        // Default to All Courses -> All Classes
         courseSelectEl.value = ALL;
         populateClassSelectForAll();
         openBtn.disabled = false;

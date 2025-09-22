@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher - Analytics & Reporting</title>
+
+  <!-- OPTIONAL: if your API is a separate Railway service -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
 
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
@@ -21,8 +23,7 @@
     <!-- Main Content -->
     <div class="main">
       <!-- Header -->
-      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2"
-        >
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
@@ -283,7 +284,19 @@
 
   <!-- Page Scripts -->
   <script>
-    const API_BASE = 'http://localhost:5000';
+    /* ========= Railway-friendly API base ========= */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]');
+      if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+      if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+      const host = location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return 'http://127.0.0.1:5000';
+      // same-origin in production (Railway, Netlify, Vercel w/ proxy, etc.)
+      return '';
+    }
+    const API_BASE = resolveApiBase();
+    const api = (path) => `${API_BASE}${path}`;
+
     const ALL = '__all__'; // sentinel for "All Courses" / "All Classes"
 
     // ---- Auth guard + header initials (initials-only) ----
@@ -362,10 +375,11 @@
 
     // Local data
     let ALL_CLASSES = [];
-    let ALL_COURSES = []; // fetched from /courses
+    let ALL_COURSES = []; // fetched from /api/courses
 
     // Helpers
-    async function getJson(url) {
+    async function getJson(urlOrPath) {
+      const url = urlOrPath.startsWith('http') ? urlOrPath : api(urlOrPath);
       const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
       if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
       return res.json();
@@ -560,14 +574,16 @@
 
     // ===== LOADERS =====
     async function loadClasses() {
-      const resp = await getJson(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
+      const resp = await getJson(`/api/classes?teacherId=${encodeURIComponent(teacherId)}`);
       ALL_CLASSES = resp.classes || [];
     }
 
     async function loadCourses() {
       const includeArchived = false;
-      const url = `${API_BASE}/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=${includeArchived}`;
-      ALL_COURSES = await getJson(url);
+      const url = `/api/courses?uploadedBy=${encodeURIComponent(teacherId)}&includeArchived=${includeArchived}`;
+      // API returns {courses:[...]} or an array
+      const payload = await getJson(url);
+      ALL_COURSES = Array.isArray(payload) ? payload : (payload.courses || []);
     }
 
     function fillCourseOptions() {
@@ -595,13 +611,11 @@
       ].join('');
 
       courseSelectEl.disabled = false;
-      // default classes list when page loads (we'll set to All later)
       classSelectEl.innerHTML = `<option value="${ALL}">All Classes</option>`;
       classSelectEl.disabled = false;
     }
 
     function fillClassOptionsForCourse(courseId) {
-      // Build list of classes for the selected course (or all)
       let list;
       if (!courseId || courseId === ALL) {
         list = (ALL_CLASSES || []).slice();
@@ -650,7 +664,6 @@
       }
       metaClassEl.textContent = classText;
 
-      // Show both pills when anything selected (including ALL)
       const coursePill = metaCourseEl.closest('.badge');
       const classPill = metaClassEl.closest('.badge');
       coursePill.style.display = courseId ? 'inline-flex' : 'none';
@@ -663,7 +676,7 @@
       setModeLabels('quiz');
       const classId = classSelectEl.value;
       const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
-      const data = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
+      const data = await getJson(`/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
       const qLabels = data.byQuiz?.labels || [];
       renderBar('left', 'quizAvgChart', qLabels, data.byQuiz?.avgScores || [], 'Average Score (%)');
       renderLine('right', 'quizAttemptsChart', qLabels, data.byQuiz?.attempts || [], 'Attempts');
@@ -676,7 +689,7 @@
       setModeLabels('assignment');
       const classId = classSelectEl.value;
       const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
-      const data = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
+      const data = await getJson(`/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
       const aLabels = data.byAssignment?.labels || [];
       renderBar('left', 'quizAvgChart', aLabels, data.byAssignment?.avgScores || [], 'Average Score (%)');
       renderLine('right', 'quizAttemptsChart', aLabels, data.byAssignment?.submissions || [], 'Submissions');
@@ -686,7 +699,6 @@
     }
 
     async function loadAnalyticsView() {
-      // When "All Classes" is selected, we call the API WITHOUT a classId -> aggregate for teacher
       if (viewSelectEl.value === 'assignment') await loadAssignmentAnalytics();
       else await loadQuizAnalytics();
     }
@@ -694,8 +706,8 @@
     // ===== Exports =====
     async function getBothAnalytics(classId) {
       const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
-      const quiz = await getJson(`${API_BASE}/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
-      const assignment = await getJson(`${API_BASE}/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
+      const quiz = await getJson(`/api/teacher/quiz-analytics?teacherId=${teacherId}${useClass}`);
+      const assignment = await getJson(`/api/teacher/assignment-analytics?teacherId=${teacherId}${useClass}`);
       return { quiz, assignment };
     }
     function csvForAnalytics(mode, data, classLabel) {
@@ -819,7 +831,7 @@
         const mode = viewSelectEl.value;
         const base = mode === 'assignment' ? 'assignment-analytics' : 'quiz-analytics';
         const useClass = classId && classId !== ALL ? `&classId=${classId}` : '';
-        const data = await getJson(`${API_BASE}/api/teacher/${mode}-analytics?teacherId=${teacherId}${useClass}`);
+        const data = await getJson(`/api/teacher/${mode}-analytics?teacherId=${teacherId}${useClass}`);
         let csv = [];
         csv.push('Class,View,Date');
         const label = classId === ALL ? 'All Classes' : (classSelectEl.options[classSelectEl.selectedIndex]?.text || '');
@@ -867,7 +879,6 @@
     courseSelectEl.addEventListener('change', () => {
       const courseId = courseSelectEl.value;
       fillClassOptionsForCourse(courseId);
-      // default class to ALL whenever course changes
       classSelectEl.value = ALL;
       classHintEl.style.display = 'none';
       updateMetaPills();
@@ -921,7 +932,6 @@
           fillClassOptionsForCourse(ownerCourse.id);
         }
       }
-      // If nothing preselected, set ALL/ALL
       if (!courseSelectEl.value) {
         courseSelectEl.value = ALL;
         fillClassOptionsForCourse(ALL);
