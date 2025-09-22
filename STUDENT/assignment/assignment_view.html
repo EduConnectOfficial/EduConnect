@@ -65,8 +65,8 @@
       <header class="header-top">
         <div class="brand">
           <!-- Use relative paths so they work on Railway subpaths -->
-          <img src="components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
-          <img src="assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
         </div>
         <div class="search-box">
           <input type="text" placeholder="Search…"/>
@@ -222,7 +222,7 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // Use relative include so it works on Railway subpaths
-      fetch("components/sidebar.html")
+      fetch("STUDENT/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
           document.getElementById("sidebar-container").innerHTML = html;
