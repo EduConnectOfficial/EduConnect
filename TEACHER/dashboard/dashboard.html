@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Teacher - Dashboard</title>
 
@@ -18,8 +18,8 @@
     <div class="main">
       <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
         <div class="brand">
-          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
         </div>
         <div class="search-box position-relative">
           <input type="text" class="form-control" placeholder="Search..."/>
@@ -144,9 +144,41 @@
     </div>
   </div>
 
-   <script>
-    // Use your actual backend URL here
-     window.API_URL = 'https://educonnect-production-a604.up.railway.app';
+  <!-- API base: auto-detect (Railway same-origin), override via ?api=, localStorage.apiBase, or window.API_URL -->
+  <script>
+    (function decideApiBase(){
+      const q = new URLSearchParams(location.search);
+      const fromQuery = q.get('api');
+      const fromLocal = localStorage.getItem('apiBase');
+      const fromWindow = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
+
+      function isLocalHost(h){ return h === 'localhost' || h === '127.0.0.1'; }
+
+      let base = '';
+      if (fromQuery) {
+        base = fromQuery;
+        localStorage.setItem('apiBase', base); // remember override
+      } else if (fromLocal) {
+        base = fromLocal;
+      } else if (fromWindow) {
+        base = fromWindow;
+      } else if (isLocalHost(location.hostname)) {
+        base = 'http://localhost:5000';
+      } else {
+        base = ''; // Railway / production → same-origin
+      }
+
+      // normalize (trim trailing slash)
+      base = base.replace(/\/+$/,'');
+      window.API_BASE = base;
+
+      // Optional: quick health ping to surface backend reachability in console
+      const ping = (path) => fetch(path, { method: 'GET' }).then(r => r.ok).catch(() => false);
+      const hp1 = (base ? `${base}/api/health` : '/api/health');
+      const hp2 = (base ? `${base}/health`     : '/health');
+      ping(hp1).then(ok => { if (!ok) return ping(hp2); });
+      console.log('[api] base =', base || '(same-origin)');
+    })();
   </script>
 
   <!-- Sidebar loader -->
@@ -224,25 +256,12 @@
 
   <!-- Dashboard logic -->
   <script>
-    // -------- API base detection + helpers (same pattern as login) ----------
-    (function decideApiBase(){
-      const isLocal = (h) => ['localhost', '127.0.0.1'].includes(h);
-      const manual = (typeof window.API_URL === 'string' && window.API_URL.trim()) ? window.API_URL.trim() : null;
-      let base = '';
-      if (manual) {
-        base = manual.replace(/\/+$/,'');
-      } else if (isLocal(location.hostname)) {
-        base = 'http://localhost:5000';
-      } else {
-        base = ''; // same-origin
-      }
-      window.API_BASE = base;
-    })();
-
+    // -------- API helpers ----------
     function makeURLs(pathWithQuery) {
       const clean = (s) => s.replace(/\/+/g,'/');
-      const p = pathWithQuery.replace(/^\/+/,'');
+      const p = String(pathWithQuery || '').replace(/^\/+/, '');
       const b = window.API_BASE || '';
+      // Try "same path" and "/api/<path>" as fallback (covers your server routes)
       return [
         clean(`${b}/${p}`),
         clean(`${b}/api/${p}`)
@@ -254,11 +273,13 @@
       for (const p of paths) {
         try {
           const r = await fetch(p, options);
-          if (r.status === 404) continue;
+          if (r.status === 404) continue;     // try next form
           let js = {};
           try { js = await r.json(); } catch { js = {}; }
           return { response: r, json: js };
-        } catch { /* try next */ }
+        } catch {
+          // try next URL
+        }
       }
       throw new Error('All endpoints failed');
     }
@@ -276,7 +297,6 @@
     const ulAnn        = document.getElementById('announcementsSnapshot');
 
     // ---------- render helpers ----------
-    const chartsMap = {};
     function num(v){ return (typeof v === 'number' && !Number.isNaN(v)) ? v : 0; }
     function escapeHTML(str=''){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
 
@@ -376,6 +396,7 @@
       }).join('');
     }
 
+    const chartsMap = {};
     function upsertChart(canvasId, type, data, options){
       if (chartsMap[canvasId]) chartsMap[canvasId].destroy();
       const el = document.getElementById(canvasId);
