@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Teacher - Module Management</title>
+
+  <!-- Optional if FE/BE are separate Railway services: -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
 
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
@@ -126,7 +128,16 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const API = 'http://127.0.0.1:5000';
+    /* ===== Railway-friendly API base resolver ===== */
+    const MAIN_API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://127.0.0.1:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+    const API = MAIN_API + '/api';
 
     // ---- Auth guard + header initials (robust, initials-only) ----
     const userData = (() => {
@@ -134,16 +145,14 @@
         const raw = localStorage.getItem("user") || "{}";
         const stored = JSON.parse(raw);
         const u = stored.user || stored;
-        // Gate: must be a teacher with an id
         if (!u?.userId || !u?.isTeacher) {
           window.location.href = "/TEACHER/login/login.html";
-          return null; // stop further usage
+          return null;
         }
-        // Set header initials
         const el = document.getElementById("dashboardUsername");
         if (el) {
           const initials = getInitials(u);
-          el.textContent = initials; // 👈 initials only
+          el.textContent = initials;
           const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
             || u.username || u.email || 'Profile';
           el.setAttribute('title', fullLabel);
@@ -202,7 +211,7 @@
         if (!userData?.userId) return;
         const url = `${API}/courses?uploadedBy=${encodeURIComponent(userData.userId)}&includeArchived=true`;
         const r = await fetch(url);
-        const payload = await r.json();
+        const payload = await safeJson(r);
         const courses = Array.isArray(payload) ? payload : (payload.courses || []);
         const activeCount = courses.filter(c => !c.archived).length;
         const archivedCount = courses.filter(c => c.archived).length;
@@ -369,5 +378,4 @@
     }
   </script>
 </body>
-
 </html>

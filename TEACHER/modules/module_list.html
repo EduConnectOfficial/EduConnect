@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Teacher - Module Management</title>
 
+  <!-- Optional if FE/BE are separate Railway services: -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Icons & Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
@@ -175,6 +178,17 @@
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    /* ===== Railway-friendly API base resolver ===== */
+    const MAIN_API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+    const API = MAIN_API + '/api';
+
     // ---- Auth guard + header initials (initials-only) ----
     (function initHeaderInitials() {
       try {
@@ -215,8 +229,6 @@
         return em ? em[0].toUpperCase() : "U";
       }
     })();
-
-    const FILE_BASE = "http://127.0.0.1:5000";
 
     /* ===== Reusable Modal Helpers ===== */
     const infoModalEl = document.getElementById('infoModal');
@@ -264,19 +276,15 @@
       });
     }
 
-    /* ===== Type-to-confirm helper (Module Title or any string) =====
-       — hardened against copy/paste on the phrase AND the hint, and paste/⌘V in the input. */
+    /* ===== Type-to-confirm helper (Module Title or any string) ===== */
     function showTypeToConfirm({ title, expected, placeholder, primaryText='Delete' }){
       return new Promise((resolve)=>{
-        // Theme the modal
         const content = confirmModalEl.querySelector('.modal-content');
         content.classList.add('confirm-themed');
 
-        // Escape helpers
         const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
         const escAttr = s => String(s).replace(/"/g,'&quot;');
 
-        // Body markup
         confirmTitleEl.textContent = title;
         confirmBodyEl.innerHTML = `
           <p class="mb-2">
@@ -287,7 +295,7 @@
           </div>
           <div class="mb-1">
             <input id="ttcInput" type="text" class="form-control is-invalid"
-                   placeholder="${escAttr(placeholder||'Type here')}" autocomplete="off"
+                   placeholder="\${escAttr(placeholder||'Type here')}" autocomplete="off"
                    autocapitalize="off" spellcheck="false">
           </div>
           <div id="ttcBad" class="invalid-msg no-copy">
@@ -296,30 +304,24 @@
           <div id="ttcGood" class="valid-msg d-none">✓ Input matches</div>
         `;
 
-        // Buttons
         confirmOkBtn.textContent = primaryText;
         confirmOkBtn.className = 'btn btn-danger';
         confirmOkBtn.disabled = true;
         confirmCancelBtn.textContent = 'Cancel';
         confirmCancelBtn.className = 'btn-close-footer';
 
-        // Elements to guard
         const pill = confirmBodyEl.querySelector('#ttcPill');
         const badBox = confirmBodyEl.querySelector('#ttcBad');
         const input = confirmBodyEl.querySelector('#ttcInput');
 
-        // Block copy/cut/context menu/drag/drop in key areas (and modal root for good measure)
         const guardRoots = [confirmModalEl, pill, badBox];
         const block = e => e.preventDefault();
         guardRoots.forEach(node=>{
           ['copy','cut','contextmenu','dragstart','drop','dragover'].forEach(evt => node.addEventListener(evt, block));
         });
-        // Block paste & kb shortcuts in the input
         const blockKeys = e => {
           const k = (e.key || '').toLowerCase();
-          if ((e.ctrlKey || e.metaKey) && (k === 'v' || k === 'x' || k === 'c' || k === 'a')) {
-            e.preventDefault();
-          }
+          if ((e.ctrlKey || e.metaKey) && (k === 'v' || k === 'x' || k === 'c' || k === 'a')) e.preventDefault();
         };
         const blockBeforeInput = e => {
           if ((e.inputType||'').toLowerCase().includes('insertfrompaste')) e.preventDefault();
@@ -328,7 +330,6 @@
         input.addEventListener('keydown', blockKeys);
         input.addEventListener('beforeinput', blockBeforeInput);
 
-        // Validation
         const good = confirmBodyEl.querySelector('#ttcGood');
         const expectedRaw = String(expected||'');
         function refresh(){
@@ -342,7 +343,6 @@
         input.addEventListener('input', refresh);
         setTimeout(()=>input?.focus(), 75);
 
-        // Resolve on OK/Cancel
         let confirmed = false;
         const onOk = () => { if (!confirmOkBtn.disabled){ confirmed = true; confirmModal.hide(); } };
         const onHidden = () => { cleanup(); resolve(confirmed); };
@@ -509,12 +509,22 @@
       setTimeout(() => { if (!obj.contentDocument) fallback(); }, 1500);
     }
 
+    /* ---------- API helpers ---------- */
+    function resolveAttachmentUrl(pathOrUrl) {
+      if (!pathOrUrl) return '';
+      if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+      // If backend returns '/api/...' keep it on MAIN_API, otherwise prefix with API
+      return pathOrUrl.startsWith('/api/')
+        ? (MAIN_API + pathOrUrl)
+        : (API + pathOrUrl);
+    }
+
     async function loadModules() {
       if (!courseId) { showInfo('Missing Course', 'No <strong>courseId</strong> provided.'); return; }
       try {
-        const res = await fetch(`http://localhost:5000/courses/${courseId}/modules?includeArchived=true`);
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules?includeArchived=true`);
         const data = await res.json();
-        modulesAll = Array.isArray(data) ? data : [];
+        modulesAll = Array.isArray(data) ? data : (Array.isArray(data?.modules) ? data.modules : []);
         applyFiltersAndRender();
       } catch (err) {
         console.error("Error fetching modules:", err);
@@ -524,9 +534,10 @@
     async function loadCourseTitle() {
       if (!courseId) return;
       try {
-        const res = await fetch(`http://localhost:5000/courses/${courseId}`);
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`);
         const course = await res.json();
-        if (course && course.title) document.getElementById("courseTitleHeading").textContent = `Modules for ${course.title}`;
+        const title = course?.title || course?.course?.title;
+        if (title) document.getElementById("courseTitleHeading").textContent = `Modules for ${title}`;
       } catch (err) { console.error("Error fetching course title:", err); }
     }
 
@@ -547,7 +558,7 @@
           module.attachments.forEach(att => {
             const fileDesc = (att.videoDesc || att.description || "(no description)");
             if (att.filePath) {
-              const url = FILE_BASE + att.filePath;
+              const url = resolveAttachmentUrl(att.filePath);
               const kind = kindFromUrl(url);
               const icon = (kind === 'youtube') ? '▶️' : (kind === 'video' ? '🎬' : '📄');
               const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video') ? 'Video' : 'File';
@@ -560,7 +571,7 @@
                   <div class="text-muted small ms-3">${fileDesc}</div>
                 </div>`;
             } else if (att.url) {
-              const url = att.url;
+              const url = resolveAttachmentUrl(att.url);
               const kind = kindFromUrl(url);
               const icon = (kind === 'youtube') ? '▶️' : (kind === 'video') ? '🎬' : '🔗';
               const label = (kind === 'youtube') ? 'YouTube' : (kind === 'video') ? 'Video' : 'File';
@@ -679,9 +690,9 @@
           });
           if (!ok) return;
           try {
-            const res = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}/archive`, { method: "PUT" });
+            const res = await fetch(`${API}/modules/${encodeURIComponent(id)}/archive`, { method: "PUT" });
             const data = await res.json();
-            if (data.success) {
+            if (data.success !== false) {
               showInfo('Archived', 'Module archived.', { autoHideMs: 1200, onHidden: loadModules });
             } else {
               showInfo('Archive Failed', data.message ? `Error: ${data.message}` : 'Unknown error.');
@@ -705,9 +716,9 @@
           });
           if (!ok) return;
           try {
-            const res = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}/unarchive`, { method: "PUT" });
+            const res = await fetch(`${API}/modules/${encodeURIComponent(id)}/unarchive`, { method: "PUT" });
             const data = await res.json();
-            if (data.success) {
+            if (data.success !== false) {
               showInfo('Unarchived', 'Module unarchived.', { autoHideMs: 1200, onHidden: loadModules });
             } else {
               showInfo('Unarchive Failed', data.message ? `Error: ${data.message}` : 'Unknown error.');
@@ -726,9 +737,9 @@
           // 1) fetch module to get the exact title
           let moduleTitle = '';
           try {
-            const r = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}`);
+            const r = await fetch(`${API}/modules/${encodeURIComponent(id)}`);
             const j = await r.json();
-            moduleTitle = (j && j.title) ? String(j.title) : '';
+            moduleTitle = (j && j.title) ? String(j.title) : (j?.module?.title || '');
           } catch {}
 
           // 2) type-to-confirm using Module Title
@@ -757,9 +768,9 @@
           btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
 
           try {
-            const res = await fetch(`http://localhost:5000/modules/${encodeURIComponent(id)}`, { method: "DELETE" });
+            const res = await fetch(`${API}/modules/${encodeURIComponent(id)}`, { method: "DELETE" });
             const data = await res.json();
-            if (data.success) {
+            if (data.success !== false) {
               showInfo('Deleted', 'Module deleted and modules renumbered.', { autoHideMs: 1200, onHidden: loadModules });
             } else {
               showInfo('Delete Failed', data.message ? `Error: ${data.message}` : 'Unknown error.');

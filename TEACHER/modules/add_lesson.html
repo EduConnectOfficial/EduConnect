@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>EduConnect Teacher – Add Lessons (Paged)</title>
 
+  <!-- Optional: set your backend explicitly when FE/BE are separate Railway services -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Bootstrap & Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
@@ -301,7 +304,21 @@
 
   <!-- Page Logic -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    /* ===== Railway-friendly API base resolver =====
+       Priority: 1) <meta name="api-base">, 2) window.__API_BASE, 3) localStorage.API_BASE,
+                 4) same origin on *.railway.app, 5) http://localhost:5000
+       MAIN_API = chosen origin, API = MAIN_API + '/api'
+    ================================================= */
+    const MAIN_API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+    const API = MAIN_API + '/api';
+
     const TEACHER_MAX_MB = 300;
     const TEACHER_MAX_BYTES = TEACHER_MAX_MB * 1024 * 1024;
 
@@ -379,7 +396,7 @@
     }
     function showSpinner(show){ document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
     function isYouTubeUrl(url=''){ try{const u=new URL(url);const h=u.hostname.replace(/^www\./,'').toLowerCase();return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);}catch{return false;} }
-    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start=''; if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];} else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; } if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start) qs.set('start', String(start)); return `${base}?${qs.toString()}`; }catch{return null;} }
+    function toYouTubeEmbed(url=''){ try{const u=new URL(url);const host=u.hostname.replace(/^www\./,'').toLowerCase();let id='';let start=u.searchParams.get('start')||u.searchParams.get('t')||'';if(start&&/^\d+s$/.test(start))start=parseInt(start,10);if(start&&/^\d+$/.test(start))start=parseInt(start,10);if(!Number.isFinite(start))start=''; if(host==='youtu.be'){id=(u.pathname||'').replace(/^\//,'').split('/')[0];} else { if(u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||''; if(!id) id=u.searchParams.get('v')||''; } if(!id) return null; const base=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`; const qs=new URLSearchParams(); qs.set('rel','0'); if(start)qs.set('start', String(start)); return `${base}?${qs.toString()}`; }catch{return null;} }
     function extFromUrl(u=''){ const clean=String(u).split('?')[0].split('#')[0]; const parts=clean.split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function extFromName(n=''){ const parts=String(n).split('.'); return parts.length>1?parts.pop().toLowerCase():''; }
     function kindFrom({url='', name='', mime=''}) {
@@ -676,7 +693,7 @@
         return;
       }
       try {
-        const res = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`);
+        const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const mod = await res.json();
 
@@ -737,7 +754,7 @@
 
       try {
         // Step 1: PATCH arrays (append all)
-        const patchRes = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}`, {
+        const patchRes = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -756,7 +773,7 @@
           staged.addFiles.forEach(f => fd.append('attachmentFiles', f));
           staged.addFiles.forEach(f => fd.append('attachmentLessonIdx', String(baseLessonIdx + (f.__lesson || 0))));
           staged.addFiles.forEach(_ => fd.append('attachmentDescs', ''));
-          const addRes = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}/files`, { method:'POST', body:fd });
+          const addRes = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files`, { method:'POST', body:fd });
           const addJson = await safeJson(addRes);
           if (!addRes.ok || addJson?.success === false) {
             throw new Error(addJson?.message || `Upload files failed (HTTP ${addRes.status})`);
@@ -765,7 +782,7 @@
         if (moduleType === 'text' && staged.addLinks.length) {
           const allLinks = staged.addLinks.map(l => l.url);
           const allIdxs  = staged.addLinks.map(l => baseLessonIdx + (l.lesson || 0));
-          const addRes = await fetch(`${API_BASE}/modules/${encodeURIComponent(moduleId)}/files`, {
+          const addRes = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}/files`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
