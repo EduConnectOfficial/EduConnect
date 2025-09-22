@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>EduConnect Student - Login</title>
 
+  <!-- OPTIONAL: if your API is a separate Railway service, set this -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="login.css"/>
@@ -83,9 +86,23 @@
 
   <!-- Login Logic -->
   <script>
-    // ===== Dynamic base (local vs prod) =====
-    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-    const API_BASE = isLocal ? "http://localhost:5000" : "";
+    /* ===== Railway-friendly API base resolver =====
+       Order of precedence:
+       1) <meta name="api-base"> (explicit override)
+       2) window.__API_BASE (if you set it before this script)
+       3) localStorage.API_BASE (manual override for testing)
+       4) If deployed on *.railway.app, use same-origin
+       5) Fallback to http://localhost:5000 (dev)
+    ================================================= */
+    const API_BASE = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const onRailway = /\.railway\.app$/i.test(location.hostname);
+      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+      return String(chosen).replace(/\/+$/, '');
+    })();
+    const api = (path) => `${API_BASE}${path.startsWith('/') ? path : '/' + path}`;
 
     // ===== DOM =====
     const form = document.getElementById("loginForm");
@@ -121,13 +138,11 @@
     let countdownTimer = null;
     const MAX_ATTEMPTS = 5;
 
-    // Per-username counters in sessionStorage
     const attemptsKey = (u) => `failedAttempts:${(u || '').trim().toLowerCase()}`;
     const getAttempts = (u) => Number(sessionStorage.getItem(attemptsKey(u))) || 0;
     const setAttempts = (u, n) => sessionStorage.setItem(attemptsKey(u), String(n));
     const clearAttempts = (u) => sessionStorage.removeItem(attemptsKey(u));
 
-    // Global display counter for current username
     function showAttemptNotice(username) {
       const n = getAttempts(username);
       let msg = `You have made ${n} failed login attempt(s).`;
@@ -148,7 +163,6 @@
     }
 
     function startCountdown(lockedUntil) {
-      // supports ISO string, seconds, or ms
       let untilMs = 0;
       if (typeof lockedUntil === "string") untilMs = Date.parse(lockedUntil);
       else if (lockedUntil > 0 && lockedUntil < 2e10) untilMs = lockedUntil * 1000; // seconds
@@ -184,7 +198,6 @@
     }
     function clearSession() { try { localStorage.removeItem("user"); } catch {} }
 
-    // On load: purge any non-student session
     (function guardExistingSession(){
       try {
         const raw = localStorage.getItem("user");
@@ -212,7 +225,8 @@
     async function usernameExists(username) {
       try {
         const q = new URLSearchParams({ username });
-        const { ok, data } = await fetchJSON(`${API_BASE}/check-username?${q.toString()}`, { method: "GET" }, 6000);
+        // Railway: use same-origin in prod or meta-configured base, with /api prefix
+        const { ok, data } = await fetchJSON(api(`/api/check-username?${q.toString()}`), { method: "GET" }, 6000);
         if (!ok || !data) return true;         // fail-closed to allow attempt
         return data.taken === true;
       } catch { return true; }                 // fail-closed
@@ -266,7 +280,7 @@
           return;
         }
 
-        const { ok, status, data } = await fetchJSON(`${API_BASE}/login`, {
+        const { ok, status, data } = await fetchJSON(api(`/api/login`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password })

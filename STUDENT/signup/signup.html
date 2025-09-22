@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Student - Sign Up</title>
+
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- Example: https://educonnect-api-production.up.railway.app -->
+  <meta name="api-base" content="">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <link rel="stylesheet" href="signup1.css" />
@@ -16,82 +21,83 @@
     <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
     <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
- <!-- Signup Container -->
-<div class="login-container">
-  <div class="login-box text-center">
-    <img src="/assets/signup_text.png" alt="Login" class="img-fluid mb-4" style="max-width: 200px;" />
 
-    <form id="signupStep1Form" novalidate>
-      <!-- Username -->
-      <div class="mb-3 text-start">
-        <label for="username" class="form-label">Username</label>
-        <input type="text" id="username" class="form-control" placeholder="Choose a username" required />
-        <div id="usernameTaken" class="small mt-1"></div>
-      </div>
+  <!-- Signup Container -->
+  <div class="login-container">
+    <div class="login-box text-center">
+      <img src="/assets/signup_text.png" alt="Login" class="img-fluid mb-4" style="max-width: 200px;" />
 
-      <!-- First Name -->
-      <div class="mb-3 text-start">
-        <label for="firstName" class="form-label">First Name</label>
-        <input type="text" id="firstName" class="form-control" placeholder="Enter your first name" required />
-      </div>
+      <form id="signupStep1Form" novalidate>
+        <!-- Username -->
+        <div class="mb-3 text-start">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" id="username" class="form-control" placeholder="Choose a username" required />
+          <div id="usernameTaken" class="small mt-1"></div>
+        </div>
 
-      <!-- Middle Name -->
-      <div class="mb-3 text-start">
-        <label for="middleName" class="form-label">Middle Name</label>
-        <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
-      </div>
+        <!-- First Name -->
+        <div class="mb-3 text-start">
+          <label for="firstName" class="form-label">First Name</label>
+          <input type="text" id="firstName" class="form-control" placeholder="Enter your first name" required />
+        </div>
 
-      <!-- Last Name -->
-      <div class="mb-3 text-start">
-        <label for="lastName" class="form-label">Last Name</label>
-        <input type="text" id="lastName" class="form-control" placeholder="Enter your last name" required />
-      </div>
+        <!-- Middle Name -->
+        <div class="mb-3 text-start">
+          <label for="middleName" class="form-label">Middle Name</label>
+          <input type="text" id="middleName" class="form-control" placeholder="Enter your middle name (optional)" />
+        </div>
 
-      <!-- Email -->
-      <div class="mb-3 text-start">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" id="email" class="form-control" placeholder="Enter your email address" required />
-        <div id="emailTaken" class="small mt-1"></div>
-      </div>
+        <!-- Last Name -->
+        <div class="mb-3 text-start">
+          <label for="lastName" class="form-label">Last Name</label>
+          <input type="text" id="lastName" class="form-control" placeholder="Enter your last name" required />
+        </div>
 
-      <!-- Password -->
-      <div class="mb-3 text-start">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" class="form-control" placeholder="Create a password" required />
-      </div>
+        <!-- Email -->
+        <div class="mb-3 text-start">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" id="email" class="form-control" placeholder="Enter your email address" required />
+          <div id="emailTaken" class="small mt-1"></div>
+        </div>
 
-      <!-- Confirm Password -->
-      <div class="mb-3 text-start">
-        <label for="confirmPassword" class="form-label">Confirm Password</label>
-        <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required />
-        <ul class="list-unstyled mt-2" id="passwordCriteria">
-          <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
-          <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
-          <li id="numberCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
-          <li id="specialCharCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
-          <li id="matchCheck"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
-        </ul>
-      </div>
+        <!-- Password -->
+        <div class="mb-3 text-start">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" id="password" class="form-control" placeholder="Create a password" required />
+        </div>
 
-      <!-- Show/Hide Password -->
-      <div class="form-check text-start mb-3">
-        <input class="form-check-input" type="checkbox" id="togglePassword" />
-        <label class="form-check-label" for="togglePassword">Show Password</label>
-      </div>
+        <!-- Confirm Password -->
+        <div class="mb-3 text-start">
+          <label for="confirmPassword" class="form-label">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" required />
+          <ul class="list-unstyled mt-2" id="passwordCriteria">
+            <li id="lengthCheck"><i class="bi bi-x-circle text-danger me-2"></i>Minimum 8 characters</li>
+            <li id="uppercaseCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 uppercase letter</li>
+            <li id="numberCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 number</li>
+            <li id="specialCharCheck"><i class="bi bi-x-circle text-danger me-2"></i>At least 1 special character</li>
+            <li id="matchCheck"><i class="bi bi-x-circle text-danger me-2"></i>Passwords match</li>
+          </ul>
+        </div>
 
-      <!-- Error Messages -->
-      <div id="passwordError" class="text-danger mb-2"></div>
-      <div id="signupError" class="text-danger mb-3"></div>
+        <!-- Show/Hide Password -->
+        <div class="form-check text-start mb-3">
+          <input class="form-check-input" type="checkbox" id="togglePassword" />
+          <label class="form-check-label" for="togglePassword">Show Password</label>
+        </div>
 
-      <!-- Submit -->
-      <button type="submit" id="submitBtn" class="btn login-btn w-100 mb-3" disabled>Submit</button>
-    </form>
+        <!-- Error Messages -->
+        <div id="passwordError" class="text-danger mb-2"></div>
+        <div id="signupError" class="text-danger mb-3"></div>
 
-    <p class="options text-white">
-      Already have an account? <a href="../login/login.html">Login</a>
-    </p>
+        <!-- Submit -->
+        <button type="submit" id="submitBtn" class="btn login-btn w-100 mb-3" disabled>Submit</button>
+      </form>
+
+      <p class="options text-white">
+        Already have an account? <a href="../login/login.html">Login</a>
+      </p>
+    </div>
   </div>
-</div>
 
   <!-- Success Modal -->
   <div class="modal fade" id="signupSuccessModal" tabindex="-1" aria-labelledby="signupSuccessLabel" aria-hidden="true">
@@ -124,8 +130,28 @@
 
   <!-- JS Script -->
   <script>
-    const API_BASE = "http://localhost:5000";
+    // ---------- API base detection (Railway-friendly) ----------
+    function getApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]')?.content?.trim();
+      if (meta) return meta.replace(/\/+$/, ''); // prefer explicit meta
 
+      const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
+      if (isLocal) return 'http://localhost:5000';
+
+      // Production defaults:
+      // If frontend and backend are on the same Railway service (reverse-proxied), same-origin works.
+      // Otherwise, set the meta tag above with your backend URL.
+      return location.origin;
+    }
+    const API_BASE = getApiBase();
+
+    // If your backend uses cookies/sessions for auth, enable credentials below and configure CORS.
+    const FETCH_OPTIONS_BASE = {
+      headers: { 'Content-Type': 'application/json' },
+      // credentials: 'include',
+    };
+
+    // ---------- Elements ----------
     const usernameInput = document.getElementById("username");
     const usernameTakenDiv = document.getElementById("usernameTaken");
     const emailInput = document.getElementById("email");
@@ -157,14 +183,14 @@
 
     const VERIFICATION_URL = "/STUDENT/signup/verification.html";
 
-    // Show/hide password
+    // ---------- Show/hide password ----------
     document.getElementById("togglePassword").addEventListener("change", () => {
       const t = document.getElementById("togglePassword").checked ? "text" : "password";
       passwordInput.type = t;
       confirmPasswordInput.type = t;
     });
 
-    // Helper: status message style
+    // ---------- Helpers ----------
     function setStatus(el, { text = "", ok = null } = {}) {
       el.textContent = text;
       el.classList.remove("text-success", "text-danger");
@@ -172,7 +198,6 @@
       else if (ok === false) el.classList.add("text-danger");
     }
 
-    // Enable/disable submit
     function updateSubmitState() {
       const usernameBad = usernameTakenDiv.textContent.startsWith("❌");
       const emailBad = emailTakenDiv.textContent.startsWith("❌");
@@ -188,21 +213,21 @@
       submitBtn.disabled = usernameBad || emailBad || !requiredFilled;
     }
 
-    // Debounce
     function debounce(fn, ms = 400) {
       let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
     }
 
-    // Username availability
+    // ---------- Availability checks (Railway base-aware) ----------
     async function checkUsername() {
       const u = usernameInput.value.trim();
       if (!u) { setStatus(usernameTakenDiv, { text: "", ok: null }); updateSubmitState(); return; }
       try {
-        const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`);
+        const res = await fetch(`${API_BASE}/check-username?username=${encodeURIComponent(u)}`, { ...FETCH_OPTIONS_BASE });
         const js = await res.json();
         if (js.taken) setStatus(usernameTakenDiv, { text: "❌ Username already taken", ok: false });
         else setStatus(usernameTakenDiv, { text: "✅ Username available", ok: true });
       } catch {
+        // keep it neutral so the user can still try to submit
         setStatus(usernameTakenDiv, { text: "", ok: null });
       } finally { updateSubmitState(); }
     }
@@ -210,12 +235,11 @@
     usernameInput.addEventListener("input", checkUsernameDebounced);
     usernameInput.addEventListener("blur", checkUsername);
 
-    // Email availability
     async function checkEmail() {
       const e = emailInput.value.trim();
       if (!e) { setStatus(emailTakenDiv, { text: "", ok: null }); updateSubmitState(); return; }
       try {
-        const res = await fetch(`${API_BASE}/check-email?email=${encodeURIComponent(e)}`);
+        const res = await fetch(`${API_BASE}/check-email?email=${encodeURIComponent(e)}`, { ...FETCH_OPTIONS_BASE });
         const js = await res.json();
         if (js.taken) setStatus(emailTakenDiv, { text: "❌ Email already taken", ok: false });
         else setStatus(emailTakenDiv, { text: "✅ Email available", ok: true });
@@ -227,7 +251,7 @@
     emailInput.addEventListener("input", checkEmailDebounced);
     emailInput.addEventListener("blur", checkEmail);
 
-    // Password criteria live updates
+    // ---------- Password criteria live updates ----------
     function updateRequirement(el, cond) {
       const icon = el.querySelector("i");
       icon.classList.toggle("bi-check-circle", cond);
@@ -247,15 +271,15 @@
     passwordInput.addEventListener("input", validatePasswordLive);
     confirmPasswordInput.addEventListener("input", validatePasswordLive);
 
-    // Utility: mask email (shorter version)
+    // ---------- Utility ----------
     function maskEmail(email) {
-      const [user, domain] = email.split("@");
-      if (!user || !domain) return email;
+      const [user, domain] = (email || "").split("@");
+      if (!user || !domain) return email || "";
       if (user.length <= 2) return user[0] + "*@" + domain;
       return user[0] + "***" + user[user.length - 1] + "@" + domain;
     }
 
-    // Submit
+    // ---------- Submit ----------
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -296,11 +320,11 @@
 
       try {
         const res = await fetch(`${API_BASE}/signup`, {
+          ...FETCH_OPTIONS_BASE,
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const js = await res.json();
+        const js = await res.json().catch(() => ({}));
 
         if (res.ok) {
           // Save for verification step
@@ -351,7 +375,7 @@
       }
     });
 
-    // Initial state
+    // ---------- Initial state ----------
     submitBtn.disabled = true;
   </script>
 </body>

@@ -5,18 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Student - Verify Code</title>
 
+  <!-- Optional: override API base if backend is a separate Railway service -->
+  <!-- <meta name="x-api-base" content="https://your-api.up.railway.app"> -->
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet" href="signup1.css"/>
-
 </head>
 
 <body>
- <!-- Top Logo -->
+  <!-- Top Logo -->
   <div class="top-logo text-center brand">
-    <!-- CSIS logo beside EduConnect -->
-    <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-    <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
+    <!-- Use relative paths so it works on Railway subpaths -->
+    <img src="components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+    <img src="assets/educonnect_logo.png" alt="EduConnect Logo" class="logo" />
   </div>
+
   <!-- Verification Form -->
   <div class="login-container">
     <div class="login-box text-center">
@@ -56,7 +59,7 @@
           <h5 class="modal-title" id="feedbackModalLabel">Notification</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="feedbackModalBody"><!-- Message injected here --></div>
+        <div class="modal-body" id="feedbackModalBody"></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-success" id="feedbackModalOkBtn" data-bs-dismiss="modal">OK</button>
         </div>
@@ -68,8 +71,21 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    const API_BASE = "http://localhost:5000";
+    // ---------- Railway-friendly API base ----------
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="x-api-base"]');
+      const override = meta?.content?.trim();
+      if (override) return override.replace(/\/+$/, '');
 
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+      }
+      // Same-origin on Railway/any other host
+      return '';
+    }
+    const API_BASE = resolveApiBase();
+
+    // ---------- DOM refs ----------
     const inputs = Array.from(document.querySelectorAll(".otp-input"));
     const verifyForm = document.getElementById("verifyCodeForm");
     const verifyBtn = document.getElementById("verifyBtn");
@@ -78,7 +94,8 @@
     const resendTimer = document.getElementById("resendTimer");
     const sentTo = document.getElementById("sentTo");
 
-    const email = sessionStorage.getItem("pendingEmail");
+    // Read email from session (use the same key used on "Send Code" page)
+    const email = sessionStorage.getItem("resetEmail") || sessionStorage.getItem("pendingEmail");
 
     // Show masked email target
     if (email) {
@@ -104,12 +121,9 @@
       const modal = new bootstrap.Modal(modalEl);
 
       titleEl.textContent = title;
-      bodyEl.innerHTML = html; // <-- allow formatted content
+      bodyEl.innerHTML = html;
 
-      okBtn.onclick = () => {
-        if (redirectTo) window.location.href = redirectTo;
-      };
-
+      okBtn.onclick = () => { if (redirectTo) window.location.href = redirectTo; };
       modalEl.addEventListener("hidden.bs.modal", function onHidden() {
         modalEl.removeEventListener("hidden.bs.modal", onHidden);
         if (redirectTo) window.location.href = redirectTo;
@@ -194,7 +208,7 @@
         return;
       }
       if (!email) {
-        verificationError.textContent = "Email not found. Please register again.";
+        verificationError.textContent = "Email not found. Please start over.";
         setInvalid(true);
         return;
       }
@@ -211,7 +225,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, code })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
           const userIdResp    = data.userId    || (data.user && data.user.userId);
@@ -221,17 +235,11 @@
           if (studentIdResp) sessionStorage.setItem("studentId", studentIdResp);
 
           // Cleanup (pre-redirect)
+          sessionStorage.removeItem("resetEmail");
           sessionStorage.removeItem("pendingEmail");
           sessionStorage.removeItem("pendingUserData");
 
-          // Build EXACT layout:
-          // User verified and registered successfully.
-          //
-          // Your User ID:
-          // <value>
-          //
-          // Your Student ID:
-          // <value>
+          // Success body (exact layout spec you provided)
           const lines = [];
           lines.push(`<p class="mb-3">User verified and registered successfully.</p>`);
           if (userIdResp) {
@@ -245,10 +253,7 @@
             lines.push(`<div class="mb-1"><div class="fw-semibold">Your Student ID:</div><div><em>—</em></div></div>`);
           }
 
-          const successHTML = lines.join("");
-
-          // Show modal with formatted HTML, then redirect to login when closed
-          showModalHTML(successHTML, { title: "Success", redirectTo: "/STUDENT/login/login.html" });
+          showModalHTML(lines.join(""), { title: "Success", redirectTo: "STUDENT/login/login.html" });
 
         } else {
           verificationError.textContent = data.error || "Invalid or expired code.";
@@ -281,7 +286,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (res.ok) {
           showModalHTML(`<p class="mb-0">New verification code sent to your email.</p>`, { title: "Code Resent" });
           inputs.forEach(i => i.value = "");
