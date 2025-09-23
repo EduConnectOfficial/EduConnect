@@ -29,12 +29,19 @@
           <label for="username" class="form-label text-light">Username</label>
           <input type="text" id="username" class="form-control" placeholder="Enter your username" />
         </div>
+
         <div class="mb-2 text-start">
           <label for="password" class="form-label text-light">Password</label>
-          <input type="password" id="password" class="form-control" placeholder="Enter your password" />
+          <input type="password" id="password" class="form-control" placeholder="Enter your password" aria-describedby="capsHint" />
+          <!-- Caps Lock hint -->
+          <div id="capsHint" class="form-text text-warning d-none">Caps Lock is ON</div>
         </div>
 
-        <!-- 🔻 Removed the “Show Password” checkbox -->
+        <!-- Show Password -->
+        <div class="form-check mb-3 text-start">
+          <input class="form-check-input" type="checkbox" id="showPassword" />
+          <label class="form-check-label" for="showPassword">Show Password</label>
+        </div>
 
         <button type="submit" id="loginBtn" class="btn login-btn w-100 mb-3">Login</button>
         <div id="loginError" class="text-danger mt-2"></div>
@@ -57,7 +64,7 @@
         </div>
 
         <div class="modal-body">
-          <p class="text-dark" id="attemptMessage" class="mb-0"></p>
+          <p class="text-dark mb-0" id="attemptMessage"></p>
         </div>
 
         <div class="modal-footer">
@@ -69,8 +76,6 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- 🔻 Removed the Show Password Toggle script -->
 
   <!-- Login Logic -->
   <script>
@@ -102,11 +107,27 @@
     const FETCH_CREDENTIALS = computeCredentialsMode();
 
     // ---------- DOM refs ----------
-    const form     = document.getElementById("loginForm");
-    const btn      = document.getElementById("loginBtn");
-    const errorBox = document.getElementById("loginError");
+    const form           = document.getElementById("loginForm");
+    const btn            = document.getElementById("loginBtn");
+    const errorBox       = document.getElementById("loginError");
     const attemptModal   = new bootstrap.Modal(document.getElementById("attemptModal"));
     const attemptMessage = document.getElementById("attemptMessage");
+
+    // New refs for Show Password + Caps Lock
+    const passwordEl   = document.getElementById("password");
+    const capsHint     = document.getElementById("capsHint");
+    const showPwCheck  = document.getElementById("showPassword");
+
+    // Show password toggle
+    function setPwType(type){ passwordEl.type = type; }
+    showPwCheck.addEventListener("change", function () {
+      setPwType(this.checked ? "text" : "password");
+    });
+
+    // Caps Lock hint
+    function setCapsHint(show){ capsHint.classList.toggle("d-none", !show); }
+    passwordEl.addEventListener("keydown", (e) => setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
+    passwordEl.addEventListener("keyup",   (e) => setCapsHint(e.getModifierState && e.getModifierState("CapsLock")));
 
     // ---------- helpers ----------
     let countdownTimer = null;
@@ -294,7 +315,12 @@
         }
 
         if (response.status === 423) {
-          startCountdown(data.lockedUntil || 0);
+          // Supports ms timestamp, seconds, or ISO
+          let untilMs = 0;
+          const v = data.lockedUntil;
+          if (typeof v === "string") untilMs = Date.parse(v);
+          else if (v > 0 && v < 2e10) untilMs = v * 1000; else untilMs = Number(v) || 0;
+          startCountdown(untilMs || 0);
           return;
         }
 

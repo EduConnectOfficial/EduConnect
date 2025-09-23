@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>EduConnect Student - View Thread </title>
+  <title>EduConnect Student - View Thread</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Bootstrap & Icons -->
@@ -55,7 +55,7 @@
         <div class="row justify-content-center">
           <div class="col-12 col-lg-10 col-xxl-8">
 
-            <!-- THREAD -->
+            <!-- THREAD / ANNOUNCEMENT DETAIL -->
             <div class="ui-card card-themed mb-4" id="threadContainer">
               <div class="p-3 border-bottom" id="threadDetails">
                 <div class="skeleton rounded-3 mb-2"></div>
@@ -75,8 +75,8 @@
               </div>
             </div>
 
-            <!-- COMMENTS -->
-            <div class="ui-card card-themed">
+            <!-- COMMENTS (hidden when viewing an announcement) -->
+            <div class="ui-card card-themed" id="commentsCard">
               <div class="ui-card-head d-flex justify-content-between align-items-center">
                 <h2 class="ui-card-title m-0"><i class="bi bi-chat-text"></i> Comments</h2>
                 <span class="ui-subtext" id="replyCount">Loading…</span>
@@ -243,11 +243,17 @@
 
   <!-- Page Logic -->
   <script>
-    // ===== Railway-aware base =====
-    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-    const SERVER_BASE = isLocal ? "http://localhost:5000" : ""; // same-origin on Railway
-    const API_BASE = `${SERVER_BASE}/api/forum`;
-    const CORE_API = SERVER_BASE; // for /api/announcements
+    /* ===== API base (Railway-safe) ===== */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="x-api-base"]');
+      const override = meta?.content?.trim();
+      if (override) return override.replace(/\/+$/, '');
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:5000';
+      return ''; // same-origin in production
+    }
+    const BASE = resolveApiBase();
+    const API_BASE = `${BASE}/api/forum`;
+    const CORE_API = BASE; // /api/announcements lives under core server
 
     const qs = sel => document.querySelector(sel);
 
@@ -262,6 +268,8 @@
     function toLocal(dt){
       if(!dt) return '';
       if(dt._seconds) return new Date(dt._seconds*1000).toLocaleString();
+      if(dt.seconds)  return new Date(dt.seconds*1000).toLocaleString();
+      if(dt.toMillis) return new Date(dt.toMillis()).toLocaleString();
       const t=Date.parse(dt);
       return Number.isFinite(t)?new Date(t).toLocaleString():'';
     }
@@ -311,7 +319,10 @@
     })();
 
     // Utilities
-    const threadId = new URLSearchParams(location.search).get("id");
+    const params = new URLSearchParams(location.search);
+    const threadId = params.get("id");
+    const annId    = params.get("ann");
+
     const authorDisplayName = o => o?.author?.fullName || o?.authorFullName || o?.author?.username || o?.author?.email || "User";
     const timeHtml = dt => {
       const t = toLocal(dt);
@@ -333,6 +344,23 @@
       document.getElementById('confirmReplyDeleteBtn')?.addEventListener('click', confirmReplyDelete);
       document.getElementById('saveReplyEditBtn')?.addEventListener('click', saveReplyEdit);
     });
+
+    /* ===========================
+       Shared helpers for announcements
+    ============================*/
+    function teacherDisplay(a){
+      const t = a?.teacherName || a?.teacher || a?.teacherId || '';
+      const val = String(t).trim();
+      return val || 'Teacher';
+    }
+    function getMs(v){
+      if(!v) return 0;
+      if (typeof v === 'number') return v;
+      if (v._seconds) return v._seconds*1000;
+      if (v.seconds)  return v.seconds*1000;
+      if (v.toMillis) return v.toMillis();
+      const t = Date.parse(v); return Number.isFinite(t)?t:0;
+    }
 
     /* ===========================
        Thread load & render
@@ -376,7 +404,7 @@
           qs(".action-edit-thread")?.addEventListener("click", openThreadEditModal);
         }
 
-        await loadAnnouncements();   // <-- also pull announcements here
+        await loadAnnouncements();
         await loadReplies();
       }catch(err){
         console.error(err);
@@ -385,23 +413,52 @@
     }
 
     /* ===========================
-       Announcements (compact)
+       Announcement DETAIL view
     ============================*/
-    function teacherDisplay(a){
-      // prefer explicit teacherName/teacher, else fallback to teacherId
-      const t = a?.teacherName || a?.teacher || a?.teacherId || '';
-      const val = String(t).trim();
-      return val || 'Teacher';
-    }
-    function getMs(v){
-      if(!v) return 0;
-      if (typeof v === 'number') return v;
-      if (v._seconds) return v._seconds*1000;
-      if (v.seconds)  return v.seconds*1000;
-      if (v.toMillis) return v.toMillis();
-      const t = Date.parse(v); return Number.isFinite(t)?t:0;
+    async function loadAnnouncementDetail(){
+      const userId = __user.uid || __user.userId || __user.email;
+      try{
+        const j = await fetchJSON(`${CORE_API}/api/announcements/student/${encodeURIComponent(userId)}`);
+        const list = Array.isArray(j?.announcements) ? j.announcements : [];
+        const a = list.find(x => String(x.id) === String(annId));
+        if (!a) {
+          qs("#threadDetails").innerHTML = `<div class="alert alert-warning">Announcement not found or not visible.</div>`;
+          return;
+        }
+
+        const poster   = teacherDisplay(a);
+        const published = toLocal(a.publishAt || a.createdAt);
+        const expires   = a.expiresAt ? toLocal(a.expiresAt) : '—';
+
+        // Render detail in the same visual style
+        qs("#threadDetails").innerHTML = `
+          <div class="thread-head">
+            <div class="fb-avatar" aria-hidden="true">AN</div>
+            <div class="title-wrap flex-grow-1">
+              <h3 class="mb-1 wrap-anywhere">${escapeHtml(a.title || 'Announcement')}</h3>
+              <div class="meta">
+                <strong class="wrap-anywhere">${escapeHtml(poster)}</strong>
+                • Published: ${escapeHtml(published)}
+                • Expires: ${escapeHtml(expires)}
+              </div>
+              <p class="mt-2 mb-0 wrap-anywhere">${escapeHtml(a.content || '')}</p>
+            </div>
+          </div>`;
+
+        // In announcement mode, hide comments card
+        qs('#commentsCard').style.display = 'none';
+
+        // Still load the compact announcements list below
+        await loadAnnouncements();
+      }catch(err){
+        console.error(err);
+        qs("#threadDetails").innerHTML = `<div class="alert alert-danger">Failed to load announcement.</div>`;
+      }
     }
 
+    /* ===========================
+       Announcements (compact list)
+    ============================*/
     async function loadAnnouncements(){
       const userId = __user.uid || __user.userId || __user.email;
       const wrap = qs('#annList');
@@ -422,7 +479,6 @@
           return;
         }
 
-        // render compact rows (title + posted by)
         list.slice(0,10).forEach(a=>{
           const poster = teacherDisplay(a);
           const row = document.createElement('div');
@@ -441,7 +497,7 @@
     }
 
     /* ===========================
-       Replies
+       Replies (only for thread mode)
     ============================*/
     function buildReplyTree(flat){
       const map = Object.create(null);
@@ -670,24 +726,38 @@
     }
 
     // Boot
-    document.addEventListener("DOMContentLoaded", ()=>{
-      if (!threadId) { alert('Missing thread ID.'); return; }
-      loadThread();
+    document.addEventListener("DOMContentLoaded", async ()=>{
+      // Decide mode: thread or announcement
+      if (!threadId && !annId) {
+        qs('#threadDetails').innerHTML = `<div class="alert alert-warning">Missing thread ID or announcement ID.</div>`;
+        qs('#commentsCard').style.display = 'none';
+        await loadAnnouncements();
+        return;
+      }
 
-      qs("#replyForm").addEventListener("submit", async (e)=>{
-        e.preventDefault();
-        const ta = qs("#replyText");
-        if (!ta.value.trim()) { ta.classList.add('is-invalid'); return; }
-        try {
-          await postReply(ta.value.trim(), null);
-          e.target.reset();
-          ta.classList.remove('is-invalid');
-          await loadReplies();
-        } catch (err) {
-          console.error(err);
-          alert("Could not post comment.");
-        }
-      });
+      if (annId) {
+        // Announcement detail mode
+        await loadAnnouncementDetail();
+      } else {
+        // Thread mode
+        await loadThread();
+
+        // Comment submit handler only in thread mode
+        qs("#replyForm").addEventListener("submit", async (e)=>{
+          e.preventDefault();
+          const ta = qs("#replyText");
+          if (!ta.value.trim()) { ta.classList.add('is-invalid'); return; }
+          try {
+            await postReply(ta.value.trim(), null);
+            e.target.reset();
+            ta.classList.remove('is-invalid');
+            await loadReplies();
+          } catch (err) {
+            console.error(err);
+            alert("Could not post comment.");
+          }
+        });
+      }
     });
 
     function logoutUser(){ localStorage.clear(); sessionStorage.clear(); window.location.href = "/STUDENT/login/login.html"; }

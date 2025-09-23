@@ -24,13 +24,12 @@
     @keyframes shimmer{100%{transform:translateX(100%)}}
     .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
 
-    /* Compact Announcements */
+    /* Compact Announcements (similar layout to thread header row) */
     .ann-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border:1px solid #e9ecef;border-radius:.5rem;background:#fff}
     .ann-row + .ann-row{margin-top:.5rem}
     .ann-title{margin:0;font-size:1rem}
-    .ann-poster{color:#6c757d;font-size:.9rem;white-space:nowrap;margin-left:1rem}
-    .ann-controls{display:flex;gap:.5rem;align-items:center}
-    .ann-actions{display:flex;gap:.5rem}
+    .ann-meta{color:#6c757d;font-size:.9rem;white-space:nowrap;margin-left:1rem}
+    .ann-actions{display:flex;gap:.5rem;align-items:center}
     .ann-search .input-group-text{background:#fff}
   </style>
 </head>
@@ -96,7 +95,7 @@
           </form>
         </div>
 
-        <!-- Announcements (COMPACT: title + who posted) -->
+        <!-- Announcements (COMPACT: title + posted by + View) -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Latest Announcements</h2>
@@ -238,7 +237,7 @@
       if (dt.seconds)  return new Date(dt.seconds * 1000).toLocaleString();
       if (dt.toMillis) return new Date(dt.toMillis()).toLocaleString();
       if (typeof dt === 'number') return new Date(dt).toLocaleString();
-      return new Date(dt).toLocaleString();
+      const t = Date.parse(dt); return Number.isFinite(t) ? new Date(t).toLocaleString() : '';
     }
     function debounce(fn, ms=300){
       let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
@@ -363,7 +362,7 @@
         userId
       });
       if (annLastSig === sig && announcements.length) {
-        renderAnnouncements(); // re-render even if same to apply UI changes
+        renderAnnouncements();
         return;
       }
       annLastSig = sig;
@@ -389,7 +388,7 @@
       const sort  = $('#annSort').value || 'publish_desc';
       const limit = parseInt($('#annLimit').value || '10', 10);
 
-      // search only by TITLE (compact view)
+      // search by TITLE only (compact)
       let list = announcements.slice();
       if (q) list = list.filter(a => String(a.title || '').toLowerCase().includes(q));
 
@@ -401,7 +400,6 @@
         return sort === 'publish_asc' ? (am - bm) : (bm - am);
       });
 
-      // limit
       list = list.slice(0, limit);
 
       count.textContent = `${list.length} announcement${list.length !== 1 ? 's' : ''}`;
@@ -414,15 +412,33 @@
 
       list.forEach(a => {
         const poster = teacherDisplay(a);
+        const published = toLocal(a.publishAt || a.createdAt);
         const div = document.createElement('div');
         div.className = 'ann-row';
         div.innerHTML = `
-          <h3 class="ann-title wrap-anywhere"><i class="bi bi-megaphone me-1"></i>${escapeHtml(a.title || 'Announcement')}</h3>
-          <div class="ann-controls">
-            <span class="ann-poster">Posted by <strong>${escapeHtml(poster)}</strong></span>
+          <div class="d-flex align-items-center">
+            <h3 class="ann-title wrap-anywhere mb-0">
+              <i class="bi bi-megaphone me-1"></i>${escapeHtml(a.title || 'Announcement')}
+            </h3>
+            <span class="ann-meta ms-3">
+              Posted by <strong>${escapeHtml(poster)}</strong> • ${escapeHtml(published)}
+            </span>
+          </div>
+          <div class="ann-actions">
+            <button class="btn btn-amber btn-sm ann-view-btn" data-id="${escapeHtml(a.id)}">
+              <i class="bi bi-eye me-1"></i> View
+            </button>
           </div>
         `;
         wrap.appendChild(div);
+      });
+
+      // view buttons -> forum_view with ?ann=<id>
+      wrap.querySelectorAll('.ann-view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          window.location.href = `forum_view.html?ann=${encodeURIComponent(id)}`;
+        });
       });
     }
 
@@ -469,9 +485,6 @@
       }
 
       threads.forEach(t => {
-        const followed = Array.isArray(t.followers) && __user?.uid
-          ? t.followers.includes(__user.uid) : false;
-
         const courseTitle = t.courseTitle
           || coursesById.get(t.courseId)?.title
           || coursesById.get(t.courseId)?.name
@@ -486,10 +499,6 @@
               <button class="btn btn-amber view-btn" data-id="${t.id}">
                 <i class="bi bi-eye"></i> View
               </button>
-              <button class="btn btn-sm btn-amber-outline follow-btn ${followed ? 'active' : ''}" data-id="${t.id}">
-                <i class="bi ${followed ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>
-                ${followed ? 'Following' : 'Follow'}
-              </button>
             </div>
           </div>
           <div class="thread-meta mb-2">
@@ -499,34 +508,6 @@
           </div>
         `;
         wrap.appendChild(div);
-      });
-
-      // follow toggle
-      wrap.querySelectorAll('.follow-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.getAttribute('data-id');
-          const wasActive = btn.classList.contains('active');
-
-          // optimistic UI
-          btn.disabled = true;
-          btn.classList.toggle('active', !wasActive);
-          btn.innerHTML = `<i class="bi ${!wasActive ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>${!wasActive ? 'Following' : 'Follow'}`;
-
-          try {
-            await fetchJSON(`${FORUM_API}/threads/${id}/follow`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ uid: __user.uid }),
-            });
-          } catch (err) {
-            // revert on error
-            btn.classList.toggle('active', wasActive);
-            btn.innerHTML = `<i class="bi ${wasActive ? 'bi-bookmark-fill' : 'bi-bookmark'} me-1"></i>${wasActive ? 'Following' : 'Follow'}`;
-            alert('Could not update follow state.');
-          } finally {
-            btn.disabled = false;
-          }
-        });
       });
 
       // view button redirect

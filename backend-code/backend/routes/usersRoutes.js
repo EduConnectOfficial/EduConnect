@@ -3,7 +3,7 @@ const router = require('express').Router();
 const bcrypt = require('bcrypt');
 
 const { asyncHandler } = require('../middleware/asyncHandler');
-const { firestore, admin } = require('../config/firebase');
+const { firestore, admin, bucket } = require('../config/firebase'); // ⬅️ include bucket
 
 // memory uploader
 const { uploadMemory } = require('../config/multerConfig');
@@ -88,6 +88,27 @@ function maybeRunUploadSingle(field) {
       return next(err);
     });
   };
+}
+
+// Small helpers for profile overwrite
+function extFromMime(mime = '') {
+  const m = String(mime).toLowerCase();
+  if (m.includes('jpeg')) return '.jpg';
+  if (m.includes('jpg'))  return '.jpg';
+  if (m.includes('png'))  return '.png';
+  if (m.includes('webp')) return '.webp';
+  if (m.includes('gif'))  return '.gif';
+  return ''; // let it be extensionless if unknown
+}
+
+async function deleteFileIfExists(storagePath) {
+  if (!storagePath) return;
+  try {
+    await bucket.file(storagePath).delete({ ignoreNotFound: true });
+  } catch (err) {
+    // soft fail; we don't want to block the request on delete issues
+    console.warn('[usersRoutes] delete old profile failed:', storagePath, err?.message || err);
+  }
 }
 
 // --- availability checks MUST come before "/:userId" ---
@@ -183,8 +204,28 @@ router.post(
       updates.username = username;
     }
 
+    // ⚙️ Profile picture overwrite flow
     if (file && file.buffer && file.originalname) {
-      const destPath = buildStoragePath('profiles', userId, file.originalname);
+      // 1) Load existing user to know prior storagePath (for cleanup)
+      const userRef = firestore.collection(USERS_COL).doc(userId);
+      const existingSnap = await userRef.get();
+      const existing = existingSnap.exists ? existingSnap.data() : null;
+      const priorStoragePath = existing?.photo?.storagePath;
+
+      // 2) Choose a deterministic destination path (overwrite same key)
+      const ext = extFromMime(file.mimetype) || (file.originalname.includes('.') ? ('.' + file.originalname.split('.').pop()) : '');
+      // Prefer ext from mimetype; fallback to originalname if present
+      const destPath = `profiles/${userId}/avatar${ext || ''}`;
+
+      // 3) (Optional but safe) delete if path changed or object exists
+      //    - If your bucket has versioning disabled (default), overwriting is fine.
+      //    - We still delete any previous different path to clean up legacy uploads.
+      if (priorStoragePath && priorStoragePath !== destPath) {
+        await deleteFileIfExists(priorStoragePath);
+      }
+      // Also defensively delete the target key to ensure a fresh object
+      await deleteFileIfExists(destPath);
+
       try {
         const saved = await saveBufferToStorage(file.buffer, {
           destPath,
@@ -192,20 +233,26 @@ router.post(
           metadata: {
             uploadedBy: userId,
             source: 'usersRoutes.profile',
+            cacheControl: 'no-cache', // reduce stale caching
           },
         });
 
-        updates.photoURL = saved.downloadUrl;
+        // Cache-bust clients (esp. if they cached previous token/url)
+        const ts = Date.now();
+        const bust = saved.downloadUrl.includes('?') ? `&t=${ts}` : `?t=${ts}`;
+
+        updates.photoURL = `${saved.downloadUrl}${bust}`;
         updates.photo = {
           originalName: file.originalname,
           size: file.size,
           mime: file.mimetype,
           gsUri: saved.gsUri,
-          storagePath: saved.storagePath,
+          storagePath: saved.storagePath, // equals destPath
           publicUrl: saved.publicUrl,
           downloadUrl: saved.downloadUrl,
           token: saved.token,
           uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+          cacheBust: ts,
         };
       } catch (e) {
         return res.status(500).json({
