@@ -471,7 +471,6 @@
 
     </div>
   </div>
-
   <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <!-- Bootstrap JS -->
@@ -1208,7 +1207,7 @@
     });
     enablePaginationEl.addEventListener("change", () => { perPageEl.disabled = !enablePaginationEl.checked; markDirty(); });
 
-    /* ---------- Bulk CSV: TEMPLATES + DOWNLOAD (no new tab) ---------- */
+    /* ---------- Bulk CSV: TEMPLATES + DOWNLOAD (fixed) ---------- */
     function buildCsvTemplate(kind) {
       const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
       const rows = [header];
@@ -1234,7 +1233,8 @@
     function downloadCSV(kind, filename) {
       const csv = buildCsvTemplate(kind);
       const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excel-friendly
-      const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8;' });
+      // Ensure a strict CSV MIME so some browsers/platforms don't try to open as text
+      const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8' });
 
       // IE/Edge Legacy
       if (window.navigator && typeof window.navigator.msSaveBlob === 'function') {
@@ -1242,19 +1242,30 @@
         return;
       }
 
-      // Standard path: object URL + download attribute (no new tab)
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       a.setAttribute('download', filename);
-      a.rel = 'noopener';
+
+      // Safari/iOS fallback: if download attribute isn't honored, open in a new tab
+      const ua = navigator.userAgent;
+      const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+      const isIOS = /iPad|iPhone|iPod/.test(ua);
+
+      if (isSafari || isIOS) {
+        // Some Safari versions require target=_blank to trigger a file save dialog
+        a.setAttribute('target', '_blank');
+      }
+
       document.body.appendChild(a);
       a.click();
-      requestAnimationFrame(() => {
-        document.body.removeChild(a);
+
+      // Cleanup
+      setTimeout(() => {
         URL.revokeObjectURL(url);
-      });
+        a.remove();
+      }, 0);
     }
 
     // Wire buttons
@@ -1684,6 +1695,7 @@
       window.location.href = "/TEACHER/login/login.html";
     }
   </script>
+
 </body>
 
 </html>

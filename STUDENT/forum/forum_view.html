@@ -328,29 +328,69 @@
     });
 
     /* ===========================
-       Teacher name lookup (ensures Name, not ID)
+       Teacher name lookup (resilient & cached)
     ============================*/
     const teacherNameCache = new Map();
+
+    function pickName(obj) {
+      if (!obj) return null;
+      const t = obj.teacher || obj.user || obj;
+      return (
+        t?.fullName ||
+        t?.name ||
+        t?.displayName ||
+        (t?.firstName && t?.lastName ? `${t.firstName} ${t.lastName}` : null)
+      );
+    }
+
+    async function fetchJSONSafe(url) {
+      try { return await fetchJSON(url); } catch { return null; }
+    }
+
     async function fetchTeacherNameById(teacherId) {
       if (!teacherId) return null;
-      if (teacherNameCache.has(teacherId)) return teacherNameCache.get(teacherId);
+      const key = String(teacherId);
+      if (teacherNameCache.has(key)) return teacherNameCache.get(key);
 
-      // Try /api/teachers/:id
-      try {
-        const t = await fetchJSON(`${CORE_API}/api/teachers/${encodeURIComponent(teacherId)}`);
-        const name = t?.teacher?.fullName || t?.teacher?.name || t?.teacher?.displayName;
-        if (name) { teacherNameCache.set(teacherId, name); return name; }
-      } catch {}
+      const looksLikeEmail = /\S+@\S+\.\S+/.test(key);
+      const looksLikeRoleId = /^[Tt][-_\dA-Za-z]+$/.test(key) || /^TCH[-_\dA-Za-z]+$/.test(key);
 
-      // Try /api/users/:id
-      try {
-        const u = await fetchJSON(`${CORE_API}/api/users/${encodeURIComponent(teacherId)}`);
-        const name = u?.user?.fullName || u?.user?.name || u?.user?.displayName;
-        if (name) { teacherNameCache.set(teacherId, name); return name; }
-      } catch {}
+      // 1) /api/teachers/:id
+      let j = await fetchJSONSafe(`${CORE_API}/api/teachers/${encodeURIComponent(key)}`);
+      let name = pickName(j);
+      if (name) { teacherNameCache.set(key, name); return name; }
 
-      teacherNameCache.set(teacherId, null);
-      return null;
+      // 2) /api/users/:id
+      j = await fetchJSONSafe(`${CORE_API}/api/users/${encodeURIComponent(key)}`);
+      name = pickName(j);
+      if (name) { teacherNameCache.set(key, name); return name; }
+
+      // 3) byRoleId variants
+      if (looksLikeRoleId) {
+        j = await fetchJSONSafe(`${CORE_API}/api/teachers/byRoleId/${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+
+        j = await fetchJSONSafe(`${CORE_API}/api/users/byRoleId/${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+      }
+
+      // 4) lookup by email
+      if (looksLikeEmail) {
+        j = await fetchJSONSafe(`${CORE_API}/api/users/lookup?email=${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+
+        j = await fetchJSONSafe(`${CORE_API}/api/teachers/lookup?email=${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+      }
+
+      // 5) fallback (still show something meaningful)
+      const fallback = key.length > 24 ? `Teacher (${key.slice(0, 10)}…)` : `Teacher (${key})`;
+      teacherNameCache.set(key, fallback);
+      return fallback;
     }
 
     /* ===========================
@@ -418,9 +458,8 @@
 
         // Ensure we show a NAME, not ID
         let poster = a.teacherName || a.teacher || null;
-        if (!poster && a.teacherId) {
-          const lookedUp = await fetchTeacherNameById(a.teacherId);
-          if (lookedUp) poster = lookedUp;
+        if (!poster) {
+          poster = a.teacherId ? await fetchTeacherNameById(a.teacherId) : null;
         }
         poster = poster || 'Teacher';
 
@@ -461,7 +500,7 @@
         else roots.push(r);
       });
       roots.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
-      (function sortKids(list){ list.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt)); list.forEach(x=>sortKids(x.children)); })(roots);
+      (function sortKids(list){ list.sort((a,b)=> new Date(a.createdAt)- new Date(b.createdAt)); list.forEach(x=>sortKids(x.children)); })(roots);
       return roots;
     }
 
