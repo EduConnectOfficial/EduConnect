@@ -23,6 +23,13 @@
     .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:shimmer 1.2s infinite}
     @keyframes shimmer{100%{transform:translateX(100%)}}
     .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
+
+    /* Announcements */
+    .ann-item + .ann-item{margin-top:.75rem}
+    .ann-title{margin:0;font-size:1.05rem}
+    .ann-meta{color:#6c757d;font-size:.9rem}
+    .class-chip{display:inline-block;padding:.2rem .5rem;border-radius:999px;background:#f1f3f5;margin:.125rem .25rem .125rem 0;font-size:.8rem}
+    .badge-status{font-size:.75rem}
   </style>
 </head>
 <body>
@@ -87,7 +94,46 @@
           </form>
         </div>
 
-        <!-- Controls: search + filter + sort -->
+        <!-- Announcements: search/filter -->
+        <div class="ui-card card-themed mb-3">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Latest Announcements</h2>
+            <div class="ui-subtext" id="annCount">Loading…</div>
+          </div>
+
+          <div class="row g-2 align-items-end px-3 pb-3">
+            <div class="col-12 col-md-8">
+              <label class="form-label" for="annSearch">Search Announcements</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input id="annSearch" type="search" class="form-control border-start-0" placeholder="Search by title or content..." />
+              </div>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label" for="annSort">Sort</label>
+              <select id="annSort" class="form-select">
+                <option value="publish_desc">Newest</option>
+                <option value="publish_asc">Oldest</option>
+                <option value="title_az">Title A → Z</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label" for="annLimit">Show</label>
+              <select id="annLimit" class="form-select">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="annList" class="px-3 pb-3">
+            <div class="skeleton rounded-3"></div>
+            <div class="skeleton rounded-3 mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Controls: search + filter + sort (Threads) -->
         <div class="ui-card card-themed mb-3">
           <div class="row g-2 align-items-end px-3 pb-3">
             <div class="col-12 col-md-6">
@@ -172,7 +218,7 @@
       return ''; // same-origin in production
     }
     const API_BASE   = resolveApiBase();
-    const CORE_API   = API_BASE;                 // core routes (students/courses)
+    const CORE_API   = API_BASE;                 // core routes (students/courses/classes/announcements)
     const FORUM_API  = `${API_BASE}/api/forum`;  // forum routes
 
     /* ========= Helpers ========= */
@@ -187,6 +233,9 @@
     function toLocal(dt) {
       if (!dt) return '';
       if (dt._seconds) return new Date(dt._seconds * 1000).toLocaleString();
+      if (dt.seconds)  return new Date(dt.seconds * 1000).toLocaleString();
+      if (dt.toMillis) return new Date(dt.toMillis()).toLocaleString();
+      if (typeof dt === 'number') return new Date(dt).toLocaleString();
       return new Date(dt).toLocaleString();
     }
     function debounce(fn, ms=300){
@@ -244,8 +293,39 @@
     let courses = [];
     const coursesById = new Map();
     const enrolledCourseIds = new Set();
+
     let threads = [];
     let lastQuery = { courseId:'', q:'', sort:'newest' };
+
+    // Announcements
+    let announcements = [];
+    let classLabelCache = new Map();
+    let annLastSig = '';
+
+    /* ========= Class label helpers ========= */
+    function fmtClassLabel(c) {
+      const name = [c.name, c.gradeLevel ? `Grade ${c.gradeLevel}` : null, c.section ? `Section ${c.section}` : null]
+        .filter(Boolean).join(' - ');
+      return name + (c.archived ? ' (Archived)' : '');
+    }
+    async function fetchClassLabelById(id) {
+      if (classLabelCache.has(id)) return classLabelCache.get(id);
+      try {
+        const j = await fetchJSON(`${CORE_API}/api/classes/${encodeURIComponent(id)}`);
+        if (j?.success && j.class) {
+          const label = fmtClassLabel(j.class);
+          classLabelCache.set(id, label);
+          return label;
+        }
+      } catch {}
+      classLabelCache.set(id, id);
+      return id;
+    }
+    async function ensureClassLabels(ids) {
+      const missing = Array.from(new Set(ids)).filter(id => !classLabelCache.has(id));
+      if (!missing.length) return;
+      await Promise.all(missing.map(fetchClassLabelById));
+    }
 
     /* ========= Load ONLY enrolled courses ========= */
     async function loadCourses() {
@@ -280,7 +360,124 @@
       }
     }
 
-    /* ========= Load threads (server search) and hard-filter to enrolled ========= */
+    /* ========= Announcements (Student feed) ========= */
+    function badgeClass(status) {
+      switch (String(status || '').toLowerCase()) {
+        case 'published': return 'badge bg-success';
+        case 'scheduled': return 'badge bg-secondary';
+        case 'expired':   return 'badge bg-dark';
+        default:          return 'badge bg-light text-dark';
+      }
+    }
+    function getMs(v){
+      if (!v) return 0;
+      if (typeof v === 'number') return v;
+      if (v._seconds) return v._seconds * 1000;
+      if (v.seconds)  return v.seconds * 1000;
+      if (v.toMillis) return v.toMillis();
+      return new Date(v).getTime();
+    }
+
+    async function loadAnnouncements() {
+      const userId = __user.uid || __user.userId || __user.email;
+      const sig = JSON.stringify({
+        q: ($('#annSearch').value || '').trim(),
+        sort: $('#annSort').value || 'publish_desc',
+        limit: $('#annLimit').value || '10',
+        userId
+      });
+      if (annLastSig === sig && announcements.length) {
+        renderAnnouncements(); // still re-render with same state (e.g., user changed search box)
+        return;
+      }
+      annLastSig = sig;
+
+      const wrap = $('#annList');
+      wrap.innerHTML = `<div class="skeleton rounded-3"></div><div class="skeleton rounded-3 mt-2"></div>`;
+
+      try {
+        const j = await fetchJSON(`${CORE_API}/api/announcements/student/${encodeURIComponent(userId)}`);
+        let arr = Array.isArray(j?.announcements) ? j.announcements : [];
+
+        // Ensure class labels (optional but nicer)
+        const allIds = arr.flatMap(a => (a.classIds || a.classes || []));
+        await ensureClassLabels(allIds);
+
+        announcements = arr;
+        renderAnnouncements();
+      } catch (e) {
+        console.error(e);
+        $('#annCount').textContent = '0 announcements';
+        wrap.innerHTML = `<div class="empty-state">Announcements are unavailable right now.</div>`;
+      }
+    }
+
+    function renderAnnouncements() {
+      const wrap = $('#annList');
+      const count = $('#annCount');
+      const q = ($('#annSearch').value || '').trim().toLowerCase();
+      const sort = $('#annSort').value || 'publish_desc';
+      const limit = parseInt($('#annLimit').value || '10', 10);
+
+      let list = announcements.slice();
+
+      if (q) {
+        list = list.filter(a =>
+          String(a.title || '').toLowerCase().includes(q) ||
+          String(a.content || '').toLowerCase().includes(q)
+        );
+      }
+
+      // sort
+      list.sort((a, b) => {
+        if (sort === 'title_az') {
+          return String(a.title || '').localeCompare(String(b.title || ''));
+        }
+        const am = getMs(a.publishAt), bm = getMs(b.publishAt);
+        return sort === 'publish_asc' ? (am - bm) : (bm - am);
+      });
+
+      // limit
+      list = list.slice(0, limit);
+
+      count.textContent = `${list.length} announcement${list.length !== 1 ? 's' : ''}`;
+      wrap.innerHTML = '';
+
+      if (!list.length) {
+        wrap.innerHTML = `<div class="empty-state">No announcements match your filters.</div>`;
+        return;
+      }
+
+      list.forEach(a => {
+        const classIds = a.classIds || a.classes || [];
+        const classesText = classIds.map(id => classLabelCache.get(id) || id);
+        const status = String(a.status || 'published');
+        const importantIcon = a.important ? `<i class="bi bi-exclamation-circle-fill text-danger" title="Important"></i>` : '';
+        const pubTxt = toLocal(a.publishAt);
+        const expTxt = a.expiresAt ? toLocal(a.expiresAt) : '—';
+
+        const div = document.createElement('div');
+        div.className = 'ann-item';
+        div.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h3 class="ann-title wrap-anywhere">
+                ${importantIcon} ${escapeHtml(a.title || 'Announcement')}
+                <span class="badge badge-status ${badgeClass(status).split(' ').slice(1).join(' ')}">${escapeHtml(status)}</span>
+              </h3>
+              <div class="ann-meta">Published: ${pubTxt} • Expires: ${expTxt}</div>
+              <div class="mt-1">
+                ${classesText.map(lbl => `<span class="class-chip">${escapeHtml(lbl)}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="mt-2">${escapeHtml(a.content || '')}</div>
+        `;
+        wrap.appendChild(div);
+      });
+    }
+
+    /* ========= Threads ========= */
     async function loadThreads() {
       const filterVal = $('#courseFilter').value;
       const courseId = (filterVal && filterVal !== 'All') ? filterVal : '';
@@ -416,17 +613,26 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await loadCourses();
+        await loadAnnouncements();  // <-- NEW: pull announcements for this student
         await loadThreads();
       } catch (e) {
         console.error(e);
+        $('#annList').innerHTML = `<div class="empty-state">Announcements unavailable.</div>`;
+        $('#annCount').textContent = `0 announcements`;
         $('#forumThreads').innerHTML = `<div class="empty-state">Forum API unreachable.</div>`;
         $('#threadCount').textContent = `0 threads`;
       }
 
-      const debouncedLoad = debounce(loadThreads, 300);
-      $('#threadSearch').addEventListener('input', debouncedLoad);
+      const debouncedLoadThreads = debounce(loadThreads, 300);
+      $('#threadSearch').addEventListener('input', debouncedLoadThreads);
       $('#courseFilter').addEventListener('change', loadThreads);
       $('#sortThreads').addEventListener('change', loadThreads);
+
+      // Announcements UI events
+      const debouncedAnnRender = debounce(renderAnnouncements, 250);
+      $('#annSearch').addEventListener('input', debouncedAnnRender);
+      $('#annSort').addEventListener('change', renderAnnouncements);
+      $('#annLimit').addEventListener('change', renderAnnouncements);
 
       // Ask form
       $('#questionForm').addEventListener('submit', async (e) => {

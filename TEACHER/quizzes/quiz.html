@@ -843,7 +843,8 @@
       }
       classes.forEach(c => {
         const id = c.id || c._id || c.classId || "";
-        const name = c.name || c.className || "Untitled Class";
+        theName = c.name || c.className || "Untitled Class";
+        const name = theName;
         const grade = c.gradeLevel ?? c.grade ?? "—";
         const section = c.section ?? c.sectionName ?? "—";
 
@@ -1207,7 +1208,7 @@
     });
     enablePaginationEl.addEventListener("change", () => { perPageEl.disabled = !enablePaginationEl.checked; markDirty(); });
 
-    /* ---------- Bulk CSV: TEMPLATES + DOWNLOAD (cross-browser) ---------- */
+    /* ---------- Bulk CSV: TEMPLATES + DOWNLOAD (no new tab) ---------- */
     function buildCsvTemplate(kind) {
       const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
       const rows = [header];
@@ -1227,18 +1228,7 @@
         rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
       }
 
-      // relies on existing toCSV(rows) in this page
       return toCSV(rows);
-    }
-    function isSafari() {
-      const ua = navigator.userAgent;
-      const isChromium = /\bChrom(e|ium)\b/.test(ua);
-      const isSafariOnly = /^((?!chrome|android).)*safari/i.test(ua);
-      return isSafariOnly && !isChromium;
-    }
-    function isIOS() {
-      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     }
 
     function downloadCSV(kind, filename) {
@@ -1252,26 +1242,7 @@
         return;
       }
 
-      // iOS/Safari fallback (no download attr / blob object URLs)
-      if (isSafari() || isIOS()) {
-        try {
-          const reader = new FileReader();
-          reader.onloadend = function () {
-            const a = document.createElement('a');
-            a.href = reader.result; // data URL
-            a.target = '_blank';
-            a.rel = 'noopener';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          };
-          reader.readAsDataURL(blob);
-          return;
-        } catch (e) {
-          // fall through to object URL path
-        }
-      }
-      // Standard path
+      // Standard path: object URL + download attribute (no new tab)
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -1279,13 +1250,11 @@
       a.setAttribute('download', filename);
       a.rel = 'noopener';
       document.body.appendChild(a);
-      setTimeout(() => {
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 0);
-      }, 0);
+      a.click();
+      requestAnimationFrame(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
     }
 
     // Wire buttons
