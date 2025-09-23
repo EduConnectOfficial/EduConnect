@@ -336,27 +336,68 @@
       const t = Date.parse(v); return Number.isFinite(t) ? t : 0;
     }
 
+    // ---------- TEACHER NAME RESOLUTION (robust + cached) ----------
     const teacherNameCache = new Map();
+
+    function pickName(obj) {
+      if (!obj) return null;
+      const t = obj.teacher || obj.user || obj;
+      return (
+        t?.fullName ||
+        t?.name ||
+        t?.displayName ||
+        (t?.firstName && t?.lastName ? `${t.firstName} ${t.lastName}` : null)
+      );
+    }
+
+    async function fetchJSONSafe(url) {
+      try { return await fetchJSON(url); } catch { return null; }
+    }
+
     async function resolveTeacherName(teacherId){
       if (!teacherId) return null;
-      if (teacherNameCache.has(teacherId)) return teacherNameCache.get(teacherId);
+      const key = String(teacherId);
+      if (teacherNameCache.has(key)) return teacherNameCache.get(key);
 
-      // Try /api/teachers/:id
-      try {
-        const t = await fetchJSON(`${CORE_API}/api/teachers/${encodeURIComponent(teacherId)}`);
-        const n = t?.teacher?.fullName || t?.teacher?.name || t?.teacher?.displayName;
-        if (n) { teacherNameCache.set(teacherId, n); return n; }
-      } catch {}
+      const looksLikeEmail  = /\S+@\S+\.\S+/.test(key);
+      const looksLikeRoleId = /^[Tt][-_\dA-Za-z]+$/.test(key) || /^TCH[-_\dA-Za-z]+$/.test(key);
 
-      // Try /api/users/:id
-      try {
-        const u = await fetchJSON(`${CORE_API}/api/users/${encodeURIComponent(teacherId)}`);
-        const n = u?.user?.fullName || u?.user?.name || u?.user?.displayName;
-        if (n) { teacherNameCache.set(teacherId, n); return n; }
-      } catch {}
+      // 1) Direct teacher doc by id
+      let j = await fetchJSONSafe(`${CORE_API}/api/teachers/${encodeURIComponent(key)}`);
+      let name = pickName(j);
+      if (name) { teacherNameCache.set(key, name); return name; }
 
-      teacherNameCache.set(teacherId, null);
-      return null;
+      // 2) Direct user doc by id
+      j = await fetchJSONSafe(`${CORE_API}/api/users/${encodeURIComponent(key)}`);
+      name = pickName(j);
+      if (name) { teacherNameCache.set(key, name); return name; }
+
+      // 3) byRoleId variants (if you store custom teacher role IDs)
+      if (looksLikeRoleId) {
+        j = await fetchJSONSafe(`${CORE_API}/api/teachers/byRoleId/${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+
+        j = await fetchJSONSafe(`${CORE_API}/api/users/byRoleId/${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+      }
+
+      // 4) lookup by email (if teacherId is an email)
+      if (looksLikeEmail) {
+        j = await fetchJSONSafe(`${CORE_API}/api/users/lookup?email=${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+
+        j = await fetchJSONSafe(`${CORE_API}/api/teachers/lookup?email=${encodeURIComponent(key)}`);
+        name = pickName(j);
+        if (name) { teacherNameCache.set(key, name); return name; }
+      }
+
+      // 5) fallback text (still better than blank "Teacher")
+      const fallback = key.length > 24 ? `Teacher (${key.slice(0, 10)}…)` : `Teacher (${key})`;
+      teacherNameCache.set(key, fallback);
+      return fallback;
     }
 
     async function ensureAnnouncementNames(list){

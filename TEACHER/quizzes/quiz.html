@@ -727,14 +727,27 @@
     document.getElementById('rubricReplaceInput')?.addEventListener('change', markDirty);
     document.getElementById('bulkFile')?.addEventListener('change', markDirty);
 
-    document.addEventListener('click', (e) => {
-      const a = e.target.closest('a[href]'); if (!a) return;
-      const href = a.getAttribute('href') || '';
-      const t = (a.getAttribute('target') || '').toLowerCase();
-      if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank') return;
-      if (isDirty) { e.preventDefault(); pendingNavigateTo = href; dirtyModal.show(); }
-    });
-    window.addEventListener('beforeunload', (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+
+  // Allow in-page anchors, Bootstrap triggers, target=_blank,
+  // and any anchors that are downloads or explicitly bypass the guard.
+  const href = a.getAttribute('href') || '';
+  const t = (a.getAttribute('target') || '').toLowerCase();
+
+  const isDownloadAnchor = a.hasAttribute('download') || a.getAttribute('data-bypass-dirty') === 'true';
+
+  if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank' || isDownloadAnchor) {
+    return;
+  }
+
+  if (isDirty) {
+    e.preventDefault();
+    pendingNavigateTo = href;
+    dirtyModal.show();
+  }
+});
 
     /* ---------- Course / Module ---------- */
     async function loadCourses() {
@@ -1230,43 +1243,47 @@
       return toCSV(rows);
     }
 
-    function downloadCSV(kind, filename) {
-      const csv = buildCsvTemplate(kind);
-      const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excel-friendly
-      // Ensure a strict CSV MIME so some browsers/platforms don't try to open as text
-      const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8' });
+function downloadCSV(kind, filename) {
+  const csv = buildCsvTemplate(kind);
+  const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excel-friendly
+  const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8' });
 
-      // IE/Edge Legacy
-      if (window.navigator && typeof window.navigator.msSaveBlob === 'function') {
-        window.navigator.msSaveBlob(blob, filename);
-        return;
-      }
+  // IE/Edge Legacy
+  if (window.navigator && typeof window.navigator.msSaveBlob === 'function') {
+    window.navigator.msSaveBlob(blob, filename);
+    return;
+  }
 
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.setAttribute('download', filename);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.setAttribute('download', filename);
+  a.setAttribute('rel', 'noopener');
+  // Ensure our dirty guard doesn't block this programmatic click
+  a.setAttribute('data-bypass-dirty', 'true');
 
-      // Safari/iOS fallback: if download attribute isn't honored, open in a new tab
-      const ua = navigator.userAgent;
-      const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-      const isIOS = /iPad|iPhone|iPod/.test(ua);
+  // Safari/iOS: target=_blank helps trigger the save dialog when download attr is ignored
+  const ua = navigator.userAgent;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  if (isSafari || isIOS) {
+    a.setAttribute('target', '_blank');
+  }
 
-      if (isSafari || isIOS) {
-        // Some Safari versions require target=_blank to trigger a file save dialog
-        a.setAttribute('target', '_blank');
-      }
+  // Prevent any bubbling from this synthetic click just in case
+  a.addEventListener('click', (ev) => ev.stopPropagation(), true);
 
-      document.body.appendChild(a);
-      a.click();
+  document.body.appendChild(a);
+  a.click();
 
-      // Cleanup
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 0);
-    }
+  // Cleanup after a short delay so the URL stays valid through the download start
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 1200);
+}
+
 
     // Wire buttons
     document.getElementById('downloadCsvTplMcq')?.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
