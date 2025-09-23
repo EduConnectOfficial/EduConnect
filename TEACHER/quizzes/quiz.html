@@ -477,1161 +477,1238 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
- <script>
-  /* =========================
-     RAILWAY-FRIENDLY API BASE
-     ========================= */
-  const API = (() => {
-    const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
-    const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
-    const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
-    const host = location.hostname;
-    const onLocal = (host === 'localhost' || host === '127.0.0.1');
-    // Default: local -> http://127.0.0.1:5000, prod -> same-origin /api
-    const chosen = byMeta || byWindow || byStorage || (onLocal ? 'http://127.0.0.1:5000' : '/api');
-    return String(chosen).replace(/\/+$/, '');
-  })();
+  <script>
+    /* =========================
+       RAILWAY-FRIENDLY API BASE
+       ========================= */
+    const API = (() => {
+      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+      const host = location.hostname;
+      const onLocal = (host === 'localhost' || host === '127.0.0.1');
+      // Default: local -> http://127.0.0.1:5000, prod -> same-origin /api
+      const chosen = byMeta || byWindow || byStorage || (onLocal ? 'http://127.0.0.1:5000' : '/api');
+      return String(chosen).replace(/\/+$/, '');
+    })();
 
-  function apiFetch(path, options = {}) {
-    const url = `${API}${path.startsWith('/') ? '' : '/'}${path}`;
-    const headers = new Headers(options.headers || {});
-    if (!headers.has('Accept')) headers.set('Accept', 'application/json');
-    return fetch(url, { ...options, headers });
-  }
+    // Central fetch wrapper
+    function apiFetch(path, options = {}) {
+      const url = `${API}${path.startsWith('/') ? '' : '/'}${path}`;
+      const headers = new Headers(options.headers || {});
+      if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+      // If you use auth:
+      // headers.set('Authorization', 'Bearer ' + (localStorage.getItem('token') || ''));
+      return fetch(url, { ...options, headers });
+    }
 
-  const TEACHER_FILE_LIMIT_MB = 300;
-  const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
-  const MAX_ASSIGNED_CLASSES = 500;
+    const TEACHER_FILE_LIMIT_MB = 300;
+    const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
+    const MAX_ASSIGNED_CLASSES = 500;
 
-  /* ========= Brand Alert / Confirm ========= */
-  function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
-    const el = document.getElementById('brandAlertModal');
-    document.getElementById('brandAlertTitle').textContent = title;
-    document.getElementById('brandAlertBody').innerHTML = message;
-    const footer = document.getElementById('brandAlertFooter');
-    footer.innerHTML = '';
-    const okBtn = document.createElement('button');
-    okBtn.className = 'btn-amber';
-    okBtn.textContent = okText;
-    okBtn.setAttribute('data-bs-dismiss', 'modal');
-    if (typeof onOk === 'function') okBtn.addEventListener('click', onOk);
-    footer.appendChild(okBtn);
-    new bootstrap.Modal(el).show();
-  }
-  function brandConfirm({ title = 'Please confirm', message = 'Are you sure?', confirmText = 'Confirm', cancelText = 'Cancel' }) {
-    return new Promise(resolve => {
+    /* ========= Brand Alert / Confirm ========= */
+    function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
       const el = document.getElementById('brandAlertModal');
       document.getElementById('brandAlertTitle').textContent = title;
       document.getElementById('brandAlertBody').innerHTML = message;
+
       const footer = document.getElementById('brandAlertFooter');
       footer.innerHTML = '';
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn btn-amber-outline';
-      cancelBtn.textContent = cancelText;
-      cancelBtn.setAttribute('data-bs-dismiss', 'modal');
-      cancelBtn.addEventListener('click', () => resolve(false));
       const okBtn = document.createElement('button');
-      okBtn.className = 'btn btn-amber';
-      okBtn.textContent = confirmText;
-      okBtn.addEventListener('click', () => {
-        resolve(true);
-        const inst = bootstrap.Modal.getInstance(el);
-        if (inst) inst.hide();
-      });
-      footer.append(cancelBtn, okBtn);
+      okBtn.className = 'btn-amber';
+      okBtn.textContent = okText;
+      okBtn.setAttribute('data-bs-dismiss', 'modal');
+      if (typeof onOk === 'function') okBtn.addEventListener('click', onOk);
+      footer.appendChild(okBtn);
+
       new bootstrap.Modal(el).show();
-    });
-  }
-  window.alert = (msg) => openBrandAlert({ title: 'Notice', message: String(msg || '') });
+    }
+    function brandConfirm({ title = 'Please confirm', message = 'Are you sure?', confirmText = 'Confirm', cancelText = 'Cancel' }) {
+      return new Promise(resolve => {
+        const el = document.getElementById('brandAlertModal');
+        document.getElementById('brandAlertTitle').textContent = title;
+        document.getElementById('brandAlertBody').innerHTML = message;
 
-  /* ---------- Sidebar ---------- */
-  document.addEventListener("DOMContentLoaded", () => {
-    fetch("/components/sidebar.html")
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("sidebar-container").innerHTML = html;
-        const sidebar = document.querySelector(".sidebar");
-        const dashboard = document.querySelector(".dashboard");
-        if (sidebar && dashboard) {
-          sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
-          sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
-        }
-        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
-          toggle.addEventListener('click', e => {
-            e.preventDefault();
-            const parent = toggle.closest('.has-submenu');
-            parent.classList.toggle('open');
-            const expanded = toggle.getAttribute('aria-expanded') === 'true';
-            toggle.setAttribute('aria-expanded', String(!expanded));
-          });
+        const footer = document.getElementById('brandAlertFooter');
+        footer.innerHTML = '';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-amber-outline';
+        cancelBtn.textContent = cancelText;
+        cancelBtn.setAttribute('data-bs-dismiss', 'modal');
+        cancelBtn.addEventListener('click', () => resolve(false));
+
+        const okBtn = document.createElement('button');
+        okBtn.className = 'btn btn-amber';
+        okBtn.textContent = confirmText;
+        okBtn.addEventListener('click', () => {
+          resolve(true);
+          const inst = bootstrap.Modal.getInstance(el);
+          if (inst) inst.hide();
         });
-      })
-      .catch(err => console.error("Failed to load sidebar:", err));
-  });
 
-  /* ---------- Auth Guard + initials ---------- */
-  (function initHeaderInitials() {
-    try {
-      const stored = JSON.parse(localStorage.getItem("user") || "{}");
-      const u = stored.user || stored;
-      if (!u?.userId || !u?.isTeacher) {
-        window.location.href = "/TEACHER/login/login.html";
-        return;
-      }
-      window.currentUser = u;
-      const el = document.getElementById("Username");
-      const initials = getInitials(u);
-      const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
-        || u.username || u.email || 'Profile';
-      if (el) {
-        el.textContent = initials;
-        el.setAttribute('title', fullLabel);
-        el.setAttribute('aria-label', fullLabel);
-      }
-    } catch (e) {
-      console.error('Auth/init error:', e);
-      window.location.href = "/TEACHER/login/login.html";
+        footer.append(cancelBtn, okBtn);
+        new bootstrap.Modal(el).show();
+      });
     }
-    function getInitials(u) {
-      const fn = (u.firstName || '').trim();
-      const mn = (u.middleName || '').trim();
-      const ln = (u.lastName || '').trim();
-      if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
-      if (fn && mn) return (fn[0] + mn[0]).toUpperCase();
-      const nameish = (u.username || u.displayName || u.name || '').trim();
-      if (nameish) {
-        const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
-        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-        return parts[0][0].toUpperCase();
-      }
-      const em = (u.email || '').trim();
-      return em ? em[0].toUpperCase() : 'U';
-    }
-  })();
+    window.alert = (msg) => openBrandAlert({ title: 'Notice', message: String(msg || '') });
 
-  const TEACHER_ID = (window.currentUser && window.currentUser.userId) || null;
+    /* ---------- Sidebar ---------- */
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html")
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById("sidebar-container").innerHTML = html;
+          const sidebar = document.querySelector(".sidebar");
+          const dashboard = document.querySelector(".dashboard");
+          if (sidebar && dashboard) {
+            sidebar.addEventListener("mouseenter", () => dashboard.classList.add("sidebar-expanded"));
+            sidebar.addEventListener("mouseleave", () => dashboard.classList.remove("sidebar-expanded"));
+          }
+          document.querySelectorAll('.has-submenu .submenu-toggle').forEach(toggle => {
+            toggle.addEventListener('click', e => {
+              e.preventDefault();
+              const parent = toggle.closest('.has-submenu');
+              parent.classList.toggle('open');
+              const expanded = toggle.getAttribute('aria-expanded') === 'true';
+              toggle.setAttribute('aria-expanded', String(!expanded));
+            });
+          });
+        })
+        .catch(err => console.error("Failed to load sidebar:", err));
+    });
 
-  /* ---------- Utilities ---------- */
-  const sizeLimitText = document.getElementById('sizeLimitText');
-  if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+    /* ---------- Auth Guard + initials ---------- */
+    (function initHeaderInitials() {
+      try {
+        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        const u = stored.user || stored;
 
-  function escapeHTML(str = '') {
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  }
-  function toCSV(rows) {
-    return rows.map(r => r.map(v => {
-      const s = String(v ?? '');
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }).join(',')).join('\n');
-  }
-  const getSelectedCourseId = () => document.getElementById("courseSelect")?.value || "";
-
-  /* ---------- File preview helpers ---------- */
-  function extFromUrl(u = '') { const clean = String(u).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
-  function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
-  function kindFrom({ url = '', name = '', mime = '' }) {
-    const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
-    if ((mime || '').startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
-    if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
-    if ((mime || '').startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
-    if ((mime || '').startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
-    if ((mime || '').startsWith('text/') || ['txt', 'csv', 'log'].includes(ext)) return 'text';
-    if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(ext)) return 'office';
-    return 'other';
-  }
-  function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
-  function setFileInfoUI(kind, url) {
-    const info = document.getElementById('fileInfoText');
-    const hdr = document.getElementById('filePreviewModalLabel');
-    const labelMap = { video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
-    let badge = document.getElementById('fileKindBadge'); if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
-    badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
-    badge.textContent = labelMap[kind] || 'File';
-    info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
-    document.getElementById('openInNewTabBtn').href = url || '#';
-  }
-  function renderFilePreviewInto(container, { url, name = '', mime = '' }) {
-    container.innerHTML = ''; showSpinner(true);
-    const done = () => showSpinner(false);
-    const fallback = (msg) => { container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">${msg || 'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
-    const kind = kindFrom({ url, name, mime });
-    if (kind === 'image') { const img = new Image(); img.onload = done; img.onerror = () => fallback('Image preview failed.'); img.src = url; container.appendChild(img); return; }
-    if (kind === 'pdf') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('PDF preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
-    if (kind === 'video') { const v = document.createElement('video'); v.controls = true; v.onloadeddata = done; v.onerror = () => fallback('Video preview failed.'); v.src = url; container.appendChild(v); return; }
-    if (kind === 'audio') { const a = document.createElement('audio'); a.controls = true; a.onloadeddata = done; a.onerror = () => fallback('Audio preview failed.'); a.src = url; container.appendChild(a); return; }
-    if (kind === 'text') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Text preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
-    if (kind === 'office' && url.startsWith('blob:')) { return fallback('Office documents cannot be previewed until they’re uploaded.'); }
-    if (kind === 'office') { const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Office preview failed (Google Viewer blocked).'); iframe.src = gview; container.appendChild(iframe); return; }
-    const obj = document.createElement('object'); obj.data = url; obj.type = mime || 'application/octet-stream'; obj.onload = done; obj.onerror = () => fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done, 1200);
-  }
-  let previewStageCtx = null;
-  let currentPreviewRevoke = null;
-  function openPreviewModalWithMeta({ url, title = 'File', mime = '', stageContext = null }) {
-    document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
-    const kind = kindFrom({ url, name: title, mime });
-    setFileInfoUI(kind, url);
-    renderFilePreviewInto(document.getElementById("filePreviewContent"), { url, name: title, mime });
-    previewStageCtx = stageContext || null;
-    showStageBtn(!!previewStageCtx);
-    new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
-  }
-  function showStageBtn(show) { document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
-
-  /* ---------- Dirty Guard ---------- */
-  let isDirty = false;
-  let suppressDirty = false;
-  let pendingNavigateTo = null;
-  const dirtyModalEl = document.getElementById('dirtyGuardModal');
-  const dirtyModal = new bootstrap.Modal(dirtyModalEl);
-  document.getElementById('dirtyLeaveBtn').addEventListener('click', () => {
-    isDirty = false;
-    dirtyModal.hide();
-    if (typeof pendingNavigateTo === 'function') {
-      const fn = pendingNavigateTo; pendingNavigateTo = null; fn();
-    } else if (typeof pendingNavigateTo === 'string' && pendingNavigateTo) {
-      const dest = pendingNavigateTo; pendingNavigateTo = null; window.location.href = dest;
-    }
-  });
-  function markDirty() { if (!suppressDirty) isDirty = true; }
-  function resetDirtySafely() {
-    suppressDirty = true;
-    try { isDirty = false; } finally { setTimeout(() => { suppressDirty = false; }, 0); }
-  }
-  function navigateWithGuard(toUrl) {
-    if (!isDirty) { window.location.href = toUrl; return; }
-    pendingNavigateTo = toUrl;
-    dirtyModal.show();
-  }
-
-  const quizFormEl = document.getElementById('quizForm');
-  quizFormEl.addEventListener('input', markDirty, true);
-  quizFormEl.addEventListener('change', markDirty, true);
-  document.getElementById('question-container').addEventListener('click', (e) => {
-    const act = e.target.closest('[data-action]'); if (act) markDirty();
-  });
-  document.getElementById('addQuestionBtn')?.addEventListener('click', markDirty);
-  document.getElementById('addQuestionBtnTop')?.addEventListener('click', markDirty);
-  document.getElementById('rubricsFile')?.addEventListener('change', markDirty);
-  document.getElementById('rubricReplaceInput')?.addEventListener('change', markDirty);
-  document.getElementById('bulkFile')?.addEventListener('change', markDirty);
-
-  document.addEventListener('click', (e) => {
-    const a = e.target.closest('a[href]'); if (!a) return;
-    const href = a.getAttribute('href') || '';
-    const t = (a.getAttribute('target') || '').toLowerCase();
-    if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank') return;
-    if (isDirty) { e.preventDefault(); pendingNavigateTo = href; dirtyModal.show(); }
-  });
-  window.addEventListener('beforeunload', (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } });
-
-  /* ---------- Course / Module ---------- */
-  async function loadCourses() {
-    const courseSelect = document.getElementById("courseSelect");
-    const moduleSelect = document.getElementById("moduleSelect");
-    courseSelect.innerHTML = `<option value="">Loading…</option>`;
-    moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
-    moduleSelect.disabled = true;
-    try {
-      const res = await apiFetch(`/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
-      const payload = await res.json();
-      let courses = Array.isArray(payload) ? payload : (payload.courses || []);
-      if (courses.length && 'uploadedBy' in courses[0]) {
-        courses = courses.filter(c => String(c.uploadedBy) === String(TEACHER_ID));
-      }
-      courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-      courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
-        courses.map(c => `<option value="${c.id}">${escapeHTML(c.title || 'Untitled')}${c.courseNumber ? ' (#' + escapeHTML(c.courseNumber) + ')' : ''}</option>`).join('');
-      // Preselect by URL if present
-      const params = new URLSearchParams(location.search);
-      const preCourse = params.get('courseId');
-      const preModule = params.get('moduleId');
-      if (preCourse && courses.find(x => String(x.id) === String(preCourse))) {
-        courseSelect.value = preCourse;
-        await loadModules(preCourse);
-        if (preModule) {
-          moduleSelect.value = preModule;
-          moduleSelect.disabled = !moduleSelect.value;
-        }
-        await loadTeacherClassesAndRender(preCourse);
-      }
-    } catch (err) {
-      console.error(err);
-      courseSelect.innerHTML = `<option value="">(Failed to load)</option>`;
-    }
-  }
-
-  async function loadModules(courseId) {
-    const moduleSelect = document.getElementById("moduleSelect");
-    moduleSelect.innerHTML = `<option value="">Loading…</option>`;
-    moduleSelect.disabled = true;
-    if (!courseId) {
-      moduleSelect.innerHTML = `<option value="">-- Select a Course first --</option>`;
-      return;
-    }
-    try {
-      const res = await apiFetch(`/courses/${encodeURIComponent(courseId)}/modules`);
-      const mods = await res.json();
-      const modules = Array.isArray(mods) ? mods : (mods.modules || []);
-      modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
-      moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>` +
-        modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${escapeHTML(m.title || 'Untitled')}</option>`).join('');
-      moduleSelect.disabled = false;
-    } catch (err) {
-      console.error(err);
-      moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
-    }
-  }
-
-  document.getElementById("courseSelect").addEventListener("change", async function () {
-    const cid = this.value;
-    selectedClassIds = new Set();
-    updateAssignedStatus?.();
-    if (cid) {
-      await loadModules(cid);
-      await loadTeacherClassesAndRender(cid);
-    } else {
-      const moduleSelect = document.getElementById("moduleSelect");
-      moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
-      moduleSelect.disabled = true;
-      assignedClassesContainer.innerHTML = "";
-      assignedEmpty.style.display = "block";
-      assignedEmpty.textContent = "Pick a course to see its classes.";
-      document.getElementById("assigned-status").style.display = "none";
-    }
-  });
-
-  /* ---------- Assign-to-Classes (filtered by course.assignedClasses) ---------- */
-  const assignedContainer = document.getElementById("assignedClassesContainer");
-  const assignedStatus = document.getElementById("assigned-status");
-  const assignedEmpty = document.getElementById("assigned-empty");
-  let selectedClassIds = new Set();
-
-  function esc(s) { return String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
-  function updateAssignedStatus() {
-    const n = selectedClassIds.size;
-    assignedStatus.textContent = `${n} selected${n >= MAX_ASSIGNED_CLASSES ? ' (max reached)' : ''}`;
-    assignedStatus.classList.toggle('text-danger', n >= MAX_ASSIGNED_CLASSES);
-    assignedStatus.classList.toggle('small-muted', n < MAX_ASSIGNED_CLASSES);
-    assignedStatus.style.display = '';
-  }
-
-  function renderClassCards(classes) {
-    assignedContainer.innerHTML = "";
-    if (!classes.length) {
-      assignedStatus.style.display = "none";
-      assignedEmpty.style.display = "block";
-      return;
-    }
-    classes.forEach(c => {
-      const id = c.id || c._id || c.classId || "";
-      const name = c.name || c.className || "Untitled Class";
-      const grade = c.gradeLevel ?? c.grade ?? "—";
-      const section = c.section ?? c.sectionName ?? "—";
-
-      const col = document.createElement("div");
-      col.className = "col-12 col-sm-6 col-lg-4";
-
-      const card = document.createElement("div");
-      card.className = "card assign-card";
-      card.tabIndex = 0;
-
-      if (selectedClassIds.has(String(id))) card.classList.add("selected");
-
-      const body = document.createElement("div");
-      body.className = "card-body";
-      body.innerHTML = `
-        <div class="d-flex justify-content-between align-items-start">
-          <h5 class="card-title mb-1">${esc(name)}</h5>
-          <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
-        </div>
-        <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
-      `;
-      card.appendChild(body);
-
-      function toggle() {
-        const willSelect = !card.classList.contains('selected');
-        if (willSelect && selectedClassIds.size >= MAX_ASSIGNED_CLASSES) {
-          openBrandAlert({ title: 'Limit reached', message: `You can assign to at most <strong>${MAX_ASSIGNED_CLASSES}</strong> classes.` });
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
           return;
         }
-        card.classList.toggle("selected", willSelect);
-        if (willSelect) selectedClassIds.add(String(id)); else selectedClassIds.delete(String(id));
-        updateAssignedStatus();
-        markDirty();
+        window.currentUser = u;
+        const el = document.getElementById("Username");
+
+        const initials = getInitials(u);
+        const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+          || u.username || u.email || 'Profile';
+
+        if (el) {
+          el.textContent = initials;
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        }
+      } catch (e) {
+        console.error('Auth/init error:', e);
+        window.location.href = "/TEACHER/login/login.html";
       }
-      card.addEventListener("click", e => { if (window.getSelection && String(window.getSelection()).length) return; toggle(); });
-      card.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
 
-      col.appendChild(card);
-      assignedContainer.appendChild(col);
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const mn = (u.middleName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        if (fn && mn) return (fn[0] + mn[0]).toUpperCase();
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+
+    const TEACHER_ID = (window.currentUser && window.currentUser.userId) || null;
+
+    /* ---------- Utilities ---------- */
+    const sizeLimitText = document.getElementById('sizeLimitText');
+    if (sizeLimitText) sizeLimitText.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+
+    function escapeHTML(str = '') {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+    function toCSV(rows) {
+      return rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')).join('\n');
+    }
+    const getSelectedCourseId = () => document.getElementById("courseSelect")?.value || "";
+
+    /* ---------- File preview helpers ---------- */
+    function extFromUrl(u = '') { const clean = String(u).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function kindFrom({ url = '', name = '', mime = '' }) {
+      const ext = (extFromUrl(url) || extFromName(name)).toLowerCase();
+      if ((mime || '').startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+      if ((mime || '').startsWith('video/') || ['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if ((mime || '').startsWith('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
+      if ((mime || '').startsWith('text/') || ['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(ext)) return 'office';
+      return 'other';
+    }
+    function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function setFileInfoUI(kind, url) {
+      const info = document.getElementById('fileInfoText');
+      const hdr = document.getElementById('filePreviewModalLabel');
+      const labelMap = { video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
+      let badge = document.getElementById('fileKindBadge'); if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
+      badge.className = 'ms-2 badge rounded-pill bg-secondary-subtle text-secondary';
+      badge.textContent = labelMap[kind] || 'File';
+      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href = url || '#';
+    }
+    function renderFilePreviewInto(container, { url, name = '', mime = '' }) {
+      container.innerHTML = ''; showSpinner(true);
+      const done = () => showSpinner(false);
+      const fallback = (msg) => { container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">${msg || 'Preview not available.'}</div><a class="btn btn-amber" href="${url}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a></div>`; done(); };
+      const kind = kindFrom({ url, name, mime });
+      if (kind === 'image') { const img = new Image(); img.onload = done; img.onerror = () => fallback('Image preview failed.'); img.src = url; container.appendChild(img); return; }
+      if (kind === 'pdf') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('PDF preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
+      if (kind === 'video') { const v = document.createElement('video'); v.controls = true; v.onloadeddata = done; v.onerror = () => fallback('Video preview failed.'); v.src = url; container.appendChild(v); return; }
+      if (kind === 'audio') { const a = document.createElement('audio'); a.controls = true; a.onloadeddata = done; a.onerror = () => fallback('Audio preview failed.'); a.src = url; container.appendChild(a); return; }
+      if (kind === 'text') { const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Text preview failed.'); iframe.src = url; container.appendChild(iframe); return; }
+      if (kind === 'office' && url.startsWith('blob:')) { return fallback('Office documents cannot be previewed until they’re uploaded.'); }
+      if (kind === 'office') { const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`; const iframe = document.createElement('iframe'); iframe.onload = done; iframe.onerror = () => fallback('Office preview failed (Google Viewer blocked).'); iframe.src = gview; container.appendChild(iframe); return; }
+      const obj = document.createElement('object'); obj.data = url; obj.type = mime || 'application/octet-stream'; obj.onload = done; obj.onerror = () => fallback('This file type cannot be previewed here.'); container.appendChild(obj); setTimeout(done, 1200);
+    }
+    let previewStageCtx = null;
+    let currentPreviewRevoke = null;
+    function openPreviewModalWithMeta({ url, title = 'File', mime = '', stageContext = null }) {
+      document.getElementById("filePreviewModalLabel").textContent = `${title} – Preview`;
+      const kind = kindFrom({ url, name: title, mime });
+      setFileInfoUI(kind, url);
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), { url, name: title, mime });
+      previewStageCtx = stageContext || null;
+      showStageBtn(!!previewStageCtx);
+      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+    }
+    function showStageBtn(show) { document.getElementById('stageFromPreviewBtn').classList.toggle('d-none', !show); }
+
+    /* ---------- Dirty Guard ---------- */
+    let isDirty = false;
+    let suppressDirty = false;
+    let pendingNavigateTo = null;
+    const dirtyModalEl = document.getElementById('dirtyGuardModal');
+    const dirtyModal = new bootstrap.Modal(dirtyModalEl);
+    document.getElementById('dirtyLeaveBtn').addEventListener('click', () => {
+      isDirty = false;
+      dirtyModal.hide();
+      if (typeof pendingNavigateTo === 'function') {
+        const fn = pendingNavigateTo; pendingNavigateTo = null; fn();
+      } else if (typeof pendingNavigateTo === 'string' && pendingNavigateTo) {
+        const dest = pendingNavigateTo; pendingNavigateTo = null; window.location.href = dest;
+      }
     });
-    assignedEmpty.style.display = "none";
-    updateAssignedStatus();
-  }
+    function markDirty() { if (!suppressDirty) isDirty = true; }
+    function resetDirtySafely() {
+      suppressDirty = true;
+      try { isDirty = false; } finally { setTimeout(() => { suppressDirty = false; }, 0); }
+    }
+    function navigateWithGuard(toUrl) {
+      if (!isDirty) { window.location.href = toUrl; return; }
+      pendingNavigateTo = toUrl;
+      dirtyModal.show();
+    }
 
-  async function fetchCourseById(courseId) {
-    try {
-      const r = await apiFetch(`/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
-      const js = await r.json().catch(() => null);
-      const course = js?.course || js || null;
-      return course;
-    } catch { return null; }
-  }
+    const quizFormEl = document.getElementById('quizForm');
+    quizFormEl.addEventListener('input', markDirty, true);
+    quizFormEl.addEventListener('change', markDirty, true);
+    document.getElementById('question-container').addEventListener('click', (e) => {
+      const act = e.target.closest('[data-action]'); if (act) markDirty();
+    });
+    document.getElementById('addQuestionBtn')?.addEventListener('click', markDirty);
+    document.getElementById('addQuestionBtnTop')?.addEventListener('click', markDirty);
+    document.getElementById('rubricsFile')?.addEventListener('change', markDirty);
+    document.getElementById('rubricReplaceInput')?.addEventListener('change', markDirty);
+    document.getElementById('bulkFile')?.addEventListener('change', markDirty);
 
-  async function loadTeacherClassesAndRender(courseId = getSelectedCourseId()) {
-    try {
-      if (!TEACHER_ID) {
-        assignedStatus.textContent = "Missing teacher ID in your session.";
-        assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href]'); if (!a) return;
+      const href = a.getAttribute('href') || '';
+      const t = (a.getAttribute('target') || '').toLowerCase();
+      if (href.startsWith('#') || a.hasAttribute('data-bs-toggle') || t === '_blank') return;
+      if (isDirty) { e.preventDefault(); pendingNavigateTo = href; dirtyModal.show(); }
+    });
+    window.addEventListener('beforeunload', (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } });
+
+    /* ---------- Course / Module ---------- */
+    async function loadCourses() {
+      const courseSelect = document.getElementById("courseSelect");
+      const moduleSelect = document.getElementById("moduleSelect");
+
+      courseSelect.innerHTML = `<option value="">Loading…</option>`;
+      moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
+      moduleSelect.disabled = true;
+
+      try {
+        const res = await apiFetch(`/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
+        const payload = await res.json();
+        let courses = Array.isArray(payload) ? payload : (payload.courses || []);
+        if (courses.length && 'uploadedBy' in courses[0]) {
+          courses = courses.filter(c => String(c.uploadedBy) === String(TEACHER_ID));
+        }
+        courses.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        courseSelect.innerHTML = `<option value="">-- Select a Course --</option>` +
+          courses.map(c => `<option value="${c.id}">${escapeHTML(c.title || 'Untitled')}${c.courseNumber ? ' (#' + escapeHTML(c.courseNumber) + ')' : ''}</option>`).join('');
+
+        // Preselect via URL query if present
+        const params = new URLSearchParams(location.search);
+        const preCourse = params.get('courseId');
+        const preModule = params.get('moduleId');
+        if (preCourse && courses.find(x => String(x.id) === String(preCourse))) {
+          courseSelect.value = preCourse;
+          await loadModules(preCourse);
+          if (preModule) {
+            moduleSelect.value = preModule;
+            moduleSelect.disabled = !moduleSelect.value;
+          }
+          await loadTeacherClassesAndRender(preCourse); // filter by course’s assignedClasses
+        }
+      } catch (err) {
+        console.error(err);
+        courseSelect.innerHTML = `<option value="">(Failed to load)</option>`;
+      }
+    }
+
+    async function loadModules(courseId) {
+      const moduleSelect = document.getElementById("moduleSelect");
+      moduleSelect.innerHTML = `<option value="">Loading…</option>`;
+      moduleSelect.disabled = true;
+
+      if (!courseId) {
+        moduleSelect.innerHTML = `<option value="">-- Select a Course first --</option>`;
         return;
       }
-      if (!courseId) {
-        assignedContainer.innerHTML = "";
+      try {
+        const res = await apiFetch(`/courses/${encodeURIComponent(courseId)}/modules`);
+        const mods = await res.json();
+        const modules = Array.isArray(mods) ? mods : (mods.modules || []);
+        modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
+
+        moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>` +
+          modules.map(m => `<option value="${m.id}">Module ${m.moduleNumber || ''}: ${escapeHTML(m.title || 'Untitled')}</option>`).join('');
+        moduleSelect.disabled = false;
+      } catch (err) {
+        console.error(err);
+        moduleSelect.innerHTML = `<option value="">(Failed to load modules)</option>`;
+      }
+    }
+
+    document.getElementById("courseSelect").addEventListener("change", async function () {
+      const cid = this.value;
+      selectedClassIds = new Set();
+      updateAssignedStatus?.();
+
+      if (cid) {
+        await loadModules(cid);
+        await loadTeacherClassesAndRender(cid); // <<< refresh using course.assignedClasses
+      } else {
+        const moduleSelect = document.getElementById("moduleSelect");
+        moduleSelect.innerHTML = `<option value="">-- Select a Module --</option>`;
+        moduleSelect.disabled = true;
+        assignedClassesContainer.innerHTML = "";
         assignedEmpty.style.display = "block";
         assignedEmpty.textContent = "Pick a course to see its classes.";
+        document.getElementById("assigned-status").style.display = "none";
+      }
+    });
+
+    /* ---------- Assign-to-Classes (filtered by course.assignedClasses) ---------- */
+    const assignedContainer = document.getElementById("assignedClassesContainer");
+    const assignedStatus = document.getElementById("assigned-status");
+    const assignedEmpty = document.getElementById("assigned-empty");
+    let selectedClassIds = new Set();
+
+    function esc(s) { return String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    function updateAssignedStatus() {
+      const n = selectedClassIds.size;
+      assignedStatus.textContent = `${n} selected${n >= MAX_ASSIGNED_CLASSES ? ' (max reached)' : ''}`;
+      assignedStatus.classList.toggle('text-danger', n >= MAX_ASSIGNED_CLASSES);
+      assignedStatus.classList.toggle('small-muted', n < MAX_ASSIGNED_CLASSES);
+      assignedStatus.style.display = '';
+    }
+
+    function renderClassCards(classes) {
+      assignedContainer.innerHTML = "";
+      if (!classes.length) {
         assignedStatus.style.display = "none";
-        return;
-      }
-      const resp1 = await apiFetch(`/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`, { headers: { "Accept": "application/json" } });
-      const json1 = await resp1.json().catch(() => ({ success: false, classes: [] }));
-      const teacherClasses = Array.isArray(json1?.classes) ? json1.classes : [];
-
-      const course = await fetchCourseById(courseId);
-      const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
-      const allowedIds = new Set(assigned.map(x => String(x)));
-
-      let filtered = teacherClasses.filter(c => allowedIds.has(String(c.id || c._id || c.classId || "")));
-
-      if (filtered.length === 0) {
-        try {
-          const resp2 = await apiFetch(`/courses/${encodeURIComponent(courseId)}/classes`, { headers: { "Accept": "application/json" } });
-          if (resp2.ok) {
-            const j2 = await resp2.json().catch(() => ({}));
-            const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
-            filtered = classes2.filter(c => allowedIds.size ? allowedIds.has(String(c.id || c._id || c.classId || "")) : true);
-          }
-        } catch { }
-      }
-
-      const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || "")));
-      selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
-
-      if (!filtered.length) {
-        assignedContainer.innerHTML = "";
         assignedEmpty.style.display = "block";
-        assignedEmpty.textContent = "No classes enrolled in the selected course.";
-        assignedStatus.style.display = "none";
         return;
       }
-      renderClassCards(filtered);
-      assignedStatus.textContent = `${selectedClassIds.size} selected (showing classes enrolled in this course)`;
-      assignedStatus.classList.remove('text-danger', 'small-muted');
-      assignedStatus.style.display = "";
-    } catch (e) {
-      console.error("Could not load classes:", e);
-      assignedStatus.textContent = "Could not load your classes. Please refresh.";
-      assignedStatus.classList.remove('small-muted');
-      assignedStatus.classList.add('text-danger');
-      openBrandAlert({ title: 'Network Error', message: 'Could not load your classes. Please refresh and try again.' });
+      classes.forEach(c => {
+        const id = c.id || c._id || c.classId || "";
+        const name = c.name || c.className || "Untitled Class";
+        const grade = c.gradeLevel ?? c.grade ?? "—";
+        const section = c.section ?? c.sectionName ?? "—";
+
+        const col = document.createElement("div");
+        col.className = "col-12 col-sm-6 col-lg-4";
+
+        const card = document.createElement("div");
+        card.className = "card assign-card";
+        card.tabIndex = 0;
+
+        if (selectedClassIds.has(String(id))) card.classList.add("selected");
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+        body.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title mb-1">${esc(name)}</h5>
+            <i class="bi bi-check2-circle ms-2" style="opacity:.35;"></i>
+          </div>
+          <div class="small-muted">Grade ${esc(grade)} • Section ${esc(section)}</div>
+        `;
+        card.appendChild(body);
+
+        function toggle() {
+          const willSelect = !card.classList.contains('selected');
+          if (willSelect && selectedClassIds.size >= MAX_ASSIGNED_CLASSES) {
+            openBrandAlert({ title: 'Limit reached', message: `You can assign to at most <strong>${MAX_ASSIGNED_CLASSES}</strong> classes.` });
+            return;
+          }
+          card.classList.toggle("selected", willSelect);
+          if (willSelect) selectedClassIds.add(String(id)); else selectedClassIds.delete(String(id));
+          updateAssignedStatus();
+          markDirty();
+        }
+        card.addEventListener("click", e => { if (window.getSelection && String(window.getSelection()).length) return; toggle(); });
+        card.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
+
+        col.appendChild(card);
+        assignedContainer.appendChild(col);
+      });
+      assignedEmpty.style.display = "none";
+      updateAssignedStatus();
     }
-  }
 
-  /* ---------- Question Builder + Pager ---------- */
-  let qIndex = 0;
-  const container = document.getElementById("question-container");
-  const qPager = { cur: 0 };
-
-  const rubricsFileInput = document.getElementById('rubricsFile');
-  const rubricRow = document.getElementById('rubricRow');
-  const rubricNameBtn = document.getElementById('rubricNameBtn');
-  const rubricChip = document.getElementById('rubricChip');
-  const rubricPreviewBtn = document.getElementById('rubricPreviewBtn');
-  const rubricReplaceInput = document.getElementById('rubricReplaceInput');
-  const rubricDeleteBtn = document.getElementById('rubricDeleteBtn');
-  const rubricStateNote = document.getElementById('rubricStateNote');
-  const essayCountText = document.getElementById('essayCountText');
-  const submitBtn = document.getElementById('submitBtn');
-
-  let __stagedRubricFile = null;
-
-  document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', () => {
-    if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch { } }
-    currentPreviewRevoke = null;
-    previewStageCtx = null;
-    showStageBtn(false);
-  });
-
-  function countEssayQuestions() {
-    return document.querySelectorAll(".question-block[data-type='essay']").length;
-  }
-  function updateEssayRubricState() {
-    const n = countEssayQuestions();
-    essayCountText.textContent = String(n);
-    if (n > 0) {
-      rubricStateNote.classList.remove('off'); rubricStateNote.classList.add('on');
-      rubricStateNote.textContent = __stagedRubricFile
-        ? 'Rubric staged and ready to upload.'
-        : 'Rubric upload enabled (applies to Essay questions).';
-    } else {
-      rubricStateNote.classList.remove('on'); rubricStateNote.classList.add('off');
-      rubricStateNote.textContent = __stagedRubricFile
-        ? 'Rubric staged — it will only be uploaded after you add at least one Essay question.'
-        : 'You can stage a rubric now; it will upload only if the quiz includes an Essay question.';
+    async function fetchCourseById(courseId) {
+      try {
+        const r = await apiFetch(`/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
+        const js = await r.json().catch(() => null);
+        const course = js?.course || js || null;
+        return course;
+      } catch { return null; }
     }
-  }
-  function renderRubricRow() {
-    if (!__stagedRubricFile) {
-      rubricRow.classList.add('d-none'); rubricNameBtn.textContent = ''; rubricChip.textContent = ''; return;
-    }
-    rubricRow.classList.remove('d-none');
-    rubricNameBtn.textContent = __stagedRubricFile.name;
-    rubricChip.textContent = __stagedRubricFile.name;
-  }
-  rubricsFileInput.addEventListener('change', () => {
-    const f = rubricsFileInput.files && rubricsFileInput.files[0]; if (!f) return;
-    const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-    submitBtn.disabled = !!tooBig;
-    if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
-    const blobUrl = URL.createObjectURL(f);
-    currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-    openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
-  });
-  document.getElementById('stageFromPreviewBtn').addEventListener('click', () => {
-    if (!previewStageCtx || !previewStageCtx.file) return;
-    __stagedRubricFile = previewStageCtx.file;
-    renderRubricRow(); updateEssayRubricState();
-    bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
-    rubricsFileInput.value = ''; markDirty();
-  });
-  function openPreviewOfStaged() {
-    if (!__stagedRubricFile) return;
-    const blobUrl = URL.createObjectURL(__stagedRubricFile);
-    currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-    openPreviewModalWithMeta({ url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '' });
-  }
-  rubricNameBtn.addEventListener('click', openPreviewOfStaged);
-  rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
-  rubricReplaceInput.addEventListener('change', () => {
-    const f = rubricReplaceInput.files && rubricReplaceInput.files[0]; if (!f) return;
-    const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
-    submitBtn.disabled = !!tooBig;
-    if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
-    const blobUrl = URL.createObjectURL(f);
-    currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
-    openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
-    rubricReplaceInput.value = ''; markDirty();
-  });
-  rubricDeleteBtn.addEventListener('click', () => {
-    __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
-    rubricsFileInput.value = ''; submitBtn.disabled = false; markDirty();
-  });
 
-  function renderBody(type, idx) {
-    if (type === "mcq") {
+    async function loadTeacherClassesAndRender(courseId = getSelectedCourseId()) {
+      try {
+        if (!TEACHER_ID) {
+          assignedStatus.textContent = "Missing teacher ID in your session.";
+          assignedStatus.classList.remove('small-muted'); assignedStatus.classList.add('text-danger');
+          return;
+        }
+        if (!courseId) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "Pick a course to see its classes.";
+          assignedStatus.style.display = "none";
+          return;
+        }
+
+        // 1) Load teacher’s classes
+        const resp1 = await apiFetch(`/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`, { headers: { "Accept": "application/json" } });
+        const json1 = await resp1.json().catch(() => ({ success: false, classes: [] }));
+        const teacherClasses = Array.isArray(json1?.classes) ? json1.classes : [];
+
+        // 2) Load course & read assignedClasses (array of class IDs)
+        const course = await fetchCourseById(courseId);
+        const assigned = Array.isArray(course?.assignedClasses) ? course.assignedClasses : [];
+        const allowedIds = new Set(assigned.map(x => String(x)));
+
+        // 3) Filter teacher classes to only those inside course.assignedClasses
+        let filtered = teacherClasses.filter(c => allowedIds.has(String(c.id || c._id || c.classId || "")));
+
+        // Fallback: course-based endpoint if available
+        if (filtered.length === 0) {
+          try {
+            const resp2 = await apiFetch(`/courses/${encodeURIComponent(courseId)}/classes`, { headers: { "Accept": "application/json" } });
+            if (resp2.ok) {
+              const j2 = await resp2.json().catch(() => ({}));
+              const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
+              filtered = classes2.filter(c => allowedIds.size ? allowedIds.has(String(c.id || c._id || c.classId || "")) : true);
+            }
+          } catch { }
+        }
+
+        // 4) Trim current selections to visible list
+        const visibleIds = new Set(filtered.map(c => String(c.id || c._id || c.classId || "")));
+        selectedClassIds = new Set([...selectedClassIds].filter(id => visibleIds.has(String(id))));
+
+        if (!filtered.length) {
+          assignedContainer.innerHTML = "";
+          assignedEmpty.style.display = "block";
+          assignedEmpty.textContent = "No classes enrolled in the selected course.";
+          assignedStatus.style.display = "none";
+          return;
+        }
+
+        renderClassCards(filtered);
+        assignedStatus.textContent = `${selectedClassIds.size} selected (showing classes enrolled in this course)`;
+        assignedStatus.classList.remove('text-danger', 'small-muted');
+        assignedStatus.style.display = "";
+      } catch (e) {
+        console.error("Could not load classes:", e);
+        assignedStatus.textContent = "Could not load your classes. Please refresh.";
+        assignedStatus.classList.remove('small-muted');
+        assignedStatus.classList.add('text-danger');
+        openBrandAlert({ title: 'Network Error', message: 'Could not load your classes. Please refresh and try again.' });
+      }
+    }
+
+    /* ---------- Question Builder + Pager ---------- */
+    let qIndex = 0;
+    const container = document.getElementById("question-container");
+    const qPager = { cur: 0 };
+
+    const rubricsFileInput = document.getElementById('rubricsFile');
+    const rubricRow = document.getElementById('rubricRow');
+    const rubricNameBtn = document.getElementById('rubricNameBtn');
+    const rubricChip = document.getElementById('rubricChip');
+    const rubricPreviewBtn = document.getElementById('rubricPreviewBtn');
+    const rubricReplaceInput = document.getElementById('rubricReplaceInput');
+    const rubricDeleteBtn = document.getElementById('rubricDeleteBtn');
+    const rubricStateNote = document.getElementById('rubricStateNote');
+    const essayCountText = document.getElementById('essayCountText');
+    const submitBtn = document.getElementById('submitBtn');
+
+    let __stagedRubricFile = null;
+
+    document.getElementById('filePreviewModal').addEventListener('hidden.bs.modal', () => {
+      if (currentPreviewRevoke) { try { currentPreviewRevoke(); } catch { } }
+      currentPreviewRevoke = null;
+      previewStageCtx = null;
+      showStageBtn(false);
+    });
+
+    function countEssayQuestions() {
+      return document.querySelectorAll(".question-block[data-type='essay']").length;
+    }
+    function updateEssayRubricState() {
+      const n = countEssayQuestions();
+      essayCountText.textContent = String(n);
+      if (n > 0) {
+        rubricStateNote.classList.remove('off'); rubricStateNote.classList.add('on');
+        rubricStateNote.textContent = __stagedRubricFile
+          ? 'Rubric staged and ready to upload.'
+          : 'Rubric upload enabled (applies to Essay questions).';
+      } else {
+        rubricStateNote.classList.remove('on'); rubricStateNote.classList.add('off');
+        rubricStateNote.textContent = __stagedRubricFile
+          ? 'Rubric staged — it will only be uploaded after you add at least one Essay question.'
+          : 'You can stage a rubric now; it will upload only if the quiz includes an Essay question.';
+      }
+    }
+    function renderRubricRow() {
+      if (!__stagedRubricFile) {
+        rubricRow.classList.add('d-none'); rubricNameBtn.textContent = ''; rubricChip.textContent = ''; return;
+      }
+      rubricRow.classList.remove('d-none');
+      rubricNameBtn.textContent = __stagedRubricFile.name;
+      rubricChip.textContent = __stagedRubricFile.name;
+    }
+    rubricsFileInput.addEventListener('change', () => {
+      const f = rubricsFileInput.files && rubricsFileInput.files[0]; if (!f) return;
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      submitBtn.disabled = !!tooBig;
+      if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
+    });
+    document.getElementById('stageFromPreviewBtn').addEventListener('click', () => {
+      if (!previewStageCtx || !previewStageCtx.file) return;
+      __stagedRubricFile = previewStageCtx.file;
+      renderRubricRow(); updateEssayRubricState();
+      bootstrap.Modal.getInstance(document.getElementById('filePreviewModal')).hide();
+      rubricsFileInput.value = ''; markDirty();
+    });
+    function openPreviewOfStaged() {
+      if (!__stagedRubricFile) return;
+      const blobUrl = URL.createObjectURL(__stagedRubricFile);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({ url: blobUrl, title: __stagedRubricFile.name, mime: __stagedRubricFile.type || '' });
+    }
+    rubricNameBtn.addEventListener('click', openPreviewOfStaged);
+    rubricPreviewBtn.addEventListener('click', openPreviewOfStaged);
+    rubricReplaceInput.addEventListener('change', () => {
+      const f = rubricReplaceInput.files && rubricReplaceInput.files[0]; if (!f) return;
+      const tooBig = f.size > TEACHER_FILE_LIMIT_BYTES;
+      submitBtn.disabled = !!tooBig;
+      if (tooBig) { alert(`File exceeds ${TEACHER_FILE_LIMIT_MB} MB limit.`); return; }
+      const blobUrl = URL.createObjectURL(f);
+      currentPreviewRevoke = () => URL.revokeObjectURL(blobUrl);
+      openPreviewModalWithMeta({ url: blobUrl, title: f.name, mime: f.type || '', stageContext: { file: f } });
+      rubricReplaceInput.value = ''; markDirty();
+    });
+    rubricDeleteBtn.addEventListener('click', () => {
+      __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
+      rubricsFileInput.value = ''; submitBtn.disabled = false; markDirty();
+    });
+
+    function renderBody(type, idx) {
+      if (type === "mcq") {
+        return `
+          <div class="form-label"><strong>Choices</strong> <span class="hint">(pick the correct one)</span></div>
+          <div class="input-group mb-2">
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="A" required></div>
+            <span class="input-group-text">A</span>
+            <input type="text" class="form-control" name="choiceA" placeholder="Choice A" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="B" required></div>
+            <span class="input-group-text">B</span>
+            <input type="text" class="form-control" name="choiceB" placeholder="Choice B" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="C" required></div>
+            <span class="input-group-text">C</span>
+            <input type="text" class="form-control" name="choiceC" placeholder="Choice C" required>
+          </div>
+          <div class="input-group mb-2">
+            <div class="input-group-text"><input type="radio" name="correct_${idx}" value="D" required></div>
+            <span class="input-group-text">D</span>
+            <input type="text" class="form-control" name="choiceD" placeholder="Choice D" required>
+          </div>
+        `;
+      }
+      if (type === "tf") {
+        return `
+          <div class="form-label"><strong>Answer</strong></div>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_true_${idx}" value="A" required>
+              <label class="form-check-label" for="tf_true_${idx}">True</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_false_${idx}" value="B" required>
+              <label class="form-check-label" for="tf_false_${idx}">False</label>
+            </div>
+          </div>
+          <div class="hint mt-2">Saved as True/False (no letter prefixes in UI).</div>
+        `;
+      }
       return `
-        <div class="form-label"><strong>Choices</strong> <span class="hint">(pick the correct one)</span></div>
-        <div class="input-group mb-2">
-          <div class="input-group-text"><input type="radio" name="correct_${idx}" value="A" required></div>
-          <span class="input-group-text">A</span>
-          <input type="text" class="form-control" name="choiceA" placeholder="Choice A" required>
-        </div>
-        <div class="input-group mb-2">
-          <div class="input-group-text"><input type="radio" name="correct_${idx}" value="B" required></div>
-          <span class="input-group-text">B</span>
-          <input type="text" class="form-control" name="choiceB" placeholder="Choice B" required>
-        </div>
-        <div class="input-group mb-2">
-          <div class="input-group-text"><input type="radio" name="correct_${idx}" value="C" required></div>
-          <span class="input-group-text">C</span>
-          <input type="text" class="form-control" name="choiceC" placeholder="Choice C" required>
-        </div>
-        <div class="input-group mb-2">
-          <div class="input-group-text"><input type="radio" name="correct_${idx}" value="D" required></div>
-          <span class="input-group-text">D</span>
-          <input type="text" class="form-control" name="choiceD" placeholder="Choice D" required>
+        <div class="alert alert-warning py-2 px-3 mb-2">
+          Essay questions are not auto-graded. Attach a rubric below (optional) to guide manual grading.
         </div>
       `;
     }
-    if (type === "tf") {
-      return `
-        <div class="form-label"><strong>Answer</strong></div>
-        <div class="d-flex gap-3">
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_true_${idx}" value="A" required>
-            <label class="form-check-label" for="tf_true_${idx}">True</label>
+
+    function addQuestion(type = "mcq") {
+      const idx = qIndex++;
+      const block = document.createElement("div");
+      block.className = "question-block";
+      block.dataset.index = idx;
+      block.dataset.type = type;
+
+      block.innerHTML = `
+        <div class="q-head">
+          <div class="q-type">
+            <span class="chip ${type === 'mcq' ? 'active' : ''}" data-type="mcq">Multiple Choice</span>
+            <span class="chip ${type === 'tf' ? 'active' : ''}" data-type="tf">True / False</span>
+            <span class="chip ${type === 'essay' ? 'active' : ''}" data-type="essay">Essay</span>
           </div>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="correct_${idx}" id="tf_false_${idx}" value="B" required>
-            <label class="form-check-label" for="tf_false_${idx}">False</label>
+          <div class="q-actions">
+            <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove"><i class="bi bi-trash"></i></button>
           </div>
         </div>
-        <div class="hint mt-2">Saved as True/False (no letter prefixes in UI).</div>
+
+        <div class="mb-2">
+          <label class="form-label fw-bold">Question</label>
+          <input type="text" class="form-control" name="question" placeholder="Enter question" required>
+        </div>
+
+        <div class="q-body">${renderBody(type, idx)}</div>
       `;
-    }
-    return `
-      <div class="alert alert-warning py-2 px-3 mb-2">
-        Essay questions are not auto-graded. Attach a rubric below (optional) to guide manual grading.
-      </div>
-    `;
-  }
 
-  function addQuestion(type = "mcq") {
-    const idx = qIndex++;
-    const block = document.createElement("div");
-    block.className = "question-block";
-    block.dataset.index = idx;
-    block.dataset.type = type;
+      block.querySelectorAll(".chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          block.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+          chip.classList.add("active");
+          const t = chip.dataset.type;
+          block.dataset.type = t;
+          block.querySelector(".q-body").innerHTML = renderBody(t, idx);
+          updateEssayRubricState();
+          markDirty();
+        });
+      });
 
-    block.innerHTML = `
-      <div class="q-head">
-        <div class="q-type">
-          <span class="chip ${type === 'mcq' ? 'active' : ''}" data-type="mcq">Multiple Choice</span>
-          <span class="chip ${type === 'tf' ? 'active' : ''}" data-type="tf">True / False</span>
-          <span class="chip ${type === 'essay' ? 'active' : ''}" data-type="essay">Essay</span>
-        </div>
-        <div class="q-actions">
-          <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove" title="Remove"><i class="bi bi-trash"></i></button>
-        </div>
-      </div>
-
-      <div class="mb-2">
-        <label class="form-label fw-bold">Question</label>
-        <input type="text" class="form-control" name="question" placeholder="Enter question" required>
-      </div>
-
-      <div class="q-body">${renderBody(type, idx)}</div>
-    `;
-
-    block.querySelectorAll(".chip").forEach(chip => {
-      chip.addEventListener("click", () => {
-        block.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        const t = chip.dataset.type;
-        block.dataset.type = t;
-        block.querySelector(".q-body").innerHTML = renderBody(t, idx);
+      block.querySelector("[data-action='remove']").addEventListener("click", () => {
+        const blocks = [...document.querySelectorAll(".question-block")];
+        const myIndex = blocks.indexOf(block);
+        block.remove();
+        const totalAfter = document.querySelectorAll(".question-block").length;
+        if (totalAfter === 0) {
+          qPager.cur = 0;
+        } else {
+          if (qPager.cur >= totalAfter) qPager.cur = totalAfter - 1;
+          if (myIndex < qPager.cur) qPager.cur = Math.max(0, qPager.cur - 1);
+        }
+        renderQPager();
         updateEssayRubricState();
         markDirty();
       });
-    });
 
-    block.querySelector("[data-action='remove']").addEventListener("click", () => {
-      const blocks = [...document.querySelectorAll(".question-block")];
-      const myIndex = blocks.indexOf(block);
-      block.remove();
-      const totalAfter = document.querySelectorAll(".question-block").length;
-      if (totalAfter === 0) {
-        qPager.cur = 0;
-      } else {
-        if (qPager.cur >= totalAfter) qPager.cur = totalAfter - 1;
-        if (myIndex < qPager.cur) qPager.cur = Math.max(0, qPager.cur - 1);
-      }
+      container.appendChild(block);
+      qPager.cur = [...document.querySelectorAll(".question-block")].length - 1;
       renderQPager();
       updateEssayRubricState();
       markDirty();
-    });
-
-    container.appendChild(block);
-    qPager.cur = [...document.querySelectorAll(".question-block")].length - 1;
-    renderQPager();
-    updateEssayRubricState();
-    markDirty();
-    return block;
-  }
-
-  function renderQPager() {
-    const blocks = [...document.querySelectorAll(".question-block")];
-    blocks.forEach((b, i) => b.classList.toggle("active", i === qPager.cur));
-    document.getElementById("qPageNow").textContent = blocks.length ? String(qPager.cur + 1) : '0';
-    document.getElementById("qPageTotal").textContent = String(blocks.length);
-    const dots = document.getElementById("qDots");
-    dots.innerHTML = "";
-    for (let i = 0; i < blocks.length; i++) {
-      const d = document.createElement("span");
-      d.className = "dot" + (i === qPager.cur ? " active" : "");
-      d.title = "Go to question " + (i + 1);
-      d.style.cursor = "pointer";
-      d.addEventListener("click", () => { qPager.cur = i; renderQPager(); });
-      dots.appendChild(d);
+      return block;
     }
-    document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur > 0);
-    document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur < blocks.length - 1);
-  }
-  document.getElementById("qPrevBtn").addEventListener("click", () => { if (qPager.cur > 0) { qPager.cur--; renderQPager(); } });
-  document.getElementById("qNextBtn").addEventListener("click", () => { const total = document.querySelectorAll(".question-block").length; if (qPager.cur < total - 1) { qPager.cur++; renderQPager(); } });
-  document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
-  document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
 
-  /* Timer / Pagination wiring */
-  const enableTimerEl = document.getElementById("enableTimer");
-  const timerMinutesEl = document.getElementById("timerMinutes");
-  const gracePeriodEl = document.getElementById("gracePeriod");
-  const fixedOrderEl = document.getElementById("fixedOrderCheck");
-  const enablePaginationEl = document.getElementById("enablePagination");
-  const perPageEl = document.getElementById("perPageInput");
-  const allowBacktrackingEl = document.getElementById("allowBacktracking");
+    function renderQPager() {
+      const blocks = [...document.querySelectorAll(".question-block")];
+      blocks.forEach((b, i) => b.classList.toggle("active", i === qPager.cur));
 
-  enableTimerEl.addEventListener("change", () => {
-    const on = enableTimerEl.checked;
-    timerMinutesEl.disabled = !on; gracePeriodEl.disabled = !on;
-    if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
-    markDirty();
-  });
-  enablePaginationEl.addEventListener("change", () => { perPageEl.disabled = !enablePaginationEl.checked; markDirty(); });
+      document.getElementById("qPageNow").textContent = blocks.length ? String(qPager.cur + 1) : '0';
+      document.getElementById("qPageTotal").textContent = String(blocks.length);
 
-  /* ---------- Bulk Import ---------- */
-  const bulkFileEl = document.getElementById('bulkFile');
-  const btnTplMcq = document.getElementById('downloadCsvTplMcq');
-  const btnTplTf = document.getElementById('downloadCsvTplTf');
-  const btnTplEssay = document.getElementById('downloadCsvTplEssay');
-  const btnTplAll = document.getElementById('downloadCsvTplAll');
-
-  const parseBulkBtn = document.getElementById('parseBulkBtn');
-  const bulkTbody = document.getElementById('bulkTbody');
-  const bulkSummary = document.getElementById('bulkSummary');
-  const addValidBtn = document.getElementById('addValidBtn');
-
-  function normalizeHeader(s) { return String(s || '').trim().toLowerCase(); }
-  function normalizeType(t) {
-    const x = String(t || '').trim().toLowerCase();
-    if (['mcq', 'multiple choice', 'multiple-choice', 'multiplechoice'].includes(x)) return 'mcq';
-    if (['tf', 'true/false', 'truefalse', 'true-false'].includes(x)) return 'tf';
-    if (['essay', 'open', 'long', 'long answer', 'long-answer'].includes(x)) return 'essay';
-    return '';
-  }
-  function normalizeCorrectForTF(v) {
-    const x = String(v || '').trim().toLowerCase();
-    if (['true', 't', 'a', '1', 'yes', 'y'].includes(x)) return 'A';
-    if (['false', 'f', 'b', '0', 'no', 'n'].includes(x)) return 'B';
-    return '';
-  }
-  function normalizeCorrectForMCQ(v) {
-    const x = String(v || '').trim().toUpperCase();
-    return ['A', 'B', 'C', 'D'].includes(x) ? x : '';
-  }
-
-  function buildCsvTemplate(kind) {
-    const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
-    let rows = [header];
-    if (kind === 'mcq') {
-      rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
-      rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
-    } else if (kind === 'tf') {
-      rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
-      rows.push(['tf', 'The Earth is flat', '', '', '', '', 'FALSE']);
-    } else if (kind === 'essay') {
-      rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
-      rows.push(['essay', 'Describe Newton’s three laws of motion.', '', '', '', '', '']);
-    } else {
-      rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
-      rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
-      rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
-    }
-    return toCSV(rows);
-  }
-  function downloadCSV(kind, filename) {
-    const csv = buildCsvTemplate(kind);
-    const bom = '\uFEFF';
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none'; a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-  }
-  btnTplMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
-  btnTplTf.addEventListener('click', () => downloadCSV('tf', 'quiz_template_true_false.csv'));
-  btnTplEssay.addEventListener('click', () => downloadCSV('essay', 'quiz_template_essay.csv'));
-  btnTplAll.addEventListener('click', () => downloadCSV('all', 'quiz_template_all.csv'));
-
-  parseBulkBtn.addEventListener('click', async () => {
-    const f = bulkFileEl.files && bulkFileEl.files[0];
-    if (!f) { alert('Please pick a CSV file first.'); return; }
-    const ext = f.name.split('.').pop().toLowerCase();
-    if (ext !== 'csv') { alert('Only .csv files are supported.'); return; }
-    let rows = [];
-    try {
-      rows = await new Promise((resolve, reject) => {
-        Papa.parse(f, { header: true, skipEmptyLines: 'greedy', complete: (res) => resolve(res.data || []), error: reject });
-      });
-    } catch (err) { console.error(err); alert('Failed to read the CSV. Please check your format.'); return; }
-    const result = validateBulkRows(rows);
-    renderBulkPreview(result);
-    markDirty();
-  });
-
-  function validateBulkRows(rawRows) {
-    const normed = rawRows.map(r => {
-      const out = {}; Object.keys(r || {}).forEach(k => out[normalizeHeader(k)] = r[k]); return out;
-    });
-    const items = []; let validCount = 0, invalidCount = 0;
-    normed.forEach((r) => {
-      const type = normalizeType(r.type);
-      const question = String(r.question || '').trim();
-      const A = String(r.choicea || '').trim();
-      const B = String(r.choiceb || '').trim();
-      const C = String(r.choicec || '').trim();
-      const D = String(r.choiced || '').trim();
-      let correct = String(r.correct || '').trim();
-      const errors = [];
-      if (!type) errors.push('Invalid type');
-      if (!question) errors.push('Question required');
-      if (type === 'mcq') {
-        if (!A || !B || !C || !D) errors.push('MCQ needs all choices A–D');
-        correct = normalizeCorrectForMCQ(correct);
-        if (!correct) errors.push('Correct must be A/B/C/D');
-      } else if (type === 'tf') {
-        correct = normalizeCorrectForTF(correct);
-        if (!correct) errors.push('Correct must be TRUE/FALSE (or A/B)');
-      } else if (type === 'essay') {
-        correct = 'A';
+      const dots = document.getElementById("qDots");
+      dots.innerHTML = "";
+      for (let i = 0; i < blocks.length; i++) {
+        const d = document.createElement("span");
+        d.className = "dot" + (i === qPager.cur ? " active" : "");
+        d.title = "Go to question " + (i + 1);
+        d.style.cursor = "pointer";
+        d.addEventListener("click", () => { qPager.cur = i; renderQPager(); });
+        dots.appendChild(d);
       }
-      const ok = errors.length === 0;
-      if (ok) validCount++; else invalidCount++;
-      items.push({
-        ok, errors,
-        display: { type, question, A, B, C, D, correct },
-        excluded: false,
-        payload: {
-          type, question,
-          choices: type === 'mcq' ? { A, B, C, D } :
-                   type === 'tf'  ? { A: 'True', B: 'False' } :
-                                    { A: '(Essay response)' },
-          correct
-        }
-      });
-    });
-    return { items, validCount, invalidCount, missingHeaders: [] };
-  }
+      document.getElementById("qPrevBtn").disabled = !(blocks.length && qPager.cur > 0);
+      document.getElementById("qNextBtn").disabled = !(blocks.length && qPager.cur < blocks.length - 1);
+    }
 
-  function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }) {
-    const bulkResult = document.getElementById('bulkResult');
+    document.getElementById("qPrevBtn").addEventListener("click", () => { if (qPager.cur > 0) { qPager.cur--; renderQPager(); } });
+    document.getElementById("qNextBtn").addEventListener("click", () => { const total = document.querySelectorAll(".question-block").length; if (qPager.cur < total - 1) { qPager.cur++; renderQPager(); } });
+    document.getElementById("addQuestionBtn").addEventListener("click", () => addQuestion());
+    document.getElementById("addQuestionBtnTop").addEventListener("click", () => addQuestion());
+
+    /* Timer / Pagination wiring */
+    const enableTimerEl = document.getElementById("enableTimer");
+    const timerMinutesEl = document.getElementById("timerMinutes");
+    const gracePeriodEl = document.getElementById("gracePeriod");
+    const fixedOrderEl = document.getElementById("fixedOrderCheck");
+    const enablePaginationEl = document.getElementById("enablePagination");
+    const perPageEl = document.getElementById("perPageInput");
+    const allowBacktrackingEl = document.getElementById("allowBacktracking");
+
+    enableTimerEl.addEventListener("change", () => {
+      const on = enableTimerEl.checked;
+      timerMinutesEl.disabled = !on; gracePeriodEl.disabled = !on;
+      if (!on) { timerMinutesEl.value = ""; gracePeriodEl.value = ""; }
+      markDirty();
+    });
+    enablePaginationEl.addEventListener("change", () => { perPageEl.disabled = !enablePaginationEl.checked; markDirty(); });
+
+    /* ---------- Bulk CSV: TEMPLATES + DOWNLOAD (cross-browser) ---------- */
+    function buildCsvTemplate(kind) {
+      const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
+      const rows = [header];
+      if (kind === 'mcq') {
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
+      } else if (kind === 'tf') {
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['tf', 'The Earth is flat', '', '', '', '', 'FALSE']);
+      } else if (kind === 'essay') {
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
+        rows.push(['essay', 'Describe Newton\'s three laws of motion.', '', '', '', '', '']);
+      } else {
+        rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
+        rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
+        rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
+      }
+      return toCSV(rows);
+    }
+    function isSafari() {
+      const ua = navigator.userAgent;
+      const isChromium = /\bChrom(e|ium)\b/.test(ua);
+      const isSafariOnly = /^((?!chrome|android).)*safari/i.test(ua);
+      return isSafariOnly && !isChromium;
+    }
+    function isIOS() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+    function downloadCSV(kind, filename) {
+      const csv = buildCsvTemplate(kind);
+      const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excel-friendly
+      const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8;' });
+
+      if (window.navigator && typeof window.navigator.msSaveBlob === 'function') {
+        window.navigator.msSaveBlob(blob, filename);
+        return;
+      }
+      if (isSafari() || isIOS()) {
+        try {
+          const reader = new FileReader();
+          reader.onloadend = function () {
+            const a = document.createElement('a');
+            a.href = reader.result; // data: URL
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          };
+          reader.readAsDataURL(blob);
+          return;
+        } catch (e) { /* fall through */ }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.setAttribute('download', filename);
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      setTimeout(() => {
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 0);
+      }, 0);
+    }
+    (function wireCsvButtons() {
+      const btnMcq = document.getElementById('downloadCsvTplMcq');
+      const btnTf = document.getElementById('downloadCsvTplTf');
+      const btnEssay = document.getElementById('downloadCsvTplEssay');
+      const btnAll = document.getElementById('downloadCsvTplAll');
+      if (btnMcq) btnMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
+      if (btnTf) btnTf.addEventListener('click', () => downloadCSV('tf', 'quiz_template_true_false.csv'));
+      if (btnEssay) btnEssay.addEventListener('click', () => downloadCSV('essay', 'quiz_template_essay.csv'));
+      if (btnAll) btnAll.addEventListener('click', () => downloadCSV('all', 'quiz_template_all.csv'));
+    })();
+
+    /* ---------- Bulk Import (parse + preview) ---------- */
+    const bulkFileEl = document.getElementById('bulkFile');
+    const btnTplMcq = document.getElementById('downloadCsvTplMcq');
+    const btnTplTf = document.getElementById('downloadCsvTplTf');
+    const btnTplEssay = document.getElementById('downloadCsvTplEssay');
+    const btnTplAll = document.getElementById('downloadCsvTplAll');
+
+    const parseBulkBtn = document.getElementById('parseBulkBtn');
     const bulkTbody = document.getElementById('bulkTbody');
     const bulkSummary = document.getElementById('bulkSummary');
     const addValidBtn = document.getElementById('addValidBtn');
 
-    bulkResult.classList.remove('d-none');
-    bulkTbody.innerHTML = '';
-    addValidBtn.disabled = (validCount === 0);
-
-    const maxRows = Math.min(items.length, 200);
-    for (let i = 0; i < maxRows; i++) {
-      const it = items[i];
-      const st = it.ok ? '<span class="badge bg-success">OK</span>' :
-        `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
-      const actionBtn = it.ok
-        ? `<button type="button" class="btn btn-sm ${it.excluded ? 'btn-outline-secondary' : 'btn-outline-danger'} bulk-toggle"
-                    data-idx="${i}" title="${it.excluded ? 'Restore this row' : 'Remove this row'}">
-             ${it.excluded ? '<i class="bi bi-arrow-counterclockwise"></i> Restore' : '<i class="bi bi-x-circle"></i> Remove'}
-           </button>`
-        : `<button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Invalid row">Remove</button>`;
-      const trClass = it.excluded ? 'row-excluded' : '';
-      bulkTbody.innerHTML += `
-        <tr class="${trClass}">
-          <td>${i + 1}</td>
-          <td>${it.display.type || '—'}</td>
-          <td>${escapeHTML(it.display.question || '')}</td>
-          <td>${escapeHTML(it.display.A || '')}</td>
-          <td>${escapeHTML(it.display.B || '')}</td>
-          <td>${escapeHTML(it.display.C || '')}</td>
-          <td>${escapeHTML(it.display.D || '')}</td>
-          <td>${escapeHTML(it.display.correct || '')}</td>
-          <td>${st}</td>
-          <td>${actionBtn}</td>
-        </tr>
-      `;
+    function normalizeHeader(s) { return String(s || '').trim().toLowerCase(); }
+    function normalizeType(t) {
+      const x = String(t || '').trim().toLowerCase();
+      if (['mcq', 'multiple choice', 'multiple-choice', 'multiplechoice'].includes(x)) return 'mcq';
+      if (['tf', 'true/false', 'truefalse', 'true-false'].includes(x)) return 'tf';
+      if (['essay', 'open', 'long', 'long answer', 'long-answer'].includes(x)) return 'essay';
+      return '';
     }
-    const excludedCount = items.filter(x => x.ok && x.excluded).length;
-    const addableCount = items.filter(x => x.ok && !x.excluded).length;
-    const more = items.length > maxRows ? ` (+${items.length - maxRows} more…)` : '';
-    const miss = (missingHeaders && missingHeaders.length) ? ` Missing headers: ${missingHeaders.join(', ')}.` : '';
-    bulkSummary.textContent = `Valid: ${validCount} • Invalid: ${invalidCount} • Excluded: ${excludedCount} • Will add: ${addableCount} • Total: ${items.length}${more}.${miss}`;
+    function normalizeCorrectForTF(v) {
+      const x = String(v || '').trim().toLowerCase();
+      if (['true', 't', 'a', '1', 'yes', 'y'].includes(x)) return 'A';
+      if (['false', 'f', 'b', '0', 'no', 'n'].includes(x)) return 'B';
+      return '';
+    }
+    function normalizeCorrectForMCQ(v) {
+      const x = String(v || '').trim().toUpperCase();
+      return ['A', 'B', 'C', 'D'].includes(x) ? x : '';
+    }
 
-    addValidBtn.dataset.bulk = JSON.stringify(items);
-  }
-
-  document.getElementById('bulkTbody').addEventListener('click', (e) => {
-    const btn = e.target.closest('.bulk-toggle'); if (!btn) return;
-    const idx = Number(btn.dataset.idx);
-    const addValidBtn = document.getElementById('addValidBtn');
-    const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
-    if (Number.isInteger(idx) && items[idx] && items[idx].ok) {
-      items[idx].excluded = !items[idx].excluded;
-      renderBulkPreview({
-        items,
-        validCount: items.filter(x => x.ok).length,
-        invalidCount: items.filter(x => !x.ok).length,
-        missingHeaders: []
-      });
+    parseBulkBtn.addEventListener('click', async () => {
+      const f = bulkFileEl.files && bulkFileEl.files[0];
+      if (!f) { alert('Please pick a CSV file first.'); return; }
+      const ext = f.name.split('.').pop().toLowerCase();
+      if (ext !== 'csv') { alert('Only .csv files are supported.'); return; }
+      let rows = [];
+      try {
+        rows = await new Promise((resolve, reject) => {
+          Papa.parse(f, { header: true, skipEmptyLines: 'greedy', complete: (res) => resolve(res.data || []), error: reject });
+        });
+      } catch (err) { console.error(err); alert('Failed to read the CSV. Please check your format.'); return; }
+      const result = validateBulkRows(rows);
+      renderBulkPreview(result);
       markDirty();
+    });
+
+    function validateBulkRows(rawRows) {
+      const normed = rawRows.map(r => {
+        const out = {}; Object.keys(r || {}).forEach(k => out[normalizeHeader(k)] = r[k]); return out;
+      });
+      const items = []; let validCount = 0, invalidCount = 0;
+      normed.forEach((r) => {
+        const type = normalizeType(r.type);
+        const question = String(r.question || '').trim();
+        const A = String(r.choicea || '').trim();
+        const B = String(r.choiceb || '').trim();
+        const C = String(r.choicec || '').trim();
+        const D = String(r.choiced || '').trim();
+        let correct = String(r.correct || '').trim();
+        const errors = [];
+        if (!type) errors.push('Invalid type');
+        if (!question) errors.push('Question required');
+        if (type === 'mcq') {
+          if (!A || !B || !C || !D) errors.push('MCQ needs all choices A–D');
+          correct = normalizeCorrectForMCQ(correct);
+          if (!correct) errors.push('Correct must be A/B/C/D');
+        } else if (type === 'tf') {
+          correct = normalizeCorrectForTF(correct);
+          if (!correct) errors.push('Correct must be TRUE/FALSE (or A/B)');
+        } else if (type === 'essay') {
+          correct = 'A';
+        }
+        const ok = errors.length === 0;
+        if (ok) validCount++; else invalidCount++;
+        items.push({
+          ok, errors,
+          display: { type, question, A, B, C, D, correct },
+          excluded: false,
+          payload: {
+            type, question,
+            choices: type === 'mcq' ? { A, B, C, D } :
+              type === 'tf' ? { A: 'True', B: 'False' } :
+                { A: '(Essay response)' },
+            correct
+          }
+        });
+      });
+      return { items, validCount, invalidCount, missingHeaders: [] };
     }
-  });
 
-  document.getElementById('addValidBtn').addEventListener('click', () => {
-    const addValidBtn = document.getElementById('addValidBtn');
-    const data = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
-    const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
-    if (!validOnly.length) { alert('No valid (and not-removed) rows to add.'); return; }
+    function renderBulkPreview({ items, validCount, invalidCount, missingHeaders }) {
+      const bulkResult = document.getElementById('bulkResult');
+      const bulkTbody = document.getElementById('bulkTbody');
+      const bulkSummary = document.getElementById('bulkSummary');
+      const addValidBtn = document.getElementById('addValidBtn');
 
-    const blocks = document.querySelectorAll(".question-block");
-    const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
-    if (allPlaceholders) {
-      container.innerHTML = "";
-      qIndex = 0; qPager.cur = 0; renderQPager();
+      bulkResult.classList.remove('d-none');
+      bulkTbody.innerHTML = '';
+      addValidBtn.disabled = (validCount === 0);
+
+      const maxRows = Math.min(items.length, 200);
+      for (let i = 0; i < maxRows; i++) {
+        const it = items[i];
+        const st = it.ok ? '<span class="badge bg-success">OK</span>' :
+          `<span class="badge bg-danger" title="${escapeHTML(it.errors.join('; '))}">Error</span>`;
+        const actionBtn = it.ok
+          ? `<button type="button" class="btn btn-sm ${it.excluded ? 'btn-outline-secondary' : 'btn-outline-danger'} bulk-toggle"
+                      data-idx="${i}" title="${it.excluded ? 'Restore this row' : 'Remove this row'}">
+               ${it.excluded ? '<i class="bi bi-arrow-counterclockwise"></i> Restore' : '<i class="bi bi-x-circle"></i> Remove'}
+             </button>`
+          : `<button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Invalid row">Remove</button>`;
+
+        const trClass = it.excluded ? 'row-excluded' : '';
+        bulkTbody.innerHTML += `
+          <tr class="${trClass}">
+            <td>${i + 1}</td>
+            <td>${it.display.type || '—'}</td>
+            <td>${escapeHTML(it.display.question || '')}</td>
+            <td>${escapeHTML(it.display.A || '')}</td>
+            <td>${escapeHTML(it.display.B || '')}</td>
+            <td>${escapeHTML(it.display.C || '')}</td>
+            <td>${escapeHTML(it.display.D || '')}</td>
+            <td>${escapeHTML(it.display.correct || '')}</td>
+            <td>${st}</td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }
+      const excludedCount = items.filter(x => x.ok && x.excluded).length;
+      const addableCount = items.filter(x => x.ok && !x.excluded).length;
+      const more = items.length > maxRows ? ` (+${items.length - maxRows} more…)` : '';
+      const miss = (missingHeaders && missingHeaders.length) ? ` Missing headers: ${missingHeaders.join(', ')}.` : '';
+      bulkSummary.textContent = `Valid: ${validCount} • Invalid: ${invalidCount} • Excluded: ${excludedCount} • Will add: ${addableCount} • Total: ${items.length}${more}.${miss}`;
+
+      addValidBtn.dataset.bulk = JSON.stringify(items);
     }
 
-    const LIMIT = 300;
-    const slice = validOnly.slice(0, LIMIT);
-
-    slice.forEach(q => {
-      const block = addQuestion(q.type || 'mcq');
-      const qInput = block.querySelector("input[name='question']");
-      if (qInput) qInput.value = q.question || '';
-
-      if (q.type === 'mcq') {
-        block.querySelector("input[name='choiceA']").value = q.choices.A || '';
-        block.querySelector("input[name='choiceB']").value = q.choices.B || '';
-        block.querySelector("input[name='choiceC']").value = q.choices.C || '';
-        block.querySelector("input[name='choiceD']").value = q.choices.D || '';
-        const idx = block.dataset.index;
-        const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
-        if (rb) rb.checked = true;
-      } else if (q.type === 'tf') {
-        const idx = block.dataset.index;
-        const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
-        if (rb) rb.checked = true;
+    document.getElementById('bulkTbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.bulk-toggle'); if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      const addValidBtn = document.getElementById('addValidBtn');
+      const items = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
+      if (Number.isInteger(idx) && items[idx] && items[idx].ok) {
+        items[idx].excluded = !items[idx].excluded;
+        renderBulkPreview({
+          items,
+          validCount: items.filter(x => x.ok).length,
+          invalidCount: items.filter(x => !x.ok).length,
+          missingHeaders: []
+        });
+        markDirty();
       }
     });
 
-    renderQPager();
-    updateEssayRubricState();
-    alert(`Added ${slice.length} question(s) to the quiz.`);
-    markDirty();
-  });
+    document.getElementById('addValidBtn').addEventListener('click', () => {
+      const addValidBtn = document.getElementById('addValidBtn');
+      const data = addValidBtn.dataset.bulk ? JSON.parse(addValidBtn.dataset.bulk) : [];
+      const validOnly = data.filter(x => x.ok && !x.excluded).map(x => x.payload);
+      if (!validOnly.length) { alert('No valid (and not-removed) rows to add.'); return; }
 
-  function isEmptyQuestionBlock(block) {
-    const type = block?.dataset?.type || 'mcq';
-    const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
-    if (!qText) return true;
-    if (type === 'mcq') {
-      const A = block.querySelector("input[name='choiceA']")?.value?.trim() || "";
-      const B = block.querySelector("input[name='choiceB']")?.value?.trim() || "";
-      const C = block.querySelector("input[name='choiceC']")?.value?.trim() || "";
-      const D = block.querySelector("input[name='choiceD']")?.value?.trim() || "";
-      const idx = block.dataset.index;
-      const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
-      return (!A && !B && !C && !D && !picked);
-    }
-    if (type === 'tf') {
-      const idx = block.dataset.index;
-      const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
-      return !picked;
-    }
-    return false;
-  }
-
-  /* ---------- SUBMIT (aligned with /upload-quiz) ---------- */
-  document.getElementById("quizForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const courseId = document.getElementById("courseSelect").value;
-    const moduleId = document.getElementById("moduleSelect").value;
-    const title = document.getElementById("quizTitleInput").value.trim();
-    const description = document.getElementById("quizDescInput").value.trim();
-
-    const publishAtRaw = document.getElementById("publishAtInput").value;
-    const dueAtRaw = document.getElementById("dueAtInput").value;
-    const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
-
-    if (!courseId || !moduleId) { alert("Please select a course and a module."); return; }
-    if (!title) { alert("Please enter a quiz title."); return; }
-    if (!Number.isInteger(attemptsAllowedVal) || attemptsAllowedVal < 0) {
-      alert("Attempts Allowed must be 0 (unlimited) or a positive whole number."); return;
-    }
-
-    const blocks = document.querySelectorAll(".question-block");
-    if (!blocks.length) { alert("Please add at least one question."); return; }
-
-    const quiz = [];
-    for (const block of blocks) {
-      const idx = block.dataset.index;
-      const type = block.dataset.type;
-      const qText = block.querySelector("input[name='question']")?.value?.trim();
-      if (!qText) continue;
-
-      if (type === "mcq") {
-        const A = block.querySelector("input[name='choiceA']")?.value?.trim();
-        const B = block.querySelector("input[name='choiceB']")?.value?.trim();
-        const C = block.querySelector("input[name='choiceC']")?.value?.trim();
-        const D = block.querySelector("input[name='choiceD']")?.value?.trim();
-        const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
-        if (!A || !B || !C || !D || !correct) { alert("Complete all MCQ fields and pick the correct answer."); return; }
-        quiz.push({ type, question: qText, choices: { A, B, C, D }, correct });
-      } else if (type === "tf") {
-        const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
-        if (!correct) { alert("Please select True or False."); return; }
-        quiz.push({ type, question: qText, choices: { A: "True", B: "False" }, correct });
-      } else {
-        quiz.push({ type, question: qText, choices: { A: "(Essay response)" }, correct: "A" });
+      const blocks = document.querySelectorAll(".question-block");
+      const allPlaceholders = [...blocks].length > 0 && [...blocks].every(isEmptyQuestionBlock);
+      if (allPlaceholders) {
+        container.innerHTML = "";
+        qIndex = 0; qPager.cur = 0; renderQPager();
       }
-    }
-    if (!quiz.length) { alert("Please add at least one valid question."); return; }
 
-    // Settings (matches normalizeSettings on backend)
-    let settings = {};
-    if (enableTimerEl.checked) {
-      const mins = parseInt(timerMinutesEl.value, 10);
-      const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
-      if (!Number.isInteger(mins) || mins < 1) { alert("Time Limit must be at least 1 minute."); return; }
-      if (!Number.isInteger(grace) || grace < 0) { alert("Grace Period must be 0 or more."); return; }
-      settings.timerEnabled = true; settings.durationMinutes = mins; settings.graceSeconds = grace;
-    } else { settings.timerEnabled = false; }
-    settings.shuffleQuestions = !fixedOrderEl.checked;
+      const LIMIT = 300;
+      const slice = validOnly.slice(0, LIMIT);
 
-    const pagEnabled = enablePaginationEl.checked;
-    let perPage = parseInt(perPageEl.value, 10);
-    if (!Number.isInteger(perPage) || perPage < 1) perPage = 1;
-    settings.pagination = { enabled: pagEnabled, perPage };
-    settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
+      slice.forEach(q => {
+        const block = addQuestion(q.type || 'mcq');
+        const qInput = block.querySelector("input[name='question']");
+        if (qInput) qInput.value = q.question || '';
 
-    // Dates (server expects ISO strings or null; server also validates publishAt <= dueAt)
-    const publishAt = publishAtRaw ? new Date(publishAtRaw).toISOString() : null;
-    const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
-    if (publishAt && dueAt && new Date(publishAt) > new Date(dueAt)) {
-      alert("Publish At must be earlier than or equal to the Due Date."); return;
-    }
-    if (publishAt && new Date(publishAt).getTime() < Date.now()) {
-      const proceed = await brandConfirm({
-        title: 'Publish time in the past',
-        message: 'The selected Publish At is in the past. This will make the quiz available immediately. Continue?',
-        confirmText: 'Continue', cancelText: 'Go back'
+        if (q.type === 'mcq') {
+          block.querySelector("input[name='choiceA']").value = q.choices.A || '';
+          block.querySelector("input[name='choiceB']").value = q.choices.B || '';
+          block.querySelector("input[name='choiceC']").value = q.choices.C || '';
+          block.querySelector("input[name='choiceD']").value = q.choices.D || '';
+          const idx = block.dataset.index;
+          const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
+          if (rb) rb.checked = true;
+        } else if (q.type === 'tf') {
+          const idx = block.dataset.index;
+          const rb = block.querySelector(`input[name='correct_${idx}'][value='${q.correct}']`);
+          if (rb) rb.checked = true;
+        }
       });
-      if (!proceed) return;
+
+      renderQPager();
+      updateEssayRubricState();
+      alert(`Added ${slice.length} question(s) to the quiz.`);
+      markDirty();
+    });
+
+    function isEmptyQuestionBlock(block) {
+      const type = block?.dataset?.type || 'mcq';
+      const qText = block.querySelector("input[name='question']")?.value?.trim() || "";
+      if (!qText) return true;
+
+      if (type === 'mcq') {
+        const A = block.querySelector("input[name='choiceA']")?.value?.trim() || "";
+        const B = block.querySelector("input[name='choiceB']")?.value?.trim() || "";
+        const C = block.querySelector("input[name='choiceC']")?.value?.trim() || "";
+        const D = block.querySelector("input[name='choiceD']")?.value?.trim() || "";
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return (!A && !B && !C && !D && !picked);
+      }
+      if (type === 'tf') {
+        const idx = block.dataset.index;
+        const picked = block.querySelector(`input[name='correct_${idx}']:checked`);
+        return !picked;
+      }
+      return false;
     }
 
-    const essayCount = countEssayQuestions();
-    const rubricFile = __stagedRubricFile || null;
-    if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
-      alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`); return;
-    }
-    if (rubricFile && essayCount === 0) {
-      const proceed = await brandConfirm({
-        title: 'Rubric won’t be uploaded',
-        message: 'You staged a rubric, but there are no Essay questions. The rubric will be ignored unless you add at least one Essay question. Continue?',
-        confirmText: 'Continue', cancelText: 'Go back'
-      });
-      if (!proceed) return;
-    }
+    /* ---------- SUBMIT (aligned with /upload-quiz) ---------- */
+    document.getElementById("quizForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    // Only visible/filtered classes; clamp to backend max (500)
-    const assignedClasses = Array.from(selectedClassIds).slice(0, MAX_ASSIGNED_CLASSES).map(String);
+      const courseId = document.getElementById("courseSelect").value;
+      const moduleId = document.getElementById("moduleSelect").value;
+      const title = document.getElementById("quizTitleInput").value.trim();
+      const description = document.getElementById("quizDescInput").value.trim();
 
-    const payload = {
-      courseId, moduleId, title, description,
-      publishAt, dueAt,
-      attemptsAllowed: attemptsAllowedVal, // backend normalizeAttemptsAllowed handles 0 => unlimited
-      quiz, settings,
-      assignedClasses
-    };
+      const publishAtRaw = document.getElementById("publishAtInput").value;
+      const dueAtRaw = document.getElementById("dueAtInput").value;
+      const attemptsAllowedVal = parseInt(document.getElementById("attemptsInput").value, 10);
 
-    try {
-      let res, out;
-      if (rubricFile && essayCount > 0) {
-        const fd = new FormData();
-        fd.append("rubrics", rubricFile);        // <== matches uploadRubricMaybe.single('rubrics')
-        fd.append("payload", JSON.stringify(payload));
-        res = await apiFetch(`/upload-quiz`, { method: "POST", body: fd });
-      } else {
-        res = await apiFetch(`/upload-quiz`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+      if (!courseId || !moduleId) { alert("Please select a course and a module."); return; }
+      if (!title) { alert("Please enter a quiz title."); return; }
+      if (!Number.isInteger(attemptsAllowedVal) || attemptsAllowedVal < 0) {
+        alert("Attempts Allowed must be 0 (unlimited) or a positive whole number."); return;
+      }
+
+      const blocks = document.querySelectorAll(".question-block");
+      if (!blocks.length) { alert("Please add at least one question."); return; }
+
+      const quiz = [];
+      for (const block of blocks) {
+        const idx = block.dataset.index;
+        const type = block.dataset.type;
+        const qText = block.querySelector("input[name='question']")?.value?.trim();
+        if (!qText) continue;
+
+        if (type === "mcq") {
+          const A = block.querySelector("input[name='choiceA']")?.value?.trim();
+          const B = block.querySelector("input[name='choiceB']")?.value?.trim();
+          const C = block.querySelector("input[name='choiceC']")?.value?.trim();
+          const D = block.querySelector("input[name='choiceD']")?.value?.trim();
+          const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
+          if (!A || !B || !C || !D || !correct) { alert("Complete all MCQ fields and pick the correct answer."); return; }
+          quiz.push({ type, question: qText, choices: { A, B, C, D }, correct });
+        } else if (type === "tf") {
+          const correct = block.querySelector(`input[name='correct_${idx}']:checked`)?.value;
+          if (!correct) { alert("Please select True or False."); return; }
+          quiz.push({ type, question: qText, choices: { A: "True", B: "False" }, correct });
+        } else {
+          quiz.push({ type, question: qText, choices: { A: "(Essay response)" }, correct: "A" });
+        }
+      }
+      if (!quiz.length) { alert("Please add at least one valid question."); return; }
+
+      // Settings
+      let settings = {};
+      if (enableTimerEl.checked) {
+        const mins = parseInt(timerMinutesEl.value, 10);
+        const grace = gracePeriodEl.value ? parseInt(gracePeriodEl.value, 10) : 0;
+        if (!Number.isInteger(mins) || mins < 1) { alert("Time Limit must be at least 1 minute."); return; }
+        if (!Number.isInteger(grace) || grace < 0) { alert("Grace Period must be 0 or more."); return; }
+        settings.timerEnabled = true; settings.durationMinutes = mins; settings.graceSeconds = grace;
+      } else { settings.timerEnabled = false; }
+      settings.shuffleQuestions = !fixedOrderEl.checked;
+
+      const pagEnabled = enablePaginationEl.checked;
+      let perPage = parseInt(perPageEl.value, 10);
+      if (!Number.isInteger(perPage) || perPage < 1) perPage = 1;
+      settings.pagination = { enabled: pagEnabled, perPage };
+      settings.backtrackingAllowed = !!allowBacktrackingEl.checked;
+
+      // Dates
+      const publishAt = publishAtRaw ? new Date(publishAtRaw).toISOString() : null;
+      const dueAt = dueAtRaw ? new Date(dueAtRaw).toISOString() : null;
+      if (publishAt && dueAt && new Date(publishAt) > new Date(dueAt)) {
+        alert("Publish At must be earlier than or equal to the Due Date."); return;
+      }
+      if (publishAt && new Date(publishAt).getTime() < Date.now()) {
+        const proceed = await brandConfirm({
+          title: 'Publish time in the past',
+          message: 'The selected Publish At is in the past. This will make the quiz available immediately. Continue?',
+          confirmText: 'Continue', cancelText: 'Go back'
         });
+        if (!proceed) return;
       }
 
-      // Handle non-JSON or detailed error bodies gracefully
-      const raw = await res.text();
-      let js = {}; try { js = JSON.parse(raw); } catch { }
-      if (!res.ok || js.success === false) {
-        const msg = js && (js.message || js.error) || `HTTP ${res.status} – ${raw.slice(0, 200)}`;
-        alert(msg || "Failed to upload quiz.");
-        return;
+      const essayCount = countEssayQuestions();
+      const rubricFile = __stagedRubricFile || null;
+      if (rubricFile && rubricFile.size > TEACHER_FILE_LIMIT_BYTES) {
+        alert(`Rubric exceeds the limit of ${TEACHER_FILE_LIMIT_MB} MB.`); return;
+      }
+      if (rubricFile && essayCount === 0) {
+        const proceed = await brandConfirm({
+          title: 'Rubric won’t be uploaded',
+          message: 'You staged a rubric, but there are no Essay questions. The rubric will be ignored unless you add at least one Essay question. Continue?',
+          confirmText: 'Continue', cancelText: 'Go back'
+        });
+        if (!proceed) return;
       }
 
-      const quizId = js.quizId || null;
+      // Only visible/filtered classes; clamp to backend max (500)
+      const assignedClasses = Array.from(selectedClassIds).slice(0, MAX_ASSIGNED_CLASSES).map(String);
 
-      if (quizId) {
-        localStorage.setItem('lastCreatedQuizId', quizId);
-        const list = JSON.parse(localStorage.getItem('createdQuizIds') || '[]');
-        list.unshift({ id: quizId, title, courseId, moduleId, createdAt: Date.now() });
-        localStorage.setItem('createdQuizIds', JSON.stringify(list.slice(0, 50)));
-      }
-
-      // Success Modal
-      const idRow = document.getElementById('quizIdRow');
-      const idCode = document.getElementById('createdQuizId');
-      if (quizId) { idRow.classList.remove('d-none'); idCode.textContent = quizId; } else { idRow.classList.add('d-none'); }
-
-      const warnEl = document.getElementById('uploadWarnings');
-      // The current backend doesn’t return "warnings"; hide the block if present
-      if (warnEl) { warnEl.classList.add('d-none'); warnEl.innerHTML = ''; }
-
-      const successModal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
-      successModal.show();
-      const modalEl = document.getElementById('uploadSuccessModal');
-      const redirectHandler = function () {
-        modalEl.removeEventListener('hidden.bs.modal', redirectHandler);
-        resetDirtySafely();
-        window.location.href = '/TEACHER/quizzes/quiz_list.html';
+      const payload = {
+        courseId, moduleId, title, description,
+        publishAt, dueAt,
+        attemptsAllowed: attemptsAllowedVal,
+        quiz, settings,
+        assignedClasses
       };
-      modalEl.addEventListener('hidden.bs.modal', redirectHandler);
 
-      // Reset UI
-      resetDirtySafely();
-      document.getElementById("quizForm").reset();
-      container.innerHTML = "";
-      qIndex = 0; qPager.cur = 0; renderQPager();
-      document.getElementById("enableTimer").checked = false;
-      document.getElementById("timerMinutes").disabled = true;
-      document.getElementById("gracePeriod").disabled = true;
-      document.getElementById("enablePagination").checked = false;
+      try {
+        let res, js;
+
+        if (rubricFile && essayCount > 0) {
+          const fd = new FormData();
+          fd.append("rubrics", rubricFile);          // field name matches backend (multer.single('rubrics'))
+          fd.append("payload", JSON.stringify(payload));
+          res = await apiFetch(`/upload-quiz`, { method: "POST", body: fd });
+        } else {
+          res = await apiFetch(`/upload-quiz`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        const raw = await res.text();
+        try { js = JSON.parse(raw); } catch { js = {}; }
+
+        if (!res.ok || js.success === false) {
+          const msg = js && (js.message || js.error) || `HTTP ${res.status} – ${raw.slice(0, 200)}`;
+          alert(msg || "Failed to upload quiz.");
+          return;
+        }
+
+        const quizId = js.quizId || null;
+
+        if (quizId) {
+          localStorage.setItem('lastCreatedQuizId', quizId);
+          const list = JSON.parse(localStorage.getItem('createdQuizIds') || '[]');
+          list.unshift({ id: quizId, title, courseId, moduleId, createdAt: Date.now() });
+          localStorage.setItem('createdQuizIds', JSON.stringify(list.slice(0, 50)));
+        }
+
+        const idRow = document.getElementById('quizIdRow');
+        const idCode = document.getElementById('createdQuizId');
+        if (quizId) { idRow.classList.remove('d-none'); idCode.textContent = quizId; } else { idRow.classList.add('d-none'); }
+
+        const warnEl = document.getElementById('uploadWarnings');
+        if (warnEl) { warnEl.classList.add('d-none'); warnEl.innerHTML = ''; }
+
+        const successModal = new bootstrap.Modal(document.getElementById('uploadSuccessModal'));
+        successModal.show();
+        const modalEl = document.getElementById('uploadSuccessModal');
+        const redirectHandler = function () {
+          modalEl.removeEventListener('hidden.bs.modal', redirectHandler);
+          resetDirtySafely();
+          window.location.href = '/TEACHER/quizzes/quiz_list.html';
+        };
+        modalEl.addEventListener('hidden.bs.modal', redirectHandler);
+
+        // Reset UI
+        resetDirtySafely();
+        document.getElementById("quizForm").reset();
+        container.innerHTML = "";
+        qIndex = 0; qPager.cur = 0; renderQPager();
+        document.getElementById("enableTimer").checked = false;
+        document.getElementById("timerMinutes").disabled = true;
+        document.getElementById("gracePeriod").disabled = true;
+        document.getElementById("enablePagination").checked = false;
+        document.getElementById("perPageInput").disabled = true;
+
+        __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
+
+        addQuestion(); renderQPager();
+
+        document.getElementById('bulkFile').value = '';
+        document.getElementById('bulkResult').classList.add('d-none');
+        document.getElementById('bulkTbody').innerHTML = '';
+        document.getElementById('addValidBtn').disabled = true;
+
+        selectedClassIds = new Set();
+        await loadTeacherClassesAndRender(getSelectedCourseId());
+
+        resetDirtySafely();
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("Server error occurred while uploading quiz.");
+      }
+    });
+
+    /* ---------- Boot ---------- */
+    (async function init() {
+      const sizeLimitTextEl = document.getElementById('sizeLimitText');
+      if (sizeLimitTextEl) sizeLimitTextEl.textContent = TEACHER_FILE_LIMIT_MB + " MB";
+      addQuestion();
+      updateEssayRubricState();
       document.getElementById("perPageInput").disabled = true;
+      await loadCourses();
+      // classes load after course selection/preselect
+    })();
 
-      __stagedRubricFile = null; renderRubricRow(); updateEssayRubricState();
-
-      addQuestion(); renderQPager();
-
-      document.getElementById('bulkFile').value = '';
-      document.getElementById('bulkResult').classList.add('d-none');
-      document.getElementById('bulkTbody').innerHTML = '';
-      document.getElementById('addValidBtn').disabled = true;
-
-      selectedClassIds = new Set();
-      await loadTeacherClassesAndRender(getSelectedCourseId());
-
-      resetDirtySafely();
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("Server error occurred while uploading quiz.");
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/TEACHER/login/login.html";
     }
-  });
-
-  /* ---------- Boot ---------- */
-  (async function init() {
-    const sizeLimitTextEl = document.getElementById('sizeLimitText');
-    if (sizeLimitTextEl) sizeLimitTextEl.textContent = TEACHER_FILE_LIMIT_MB + " MB";
-    addQuestion();
-    updateEssayRubricState();
-    document.getElementById("perPageInput").disabled = true;
-    await loadCourses();
-    // classes are loaded after course selection/preselect
-  })();
-
-  function logoutUser() {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = "/TEACHER/login/login.html";
-  }
-</script>
+  </script>
 </body>
 
 </html>
