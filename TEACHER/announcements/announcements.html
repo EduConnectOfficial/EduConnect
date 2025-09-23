@@ -611,11 +611,17 @@
           <td><span class="badge ${badgeClass(a.status)}">${a.status || ''}</span></td>
           <td>${a.important ? '<i class="bi bi-exclamation-circle-fill text-danger"></i>' : ''}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-outline-primary me-2" data-action="edit" data-id="${a.id}">Edit</button>
-            ${isExpired
+  <button class="btn btn-sm btn-outline-secondary me-2" data-action="view" data-id="${a.id}">
+    View
+  </button>
+  <button class="btn btn-sm btn-outline-primary me-2" data-action="edit" data-id="${a.id}">
+    Edit
+  </button>
+  ${isExpired
             ? `<button class="btn btn-sm btn-outline-success" data-action="unarchive" data-id="${a.id}">Unarchive</button>`
             : `<button class="btn btn-sm btn-outline-danger" data-action="archive" data-id="${a.id}">Archive</button>`}
-          </td>
+</td>
+
         `;
         tbody.appendChild(tr);
       });
@@ -624,6 +630,11 @@
         const id = btn.getAttribute('data-id');
         const action = btn.getAttribute('data-action');
         btn.onclick = async () => {
+          if (action === 'view') {
+            // Navigate to the new details page
+            window.location.href = `/TEACHER/announcements/announcement_view.html?id=${encodeURIComponent(id)}`;
+            return;
+          }
           if (action === 'edit') return openEdit(id);
           if (action === 'archive') return archiveAnnouncement(id);
           if (action === 'unarchive') return unarchiveAnnouncement(id);

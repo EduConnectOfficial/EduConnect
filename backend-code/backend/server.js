@@ -63,7 +63,7 @@ app.use('/', modulesRoutes);
 app.use('/api', modulesRoutes);
 
 app.use('/api', require('./routes/assignmentsRoutes'));
-app.use('/', require('./routes/quizRoutes'));
+app.use('/api', require('./routes/quizRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/teacher', require('./routes/teacherDashboardRoutes'));
 app.use('/api/teacher', require('./routes/teacherAnalyticsRoutes'));

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduConnect Teacher - Announcement Details</title>
+
+  <!-- OPTIONAL: If backend is a different Railway service, set this -->
+  <!-- <meta name="api-base" content="https://YOUR-BACKEND.up.railway.app"> -->
+
+  <!-- Icons & Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Global (reuse your announcements theme) -->
+  <link rel="stylesheet" href="../announcements/announcements.css" />
+  <style>
+    /* Small extras for details page */
+    .detail-card .badge-status { font-size: .85rem; }
+    .detail-card .class-chip { display:inline-block; padding:.25rem .5rem; border-radius:999px; background:#f1f3f5; margin:.125rem .25rem .125rem 0; font-size:.85rem; }
+    .detail-card .meta { color:#6c757d; font-size:.9rem; }
+    .logo-header { height: 38px; margin-left: 10px; }
+    .page-actions .btn { min-width: 120px; }
+    .announcement-body { white-space: pre-wrap; }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main -->
+    <div class="main">
+      <!-- Header -->
+      <header class="header-top d-flex align-items-center justify-content-between px-4 py-2">
+        <div class="brand">
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+        </div>
+        <div class="flex-grow-1"></div>
+        <button class="profile-btn btn btn-link text-decoration-none">
+          <i class="fas fa-user-circle fa-2x"></i>
+          <span id="Username" class="username ms-2 fw-semibold"></span>
+        </button>
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <button id="backBtn" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left"></i> Back
+            </button>
+            <h1 class="page-title brand mb-0">Announcement Details</h1>
+          </div>
+          <div class="page-actions d-flex gap-2">
+            <button id="editBtn" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+            <button id="archiveBtn" class="btn btn-outline-danger d-none"><i class="bi bi-archive me-1"></i>Archive</button>
+            <button id="unarchiveBtn" class="btn btn-outline-success d-none"><i class="bi bi-arrow-counterclockwise me-1"></i>Unarchive</button>
+          </div>
+        </div>
+
+        <div class="ui-card card-themed detail-card">
+          <div class="ui-card-head">
+            <h2 class="ui-card-title d-flex align-items-center gap-2">
+              <span id="title">Announcement</span>
+              <span id="statusBadge" class="badge badge-status"></span>
+              <span id="importantIcon"></span>
+            </h2>
+            <div class="ui-subtext" id="metaLine">Loading...</div>
+          </div>
+
+          <div class="ui-card-body">
+            <div class="mb-3">
+              <div class="fw-semibold mb-1">Classes</div>
+              <div id="classChips"></div>
+            </div>
+
+            <div class="mb-3">
+              <div class="fw-semibold mb-1">Content</div>
+              <div id="content" class="announcement-body"></div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="fw-semibold">Publish At</div>
+                <div id="publishAt" class="meta"></div>
+              </div>
+              <div class="col-md-4">
+                <div class="fw-semibold">Expires At</div>
+                <div id="expiresAt" class="meta"></div>
+              </div>
+              <div class="col-md-4">
+                <div class="fw-semibold">Last Updated</div>
+                <div id="updatedAt" class="meta"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- App Alert Modal (reused) -->
+  <div class="modal fade" id="appAlertModal" tabindex="-1" aria-labelledby="appAlertTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div id="appAlertHeader" class="modal-header">
+          <h5 class="modal-title" id="appAlertTitle">Notice</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div id="appAlertBody" class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-amber" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reusable Confirm Modal -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalLabel">Confirm Action</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+        </div>
+        <div class="modal-body" id="confirmModalBody">Are you sure?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn-close-footer" id="confirmCancelBtn" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-amber" id="confirmOkBtn">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar loader -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/components/sidebar.html").then(r => r.text()).then(html => {
+        document.getElementById("sidebar-container").innerHTML = html;
+        const sb = document.querySelector(".sidebar"), db = document.querySelector(".dashboard");
+        if (sb && db) {
+          sb.addEventListener("mouseenter", () => db.classList.add("sidebar-expanded"));
+          sb.addEventListener("mouseleave", () => db.classList.remove("sidebar-expanded"));
+        }
+        document.querySelectorAll('.has-submenu .submenu-toggle').forEach(t => {
+          t.addEventListener('click', e => {
+            e.preventDefault();
+            const p = t.closest('.has-submenu');
+            p.classList.toggle('open');
+            t.setAttribute('aria-expanded', p.classList.contains('open'));
+          });
+        });
+      });
+    });
+  </script>
+
+  <!-- Bootstrap JS (bundle) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Header initials (same as list page) -->
+  <script>
+    (function initHeaderInitials() {
+      try {
+        const raw = localStorage.getItem("user");
+        const stored = raw ? JSON.parse(raw) : {};
+        const u = stored.user || stored;
+
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return;
+        }
+        window.currentUser = u;
+
+        const initials = getInitials(u);
+        window.addEventListener("DOMContentLoaded", () => {
+          const el = document.getElementById("Username");
+          if (!el) return;
+          el.textContent = initials;
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        });
+      } catch (e) {
+        window.location.href = "/TEACHER/login/login.html";
+      }
+
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
+  </script>
+
+  <!-- Detail page logic -->
+  <script>
+    /* ================= API base (same logic) ================= */
+    function resolveApiBase() {
+      const meta = document.querySelector('meta[name="api-base"]');
+      if (meta && meta.content) return meta.content.replace(/\/+$/, '');
+      if (window.__API_BASE__) return String(window.__API_BASE__).replace(/\/+$/, '');
+      const host = location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:5000';
+      return '';
+    }
+    const API_BASE = resolveApiBase();
+
+    function showAppAlert(message, { title = "Notice", variant = "primary" } = {}) {
+      const header = document.getElementById("appAlertHeader");
+      const titleEl = document.getElementById("appAlertTitle");
+      const bodyEl = document.getElementById("appAlertBody");
+      const alertEl = document.getElementById("appAlertModal");
+
+      header.className = "modal-header";
+      const bg = {
+        primary: "bg-primary text-white", success: "bg-success text-white",
+        danger: "bg-danger text-white", warning: "bg-warning",
+        info: "bg-info", secondary: "bg-secondary text-white",
+        dark: "bg-dark text-white", light: "bg-light"
+      }[variant] || "bg-primary text-white";
+      header.classList.add(...bg.split(" "));
+
+      titleEl.textContent = title;
+      bodyEl.textContent = message;
+      bootstrap.Modal.getOrCreateInstance(alertEl).show();
+    }
+
+    // Confirm (shared)
+    const _confirmEl = document.getElementById('confirmModal');
+    const _confirm = new bootstrap.Modal(_confirmEl);
+    const _confirmT = document.getElementById('confirmModalLabel');
+    const _confirmB = document.getElementById('confirmModalBody');
+    const _confirmOK = document.getElementById('confirmOkBtn');
+    const _confirmCancel = document.getElementById('confirmCancelBtn');
+    function showConfirm(title = 'Confirm', html = 'Are you sure?') {
+      _confirmT.textContent = title;
+      _confirmB.innerHTML = html;
+      return new Promise(resolve => {
+        const onOk = () => { cleanup(); _confirm.hide(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+        function cleanup() {
+          _confirmOK.removeEventListener('click', onOk);
+          _confirmCancel.removeEventListener('click', onCancel);
+          _confirmEl.removeEventListener('hidden.bs.modal', onCancel);
+        }
+        _confirmOK.addEventListener('click', onOk, { once: true });
+        _confirmCancel.addEventListener('click', onCancel, { once: true });
+        _confirmEl.addEventListener('hidden.bs.modal', onCancel, { once: true });
+        _confirm.show();
+      });
+    }
+
+    // Auth (teacher)
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const TEACHER_ID = (userData.user && userData.user.userId) ? userData.user.userId : (userData.userId || "");
+    if (!TEACHER_ID || !(userData.user?.isTeacher || userData.isTeacher)) {
+      showAppAlert("Unauthorized. Please log in as a teacher.");
+      window.location.href = "/TEACHER/login/login.html";
+    }
+
+    // Query param
+    const params = new URLSearchParams(location.search);
+    const ANNOUNCEMENT_ID = params.get("id");
+
+    // State
+    let CLASS_MAP = {};
+    let ANNOUNCEMENT = null;
+
+    // Utilities
+    const fmtDT = (ts) => {
+      if (!ts) return "";
+      if (typeof ts === "number") return new Date(ts).toLocaleString();
+      if (ts?._seconds) return new Date(ts._seconds * 1000).toLocaleString();
+      if (ts?.seconds) return new Date(ts.seconds * 1000).toLocaleString();
+      if (ts?.toMillis) return new Date(ts.toMillis()).toLocaleString();
+      return new Date(ts).toLocaleString();
+    };
+
+    function badgeClass(status) {
+      switch (String(status || '').toLowerCase()) {
+        case 'published': return 'badge bg-success';
+        case 'scheduled': return 'badge bg-secondary';
+        case 'expired':   return 'badge bg-dark';
+        default:          return 'badge bg-light text-dark';
+      }
+    }
+
+    function fmtClassLabel(c) {
+      const name = [c.name, (c.gradeLevel ? `Grade ${c.gradeLevel}` : null), (c.section ? `Section ${c.section}` : null)]
+        .filter(Boolean).join(' - ');
+      return name + (c.archived ? ' (Archived)' : '');
+    }
+
+    async function fetchClassLabelById(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(id)}`);
+        const js = await res.json();
+        if (js?.success && js.class) {
+          const label = fmtClassLabel(js.class);
+          CLASS_MAP[id] = label;
+          return label;
+        }
+      } catch {}
+      CLASS_MAP[id] = id;
+      return id;
+    }
+
+    async function ensureClassLabels(ids) {
+      const unique = Array.from(new Set(ids || []));
+      const missing = unique.filter(id => !CLASS_MAP[id]);
+      if (!missing.length) return;
+      await Promise.all(missing.map(fetchClassLabelById));
+    }
+
+    function render() {
+      if (!ANNOUNCEMENT) return;
+      const titleEl = document.getElementById('title');
+      const statusBadge = document.getElementById('statusBadge');
+      const importantIcon = document.getElementById('importantIcon');
+      const metaLine = document.getElementById('metaLine');
+      const chips = document.getElementById('classChips');
+      const content = document.getElementById('content');
+      const publishAt = document.getElementById('publishAt');
+      const expiresAt = document.getElementById('expiresAt');
+      const updatedAt = document.getElementById('updatedAt');
+
+      titleEl.textContent = ANNOUNCEMENT.title || 'Announcement';
+      statusBadge.className = badgeClass(ANNOUNCEMENT.status);
+      statusBadge.textContent = ANNOUNCEMENT.status || '';
+      importantIcon.innerHTML = ANNOUNCEMENT.important
+        ? '<i class="bi bi-exclamation-circle-fill text-danger" title="Important"></i>'
+        : '';
+
+      const teacherId = ANNOUNCEMENT.teacherId ? ` • Teacher ID: ${ANNOUNCEMENT.teacherId}` : '';
+      metaLine.textContent = `ID: ${ANNOUNCEMENT.id}${teacherId}`;
+
+      // Classes
+      chips.innerHTML = '';
+      const classIds = ANNOUNCEMENT.classIds || ANNOUNCEMENT.classes || [];
+      classIds.forEach(id => {
+        const span = document.createElement('span');
+        span.className = 'class-chip';
+        span.textContent = CLASS_MAP[id] || id;
+        chips.appendChild(span);
+      });
+
+      content.textContent = ANNOUNCEMENT.content || '';
+
+      const pubMs = ANNOUNCEMENT.publishAt?.toMillis ? ANNOUNCEMENT.publishAt.toMillis() : ANNOUNCEMENT.publishAt;
+      const expMs = ANNOUNCEMENT.expiresAt?.toMillis ? ANNOUNCEMENT.expiresAt.toMillis() : ANNOUNCEMENT.expiresAt;
+      publishAt.textContent = fmtDT(pubMs);
+      expiresAt.textContent = expMs ? fmtDT(expMs) : '—';
+      updatedAt.textContent = fmtDT(ANNOUNCEMENT.updatedAt?.toMillis ? ANNOUNCEMENT.updatedAt.toMillis() : ANNOUNCEMENT.updatedAt);
+
+      // Toggle Archive/Unarchive buttons
+      const isExpired = String(ANNOUNCEMENT.status || '').toLowerCase() === 'expired';
+      document.getElementById('archiveBtn').classList.toggle('d-none', isExpired);
+      document.getElementById('unarchiveBtn').classList.toggle('d-none', !isExpired);
+    }
+
+    async function loadAnnouncement() {
+      if (!ANNOUNCEMENT_ID) {
+        showAppAlert("Missing announcement id.");
+        return;
+      }
+      // There isn't a GET /api/announcements/:id yet, so fetch teacher list and pick the item.
+      const params = new URLSearchParams({ teacherId: TEACHER_ID });
+      const res = await fetch(`${API_BASE}/api/announcements?${params.toString()}`);
+      const js = await res.json();
+      if (!js?.success || !Array.isArray(js.announcements)) {
+        showAppAlert("Failed to load announcement.");
+        return;
+      }
+      const found = js.announcements.find(a => a.id === ANNOUNCEMENT_ID);
+      if (!found) {
+        showAppAlert("Announcement not found or you do not have access.", { variant: 'warning' });
+        return;
+      }
+      ANNOUNCEMENT = found;
+
+      // Ensure class labels
+      const allIds = (ANNOUNCEMENT.classIds || ANNOUNCEMENT.classes || []);
+      await ensureClassLabels(allIds);
+
+      render();
+    }
+
+    // Actions
+    document.getElementById('backBtn').addEventListener('click', () => {
+      // go back to list
+      window.location.href = '/TEACHER/announcements/announcements.html';
+    });
+
+    document.getElementById('editBtn').addEventListener('click', () => {
+      // Open list page and auto-open edit would be more complex; simplest is to navigate back and let user click Edit.
+      // If you later add a dedicated edit page, link it here.
+      window.location.href = '/TEACHER/announcements/announcements.html';
+    });
+
+    async function postAction(path) {
+      const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const js = await res.json();
+      return js;
+    }
+
+    document.getElementById('archiveBtn').addEventListener('click', async () => {
+      const ok = await showConfirm('Archive Announcement', 'Mark this announcement as <strong>expired</strong>?');
+      if (!ok) return;
+      const js = await postAction(`/api/announcements/${encodeURIComponent(ANNOUNCEMENT_ID)}/archive`);
+      if (!js?.success) return showAppAlert(js?.message || 'Failed to archive.');
+      await loadAnnouncement();
+    });
+
+    document.getElementById('unarchiveBtn').addEventListener('click', async () => {
+      const ok = await showConfirm('Unarchive Announcement', 'Make this announcement visible again based on its publish date?');
+      if (!ok) return;
+      const js = await postAction(`/api/announcements/${encodeURIComponent(ANNOUNCEMENT_ID)}/unarchive`);
+      if (!js?.success) return showAppAlert(js?.message || 'Failed to unarchive.');
+      await loadAnnouncement();
+    });
+
+    // Init
+    (async function init() {
+      try {
+        await loadAnnouncement();
+      } catch (e) {
+        console.error(e);
+        showAppAlert("Failed to load details.");
+      }
+    })();
+  </script>
+</body>
+</html>

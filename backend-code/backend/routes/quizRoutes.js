@@ -800,8 +800,9 @@ router.post('/submit-quiz-score', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    LIVE attempt status + RESULTS
+   (NOTE: no hard-coded /api here; router should be mounted at /api)
 =========================================================== */
-router.get('/api/students/:userId/quiz-attempts', asyncHandler(async (req, res) => {
+router.get('/students/:userId/quiz-attempts', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const raw = String(req.query.quizIds || '').trim();
   const quizIds = raw ? raw.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -830,7 +831,7 @@ router.get('/api/students/:userId/quiz-attempts', asyncHandler(async (req, res) 
   res.json({ success: true, data: out });
 }));
 
-router.get('/api/students/:userId/quiz-results', asyncHandler(async (req, res) => {
+router.get('/students/:userId/quiz-results', asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const quizId = String(req.query.quizId || '').trim();
   if (!quizId) return res.status(400).json({ success:false, message:'quizId is required' });
