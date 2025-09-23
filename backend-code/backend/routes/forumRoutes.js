@@ -9,38 +9,6 @@ const nowTS = () => admin.firestore.FieldValue.serverTimestamp();
 const COURSE_COLLECTION  = process.env.COURSE_COLLECTION        || 'courses';
 const THREADS_COLLECTION = process.env.FORUM_THREADS_COLLECTION || 'forum_threads';
 
-/**
- * THREAD SCHEMA
- *  - forum_threads
- *      {
- *        id, title, text, courseId, courseTitle, createdAt, updatedAt?,
- *        author: {
- *          uid,
- *          emailEnc,
- *          firstNameEnc,
- *          middleNameEnc,
- *          lastNameEnc,
- *        },
- *        repliesCount, followers[]
- *      }
- *  - forum_threads/{id}/replies
- *      {
- *        id, text, createdAt, updatedAt?, parentId?,
- *        author: {
- *          uid,
- *          emailEnc,
- *          firstNameEnc,
- *          middleNameEnc,
- *          lastNameEnc,
- *        }
- *      }
- *
- * API responses hydrate ONLY:
- *   author.firstName, author.middleName, author.lastName, author.fullName, author.email
- *   (NO username field returned)
- *   Additionally, top-level authorFullName mirrors author.fullName for easy rendering.
- */
-
 // ---------- Profile resolution from users/{uid} (with email fallback) ----------
 async function getUserNameAndEmail(uid) {
   const fallback = { firstName: 'User', middleName: '', lastName: '', fullName: 'User', email: '' };

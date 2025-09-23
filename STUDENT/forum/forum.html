@@ -24,12 +24,14 @@
     @keyframes shimmer{100%{transform:translateX(100%)}}
     .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
 
-    /* Announcements */
-    .ann-item + .ann-item{margin-top:.75rem}
-    .ann-title{margin:0;font-size:1.05rem}
-    .ann-meta{color:#6c757d;font-size:.9rem}
-    .class-chip{display:inline-block;padding:.2rem .5rem;border-radius:999px;background:#f1f3f5;margin:.125rem .25rem .125rem 0;font-size:.8rem}
-    .badge-status{font-size:.75rem}
+    /* Compact Announcements */
+    .ann-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border:1px solid #e9ecef;border-radius:.5rem;background:#fff}
+    .ann-row + .ann-row{margin-top:.5rem}
+    .ann-title{margin:0;font-size:1rem}
+    .ann-poster{color:#6c757d;font-size:.9rem;white-space:nowrap;margin-left:1rem}
+    .ann-controls{display:flex;gap:.5rem;align-items:center}
+    .ann-actions{display:flex;gap:.5rem}
+    .ann-search .input-group-text{background:#fff}
   </style>
 </head>
 <body>
@@ -94,19 +96,19 @@
           </form>
         </div>
 
-        <!-- Announcements: search/filter -->
+        <!-- Announcements (COMPACT: title + who posted) -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Latest Announcements</h2>
             <div class="ui-subtext" id="annCount">Loading…</div>
           </div>
 
-          <div class="row g-2 align-items-end px-3 pb-3">
+          <div class="row g-2 align-items-end px-3 pb-3 ann-search">
             <div class="col-12 col-md-8">
               <label class="form-label" for="annSearch">Search Announcements</label>
               <div class="input-group">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input id="annSearch" type="search" class="form-control border-start-0" placeholder="Search by title or content..." />
+                <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input id="annSearch" type="search" class="form-control border-start-0" placeholder="Search by title..." />
               </div>
             </div>
             <div class="col-6 col-md-2">
@@ -120,7 +122,7 @@
             <div class="col-6 col-md-2">
               <label class="form-label" for="annLimit">Show</label>
               <select id="annLimit" class="form-select">
-                <option value="10">10</option>
+                <option value="10" selected>10</option>
                 <option value="25">25</option>
                 <option value="50">50</option>
               </select>
@@ -242,6 +244,14 @@
       let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
     }
 
+    // Compact teacher display
+    function teacherDisplay(a) {
+      // Prefer explicit teacherName; fallback to teacher; final fallback to teacherId
+      const t = a?.teacherName || a?.teacher || a?.teacherId || '';
+      const val = String(t).trim();
+      return val || 'Teacher';
+    }
+
     // Robust fetch that verifies JSON
     async function fetchJSON(url, opts) {
       const res = await fetch(url, opts);
@@ -299,33 +309,7 @@
 
     // Announcements
     let announcements = [];
-    let classLabelCache = new Map();
     let annLastSig = '';
-
-    /* ========= Class label helpers ========= */
-    function fmtClassLabel(c) {
-      const name = [c.name, c.gradeLevel ? `Grade ${c.gradeLevel}` : null, c.section ? `Section ${c.section}` : null]
-        .filter(Boolean).join(' - ');
-      return name + (c.archived ? ' (Archived)' : '');
-    }
-    async function fetchClassLabelById(id) {
-      if (classLabelCache.has(id)) return classLabelCache.get(id);
-      try {
-        const j = await fetchJSON(`${CORE_API}/api/classes/${encodeURIComponent(id)}`);
-        if (j?.success && j.class) {
-          const label = fmtClassLabel(j.class);
-          classLabelCache.set(id, label);
-          return label;
-        }
-      } catch {}
-      classLabelCache.set(id, id);
-      return id;
-    }
-    async function ensureClassLabels(ids) {
-      const missing = Array.from(new Set(ids)).filter(id => !classLabelCache.has(id));
-      if (!missing.length) return;
-      await Promise.all(missing.map(fetchClassLabelById));
-    }
 
     /* ========= Load ONLY enrolled courses ========= */
     async function loadCourses() {
@@ -360,22 +344,14 @@
       }
     }
 
-    /* ========= Announcements (Student feed) ========= */
-    function badgeClass(status) {
-      switch (String(status || '').toLowerCase()) {
-        case 'published': return 'badge bg-success';
-        case 'scheduled': return 'badge bg-secondary';
-        case 'expired':   return 'badge bg-dark';
-        default:          return 'badge bg-light text-dark';
-      }
-    }
+    /* ========= Announcements (Student feed, compact) ========= */
     function getMs(v){
       if (!v) return 0;
       if (typeof v === 'number') return v;
       if (v._seconds) return v._seconds * 1000;
       if (v.seconds)  return v.seconds * 1000;
       if (v.toMillis) return v.toMillis();
-      return new Date(v).getTime();
+      const t = Date.parse(v); return Number.isFinite(t) ? t : 0;
     }
 
     async function loadAnnouncements() {
@@ -387,7 +363,7 @@
         userId
       });
       if (annLastSig === sig && announcements.length) {
-        renderAnnouncements(); // still re-render with same state (e.g., user changed search box)
+        renderAnnouncements(); // re-render even if same to apply UI changes
         return;
       }
       annLastSig = sig;
@@ -397,13 +373,7 @@
 
       try {
         const j = await fetchJSON(`${CORE_API}/api/announcements/student/${encodeURIComponent(userId)}`);
-        let arr = Array.isArray(j?.announcements) ? j.announcements : [];
-
-        // Ensure class labels (optional but nicer)
-        const allIds = arr.flatMap(a => (a.classIds || a.classes || []));
-        await ensureClassLabels(allIds);
-
-        announcements = arr;
+        announcements = Array.isArray(j?.announcements) ? j.announcements : [];
         renderAnnouncements();
       } catch (e) {
         console.error(e);
@@ -413,27 +383,21 @@
     }
 
     function renderAnnouncements() {
-      const wrap = $('#annList');
+      const wrap  = $('#annList');
       const count = $('#annCount');
-      const q = ($('#annSearch').value || '').trim().toLowerCase();
-      const sort = $('#annSort').value || 'publish_desc';
+      const q     = ($('#annSearch').value || '').trim().toLowerCase();
+      const sort  = $('#annSort').value || 'publish_desc';
       const limit = parseInt($('#annLimit').value || '10', 10);
 
+      // search only by TITLE (compact view)
       let list = announcements.slice();
+      if (q) list = list.filter(a => String(a.title || '').toLowerCase().includes(q));
 
-      if (q) {
-        list = list.filter(a =>
-          String(a.title || '').toLowerCase().includes(q) ||
-          String(a.content || '').toLowerCase().includes(q)
-        );
-      }
-
-      // sort
+      // sort by publishAt (fallback to createdAt)
       list.sort((a, b) => {
-        if (sort === 'title_az') {
-          return String(a.title || '').localeCompare(String(b.title || ''));
-        }
-        const am = getMs(a.publishAt), bm = getMs(b.publishAt);
+        if (sort === 'title_az') return String(a.title || '').localeCompare(String(b.title || ''));
+        const am = getMs(a.publishAt || a.createdAt);
+        const bm = getMs(b.publishAt || b.createdAt);
         return sort === 'publish_asc' ? (am - bm) : (bm - am);
       });
 
@@ -449,29 +413,14 @@
       }
 
       list.forEach(a => {
-        const classIds = a.classIds || a.classes || [];
-        const classesText = classIds.map(id => classLabelCache.get(id) || id);
-        const status = String(a.status || 'published');
-        const importantIcon = a.important ? `<i class="bi bi-exclamation-circle-fill text-danger" title="Important"></i>` : '';
-        const pubTxt = toLocal(a.publishAt);
-        const expTxt = a.expiresAt ? toLocal(a.expiresAt) : '—';
-
+        const poster = teacherDisplay(a);
         const div = document.createElement('div');
-        div.className = 'ann-item';
+        div.className = 'ann-row';
         div.innerHTML = `
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <h3 class="ann-title wrap-anywhere">
-                ${importantIcon} ${escapeHtml(a.title || 'Announcement')}
-                <span class="badge badge-status ${badgeClass(status).split(' ').slice(1).join(' ')}">${escapeHtml(status)}</span>
-              </h3>
-              <div class="ann-meta">Published: ${pubTxt} • Expires: ${expTxt}</div>
-              <div class="mt-1">
-                ${classesText.map(lbl => `<span class="class-chip">${escapeHtml(lbl)}</span>`).join('')}
-              </div>
-            </div>
+          <h3 class="ann-title wrap-anywhere"><i class="bi bi-megaphone me-1"></i>${escapeHtml(a.title || 'Announcement')}</h3>
+          <div class="ann-controls">
+            <span class="ann-poster">Posted by <strong>${escapeHtml(poster)}</strong></span>
           </div>
-          <div class="mt-2">${escapeHtml(a.content || '')}</div>
         `;
         wrap.appendChild(div);
       });
@@ -613,7 +562,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await loadCourses();
-        await loadAnnouncements();  // <-- NEW: pull announcements for this student
+        await loadAnnouncements();  // compact announcements
         await loadThreads();
       } catch (e) {
         console.error(e);
@@ -628,7 +577,7 @@
       $('#courseFilter').addEventListener('change', loadThreads);
       $('#sortThreads').addEventListener('change', loadThreads);
 
-      // Announcements UI events
+      // Announcements UI events (title-only search)
       const debouncedAnnRender = debounce(renderAnnouncements, 250);
       $('#annSearch').addEventListener('input', debouncedAnnRender);
       $('#annSort').addEventListener('change', renderAnnouncements);
