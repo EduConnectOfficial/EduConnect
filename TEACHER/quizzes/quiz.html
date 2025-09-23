@@ -1211,6 +1211,7 @@
     function buildCsvTemplate(kind) {
       const header = ['type', 'question', 'choiceA', 'choiceB', 'choiceC', 'choiceD', 'correct'];
       const rows = [header];
+
       if (kind === 'mcq') {
         rows.push(['mcq', 'What is 2 + 2?', '4', '3', '5', '2', 'A']);
         rows.push(['mcq', 'Which color is the sky?', 'Blue', 'Green', 'Red', 'Yellow', 'A']);
@@ -1225,6 +1226,8 @@
         rows.push(['tf', 'Light travels faster than sound', '', '', '', '', 'TRUE']);
         rows.push(['essay', 'Explain the exposure triangle in photography.', '', '', '', '', '']);
       }
+
+      // relies on existing toCSV(rows) in this page
       return toCSV(rows);
     }
     function isSafari() {
@@ -1237,21 +1240,25 @@
       return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     }
+
     function downloadCSV(kind, filename) {
       const csv = buildCsvTemplate(kind);
       const BOM = new Uint8Array([0xEF, 0xBB, 0xBF]); // Excel-friendly
       const blob = new Blob([BOM, csv], { type: 'text/csv;charset=utf-8;' });
 
+      // IE/Edge Legacy
       if (window.navigator && typeof window.navigator.msSaveBlob === 'function') {
         window.navigator.msSaveBlob(blob, filename);
         return;
       }
+
+      // iOS/Safari fallback (no download attr / blob object URLs)
       if (isSafari() || isIOS()) {
         try {
           const reader = new FileReader();
           reader.onloadend = function () {
             const a = document.createElement('a');
-            a.href = reader.result; // data: URL
+            a.href = reader.result; // data URL
             a.target = '_blank';
             a.rel = 'noopener';
             document.body.appendChild(a);
@@ -1260,8 +1267,11 @@
           };
           reader.readAsDataURL(blob);
           return;
-        } catch (e) { /* fall through */ }
+        } catch (e) {
+          // fall through to object URL path
+        }
       }
+      // Standard path
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -1277,16 +1287,12 @@
         }, 0);
       }, 0);
     }
-    (function wireCsvButtons() {
-      const btnMcq = document.getElementById('downloadCsvTplMcq');
-      const btnTf = document.getElementById('downloadCsvTplTf');
-      const btnEssay = document.getElementById('downloadCsvTplEssay');
-      const btnAll = document.getElementById('downloadCsvTplAll');
-      if (btnMcq) btnMcq.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
-      if (btnTf) btnTf.addEventListener('click', () => downloadCSV('tf', 'quiz_template_true_false.csv'));
-      if (btnEssay) btnEssay.addEventListener('click', () => downloadCSV('essay', 'quiz_template_essay.csv'));
-      if (btnAll) btnAll.addEventListener('click', () => downloadCSV('all', 'quiz_template_all.csv'));
-    })();
+
+    // Wire buttons
+    document.getElementById('downloadCsvTplMcq')?.addEventListener('click', () => downloadCSV('mcq', 'quiz_template_mcq.csv'));
+    document.getElementById('downloadCsvTplTf')?.addEventListener('click', () => downloadCSV('tf', 'quiz_template_true_false.csv'));
+    document.getElementById('downloadCsvTplEssay')?.addEventListener('click', () => downloadCSV('essay', 'quiz_template_essay.csv'));
+    document.getElementById('downloadCsvTplAll')?.addEventListener('click', () => downloadCSV('all', 'quiz_template_all.csv'));
 
     /* ---------- Bulk Import (parse + preview) ---------- */
     const bulkFileEl = document.getElementById('bulkFile');

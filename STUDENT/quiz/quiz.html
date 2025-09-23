@@ -301,12 +301,6 @@
     const coursesById = new Map(); // courseId -> course
     const modulesByCourse = new Map(); // courseId -> Map(moduleId -> module)
 
-    // student classes & courses for assignment filtering (client-side)
-    const studentClassIds = new Set();
-    const studentCourseIds = new Set();
-    let classesLoadedOk = false;
-    let coursesLoadedOk = false;
-
     // ---------- Helpers ----------
     const ts = (obj) => {
       if (!obj) return null;
@@ -358,6 +352,7 @@
       q.moduleId =
         q.moduleId ?? q.module_id ?? q.moduleID ?? q.module?.id ?? q.module?.moduleId ?? q.moduleRef ?? q.moduleKey ?? null;
 
+      // normalize assignedClasses shape if present
       let ac =
         q.assignedClasses ?? q.assignedClassIds ?? q.assigned ?? q.classes ?? q.classIds ?? q.assigned_to ?? [];
       if (!Array.isArray(ac)) {
@@ -368,24 +363,11 @@
       return q;
     }
 
-    function isQuizVisibleToStudent(q) {
-      const courseOk = q.courseId ? studentCourseIds.has(String(q.courseId)) : false;
-      const arr = Array.isArray(q.assignedClasses) ? q.assignedClasses : [];
-      if (arr.length === 0) {
-        if (coursesLoadedOk && q.courseId) return courseOk;
-        return true;
-      }
-      if (!classesLoadedOk) return false;
-      for (const cid of arr) if (studentClassIds.has(String(cid))) return true;
-      return false;
-    }
-
     // ---------- Data loaders ----------
     async function loadCourses() {
+      // Optional: keep this if your courses endpoint exists; otherwise it simply leaves the default option.
       courseSelect.innerHTML = `<option value="">-- All Courses --</option>`;
       coursesById.clear();
-      studentCourseIds.clear();
-      coursesLoadedOk = false;
 
       const tryEndpoints = [
         `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`,
@@ -402,7 +384,6 @@
           list.forEach(c => {
             const cid = c?.id ?? c?.courseId ?? c?._id ?? c?.key;
             if (!cid) return;
-            studentCourseIds.add(String(cid));
             coursesById.set(String(cid), c);
 
             const code = c.courseNumber ?? c.code ?? c.number ?? c.classCode ?? null;
@@ -414,13 +395,9 @@
             opt.textContent = label;
             courseSelect.appendChild(opt);
           });
-
-          coursesLoadedOk = true;
           return;
         } catch {}
       }
-
-      coursesLoadedOk = false;
     }
 
     async function loadModules(courseId) {
@@ -472,66 +449,39 @@
       await Promise.all(uniq.map(ensureModulesForCourse));
     }
 
-    async function loadStudentClasses() {
-      classesLoadedOk = false;
-      studentClassIds.clear();
-
-      const tryEndpoints = [
-        `${API_BASE}/api/students/${encodeURIComponent(userData.userId)}/classes`,
-        `${API_BASE}/classes?studentId=${encodeURIComponent(userData.userId)}`,
-        `${API_BASE}/api/classes?studentId=${encodeURIComponent(userData.userId)}`
-      ];
-
-      for (const url of tryEndpoints) {
-        try {
-          const js = await apiGet(url);
-          const list = Array.isArray(js?.classes) ? js.classes : (Array.isArray(js) ? js : []);
-          list.forEach(c => {
-            const id = c?.id ?? c?.classId ?? c?._id ?? c?.key;
-            if (id) studentClassIds.add(String(id));
-          });
-          classesLoadedOk = true;
-          return;
-        } catch {}
-      }
-      classesLoadedOk = false;
-    }
-
     async function loadQuizzes() {
       const uid = encodeURIComponent(userData.userId);
       const params = new URLSearchParams({ forStudent: uid });
+      // (courseId/moduleId params are harmless if your server ignores them)
       if (currentCourseId) params.set('courseId', currentCourseId);
       if (currentModuleId) params.set('moduleId', currentModuleId);
 
-      const endpoints = [
-        `${API_BASE}/api/students/${uid}/quizzes`,
-        `${API_BASE}/quizzes?${params.toString()}`,
-        `${API_BASE}/api/quizzes?${params.toString()}`,
-        `${API_BASE}/quizzes`
-      ];
+      // Use server route that matches your quizRoutes.js
+      const url = `${API_BASE}/api/quizzes?${params.toString()}`;
 
       let raw = [];
-      for (const url of endpoints) {
-        try {
-          const js = await apiGet(url);
-          const list = (Array.isArray(js?.quizzes) ? js.quizzes
-                      : Array.isArray(js?.data) ? js.data
-                      : Array.isArray(js) ? js
-                      : []);
-          if (list.length) { raw = list; break; }
-          if ('success' in js) { raw = list; break; }
-        } catch {}
+      try {
+        const js = await apiGet(url);
+        raw = Array.isArray(js?.quizzes) ? js.quizzes
+            : Array.isArray(js) ? js
+            : [];
+      } catch (e) {
+        console.error('Failed to load quizzes', e);
+        raw = [];
       }
 
       const normalized = raw.map(normalizeQuiz);
-      allQuizzes = normalized.filter(isQuizVisibleToStudent);
+      // Trust server-side visibility (forStudent filters publishAt & assignedClasses)
+      allQuizzes = normalized;
     }
 
+    // Use publishAt (per your backend) for status computation
     function statusOf(quiz) {
       const now = Date.now();
-      const openAt = ts(quiz.openAt) ? ts(quiz.openAt).getTime() : null;
+      const publishAt = ts(quiz.publishAt) ? ts(quiz.publishAt).getTime() : null;
       const dueAt = ts(quiz.dueAt) ? ts(quiz.dueAt).getTime() : null;
-      if (openAt && now < openAt) return "Upcoming";
+
+      if (publishAt && now < publishAt) return "Upcoming";
       if (dueAt && now > dueAt) return "Closed";
       return "Open";
     }
@@ -658,7 +608,8 @@
       const sp = rubricStorageByQuizId.get(String(quizId));
       if (!sp) return;
       try {
-        const js = await apiGet(`${API_BASE}/storage/token-url?path=${encodeURIComponent(sp)}`);
+        // FIX: route is mounted under /api per quizRoutes.js
+        const js = await apiGet(`${API_BASE}/api/storage/token-url?path=${encodeURIComponent(sp)}`);
         const url = js?.url;
         if (url) window.open(url, '_blank', 'noopener');
         else alert('Could not open rubric.');
@@ -723,7 +674,7 @@
         emptyState.classList.add("d-none");
       }
 
-      const listCourseIds = list.map(q => q.courseId);
+      const listCourseIds = list.map(q => q.courseId).filter(Boolean);
       await ensureModulesForCourses(listCourseIds);
 
       await ensureAttemptStatus(list.map(q => q.id));
@@ -974,8 +925,7 @@
     // ---------- Boot ----------
     document.addEventListener("DOMContentLoaded", async () => {
       try {
-        await loadCourses();
-        await loadStudentClasses();
+        await loadCourses(); // optional; safe if endpoint missing
         await loadQuizzes();
         renderQuizzes();
 

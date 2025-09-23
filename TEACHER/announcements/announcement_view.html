@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,13 +16,14 @@
   <!-- Global (reuse your announcements theme) -->
   <link rel="stylesheet" href="../announcements/announcements.css" />
   <style>
-    /* Small extras for details page */
     .detail-card .badge-status { font-size: .85rem; }
     .detail-card .class-chip { display:inline-block; padding:.25rem .5rem; border-radius:999px; background:#f1f3f5; margin:.125rem .25rem .125rem 0; font-size:.85rem; }
     .detail-card .meta { color:#6c757d; font-size:.9rem; }
     .logo-header { height: 38px; margin-left: 10px; }
     .page-actions .btn { min-width: 120px; }
     .announcement-body { white-space: pre-wrap; }
+    /* small tweak so chips wrap nicely */
+    #classChips { line-height: 2; }
   </style>
 </head>
 
@@ -105,7 +105,7 @@
     </div>
   </div>
 
-  <!-- App Alert Modal (reused) -->
+  <!-- App Alert Modal -->
   <div class="modal fade" id="appAlertModal" tabindex="-1" aria-labelledby="appAlertTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -121,7 +121,7 @@
     </div>
   </div>
 
-  <!-- Reusable Confirm Modal -->
+  <!-- Confirm Modal -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -134,6 +134,55 @@
           <button type="button" class="btn-close-footer" id="confirmCancelBtn" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-amber" id="confirmOkBtn">Continue</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL (inline edit on this details page) -->
+  <div class="modal fade" id="editAnnouncementModal" tabindex="-1" aria-labelledby="editAnnouncementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="editAnnouncementForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editAnnouncementLabel">Edit Announcement</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editAnnouncementId" />
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="editTitle" class="form-label">Title</label>
+                <input type="text" id="editTitle" class="form-control" required />
+              </div>
+              <div class="col-md-6">
+                <label for="editClasses" class="form-label">Classes</label>
+                <select id="editClasses" multiple class="form-select" required></select>
+              </div>
+              <div class="col-md-6">
+                <label for="editPublishAt" class="form-label">Publish At</label>
+                <input type="datetime-local" id="editPublishAt" class="form-control" required />
+              </div>
+              <div class="col-md-6">
+                <label for="editExpiresAt" class="form-label">Expires At</label>
+                <input type="datetime-local" id="editExpiresAt" class="form-control" />
+              </div>
+              <div class="col-12">
+                <label for="editContent" class="form-label">Content</label>
+                <textarea id="editContent" class="form-control" rows="4" required></textarea>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="editImportant" />
+                  <label class="form-check-label" for="editImportant">Important</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-close-footer" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-amber">Save</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -160,23 +209,18 @@
     });
   </script>
 
-  <!-- Bootstrap JS (bundle) -->
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Header initials (same as list page) -->
+  <!-- Header initials (unchanged) -->
   <script>
     (function initHeaderInitials() {
       try {
         const raw = localStorage.getItem("user");
         const stored = raw ? JSON.parse(raw) : {};
         const u = stored.user || stored;
-
-        if (!u?.userId || !u?.isTeacher) {
-          window.location.href = "/TEACHER/login/login.html";
-          return;
-        }
+        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
         window.currentUser = u;
-
         const initials = getInitials(u);
         window.addEventListener("DOMContentLoaded", () => {
           const el = document.getElementById("Username");
@@ -187,29 +231,22 @@
           el.setAttribute('title', fullLabel);
           el.setAttribute('aria-label', fullLabel);
         });
-      } catch (e) {
-        window.location.href = "/TEACHER/login/login.html";
-      }
-
+      } catch (e) { window.location.href = "/TEACHER/login/login.html"; }
       function getInitials(u) {
-        const fn = (u.firstName || '').trim();
-        const ln = (u.lastName || '').trim();
+        const fn = (u.firstName || '').trim(); const ln = (u.lastName || '').trim();
         if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
         const nameish = (u.username || u.displayName || u.name || '').trim();
-        if (nameish) {
-          const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
+        if (nameish) { const parts = nameish.replace(/[^A-Za-z0-9 _.\-]+/g, ' ').split(/[\s._-]+/).filter(Boolean);
           if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-          return parts[0][0].toUpperCase();
-        }
-        const em = (u.email || '').trim();
-        return em ? em[0].toUpperCase() : 'U';
+          return parts[0][0].toUpperCase(); }
+        const em = (u.email || '').trim(); return em ? em[0].toUpperCase() : 'U';
       }
     })();
   </script>
 
-  <!-- Detail page logic -->
+  <!-- Detail page logic with teacher NAME + inline edit -->
   <script>
-    /* ================= API base (same logic) ================= */
+    /* ===== API base ===== */
     function resolveApiBase() {
       const meta = document.querySelector('meta[name="api-base"]');
       if (meta && meta.content) return meta.content.replace(/\/+$/, '');
@@ -220,12 +257,12 @@
     }
     const API_BASE = resolveApiBase();
 
+    /* ===== Alert ===== */
     function showAppAlert(message, { title = "Notice", variant = "primary" } = {}) {
       const header = document.getElementById("appAlertHeader");
       const titleEl = document.getElementById("appAlertTitle");
       const bodyEl = document.getElementById("appAlertBody");
       const alertEl = document.getElementById("appAlertModal");
-
       header.className = "modal-header";
       const bg = {
         primary: "bg-primary text-white", success: "bg-success text-white",
@@ -234,13 +271,11 @@
         dark: "bg-dark text-white", light: "bg-light"
       }[variant] || "bg-primary text-white";
       header.classList.add(...bg.split(" "));
-
-      titleEl.textContent = title;
-      bodyEl.textContent = message;
+      titleEl.textContent = title; bodyEl.textContent = message;
       bootstrap.Modal.getOrCreateInstance(alertEl).show();
     }
 
-    // Confirm (shared)
+    /* ===== Confirm ===== */
     const _confirmEl = document.getElementById('confirmModal');
     const _confirm = new bootstrap.Modal(_confirmEl);
     const _confirmT = document.getElementById('confirmModalLabel');
@@ -248,8 +283,7 @@
     const _confirmOK = document.getElementById('confirmOkBtn');
     const _confirmCancel = document.getElementById('confirmCancelBtn');
     function showConfirm(title = 'Confirm', html = 'Are you sure?') {
-      _confirmT.textContent = title;
-      _confirmB.innerHTML = html;
+      _confirmT.textContent = title; _confirmB.innerHTML = html;
       return new Promise(resolve => {
         const onOk = () => { cleanup(); _confirm.hide(); resolve(true); };
         const onCancel = () => { cleanup(); resolve(false); };
@@ -265,7 +299,7 @@
       });
     }
 
-    // Auth (teacher)
+    /* ===== Auth ===== */
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     const TEACHER_ID = (userData.user && userData.user.userId) ? userData.user.userId : (userData.userId || "");
     if (!TEACHER_ID || !(userData.user?.isTeacher || userData.isTeacher)) {
@@ -273,15 +307,17 @@
       window.location.href = "/TEACHER/login/login.html";
     }
 
-    // Query param
+    /* ===== Query ===== */
     const params = new URLSearchParams(location.search);
     const ANNOUNCEMENT_ID = params.get("id");
 
-    // State
+    /* ===== State ===== */
+    let CLASS_LIST = [];
     let CLASS_MAP = {};
     let ANNOUNCEMENT = null;
+    let TEACHER_NAME = ''; // resolved from teacherId
 
-    // Utilities
+    /* ===== Utils ===== */
     const fmtDT = (ts) => {
       if (!ts) return "";
       if (typeof ts === "number") return new Date(ts).toLocaleString();
@@ -290,7 +326,6 @@
       if (ts?.toMillis) return new Date(ts.toMillis()).toLocaleString();
       return new Date(ts).toLocaleString();
     };
-
     function badgeClass(status) {
       switch (String(status || '').toLowerCase()) {
         case 'published': return 'badge bg-success';
@@ -299,27 +334,21 @@
         default:          return 'badge bg-light text-dark';
       }
     }
-
     function fmtClassLabel(c) {
       const name = [c.name, (c.gradeLevel ? `Grade ${c.gradeLevel}` : null), (c.section ? `Section ${c.section}` : null)]
         .filter(Boolean).join(' - ');
       return name + (c.archived ? ' (Archived)' : '');
     }
-
     async function fetchClassLabelById(id) {
       try {
         const res = await fetch(`${API_BASE}/api/classes/${encodeURIComponent(id)}`);
         const js = await res.json();
         if (js?.success && js.class) {
-          const label = fmtClassLabel(js.class);
-          CLASS_MAP[id] = label;
-          return label;
+          const label = fmtClassLabel(js.class); CLASS_MAP[id] = label; return label;
         }
       } catch {}
-      CLASS_MAP[id] = id;
-      return id;
+      CLASS_MAP[id] = id; return id;
     }
-
     async function ensureClassLabels(ids) {
       const unique = Array.from(new Set(ids || []));
       const missing = unique.filter(id => !CLASS_MAP[id]);
@@ -327,6 +356,48 @@
       await Promise.all(missing.map(fetchClassLabelById));
     }
 
+    /* ===== Resolve teacher NAME (not ID) ===== */
+    async function resolveTeacherName(teacherId, fallbackFromAnnouncement) {
+      // 0) if announcement already carries teacherName
+      if (fallbackFromAnnouncement) {
+        const n = (fallbackFromAnnouncement.firstName && fallbackFromAnnouncement.lastName)
+          ? `${fallbackFromAnnouncement.firstName} ${fallbackFromAnnouncement.lastName}`.trim()
+          : (fallbackFromAnnouncement.teacherName || '').trim();
+        if (n) return n;
+      }
+      // 1) /api/users/:id (if you have it)
+      try {
+        const r1 = await fetch(`${API_BASE}/api/users/${encodeURIComponent(teacherId)}`);
+        if (r1.ok) {
+          const j1 = await r1.json();
+          const u = j1.user || j1; // flexible
+          const n = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim() || u.displayName || u.name;
+          if (j1?.success && n) return n;
+        }
+      } catch {}
+      // 2) /api/teachers/:id (if you have a separate teachers controller)
+      try {
+        const r2 = await fetch(`${API_BASE}/api/teachers/${encodeURIComponent(teacherId)}`);
+        if (r2.ok) {
+          const j2 = await r2.json();
+          const t = j2.teacher || j2;
+          const n = [t.firstName, t.middleName, t.lastName].filter(Boolean).join(' ').trim() || t.displayName || t.name;
+          if (j2?.success && n) return n;
+        }
+      } catch {}
+      // 3) fallback to current user name if same id
+      try {
+        const u = (userData.user || userData);
+        if (u?.userId === teacherId) {
+          const n = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email;
+          if (n) return n;
+        }
+      } catch {}
+      // 4) last resort: return teacherId
+      return teacherId;
+    }
+
+    /* ===== Load, Render ===== */
     function render() {
       if (!ANNOUNCEMENT) return;
       const titleEl = document.getElementById('title');
@@ -346,10 +417,9 @@
         ? '<i class="bi bi-exclamation-circle-fill text-danger" title="Important"></i>'
         : '';
 
-      const teacherId = ANNOUNCEMENT.teacherId ? ` • Teacher ID: ${ANNOUNCEMENT.teacherId}` : '';
-      metaLine.textContent = `ID: ${ANNOUNCEMENT.id}${teacherId}`;
+      const teacherNameText = TEACHER_NAME ? ` • Teacher: ${TEACHER_NAME}` : '';
+      metaLine.textContent = `ID: ${ANNOUNCEMENT.id}${teacherNameText}`;
 
-      // Classes
       chips.innerHTML = '';
       const classIds = ANNOUNCEMENT.classIds || ANNOUNCEMENT.classes || [];
       classIds.forEach(id => {
@@ -360,25 +430,48 @@
       });
 
       content.textContent = ANNOUNCEMENT.content || '';
-
       const pubMs = ANNOUNCEMENT.publishAt?.toMillis ? ANNOUNCEMENT.publishAt.toMillis() : ANNOUNCEMENT.publishAt;
       const expMs = ANNOUNCEMENT.expiresAt?.toMillis ? ANNOUNCEMENT.expiresAt.toMillis() : ANNOUNCEMENT.expiresAt;
       publishAt.textContent = fmtDT(pubMs);
       expiresAt.textContent = expMs ? fmtDT(expMs) : '—';
       updatedAt.textContent = fmtDT(ANNOUNCEMENT.updatedAt?.toMillis ? ANNOUNCEMENT.updatedAt.toMillis() : ANNOUNCEMENT.updatedAt);
 
-      // Toggle Archive/Unarchive buttons
       const isExpired = String(ANNOUNCEMENT.status || '').toLowerCase() === 'expired';
       document.getElementById('archiveBtn').classList.toggle('d-none', isExpired);
       document.getElementById('unarchiveBtn').classList.toggle('d-none', !isExpired);
     }
 
-    async function loadAnnouncement() {
-      if (!ANNOUNCEMENT_ID) {
-        showAppAlert("Missing announcement id.");
-        return;
+    async function loadClasses() {
+      // load teacher's classes (for edit modal select)
+      let url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}&includeArchived=1`;
+      let js;
+      try {
+        let res = await fetch(url);
+        js = await res.json();
+        if (!js?.success || !Array.isArray(js.classes)) {
+          url = `${API_BASE}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`;
+          res = await fetch(url); js = await res.json();
+        }
+      } catch {
+        const res = await fetch(`${API_BASE}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`);
+        js = await res.json();
       }
-      // There isn't a GET /api/announcements/:id yet, so fetch teacher list and pick the item.
+      if (!js?.success) throw new Error("Failed to load classes");
+      CLASS_LIST = js.classes.map(c => ({ id: c.id, label: fmtClassLabel(c) }));
+      CLASS_MAP = Object.fromEntries(CLASS_LIST.map(c => [c.id, c.label]));
+
+      const editSel = document.getElementById("editClasses");
+      editSel.innerHTML = "";
+      CLASS_LIST.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c.id; o.textContent = c.label;
+        editSel.appendChild(o);
+      });
+    }
+
+    async function loadAnnouncement() {
+      if (!ANNOUNCEMENT_ID) { showAppAlert("Missing announcement id."); return; }
+      // If you add GET /api/announcements/:id, swap to that endpoint.
       const params = new URLSearchParams({ teacherId: TEACHER_ID });
       const res = await fetch(`${API_BASE}/api/announcements?${params.toString()}`);
       const js = await res.json();
@@ -387,28 +480,21 @@
         return;
       }
       const found = js.announcements.find(a => a.id === ANNOUNCEMENT_ID);
-      if (!found) {
-        showAppAlert("Announcement not found or you do not have access.", { variant: 'warning' });
-        return;
-      }
+      if (!found) { showAppAlert("Announcement not found or you do not have access.", { variant: 'warning' }); return; }
       ANNOUNCEMENT = found;
 
-      // Ensure class labels
+      // resolve teacher NAME
+      TEACHER_NAME = await resolveTeacherName(ANNOUNCEMENT.teacherId, ANNOUNCEMENT);
+
+      // labels
       const allIds = (ANNOUNCEMENT.classIds || ANNOUNCEMENT.classes || []);
       await ensureClassLabels(allIds);
 
       render();
     }
 
-    // Actions
+    /* ===== Actions ===== */
     document.getElementById('backBtn').addEventListener('click', () => {
-      // go back to list
-      window.location.href = '/TEACHER/announcements/announcements.html';
-    });
-
-    document.getElementById('editBtn').addEventListener('click', () => {
-      // Open list page and auto-open edit would be more complex; simplest is to navigate back and let user click Edit.
-      // If you later add a dedicated edit page, link it here.
       window.location.href = '/TEACHER/announcements/announcements.html';
     });
 
@@ -434,9 +520,67 @@
       await loadAnnouncement();
     });
 
-    // Init
+    /* ===== Edit on this page ===== */
+    const editModalEl = document.getElementById("editAnnouncementModal");
+    const editModal = new bootstrap.Modal(editModalEl);
+
+    document.getElementById('editBtn').addEventListener('click', () => {
+      if (!ANNOUNCEMENT) return;
+      // seed fields
+      document.getElementById("editAnnouncementId").value = ANNOUNCEMENT.id || '';
+      document.getElementById("editTitle").value = ANNOUNCEMENT.title || '';
+      document.getElementById("editContent").value = ANNOUNCEMENT.content || '';
+      document.getElementById("editImportant").checked = !!ANNOUNCEMENT.important;
+      // classes
+      const selectedIds = ANNOUNCEMENT.classIds || ANNOUNCEMENT.classes || [];
+      const editSel = document.getElementById("editClasses");
+      Array.from(editSel.options).forEach(opt => { opt.selected = selectedIds.includes(opt.value); });
+      // datetimes
+      const toLocalInputValue = (millis) => {
+        if (!millis) return "";
+        const d = new Date(millis);
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
+      const pubMs = ANNOUNCEMENT.publishAt?.toMillis ? ANNOUNCEMENT.publishAt.toMillis() : (typeof ANNOUNCEMENT.publishAt === 'number' ? ANNOUNCEMENT.publishAt : null);
+      const expMs = ANNOUNCEMENT.expiresAt?.toMillis ? ANNOUNCEMENT.expiresAt.toMillis() : (typeof ANNOUNCEMENT.expiresAt === 'number' ? ANNOUNCEMENT.expiresAt : null);
+      document.getElementById("editPublishAt").value = toLocalInputValue(pubMs || Date.now());
+      document.getElementById("editExpiresAt").value = toLocalInputValue(expMs);
+
+      editModal.show();
+    });
+
+    document.getElementById("editAnnouncementForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("editAnnouncementId").value;
+      const title = document.getElementById("editTitle").value.trim();
+      const content = document.getElementById("editContent").value.trim();
+      const classes = Array.from(document.getElementById("editClasses").selectedOptions).map(o => o.value);
+      const publishAt = document.getElementById("editPublishAt").value ? new Date(document.getElementById("editPublishAt").value).getTime() : null;
+      const expiresAt = document.getElementById("editExpiresAt").value ? new Date(document.getElementById("editExpiresAt").value).getTime() : null;
+      const important = document.getElementById("editImportant").checked;
+
+      if (!title || !content || !classes.length) {
+        showAppAlert("Please complete the required fields."); return;
+      }
+
+      const payload = { title, content, classes, publishAt, expiresAt, important };
+      const res = await fetch(`${API_BASE}/api/announcements/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const js = await res.json();
+      if (!js.success) { showAppAlert(js.message || "Failed to update announcement"); return; }
+
+      editModal.hide();
+      await loadAnnouncement(); // refresh view
+    });
+
+    /* ===== Init ===== */
     (async function init() {
       try {
+        await loadClasses();
         await loadAnnouncement();
       } catch (e) {
         console.error(e);

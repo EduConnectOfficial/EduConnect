@@ -325,7 +325,7 @@
     function getParam(name){const url=new URL(location.href);return url.searchParams.get(name);}
     function fmtTimeLeft(ms){const t=Math.max(0,Math.floor(ms/1000));const m=Math.floor(t/60),s=t%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
     function escapeHtml(s){return typeof s==='string'?s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'):'';}
-    function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+    function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j]];}return arr;}
     function safeParseJSON(s,fallback=null){try{return JSON.parse(s);}catch{return fallback;}}
     function isValidOrder(arr,n){if(!Array.isArray(arr)||arr.length!==n)return false;const seen=new Set();for(const v of arr){if(!Number.isInteger(v)||v<0||v>=n||seen.has(v))return false;seen.add(v);}return true;}
     function normalize(s){ return String(s ?? '').trim().toLowerCase(); }
@@ -579,7 +579,9 @@
         document.getElementById('quizTitle').textContent='No quiz ID provided.'; return;
       }
       try{
-        const res=await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`);
+        // Try canonical /api path first; fallback to legacy
+        let res = await fetch(`${API}/api/quizzes/${encodeURIComponent(quizId)}`);
+        if (!res.ok) res = await fetch(`${API}/quizzes/${encodeURIComponent(quizId)}`);
         const data=await res.json();
 
         if(!data.success || !data.quiz || !Array.isArray(data.quiz.questions) || data.quiz.questions.length===0){
@@ -895,7 +897,20 @@
       };
 
       try{
-        const res=await fetch(`${API}/submit-quiz-score`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        // canonical route
+        let res = await fetch(`${API}/api/submit-quiz-score`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        // fallback to legacy if needed
+        if (!res.ok) {
+          res = await fetch(`${API}/submit-quiz-score`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify(payload)
+          });
+        }
         const text=await res.text(); let out=null; try{out=JSON.parse(text);}catch{}
         showResult(breakdown,!!(out&&out.success),reason,out?.attempts||null,out?.message||null);
       }catch(err){
@@ -967,7 +982,7 @@
         ${notices.join('')}
         ${attemptsLine}
         ${msgLine}
-      `;
+      `;  <!-- ✅ fixed: no stray bracket here -->
 
       document.getElementById('resultModalLabel').textContent=ok?'Quiz submitted':'Submission issue';
       document.getElementById('resultModalBody').innerHTML=bodyHtml;
@@ -1027,7 +1042,7 @@
         if (typeof submitAndStore === 'function') {
           submitAndStore('anti-cheat');
         } else {
-          document.querySelectorAll("input, textarea, button").forEach(el => { el.disabled = true; });
+          document.querySelectorAll("input, textarea, button").forEach(el => {el.disabled = true; });
         }
       }
     }
