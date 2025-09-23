@@ -19,12 +19,6 @@
     @keyframes shimmer{100%{transform:translateX(100%)}}
     .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
     .btn-close-footer{background:#f1f3f5;border:1px solid #dee2e6;border-radius:.5rem;padding:.375rem .75rem}
-
-    /* Compact announcement rows (title + who posted) */
-    .ann-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border:1px solid #e9ecef;border-radius:.5rem;background:#fff}
-    .ann-row + .ann-row{margin-top:.5rem}
-    .ann-title{margin:0;font-size:1rem}
-    .ann-poster{color:#6c757d;font-size:.9rem;white-space:nowrap;margin-left:1rem}
   </style>
 </head>
 <body>
@@ -60,18 +54,6 @@
               <div class="p-3 border-bottom" id="threadDetails">
                 <div class="skeleton rounded-3 mb-2"></div>
                 <div class="skeleton rounded-3"></div>
-              </div>
-            </div>
-
-            <!-- ANNOUNCEMENTS (compact: title + who posted) -->
-            <div class="ui-card card-themed mb-4">
-              <div class="ui-card-head d-flex justify-content-between align-items-center">
-                <h2 class="ui-card-title m-0"><i class="bi bi-megaphone"></i> Announcements</h2>
-                <span class="ui-subtext" id="annCount">Loading…</span>
-              </div>
-              <div id="annList" class="p-3">
-                <div class="skeleton rounded-3"></div>
-                <div class="skeleton rounded-3 mt-2"></div>
               </div>
             </div>
 
@@ -346,20 +328,29 @@
     });
 
     /* ===========================
-       Shared helpers for announcements
+       Teacher name lookup (ensures Name, not ID)
     ============================*/
-    function teacherDisplay(a){
-      const t = a?.teacherName || a?.teacher || a?.teacherId || '';
-      const val = String(t).trim();
-      return val || 'Teacher';
-    }
-    function getMs(v){
-      if(!v) return 0;
-      if (typeof v === 'number') return v;
-      if (v._seconds) return v._seconds*1000;
-      if (v.seconds)  return v.seconds*1000;
-      if (v.toMillis) return v.toMillis();
-      const t = Date.parse(v); return Number.isFinite(t)?t:0;
+    const teacherNameCache = new Map();
+    async function fetchTeacherNameById(teacherId) {
+      if (!teacherId) return null;
+      if (teacherNameCache.has(teacherId)) return teacherNameCache.get(teacherId);
+
+      // Try /api/teachers/:id
+      try {
+        const t = await fetchJSON(`${CORE_API}/api/teachers/${encodeURIComponent(teacherId)}`);
+        const name = t?.teacher?.fullName || t?.teacher?.name || t?.teacher?.displayName;
+        if (name) { teacherNameCache.set(teacherId, name); return name; }
+      } catch {}
+
+      // Try /api/users/:id
+      try {
+        const u = await fetchJSON(`${CORE_API}/api/users/${encodeURIComponent(teacherId)}`);
+        const name = u?.user?.fullName || u?.user?.name || u?.user?.displayName;
+        if (name) { teacherNameCache.set(teacherId, name); return name; }
+      } catch {}
+
+      teacherNameCache.set(teacherId, null);
+      return null;
     }
 
     /* ===========================
@@ -404,7 +395,6 @@
           qs(".action-edit-thread")?.addEventListener("click", openThreadEditModal);
         }
 
-        await loadAnnouncements();
         await loadReplies();
       }catch(err){
         console.error(err);
@@ -413,7 +403,7 @@
     }
 
     /* ===========================
-       Announcement DETAIL view
+       Announcement DETAIL view (no extra card)
     ============================*/
     async function loadAnnouncementDetail(){
       const userId = __user.uid || __user.userId || __user.email;
@@ -426,11 +416,17 @@
           return;
         }
 
-        const poster   = teacherDisplay(a);
+        // Ensure we show a NAME, not ID
+        let poster = a.teacherName || a.teacher || null;
+        if (!poster && a.teacherId) {
+          const lookedUp = await fetchTeacherNameById(a.teacherId);
+          if (lookedUp) poster = lookedUp;
+        }
+        poster = poster || 'Teacher';
+
         const published = toLocal(a.publishAt || a.createdAt);
         const expires   = a.expiresAt ? toLocal(a.expiresAt) : '—';
 
-        // Render detail in the same visual style
         qs("#threadDetails").innerHTML = `
           <div class="thread-head">
             <div class="fb-avatar" aria-hidden="true">AN</div>
@@ -445,54 +441,11 @@
             </div>
           </div>`;
 
-        // In announcement mode, hide comments card
+        // Hide comments in announcement mode
         qs('#commentsCard').style.display = 'none';
-
-        // Still load the compact announcements list below
-        await loadAnnouncements();
       }catch(err){
         console.error(err);
         qs("#threadDetails").innerHTML = `<div class="alert alert-danger">Failed to load announcement.</div>`;
-      }
-    }
-
-    /* ===========================
-       Announcements (compact list)
-    ============================*/
-    async function loadAnnouncements(){
-      const userId = __user.uid || __user.userId || __user.email;
-      const wrap = qs('#annList');
-      wrap.innerHTML = `<div class="skeleton rounded-3"></div><div class="skeleton rounded-3 mt-2"></div>`;
-
-      try{
-        const j = await fetchJSON(`${CORE_API}/api/announcements/student/${encodeURIComponent(userId)}`);
-        const list = Array.isArray(j?.announcements) ? j.announcements : [];
-
-        // newest first by publishAt (fallback createdAt)
-        list.sort((a,b)=> getMs(b.publishAt || b.createdAt) - getMs(a.publishAt || a.createdAt));
-
-        qs('#annCount').textContent = `${list.length} announcement${list.length!==1?'s':''}`;
-        wrap.innerHTML = '';
-
-        if (!list.length){
-          wrap.innerHTML = `<div class="empty-state">No announcements.</div>`;
-          return;
-        }
-
-        list.slice(0,10).forEach(a=>{
-          const poster = teacherDisplay(a);
-          const row = document.createElement('div');
-          row.className = 'ann-row';
-          row.innerHTML = `
-            <h3 class="ann-title wrap-anywhere"><i class="bi bi-megaphone me-1"></i>${escapeHtml(a.title || 'Announcement')}</h3>
-            <span class="ann-poster">Posted by <strong>${escapeHtml(poster)}</strong></span>
-          `;
-          wrap.appendChild(row);
-        });
-      }catch(e){
-        console.error(e);
-        qs('#annCount').textContent = '0 announcements';
-        wrap.innerHTML = `<div class="empty-state">Announcements unavailable.</div>`;
       }
     }
 
@@ -731,12 +684,11 @@
       if (!threadId && !annId) {
         qs('#threadDetails').innerHTML = `<div class="alert alert-warning">Missing thread ID or announcement ID.</div>`;
         qs('#commentsCard').style.display = 'none';
-        await loadAnnouncements();
         return;
       }
 
       if (annId) {
-        // Announcement detail mode
+        // Announcement detail mode (no extra announcement card)
         await loadAnnouncementDetail();
       } else {
         // Thread mode

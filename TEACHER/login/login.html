@@ -28,16 +28,23 @@
           <label for="username" class="form-label text-light">Username</label>
           <input type="text" id="username" class="form-control" placeholder="Enter your username" />
         </div>
+
         <div class="mb-2 text-start">
           <label for="password" class="form-label text-light">Password</label>
-          <input type="password" id="password" class="form-control" placeholder="Enter your password" />
+          <input type="password" id="password" class="form-control" placeholder="Enter your password" aria-describedby="capsHint" />
+          <!-- Caps Lock hint -->
+          <div id="capsHint" class="form-text text-warning d-none">Caps Lock is ON</div>
         </div>
+
         <div class="form-check mb-3 text-start">
           <input class="form-check-input" type="checkbox" id="showPassword" />
           <label class="form-check-label" for="showPassword">Show Password</label>
         </div>
 
-        <button type="submit" id="loginBtn" class="btn login-btn w-100 mb-3">Login</button>
+        <button type="submit" id="loginBtn" class="btn login-btn w-100 mb-3">
+          <span class="btn-label">Login</span>
+          <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        </button>
         <div id="loginError" class="text-danger mt-2"></div>
       </form>
 
@@ -57,7 +64,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p class="text-dark" id="attemptMessage" class="mb-0"></p>
+          <p class="text-dark mb-0" id="attemptMessage"></p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn w-100" data-bs-dismiss="modal">OK</button>
@@ -69,12 +76,22 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Show Password Toggle -->
+  <!-- Show Password + Caps Lock -->
   <script>
-    document.getElementById('showPassword').addEventListener('change', function () {
-      const passwordInput = document.getElementById('password');
-      passwordInput.type = this.checked ? 'text' : 'password';
+    const passwordEl = document.getElementById('password');
+    const showPwCheck = document.getElementById('showPassword');
+    const capsHint = document.getElementById('capsHint');
+
+    // Show password toggle
+    function setPwType(type){ passwordEl.type = type; }
+    showPwCheck.addEventListener('change', function () {
+      setPwType(this.checked ? 'text' : 'password');
     });
+
+    // Caps Lock hint
+    function setCapsHint(show){ capsHint.classList.toggle('d-none', !show); }
+    passwordEl.addEventListener('keydown', (e) => setCapsHint(e.getModifierState && e.getModifierState('CapsLock')));
+    passwordEl.addEventListener('keyup',   (e) => setCapsHint(e.getModifierState && e.getModifierState('CapsLock')));
   </script>
 
   <!-- Login Logic -->
@@ -94,6 +111,8 @@
     // ---------- DOM refs ----------
     const form     = document.getElementById("loginForm");
     const btn      = document.getElementById("loginBtn");
+    const btnLabel = btn.querySelector(".btn-label");
+    const btnSpin  = btn.querySelector(".spinner-border");
     const errorBox = document.getElementById("loginError");
     const attemptModal   = new bootstrap.Modal(document.getElementById("attemptModal"));
     const attemptMessage = document.getElementById("attemptMessage");
@@ -113,12 +132,12 @@
     function setBtnBusy(busy) {
       if (busy) {
         btn.disabled = true;
-        btn.dataset.prev = btn.innerHTML;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Logging in...`;
+        btnLabel.classList.add('d-none');
+        btnSpin.classList.remove('d-none');
       } else {
         btn.disabled = false;
-        if (btn.dataset.prev) btn.innerHTML = btn.dataset.prev;
-        delete btn.dataset.prev;
+        btnLabel.classList.remove('d-none');
+        btnSpin.classList.add('d-none');
       }
     }
 
@@ -194,7 +213,7 @@
           clearInterval(countdownTimer);
           countdownTimer = null;
           errorBox.textContent = "Lock expired. You can try to log in again.";
-          errorBox.classList.add("minor");
+        errorBox.classList.add("minor");
           btn.disabled = false;
           return;
         }

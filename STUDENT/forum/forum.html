@@ -23,14 +23,6 @@
     .skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%);animation:shimmer 1.2s infinite}
     @keyframes shimmer{100%{transform:translateX(100%)}}
     .empty-state{padding:1rem;border:1px dashed #d9dee3;border-radius:.75rem;color:#6c757d;background:#fafbfc}
-
-    /* Compact Announcements (similar layout to thread header row) */
-    .ann-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;border:1px solid #e9ecef;border-radius:.5rem;background:#fff}
-    .ann-row + .ann-row{margin-top:.5rem}
-    .ann-title{margin:0;font-size:1rem}
-    .ann-meta{color:#6c757d;font-size:.9rem;white-space:nowrap;margin-left:1rem}
-    .ann-actions{display:flex;gap:.5rem;align-items:center}
-    .ann-search .input-group-text{background:#fff}
   </style>
 </head>
 <body>
@@ -95,18 +87,18 @@
           </form>
         </div>
 
-        <!-- Announcements (COMPACT: title + posted by + View) -->
+        <!-- Announcements (same look as Recent Threads) -->
         <div class="ui-card card-themed mb-3">
           <div class="ui-card-head">
             <h2 class="ui-card-title"><i class="bi bi-megaphone"></i> Latest Announcements</h2>
             <div class="ui-subtext" id="annCount">Loading…</div>
           </div>
 
-          <div class="row g-2 align-items-end px-3 pb-3 ann-search">
+          <div class="row g-2 align-items-end px-3 pb-3">
             <div class="col-12 col-md-8">
               <label class="form-label" for="annSearch">Search Announcements</label>
               <div class="input-group">
-                <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input id="annSearch" type="search" class="form-control border-start-0" placeholder="Search by title..." />
               </div>
             </div>
@@ -181,7 +173,6 @@
   <!-- Sidebar Logic -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // Relative include so it works under Railway subpaths
       fetch("/STUDENT/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
@@ -241,14 +232,6 @@
     }
     function debounce(fn, ms=300){
       let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
-    }
-
-    // Compact teacher display
-    function teacherDisplay(a) {
-      // Prefer explicit teacherName; fallback to teacher; final fallback to teacherId
-      const t = a?.teacherName || a?.teacher || a?.teacherId || '';
-      const val = String(t).trim();
-      return val || 'Teacher';
     }
 
     // Robust fetch that verifies JSON
@@ -343,7 +326,7 @@
       }
     }
 
-    /* ========= Announcements (Student feed, compact) ========= */
+    /* ========= Announcement helpers ========= */
     function getMs(v){
       if (!v) return 0;
       if (typeof v === 'number') return v;
@@ -353,6 +336,46 @@
       const t = Date.parse(v); return Number.isFinite(t) ? t : 0;
     }
 
+    const teacherNameCache = new Map();
+    async function resolveTeacherName(teacherId){
+      if (!teacherId) return null;
+      if (teacherNameCache.has(teacherId)) return teacherNameCache.get(teacherId);
+
+      // Try /api/teachers/:id
+      try {
+        const t = await fetchJSON(`${CORE_API}/api/teachers/${encodeURIComponent(teacherId)}`);
+        const n = t?.teacher?.fullName || t?.teacher?.name || t?.teacher?.displayName;
+        if (n) { teacherNameCache.set(teacherId, n); return n; }
+      } catch {}
+
+      // Try /api/users/:id
+      try {
+        const u = await fetchJSON(`${CORE_API}/api/users/${encodeURIComponent(teacherId)}`);
+        const n = u?.user?.fullName || u?.user?.name || u?.user?.displayName;
+        if (n) { teacherNameCache.set(teacherId, n); return n; }
+      } catch {}
+
+      teacherNameCache.set(teacherId, null);
+      return null;
+    }
+
+    async function ensureAnnouncementNames(list){
+      const ids = Array.from(new Set(
+        list
+          .filter(a => !a.teacherName && !a.teacher && a.teacherId)
+          .map(a => a.teacherId)
+      ));
+      if (!ids.length) return;
+      await Promise.all(ids.map(resolveTeacherName));
+      list.forEach(a => {
+        if (!a.teacherName && !a.teacher && a.teacherId) {
+          const looked = teacherNameCache.get(a.teacherId);
+          if (looked) a._teacherResolvedName = looked;
+        }
+      });
+    }
+
+    /* ========= Announcements (same look as Threads) ========= */
     async function loadAnnouncements() {
       const userId = __user.uid || __user.userId || __user.email;
       const sig = JSON.stringify({
@@ -373,6 +396,8 @@
       try {
         const j = await fetchJSON(`${CORE_API}/api/announcements/student/${encodeURIComponent(userId)}`);
         announcements = Array.isArray(j?.announcements) ? j.announcements : [];
+        // Make sure we have names (not IDs) for posters
+        await ensureAnnouncementNames(announcements);
         renderAnnouncements();
       } catch (e) {
         console.error(e);
@@ -388,11 +413,9 @@
       const sort  = $('#annSort').value || 'publish_desc';
       const limit = parseInt($('#annLimit').value || '10', 10);
 
-      // search by TITLE only (compact)
       let list = announcements.slice();
       if (q) list = list.filter(a => String(a.title || '').toLowerCase().includes(q));
 
-      // sort by publishAt (fallback to createdAt)
       list.sort((a, b) => {
         if (sort === 'title_az') return String(a.title || '').localeCompare(String(b.title || ''));
         const am = getMs(a.publishAt || a.createdAt);
@@ -410,30 +433,33 @@
         return;
       }
 
+      // Render with the SAME structure/classes as threads
       list.forEach(a => {
-        const poster = teacherDisplay(a);
+        const poster = a.teacherName || a.teacher || a._teacherResolvedName || 'Teacher';
         const published = toLocal(a.publishAt || a.createdAt);
+
         const div = document.createElement('div');
-        div.className = 'ann-row';
+        div.className = 'thread thread-themed';
         div.innerHTML = `
-          <div class="d-flex align-items-center">
-            <h3 class="ann-title wrap-anywhere mb-0">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <h3 class="thread-title wrap-anywhere">
               <i class="bi bi-megaphone me-1"></i>${escapeHtml(a.title || 'Announcement')}
             </h3>
-            <span class="ann-meta ms-3">
-              Posted by <strong>${escapeHtml(poster)}</strong> • ${escapeHtml(published)}
-            </span>
+            <div class="d-flex gap-2">
+              <button class="btn btn-amber ann-view-btn" data-id="${escapeHtml(a.id)}">
+                <i class="bi bi-eye"></i> View
+              </button>
+            </div>
           </div>
-          <div class="ann-actions">
-            <button class="btn btn-amber btn-sm ann-view-btn" data-id="${escapeHtml(a.id)}">
-              <i class="bi bi-eye me-1"></i> View
-            </button>
+          <div class="thread-meta mb-2">
+            Posted by <strong class="wrap-anywhere">${escapeHtml(poster)}</strong> •
+            Published: ${escapeHtml(published)}
           </div>
         `;
         wrap.appendChild(div);
       });
 
-      // view buttons -> forum_view with ?ann=<id>
+      // View -> forum_view with ?ann=<id>
       wrap.querySelectorAll('.ann-view-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.getAttribute('data-id');
@@ -543,7 +569,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await loadCourses();
-        await loadAnnouncements();  // compact announcements
+        await loadAnnouncements();
         await loadThreads();
       } catch (e) {
         console.error(e);
@@ -559,10 +585,10 @@
       $('#sortThreads').addEventListener('change', loadThreads);
 
       // Announcements UI events (title-only search)
-      const debouncedAnnRender = debounce(renderAnnouncements, 250);
+      const debouncedAnnRender = debounce(() => loadAnnouncements(), 250);
       $('#annSearch').addEventListener('input', debouncedAnnRender);
-      $('#annSort').addEventListener('change', renderAnnouncements);
-      $('#annLimit').addEventListener('change', renderAnnouncements);
+      $('#annSort').addEventListener('change', loadAnnouncements);
+      $('#annLimit').addEventListener('change', loadAnnouncements);
 
       // Ask form
       $('#questionForm').addEventListener('submit', async (e) => {
