@@ -33,10 +33,8 @@
           <label for="password" class="form-label text-light">Password</label>
           <input type="password" id="password" class="form-control" placeholder="Enter your password" />
         </div>
-        <div class="form-check mb-3 text-start">
-          <input class="form-check-input" type="checkbox" id="showPassword" />
-          <label class="form-check-label" for="showPassword">Show Password</label>
-        </div>
+
+        <!-- 🔻 Removed the “Show Password” checkbox -->
 
         <button type="submit" id="loginBtn" class="btn login-btn w-100 mb-3">Login</button>
         <div id="loginError" class="text-danger mt-2"></div>
@@ -72,13 +70,7 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Show Password Toggle -->
-  <script>
-    document.getElementById('showPassword').addEventListener('change', function () {
-      const passwordInput = document.getElementById('password');
-      passwordInput.type = this.checked ? 'text' : 'password';
-    });
-  </script>
+  <!-- 🔻 Removed the Show Password Toggle script -->
 
   <!-- Login Logic -->
   <script>
@@ -104,8 +96,6 @@
         if (!API_BASE) return 'same-origin';
         const api = new URL(API_BASE, location.href);
         const sameOrigin = (api.origin === location.origin);
-        // If cross-origin and using cookie sessions, we need 'include'.
-        // Safer default: include when cross-origin, same-origin otherwise.
         return sameOrigin ? 'same-origin' : 'include';
       } catch { return 'same-origin'; }
     }
@@ -194,11 +184,9 @@
           { method: 'GET' }
         );
         if (!response.ok) return false;
-        // Accept either {exists:true} or {taken:true}
         return json.exists === true || json.taken === true;
       } catch {
-        // Precheck is advisory — don’t block login if API is unreachable.
-        return true;
+        return true; // advisory only
       }
     }
 

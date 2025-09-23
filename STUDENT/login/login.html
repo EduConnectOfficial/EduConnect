@@ -33,16 +33,8 @@
 
         <div class="mb-2 text-start">
           <label for="password" class="form-label text-light">Password</label>
-          <div class="input-group">
-            <input type="password" id="password" class="form-control" placeholder="Enter your password" aria-describedby="capsHint"/>
-            <button class="btn btn-outline-light" type="button" id="togglePw" aria-pressed="false" aria-label="Show password">
-              <span class="visually-hidden">Show</span>
-              <!-- Bootstrap icon (eye) -->
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
-                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8"/>
-              </svg>
-            </button>
-          </div>
+          <!-- 🔻 Removed the toggle-eye button; kept a plain password input -->
+          <input type="password" id="password" class="form-control" placeholder="Enter your password" aria-describedby="capsHint"/>
           <div id="capsHint" class="form-text text-warning d-none">Caps Lock is ON</div>
         </div>
 
@@ -89,15 +81,7 @@
 
   <!-- Login Logic (Railway-friendly, with endpoint fallbacks) -->
   <script>
-    /* ===================== API BASE (Railway-friendly) ===================== *
-     * Priority:
-     * 1) <meta name="api-base" ...>
-     * 2) window.API_URL (string) if provided globally
-     * 3) localStorage.API_BASE (manual override)
-     * 4) If not localhost, same-origin (empty base => relative calls)
-     * 5) Dev fallback: http://localhost:5000
-     * Enforce HTTPS on prod (non-local).
-     * ====================================================================== */
+    /* ===================== API BASE (Railway-friendly) ===================== */
     (function decideApiBase(){
       const meta = document.querySelector('meta[name="api-base"]');
       const metaBase = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
@@ -116,12 +100,10 @@
     })();
 
     const API = {
-      // Build URL against API_BASE ('' means same-origin)
       url(path) {
         const p = path.startsWith('/') ? path : '/' + path;
         return (window.API_BASE || '') + p;
       },
-      // Candidate endpoints (fall back across common mounts)
       endpoints: {
         checkUsername(username) {
           const q = `username=${encodeURIComponent(username)}`;
@@ -152,17 +134,11 @@
     const usernameEl    = document.getElementById("username");
     const passwordEl    = document.getElementById("password");
     const capsHint      = document.getElementById("capsHint");
-    const togglePwBtn   = document.getElementById("togglePw");
     const showPwCheck   = document.getElementById("showPassword");
 
-    // ===== Show password (button + checkbox) =====
+    // ===== Show password (checkbox only) =====
     function setPwType(type){ passwordEl.type = type; }
     showPwCheck.addEventListener("change", function(){ setPwType(this.checked ? "text" : "password"); });
-    togglePwBtn.addEventListener("click", () => {
-      const isHidden = passwordEl.type === "password";
-      setPwType(isHidden ? "text" : "password");
-      togglePwBtn.setAttribute("aria-pressed", String(isHidden));
-    });
 
     // ===== Caps Lock hint =====
     function setCapsHint(show){ capsHint.classList.toggle("d-none", !show); }
@@ -257,7 +233,6 @@
         try{
           const res = await fetch(url, { ...options, credentials: 'same-origin', mode: 'cors' });
           if (res.status === 404) { hint(url, res); continue; }
-          // Try to parse JSON even on non-2xx to read {error, lockedUntil}
           let json = {};
           try { json = await res.json(); } catch {}
           return { response: res, json };
@@ -274,7 +249,7 @@
           API.endpoints.checkUsername(username),
           { method: 'GET' }
         );
-        if (!response.ok) return true; // fail-closed (let POST /login decide)
+        if (!response.ok) return true; // fail-closed
         return json.taken === true || json.exists === true;
       }catch{
         return true; // fail-closed
@@ -321,7 +296,6 @@
       setBtnBusy(true);
 
       try{
-        // UX pre-check (non-blocking if the precheck fails)
         const exists = await usernameExists(username);
         if (!exists){
           attemptMsg.textContent = 'No account found with that username.';
@@ -330,7 +304,6 @@
           return;
         }
 
-        // Try login across common mounts
         const { response, json: data } = await fetchJSONFallback(
           API.endpoints.login(),
           {
@@ -354,21 +327,18 @@
             setBtnBusy(false);
             return;
           }
-          // success
           clearAttempts(username);
           localStorage.setItem('user', JSON.stringify(u));
           window.location.href = '/STUDENT/dashboard/dashboard.html';
           return;
         }
 
-        // server-driven lock
         if (response.status === 423){
           startCountdown(data.lockedUntil || 0);
           setBtnBusy(false);
           return;
         }
 
-        // deactivated
         if (response.status === 403){
           attemptMsg.textContent = data.error || 'Account is deactivated due to multiple failed attempts. Please reset your password.';
           attemptModal.show();
@@ -376,7 +346,6 @@
           return;
         }
 
-        // default: count attempt + unified notice
         const newN = getAttempts(username) + 1;
         setAttempts(username, newN);
         showAttemptNotice(username);

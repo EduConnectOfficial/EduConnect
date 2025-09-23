@@ -135,7 +135,7 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       // Relative include so it works under Railway subpaths
-      fetch("/components/sidebar.html")
+      fetch("/STUDENT/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
           document.getElementById("sidebar-container").innerHTML = html;

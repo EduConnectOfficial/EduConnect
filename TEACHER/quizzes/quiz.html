@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EduConnect Teacher – Upload Quiz</title>
 
+  <!-- OPTIONAL: If your backend runs on a different host, set this -->
+  <!-- <meta name="api-base" content="https://your-backend.up.railway.app"> -->
+
   <!-- Bootstrap & Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -475,23 +478,34 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // NEW (Railway-friendly):
-    const API_BASE = (() => {
+    /* =========================
+       RAILWAY-FRIENDLY API BASE
+       ========================= */
+    const API = (() => {
       const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
       const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
       const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
       const host = location.hostname;
       const onLocal = (host === 'localhost' || host === '127.0.0.1');
-      // If nothing explicit is set, use localhost in dev, same-origin in prod (Railway/custom domain).
-      const chosen = byMeta || byWindow || byStorage || (onLocal ? 'http://127.0.0.1:5000' : '');
+      // If nothing explicit is set: localhost -> http://127.0.0.1:5000, production -> same-origin /api
+      const chosen = byMeta || byWindow || byStorage || (onLocal ? 'http://127.0.0.1:5000' : '/api');
       return String(chosen).replace(/\/+$/, '');
     })();
 
+    // Optional: central fetch wrapper (adds Accept and auth token if you use one)
+    function apiFetch(path, options = {}) {
+      const url = `${API}${path.startsWith('/') ? '' : '/'}${path}`;
+      const headers = new Headers(options.headers || {});
+      if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+      // If you store a token: headers.set('Authorization', 'Bearer ' + (localStorage.getItem('token') || ''));
+      return fetch(url, { ...options, headers });
+    }
 
     const TEACHER_FILE_LIMIT_MB = 300;
     const TEACHER_FILE_LIMIT_BYTES = TEACHER_FILE_LIMIT_MB * 1024 * 1024;
     const MAX_ASSIGNED_CLASSES = 500;
     const DEBUG_CLASSES = false;
+    const dbg = (...args) => { if (DEBUG_CLASSES) console.log('[classes]', ...args); };
 
     /* ========= Brand Alert / Confirm ========= */
     function openBrandAlert({ title = 'Notice', message = '', okText = 'OK', onOk = null }) {
@@ -539,7 +553,6 @@
       });
     }
     window.alert = (msg) => openBrandAlert({ title: 'Notice', message: String(msg || '') });
-    const dbg = (...args) => { if (DEBUG_CLASSES) console.log('[classes]', ...args); };
 
     /* ---------- Sidebar ---------- */
     document.addEventListener("DOMContentLoaded", () => {
@@ -625,10 +638,9 @@
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }).join(',')).join('\n');
     }
-    function bytesToKB(b) { return Math.round((b || 0) / 102.4) / 10; }
     const getSelectedCourseId = () => document.getElementById("courseSelect")?.value || "";
 
-    /* ---------- File preview helpers ---------- */
+    /* ---------- File preview helpers (unchanged) ---------- */
     function extFromUrl(u = '') { const clean = String(u).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
     function extFromName(n = '') { const parts = String(n).split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
     function kindFrom({ url = '', name = '', mime = '' }) {
@@ -743,7 +755,7 @@
       moduleSelect.disabled = true;
 
       try {
-        const res = await fetch(`${API}/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
+        const res = await apiFetch(`/courses?uploadedBy=${encodeURIComponent(TEACHER_ID)}`);
         const payload = await res.json();
         let courses = Array.isArray(payload) ? payload : (payload.courses || []);
         if (courses.length && 'uploadedBy' in courses[0]) {
@@ -782,7 +794,7 @@
         return;
       }
       try {
-        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}/modules`);
+        const res = await apiFetch(`/courses/${encodeURIComponent(courseId)}/modules`);
         const mods = await res.json();
         const modules = Array.isArray(mods) ? mods : (mods.modules || []);
         modules.sort((a, b) => (a.moduleNumber || 0) - (b.moduleNumber || 0));
@@ -887,14 +899,14 @@
     // Fetch a single course; tolerant to {course:{...}} or raw object
     async function fetchCourseById(courseId) {
       try {
-        const r = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
+        const r = await apiFetch(`/courses/${encodeURIComponent(courseId)}`, { headers: { "Accept": "application/json" } });
         const js = await r.json().catch(() => null);
         const course = js?.course || js || null;
         return course;
       } catch { return null; }
     }
 
-    // The FIX: only show teacher’s classes that are listed in course.assignedClasses
+    // Only show teacher’s classes that are listed in course.assignedClasses
     async function loadTeacherClassesAndRender(courseId = getSelectedCourseId()) {
       try {
         if (!TEACHER_ID) {
@@ -912,8 +924,7 @@
         }
 
         // 1) Load teacher’s classes
-        const url1 = `${API}/api/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`;
-        const resp1 = await fetch(url1, { headers: { "Accept": "application/json" } });
+        const resp1 = await apiFetch(`/classes?teacherId=${encodeURIComponent(TEACHER_ID)}`, { headers: { "Accept": "application/json" } });
         const json1 = await resp1.json().catch(() => ({ success: false, classes: [] }));
         const teacherClasses = Array.isArray(json1?.classes) ? json1.classes : [];
         dbg('teacherClasses:', teacherClasses.length);
@@ -928,16 +939,13 @@
         let filtered = teacherClasses.filter(c => allowedIds.has(String(c.id || c._id || c.classId || "")));
         dbg('filtered:', filtered.length);
 
-        // Fallbacks if needed:
-        // a) If no intersection (maybe teacherClasses endpoint doesn’t return all), try a course-based endpoint
+        // Fallback: course-based endpoint if available
         if (filtered.length === 0) {
           try {
-            const url2 = `${API}/courses/${encodeURIComponent(courseId)}/classes`;
-            const resp2 = await fetch(url2, { headers: { "Accept": "application/json" } });
+            const resp2 = await apiFetch(`/courses/${encodeURIComponent(courseId)}/classes`, { headers: { "Accept": "application/json" } });
             if (resp2.ok) {
               const j2 = await resp2.json().catch(() => ({}));
               const classes2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.classes) ? j2.classes : []);
-              // still intersect with assignedClasses if present
               filtered = classes2.filter(c => allowedIds.size ? allowedIds.has(String(c.id || c._id || c.classId || "")) : true);
               dbg('fallback /courses/:id/classes ->', classes2.length, 'after intersect ->', filtered.length);
             }
@@ -1594,9 +1602,9 @@
           const fd = new FormData();
           fd.append("rubrics", rubricFile);
           fd.append("payload", JSON.stringify(payload));
-          res = await fetch(`${API}/upload-quiz`, { method: "POST", body: fd });
+          res = await apiFetch(`/upload-quiz`, { method: "POST", body: fd });
         } else {
-          res = await fetch(`${API}/upload-quiz`, {
+          res = await apiFetch(`/upload-quiz`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
