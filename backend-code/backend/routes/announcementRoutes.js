@@ -62,6 +62,8 @@ router.get('/', asyncHandler(async (req, res) => {
   if (classIds.length > 0 && classIds.length <= 10) {
     q = q.where('classIds', 'array-contains-any', classIds);
   }
+
+  // Equality filter + orderBy generally does NOT require a composite index.
   q = q.orderBy('publishAt', 'desc');
 
   const snap = await q.get();
@@ -131,10 +133,10 @@ router.get('/student/:userId', asyncHandler(async (req, res) => {
   const now = Date.now();
   const results = [];
   for (const ids of chunk(classIds, 10)) {
+    // NOTE: removed .orderBy('publishAt','desc') to avoid composite index requirement
     const snap = await firestore
       .collection('announcements')
       .where('classIds', 'array-contains-any', ids)
-      .orderBy('publishAt', 'desc')
       .get();
 
     snap.forEach(d => {
@@ -144,6 +146,7 @@ router.get('/student/:userId', asyncHandler(async (req, res) => {
     });
   }
 
+  // Dedupe and sort by publishAt desc on the server
   const map = new Map();
   results.forEach(a => map.set(a.id, a));
   const deduped = Array.from(map.values()).sort((a, b) => {
@@ -161,15 +164,20 @@ router.get('/class/:classId/visible', asyncHandler(async (req, res) => {
   const { classId } = req.params;
   const now = Date.now();
 
+  // NOTE: removed .orderBy('publishAt','desc') to avoid composite index requirement
   const snap = await firestore
     .collection('announcements')
     .where('classIds', 'array-contains', classId)
-    .orderBy('publishAt', 'desc')
     .get();
 
   const items = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .filter(a => computeAnnouncementStatus(a, now) === 'published');
+    .filter(a => computeAnnouncementStatus(a, now) === 'published')
+    .sort((a, b) => {
+      const ap = a.publishAt?.toMillis?.() ?? 0;
+      const bp = b.publishAt?.toMillis?.() ?? 0;
+      return bp - ap; // newest first
+    });
 
   res.json({ success: true, announcements: items });
 }));
@@ -215,7 +223,5 @@ router.post('/:id/unarchive', asyncHandler(async (req, res) => {
   await ref.update(updates);
   res.json({ success: true });
 }));
-
-
 
 module.exports = router;
