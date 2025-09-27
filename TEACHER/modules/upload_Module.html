@@ -301,15 +301,6 @@
     }
     window.logoutUser = logoutUser;
 
-    (function initHeaderInitials(){
-      try{
-        const raw = localStorage.getItem("user");
-        const stored = raw ? JSON.parse(raw) : {};
-        const u = stored.user || stored;
-
-        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
-        window.currentUser = u;
-
       // ---- Auth guard + header initials (robust, initials-only) ----
     const userData = (() => {
       try {
@@ -353,8 +344,6 @@
         const em = (u.email || '').trim();
         return em ? em[0].toUpperCase() : 'U';
       }
-    })();
-      }catch(e){ console.error('initHeaderInitials failed:', e); window.location.href = "/TEACHER/login/login.html"; }
     })();
   </script>
 
