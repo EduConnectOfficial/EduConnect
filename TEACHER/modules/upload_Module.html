@@ -37,7 +37,7 @@
           <input type="text" id="searchBox" class="form-control" placeholder="Search modules..."/>
           <i class="fas fa-search position-absolute" style="top:50%; right:12px; transform:translateY(-50%);"></i>
         </div>
-        <button class="profile-btn btn btn-link text-decoration-none" onclick="logoutUser()">
+        <button class="profile-btn btn btn-link text-decoration-none">
           <i class="fas fa-user-circle fa-2x"></i>
           <span id="Username" class="username ms-2 fw-semibold">T</span>
         </button>
@@ -310,19 +310,50 @@
         if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
         window.currentUser = u;
 
-        // SINGLE initial only (first alphabetic char from username/name/email)
-        const source = (u.username || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Teacher').trim();
-        const match = (source.match(/[A-Za-z]/) || [source.charAt(0) || 'T'])[0];
-        const initial = match.toUpperCase();
+      // ---- Auth guard + header initials (robust, initials-only) ----
+    const userData = (() => {
+      try {
+        const raw = localStorage.getItem("user") || "{}";
+        const stored = JSON.parse(raw);
+        const u = stored.user || stored;
+        if (!u?.userId || !u?.isTeacher) {
+          window.location.href = "/TEACHER/login/login.html";
+          return null;
+        }
+        const el = document.getElementById("dashboardUsername");
+        if (el) {
+          const initials = getInitials(u);
+          el.textContent = initials;
+          const fullLabel = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim()
+            || u.username || u.email || 'Profile';
+          el.setAttribute('title', fullLabel);
+          el.setAttribute('aria-label', fullLabel);
+        }
+        return u;
+      } catch (e) {
+        console.error('auth/initHeaderInitials failed:', e);
+        window.location.href = "/TEACHER/login/login.html";
+        return null;
+      }
 
-        window.addEventListener("DOMContentLoaded", ()=>{
-          const el=document.getElementById("Username");
-          if(!el) return;
-          el.textContent = initial;
-          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Profile';
-          el.setAttribute('title', full);
-          el.setAttribute('aria-label', full);
-        });
+      function getInitials(u) {
+        const fn = (u.firstName || '').trim();
+        const ln = (u.lastName || '').trim();
+        if (fn && ln) return (fn[0] + ln[0]).toUpperCase();
+
+        const nameish = (u.username || u.displayName || u.name || '').trim();
+        if (nameish) {
+          const parts = nameish
+            .replace(/[^A-Za-z0-9 _.\-]+/g, ' ')
+            .split(/[\s._-]+/)
+            .filter(Boolean);
+          if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+          return parts[0][0].toUpperCase();
+        }
+        const em = (u.email || '').trim();
+        return em ? em[0].toUpperCase() : 'U';
+      }
+    })();
       }catch(e){ console.error('initHeaderInitials failed:', e); window.location.href = "/TEACHER/login/login.html"; }
     })();
   </script>
