@@ -62,11 +62,7 @@
     .search-box input { border: none; border-radius: 999px; padding: .6rem .9rem .6rem 1rem; width: 100% }
     .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #d7dadf }
 
-    .profile-btn {
-      display: flex; align-items: center; gap: 8px;
-      background: none; border: none; color: #fff; font-size: 20px; cursor: pointer
-    }
-    .profile-btn .username { font-size: 14px }
+    
 
     .content { padding: 24px }
 
