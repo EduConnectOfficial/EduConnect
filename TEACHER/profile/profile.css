@@ -169,13 +169,7 @@
   color: #999;
 }
 
-.profile-btn {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  color: #fff;
-  cursor: pointer;
-}
+
 
 /* Content Area */
 .content {
@@ -450,16 +444,18 @@
 
 
 
+/* Profile button (header) */
 .profile-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: #fff;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
 }
+
 .profile-btn .username {
   font-size: 14px;
 }
