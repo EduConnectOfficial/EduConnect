@@ -273,59 +273,83 @@
     });
   </script>
 
-  <!-- Auth guard + header initial (single letter) + API resolver -->
   <script>
-    /* ===== Railway-friendly API base resolver =====
-       1) <meta name="api-base">, 2) window.__API_BASE, 3) localStorage.API_BASE,
-       4) same origin on *.railway.app, 5) http://localhost:5000 (dev)
-    ================================================= */
-    const API = (() => {
-      const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
-      const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
-      const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
-      const onRailway = /\.railway\.app$/i.test(location.hostname);
-      const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
-      return String(chosen).replace(/\/+$/, '');
-    })();
+  /* ===== Railway-friendly API base resolver (unchanged) ===== */
+  const API = (() => {
+    const byMeta = document.querySelector('meta[name="api-base"]')?.getAttribute('content')?.trim();
+    const byWindow = (typeof window !== 'undefined' && window.__API_BASE) ? String(window.__API_BASE).trim() : '';
+    const byStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('API_BASE')) ? localStorage.getItem('API_BASE').trim() : '';
+    const onRailway = /\.railway\.app$/i.test(location.hostname);
+    const chosen = byMeta || byWindow || byStorage || (onRailway ? location.origin : 'http://localhost:5000');
+    return String(chosen).replace(/\/+$/, '');
+  })();
 
-    function toApiUrl(pathOrUrl = '') {
-      const s = String(pathOrUrl);
-      if (/^https?:\/\/|^blob:/i.test(s)) return s;
-      return API + (s.startsWith('/') ? s : '/' + s);
+  function toApiUrl(pathOrUrl = '') {
+    const s = String(pathOrUrl);
+    if (/^https?:\/\/|^blob:/i.test(s)) return s;
+    return API + (s.startsWith('/') ? s : '/' + s);
+  }
+
+  function logoutUser(){
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href="/TEACHER/login/login.html";
+  }
+  window.logoutUser = logoutUser;
+
+  /* ===== INITIALS: First + Last (fallbacks to username/email) ===== */
+  (function initHeaderInitials(){
+    try{
+      const raw = localStorage.getItem("user");
+      const stored = raw ? JSON.parse(raw) : {};
+      const u = stored.user || stored;
+
+      if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
+      window.currentUser = u;
+
+      const pickFirstAlpha = s => {
+        const m = String(s || '').trim().match(/[A-Za-z]/);
+        return m ? m[0].toUpperCase() : '';
+      };
+
+      const fullName = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim();
+
+      // First initial
+      let fi = pickFirstAlpha(u.firstName) || pickFirstAlpha(fullName) ||
+               pickFirstAlpha(u.username) || pickFirstAlpha(u.email) || 'T';
+
+      // Last initial with fallbacks
+      let li = pickFirstAlpha(u.lastName);
+      if (!li && fullName) {
+        const lastToken = fullName.split(/\s+/).filter(Boolean).pop();
+        li = pickFirstAlpha(lastToken);
+      }
+      if (!li && u.username) {
+        const userLast = String(u.username).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
+        li = pickFirstAlpha(userLast);
+      }
+      if (!li && u.email) {
+        const emailLast = String(u.email).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
+        li = pickFirstAlpha(emailLast);
+      }
+
+      const initials = (fi + (li || '')).trim() || 'T';
+      const titleText = fullName || u.username || u.email || 'Profile';
+
+      window.addEventListener("DOMContentLoaded", ()=>{
+        const el = document.getElementById("Username");
+        if(!el) return;
+        el.textContent = initials;          // e.g., "JD"
+        el.setAttribute('title', titleText);
+        el.setAttribute('aria-label', titleText);
+      });
+    }catch(e){
+      console.error('initHeaderInitials failed:', e);
+      window.location.href = "/TEACHER/login/login.html";
     }
+  })();
+</script>
 
-    function logoutUser(){
-      localStorage.clear();
-      sessionStorage.clear();
-      window.location.href="/TEACHER/login/login.html";
-    }
-    window.logoutUser = logoutUser;
-
-    (function initHeaderInitials(){
-      try{
-        const raw = localStorage.getItem("user");
-        const stored = raw ? JSON.parse(raw) : {};
-        const u = stored.user || stored;
-
-        if (!u?.userId || !u?.isTeacher) { window.location.href = "/TEACHER/login/login.html"; return; }
-        window.currentUser = u;
-
-        // SINGLE initial only (first alphabetic char from username/name/email)
-        const source = (u.username || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Teacher').trim();
-        const match = (source.match(/[A-Za-z]/) || [source.charAt(0) || 'T'])[0];
-        const initial = match.toUpperCase();
-
-        window.addEventListener("DOMContentLoaded", ()=>{
-          const el=document.getElementById("Username");
-          if(!el) return;
-          el.textContent = initial;
-          const full=[u.firstName,u.middleName,u.lastName].filter(Boolean).join(' ').trim() || u.username || u.email || 'Profile';
-          el.setAttribute('title', full);
-          el.setAttribute('aria-label', full);
-        });
-      }catch(e){ console.error('initHeaderInitials failed:', e); window.location.href = "/TEACHER/login/login.html"; }
-    })();
-  </script>
 
   <!-- Page Logic -->
   <script>

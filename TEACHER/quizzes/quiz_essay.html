@@ -271,7 +271,7 @@
             });
           });
         })
-        .catch(() => { /* silent */});
+        .catch(() => { /* silent */ });
     });
   </script>
 
@@ -280,21 +280,21 @@
     function showAppAlert(message, { title = "Notice", variant = "primary", closeOtherModals = true } = {}) {
       const header = document.getElementById("appAlertHeader");
       const titleEl = document.getElementById("appAlertTitle");
-      const bodyEl  = document.getElementById("appAlertBody");
+      const bodyEl = document.getElementById("appAlertBody");
       const alertEl = document.getElementById("appAlertModal");
 
       // Variant styling
       header.className = "modal-header";
       const bg = {
         primary: "bg-primary text-white", success: "bg-success text-white",
-        danger: "bg-danger text-white",   warning: "bg-warning",
-        info: "bg-info",                  secondary: "bg-secondary text-white",
-        dark: "bg-dark text-white",       light: "bg-light"
+        danger: "bg-danger text-white", warning: "bg-warning",
+        info: "bg-info", secondary: "bg-secondary text-white",
+        dark: "bg-dark text-white", light: "bg-light"
       }[variant] || "bg-primary text-white";
       header.classList.add(...bg.split(" "));
 
       titleEl.textContent = title;
-      bodyEl.textContent  = message;
+      bodyEl.textContent = message;
 
       // Close any other open modals before showing the alert
       if (closeOtherModals) {
@@ -336,20 +336,35 @@
 
     /* ---------- Initials-only helpers ---------- */
     function getInitials(u = {}) {
-      // ONE initial (first alphabetic char from name/username/email)
-      const source = (u.username || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Teacher').trim();
-      const match = (source.match(/[A-Za-z]/) || [source.charAt(0) || 'T'])[0];
-      return match.toUpperCase();
+      const pickFirstAlpha = s => {
+        const m = String(s || '').trim().match(/[A-Za-z]/);
+        return m ? m[0].toUpperCase() : '';
+      };
+
+      const fullName = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim();
+
+      // First initial (prefer firstName → fullName → username/email)
+      let fi = pickFirstAlpha(u.firstName) || pickFirstAlpha(fullName) ||
+        pickFirstAlpha(u.username) || pickFirstAlpha(u.email) || 'T';
+
+      // Last initial (prefer lastName → last token of fullName → last token of username/email local-part)
+      let li = pickFirstAlpha(u.lastName);
+      if (!li && fullName) {
+        const lastToken = fullName.split(/\s+/).filter(Boolean).pop();
+        li = pickFirstAlpha(lastToken);
+      }
+      if (!li && u.username) {
+        const userLast = String(u.username).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
+        li = pickFirstAlpha(userLast);
+      }
+      if (!li && u.email) {
+        const emailLast = String(u.email).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
+        li = pickFirstAlpha(emailLast);
+      }
+
+      return (fi + (li || '')).trim() || 'T';
     }
-    function setHeaderInitials(u = {}) {
-      const el = document.getElementById("Username");
-      if (!el) return;
-      el.textContent = getInitials(u);
-      const full = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
-        || u.username || u.email || "Profile";
-      el.setAttribute("title", full);
-      el.setAttribute("aria-label", full);
-    }
+
 
     /* ---------- Auth & header ---------- */
     (function () {
