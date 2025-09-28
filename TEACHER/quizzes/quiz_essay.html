@@ -335,36 +335,43 @@
     }
 
     /* ---------- Initials-only helpers ---------- */
+    /* ---------- Initials-only helpers ---------- */
     function getInitials(u = {}) {
-      const pickFirstAlpha = s => {
-        const m = String(s || '').trim().match(/[A-Za-z]/);
+      const pick = s => {
+        // first Unicode letter (works beyond A–Z)
+        const m = String(s || '').trim().match(/\p{L}/u);
         return m ? m[0].toUpperCase() : '';
       };
 
       const fullName = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(' ').trim();
 
-      // First initial (prefer firstName → fullName → username/email)
-      let fi = pickFirstAlpha(u.firstName) || pickFirstAlpha(fullName) ||
-        pickFirstAlpha(u.username) || pickFirstAlpha(u.email) || 'T';
+      // Prefer explicit first/last
+      let fi = pick(u.firstName) || pick(fullName) || pick(u.username) || pick(u.email) || 'T';
+      let li = pick(u.lastName);
 
-      // Last initial (prefer lastName → last token of fullName → last token of username/email local-part)
-      let li = pickFirstAlpha(u.lastName);
+      // If last still missing, try last token of full name, then username/email local-part
       if (!li && fullName) {
         const lastToken = fullName.split(/\s+/).filter(Boolean).pop();
-        li = pickFirstAlpha(lastToken);
+        li = pick(lastToken);
       }
-      if (!li && u.username) {
-        const userLast = String(u.username).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
-        li = pickFirstAlpha(userLast);
-      }
-      if (!li && u.email) {
-        const emailLast = String(u.email).split('@')[0].split(/[._\s-]+/).filter(Boolean).pop();
-        li = pickFirstAlpha(emailLast);
+      if (!li) {
+        const local = String(u.username || u.email || '').split('@')[0];
+        const parts = local.split(/[._\s-]+/).filter(Boolean);
+        if (parts.length > 1) li = pick(parts[parts.length - 1]);
       }
 
       return (fi + (li || '')).trim() || 'T';
     }
 
+    function setHeaderInitials(u = {}) {
+      const el = document.getElementById("Username");
+      if (!el) return;
+      el.textContent = getInitials(u);
+      const full = [u.firstName, u.middleName, u.lastName].filter(Boolean).join(" ").trim()
+        || u.username || u.email || "Profile";
+      el.setAttribute("title", full);
+      el.setAttribute("aria-label", full);
+    }
 
     /* ---------- Auth & header ---------- */
     (function () {
