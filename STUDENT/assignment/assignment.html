@@ -26,6 +26,9 @@
 
     /* Long token wrapping (titles, meta, etc.) */
     .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+
+    /* Tiny helper for disabled submit tooltip button */
+    .btn-like-disabled { pointer-events: none; opacity: .6; }
   </style>
 </head>
 <body>
@@ -38,7 +41,6 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <!-- CSIS logo beside EduConnect -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -74,6 +76,8 @@
               <select id="filterStatus" class="form-select">
                 <option value="all">All</option>
                 <option value="open">Open</option>
+                <option value="notYetOpen">Opens Later</option>
+                <option value="overdue">Overdue</option>
                 <option value="closed">Closed</option>
                 <option value="submitted">Submitted</option>
                 <option value="graded">Graded</option>
@@ -85,6 +89,7 @@
                 <option value="dueAsc">Due Date ↑</option>
                 <option value="dueDesc">Due Date ↓</option>
                 <option value="title">Title A–Z</option>
+                <option value="course">Course A–Z</option>
               </select>
             </div>
             <div class="col-12 col-md-2 text-md-end">
@@ -99,6 +104,8 @@
           <span class="pill pill-submitted"><i class="bi bi-upload"></i><span class="pill-text"><strong id="countSubmitted">0</strong> Submitted</span></span>
           <span class="pill pill-graded"><i class="bi bi-patch-check"></i><span class="pill-text"><strong id="countGraded">0</strong> Graded</span></span>
           <span class="pill pill-closed"><i class="bi bi-lock"></i><span class="pill-text"><strong id="countClosed">0</strong> Closed</span></span>
+          <span class="pill pill-module"><i class="bi bi-exclamation-triangle"></i><span class="pill-text"><strong id="countOverdue">0</strong> Overdue</span></span>
+          <span class="pill pill-course"><i class="bi bi-hourglass-split"></i><span class="pill-text"><strong id="countNotYetOpen">0</strong> Opens Later</span></span>
         </div>
 
         <!-- Submission Success Modal -->
@@ -289,6 +296,8 @@
   const elCountSubmitted = document.getElementById("countSubmitted");
   const elCountGraded = document.getElementById("countGraded");
   const elCountClosed = document.getElementById("countClosed");
+  const elCountOverdue = document.getElementById("countOverdue");
+  const elCountNotYetOpen = document.getElementById("countNotYetOpen");
 
   const modalEl = document.getElementById('assignmentModal');
   let assignmentModal = null;
@@ -305,38 +314,62 @@
   const courseCache = new Map(); // courseId -> { title }
 
   // ========= Utils =========
-  // For turning server relative file paths into absolute URLs
   function toServerUrl(pathOrUrl) {
     return /^https?:\/\//i.test(String(pathOrUrl))
       ? String(pathOrUrl)
       : SERVER_BASE + String(pathOrUrl || "");
   }
-
   const fmtDateTime = (ms) => {
     if (!ms) return 'No due date';
     try { return new Date(ms).toLocaleString(); } catch { return '—'; }
   };
-
   const escapeHTML = (s='') => String(s)
     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
     .replaceAll('"','&quot;').replaceAll("'",'&#039;');
-
-  // Soft wrap helper (insert zero-width spaces in very long tokens)
   function softWrap(s, limit = 40){
     if (!s) return s;
     return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
   }
 
+  // ——— STATUS ENGINE (now respects publishAt + submission window) ———
+  function isWithinWindow(openAt, closeAt, now) {
+    if (openAt && now < openAt) return false;
+    if (closeAt && now > closeAt) return false;
+    return true;
+  }
   function computeStatus(a) {
     const now = Date.now();
     const pub = a.publishAt || 0;
     const due = a.dueAt || null;
 
+    // Student-centric first
     if (a.mySubmission?.graded) return 'graded';
     if (a.mySubmission) return 'submitted';
 
-    if (pub && now < pub) return 'closed';
-    if (due && now > due) return 'closed';
+    // Not visible/open yet
+    if (pub && now < pub) return 'notYetOpen';
+
+    // Respect submission window
+    if (a.submissionsOpen === false) {
+      // If due passed and no submission, closed (and possibly overdue)
+      if (due && now > due) return 'overdue';
+      return 'closed';
+    }
+    const openAt = a.submissionOpenAt || null;
+    const closeAt = a.submissionCloseAt || null;
+
+    if (!isWithinWindow(openAt, closeAt, now)) {
+      // If it hasn't opened yet
+      if (openAt && now < openAt) return 'notYetOpen';
+      // If it closed already
+      if (closeAt && now > closeAt) {
+        if (due && now > due) return 'overdue';
+        return 'closed';
+      }
+    }
+
+    // Window allows submission
+    if (due && now > due) return 'overdue';
     return 'open';
   }
 
@@ -346,53 +379,29 @@
            (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
            (obj.filePath ? toServerUrl(obj.filePath) : '');
   }
-
   function pickName(obj = {}) {
     const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
     const fromUrl  = (obj.url || '').split('/').pop();
     return obj.originalName || fromPath || fromUrl || 'file';
   }
-
   function extractStoragePath(obj = {}) {
     if (obj.storagePath) return String(obj.storagePath);
-
     if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
-      const parts = obj.gsUri.replace('gs://','').split('/');
-      parts.shift(); // bucket
-      return parts.join('/');
+      const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
     }
-
     if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
-      try {
-        const u = new URL(obj.publicUrl);
-        const parts = u.pathname.replace(/^\/+/, '').split('/');
-        parts.shift(); // bucket
-        return parts.join('/');
-      } catch {}
+      try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
     }
-
     if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
-      try {
-        const u = new URL(obj.downloadUrl);
-        if (u.pathname.includes('/o/')) {
-          const enc = u.pathname.split('/o/')[1];
-          return decodeURIComponent(enc);
-        }
-      } catch {}
+      try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
     }
-
     return '';
   }
-
   async function getSignedViewUrlIfNeeded(obj) {
     const direct = pickHref(obj);
-    // If it's a Firebase storage v0 endpoint, it's already signed token URL.
     if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
-
     const storagePath = extractStoragePath(obj);
     if (!storagePath) return direct || null;
-
-    // Try server signer for inline viewing
     try {
       const r = await fetch(`${API}/attachments/signed?path=${encodeURIComponent(storagePath)}`, { headers: authHeaders() });
       const js = await r.json().catch(()=>null);
@@ -401,7 +410,7 @@
     return direct || null;
   }
 
-  // --- Fetch module meta & cache ---
+  // --- Module & Course meta cache ---
   async function fetchModuleMeta(moduleId) {
     if (!moduleId) return null;
     if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
@@ -416,8 +425,6 @@
       return null;
     }
   }
-
-  // --- Fetch course meta & cache ---
   async function fetchCourseMeta(courseId) {
     if (!courseId) return null;
     if (courseCache.has(courseId)) return courseCache.get(courseId);
@@ -433,17 +440,13 @@
       return null;
     }
   }
-
-  // --- Enrich assignments with meta ---
   async function hydrateMetaForAssignments(list) {
     const moduleIds = [...new Set((list || []).map(a => a.moduleId).filter(Boolean))];
     const courseIds = [...new Set((list || []).map(a => a.courseId).filter(Boolean))];
-
     await Promise.all([
       ...moduleIds.map(id => fetchModuleMeta(id)),
       ...courseIds.map(id => fetchCourseMeta(id)),
     ]);
-
     (list || []).forEach(a => {
       const m = a.moduleId ? moduleCache.get(a.moduleId) : null;
       if (m) {
@@ -459,15 +462,21 @@
 
   // ========= Data loaders =========
   async function loadCourses() {
-    const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`, { headers: authHeaders() });
-    const js = await res.json();
-    const list = Array.isArray(js.courses) ? js.courses : [];
-    courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
-    courses.forEach(c => courseCache.set(c.id, { title: c.title }));
-    filterCourse.innerHTML = `<option value="All">All Courses</option>` +
-      courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+    try {
+      const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`, { headers: authHeaders() });
+      if (!res.ok) throw new Error('courses endpoint failed');
+      const js = await res.json();
+      const list = Array.isArray(js.courses) ? js.courses : [];
+      courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
+      courses.forEach(c => courseCache.set(c.id, { title: c.title }));
+      filterCourse.innerHTML = `<option value="All">All Courses</option>` +
+        courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+    } catch {
+      // fallback: build list from assignments later
+      courses = [];
+      filterCourse.innerHTML = `<option value="All">All Courses</option>`;
+    }
   }
-
   async function tryLoadAssignmentsDirect() {
     const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/assignments`, { headers: authHeaders() });
     if (!res.ok) return null;
@@ -475,7 +484,6 @@
     if (!js || !js.success || !Array.isArray(js.assignments)) return null;
     return js.assignments;
   }
-
   async function loadAssignmentsViaCourses() {
     const all = [];
     for (const c of courses) {
@@ -497,6 +505,9 @@
             publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt) : null,
             dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt) : null,
             points: a.points ?? null,
+            submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
+            submissionOpenAt: a.submissionOpenAt ? (a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds*1000 : a.submissionOpenAt) : null,
+            submissionCloseAt: a.submissionCloseAt ? (a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds*1000 : a.submissionCloseAt) : null,
             mySubmission: a.mySubmission || null,
             attachments: Array.isArray(a.attachments) ? a.attachments : []
           });
@@ -505,18 +516,34 @@
     }
     return all;
   }
-
   async function loadAll() {
+    // First load courses (may be empty on fallback)
     await loadCourses();
+
+    // Try direct student endpoint first
     let list = await tryLoadAssignmentsDirect();
     if (!list) list = await loadAssignmentsViaCourses();
 
+    // Normalize + include submission window fields (supports both shapes)
     assignments = (list || []).map(a => ({
       ...a,
       publishAt: a.publishAt && a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt || null,
       dueAt: a.dueAt && a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt || null,
+      submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
+      submissionOpenAt: a.submissionOpenAt && a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds*1000 : (a.submissionOpenAt || null),
+      submissionCloseAt: a.submissionCloseAt && a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds*1000 : (a.submissionCloseAt || null),
       attachments: Array.isArray(a.attachments) ? a.attachments : []
     }));
+
+    // Fallback: populate course filter if courses API failed earlier
+    if (!courses.length) {
+      const pairs = [...new Set(assignments.map(x => JSON.stringify({id:x.courseId, title:x.courseTitle || 'Untitled'})))];
+      const derived = pairs.map(s => JSON.parse(s)).filter(x => x.id);
+      courses = derived;
+      filterCourse.innerHTML = `<option value="All">All Courses</option>` +
+        derived.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+      derived.forEach(c => courseCache.set(c.id, { title: c.title }));
+    }
 
     await hydrateMetaForAssignments(assignments);
 
@@ -597,9 +624,7 @@
     info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
     document.getElementById('openInNewTabBtn').href = url || '#';
   }
-  function showSpinner(show) {
-    document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none';
-  }
+  function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
   function renderFilePreviewInto(container, url) {
     container.innerHTML = '';
     showSpinner(true);
@@ -730,7 +755,6 @@
       return;
     }
 
-    // Last-resort object
     const obj = document.createElement('object');
     obj.data = url;
     obj.type = 'application/octet-stream';
@@ -748,15 +772,31 @@
 
   // ========= Render =========
   function refreshStatusPills(src) {
-    const counts = { open:0, submitted:0, graded:0, closed:0 };
-    (src || []).forEach(a => {
-      const st = computeStatus(a);
-      counts[st] = (counts[st] || 0) + 1;
-    });
+    const counts = { open:0, submitted:0, graded:0, closed:0, overdue:0, notYetOpen:0 };
+    (src || []).forEach(a => { counts[computeStatus(a)] = (counts[computeStatus(a)] || 0) + 1; });
     if (elCountOpen) elCountOpen.textContent = counts.open || 0;
     if (elCountSubmitted) elCountSubmitted.textContent = counts.submitted || 0;
     if (elCountGraded) elCountGraded.textContent = counts.graded || 0;
     if (elCountClosed) elCountClosed.textContent = counts.closed || 0;
+    if (elCountOverdue) elCountOverdue.textContent = counts.overdue || 0;
+    if (elCountNotYetOpen) elCountNotYetOpen.textContent = counts.notYetOpen || 0;
+  }
+
+  function badgeForStatus(st, dueAt, publishAt, openAt, closeAt){
+    const mapCls = {
+      open: 'st-open',
+      submitted: 'st-submitted',
+      graded: 'st-graded',
+      closed: 'st-closed',
+      overdue: 'st-closed',
+      notYetOpen: 'st-closed'
+    };
+    const label = (
+      st === 'overdue' ? 'Overdue' :
+      st === 'notYetOpen' ? `Opens ${fmtDateTime(openAt || publishAt)}` :
+      st.charAt(0).toUpperCase() + st.slice(1)
+    );
+    return `<span class="status-dot ${mapCls[st] || 'st-open'}"></span>${label}`;
   }
 
   function renderGrid() {
@@ -781,7 +821,9 @@
     } else if (sortBy.value === 'dueDesc') {
       list.sort((a,b) => (b.dueAt||0) - (a.dueAt||0));
     } else if (sortBy.value === 'title') {
-      list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+      list.sort((a,b) => (a.title||'').localeCompare(b.title||'')); 
+    } else if (sortBy.value === 'course') {
+      list.sort((a,b) => (a.courseTitle||'').localeCompare(b.courseTitle||'')); 
     }
 
     refreshStatusPills(list);
@@ -797,12 +839,7 @@
       col.className = 'col-12 col-md-6 col-xl-4';
 
       const dueTxt = a.dueAt ? fmtDateTime(a.dueAt) : 'No due date';
-      const statusBadge = (() => {
-        const map = { open:'st-open', closed:'st-closed', submitted:'st-submitted', graded:'st-graded' };
-        const cls = map[a.status] || 'st-open';
-        const label = a.status.charAt(0).toUpperCase() + a.status.slice(1);
-        return `<span class="status-dot ${cls}"></span>${label}`;
-      })();
+      const statusHtml = badgeForStatus(a.status, a.dueAt, a.publishAt, a.submissionOpenAt, a.submissionCloseAt);
 
       const courseLabel = (a.courseTitle || '').trim();
       const coursePill = courseLabel
@@ -825,18 +862,32 @@
              <span class="pill-text">${escapeHTML(moduleLabel)}</span>
            </span>` : '';
 
+      const canSubmit = a.status === 'open';
+      const submitTitle =
+        a.status === 'notYetOpen' ? `Submissions open ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
+        a.status === 'overdue' ? 'Past due; submissions may be closed' :
+        a.status === 'closed' ? (a.submissionCloseAt ? `Closed ${fmtDateTime(a.submissionCloseAt)}` : 'Submissions closed') :
+        a.status === 'submitted' ? 'Already submitted' :
+        a.status === 'graded' ? 'Already graded' : 'Submit';
+
+      const pointsLine = (Number.isFinite(a.points) ? `<div class="muted small mb-2">Points: <strong>${a.points}</strong></div>` : '');
+
+      const gradeLine = (a.mySubmission && a.mySubmission.graded)
+        ? `<div class="muted small mb-2">Score: <strong>${a.mySubmission.score ?? '-'}</strong> / ${Number.isFinite(a.points) ? a.points : '-'}</div>`
+        : '';
+
       col.innerHTML = `
         <div class="assignment-card">
           <div class="d-flex justify-content-between align-items-start mb-1">
             <h5 class="mb-0 wrap-anywhere">${escapeHTML(a.title)}</h5>
-            <div class="muted small text-end">${statusBadge}</div>
+            <div class="muted small text-end">${statusHtml}</div>
           </div>
 
           <div class="mb-2 d-flex flex-wrap gap-1">${coursePill}${modulePill}</div>
 
-          <div class="muted small mb-2">
-            Due: <strong>${dueTxt}</strong>
-          </div>
+          <div class="muted small mb-2">Due: <strong>${dueTxt}</strong></div>
+          ${pointsLine}
+          ${gradeLine}
 
           <div class="desc mb-3 wrap-anywhere" title="${escapeHTML(a.content || '')}">
             ${escapeHTML(a.content || '')}
@@ -846,7 +897,12 @@
             <button class="btn btn-sm btn-amber" data-action="view" data-id="${a.id}">
               <i class="bi bi-eye me-1"></i>View
             </button>
-            <button class="btn btn-sm btn-amber-outline" data-action="submit" data-id="${a.id}">
+            <button
+              class="btn btn-sm ${canSubmit ? 'btn-amber-outline' : 'btn-amber-outline btn-like-disabled'}"
+              data-action="${canSubmit ? 'submit' : 'noop'}"
+              data-id="${a.id}"
+              ${canSubmit ? '' : `data-bs-toggle="tooltip" data-bs-title="${escapeHTML(submitTitle)}"`}
+            >
               <i class="bi bi-upload me-1"></i>Submit
             </button>
           </div>
@@ -854,6 +910,10 @@
       `;
       grid.appendChild(col);
     });
+
+    // Enable tooltips for disabled-like buttons
+    const ttList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    ttList.forEach(el => new bootstrap.Tooltip(el));
 
     grid.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -894,7 +954,6 @@
       attWrap.innerHTML = '';
     } else {
       const items = atts.map(x => {
-        // External link
         if (x.url && /^https?:\/\//i.test(String(x.url))) {
           const display = softWrap(x.url);
           const safe = x.url.replace(/"/g,'&quot;');
@@ -908,8 +967,6 @@
                     </button>
                   </li>`;
         }
-
-        // File-like (cloud upload)
         const payload = {
           downloadUrl: x.downloadUrl || '',
           publicUrl: x.publicUrl || '',
@@ -929,7 +986,6 @@
                   </button>
                 </li>`;
       }).join('');
-
       attWrap.innerHTML = `
         <div class="mt-2">
           <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Attachments</div>
@@ -937,7 +993,18 @@
         </div>`;
     }
 
-    // Wire preview clicks inside the modal
+    // Due badge color
+    const dueBadge = document.getElementById('modalDueBadge');
+    const st = computeStatus(a);
+    dueBadge.className = 'badge-soft me-auto px-2 ' + (st === 'overdue' ? 'bg-danger-subtle text-danger' :
+                               st === 'open' ? 'bg-success-subtle text-success' :
+                               st === 'notYetOpen' ? 'bg-warning-subtle text-warning' :
+                               'bg-secondary-subtle text-secondary');
+    dueBadge.textContent = st === 'notYetOpen' ? `Opens ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
+                           st === 'overdue' ? 'Overdue' :
+                           st.charAt(0).toUpperCase() + st.slice(1);
+
+    // Wire preview clicks
     attWrap.onclick = async (ev) => {
       const btn = ev.target.closest('.att-preview-btn');
       if (!btn) return;
@@ -954,17 +1021,11 @@
           viewUrl = await getSignedViewUrlIfNeeded(payload);
         } catch {}
       }
-
       if (!viewUrl) return;
 
-      // Set header and footer info
       document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
       setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
-
-      // Render into big modal
-      const content = document.getElementById("filePreviewContent");
-      renderFilePreviewInto(content, viewUrl);
-
+      renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
       new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
     };
 
@@ -976,7 +1037,15 @@
   filterCourse.addEventListener('change', renderGrid);
   filterStatus.addEventListener('change', renderGrid);
   sortBy.addEventListener('change', renderGrid);
-  searchBox.addEventListener('input', renderGrid);
+
+  // Debounced search for smoother typing
+  (function attachDebouncedSearch(){
+    let t = null;
+    searchBox.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(renderGrid, 150);
+    });
+  })();
 
   function logoutUser() {
     localStorage.clear();

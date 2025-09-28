@@ -40,6 +40,28 @@ function parsePositiveNumberOrNull(v) {
   return n;
 }
 
+// Parse boolean with defaults (accepts "true"/"1"/"yes")
+function parseBool(v, def = false) {
+  if (v === undefined || v === null || v === '') return def;
+  if (typeof v === 'boolean') return v;
+  const s = String(v).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y', 'on'].includes(s)) return true;
+  if (['false', '0', 'no', 'n', 'off'].includes(s)) return false;
+  return def;
+}
+
+/** Compute whether submissions are open "now" given assignment settings */
+function computeSubmissionsState(a = {}, nowMs = Date.now()) {
+  const openFlag = (a.submissionsOpen !== false); // default true if missing
+  const openAtMs  = a.submissionOpenAt?.toMillis?.() ?? null;
+  const closeAtMs = a.submissionCloseAt?.toMillis?.() ?? null;
+
+  if (!openFlag) return { isOpen: false, reason: 'switch_off', opensAt: openAtMs, closesAt: closeAtMs };
+  if (openAtMs && nowMs < openAtMs) return { isOpen: false, reason: 'not_open_yet', opensAt: openAtMs, closesAt: closeAtMs };
+  if (closeAtMs && nowMs > closeAtMs) return { isOpen: false, reason: 'closed', opensAt: openAtMs, closesAt: closeAtMs };
+  return { isOpen: true, reason: 'open', opensAt: openAtMs, closesAt: closeAtMs };
+}
+
 /** Gather assigned classes from body (supports multiple shapes) */
 function parseAssignedClassesFromBody(body = {}) {
   // Accept: assignedClasses (string|array), assignedClasses[], classIds, classId
@@ -265,6 +287,7 @@ async function ensurePreviewableUrls(attArr = []) {
 
 /* ===========================================================
    CREATE ASSIGNMENT (now supports assigned classes and maxPoints)
+   + submission window fields
 =========================================================== */
 const memAssignUpload = uploadMemory.fields([
   { name: 'files',   maxCount: 30 },
@@ -314,6 +337,14 @@ router.post(
     // ---- compute max points and keep a legacy mirror ----
     const computedMaxPoints = parsePositiveNumberOrNull(maxPoints ?? points);
 
+    // ===== NEW: submission window (independent of dueAt) =====
+    const incomingOpenFlag = parseBool(req.body.submissionsOpen ?? req.body.acceptingSubmissions, true);
+    const incomingOpenAt   = toTimestampOrNull(req.body.submissionOpenAt ?? req.body.openAt);
+    const incomingCloseAt  = toTimestampOrNull(req.body.submissionCloseAt ?? req.body.closeAt);
+    if (incomingOpenAt && incomingCloseAt && incomingCloseAt.toMillis() < incomingOpenAt.toMillis()) {
+      return res.status(400).json({ success:false, message:'"Close submissions at" cannot be earlier than "Open submissions at".' });
+    }
+
     const payloadBase = {
       title: String(title).trim(),
       content: String(content).trim(),
@@ -331,7 +362,11 @@ router.post(
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       teacherId: String(teacherId).trim(),
       archived: false,
-      classIds: classIds.length ? classIds : []
+      classIds: classIds.length ? classIds : [],
+      // NEW:
+      submissionsOpen: incomingOpenFlag,
+      submissionOpenAt: incomingOpenAt || null,
+      submissionCloseAt: incomingCloseAt || null,
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
 
@@ -421,6 +456,7 @@ router.post(
 
 /* ===========================================================
    GET ONE ASSIGNMENT  (attachments include previewUrl if needed)
+   + computed submissionState
 =========================================================== */
 router.get('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -429,11 +465,13 @@ router.get('/assignments/:id', asyncHandler(async (req, res) => {
 
   const data = snap.data() || {};
   const enriched = await ensurePreviewableUrls(Array.isArray(data.attachments) ? data.attachments : []);
-  res.json({ success:true, assignment: { id: snap.id, ...data, attachments: enriched } });
+  const submissionState = computeSubmissionsState(data);
+  res.json({ success:true, assignment: { id: snap.id, ...data, attachments: enriched, submissionState } });
 }));
 
 /* ===========================================================
    UPDATE (PATCH) ASSIGNMENT  (now supports changing classIds and maxPoints)
+   + submission window fields
 =========================================================== */
 router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -502,6 +540,33 @@ router.patch('/assignments/:id', asyncHandler(async (req, res) => {
   } else if (req.body.classIds === null || req.body.assignedClasses === null) {
     // explicit clear
     updates.classIds = [];
+  }
+
+  // ===== NEW: submissions open/close window =====
+  if (req.body.submissionsOpen !== undefined || req.body.acceptingSubmissions !== undefined) {
+    updates.submissionsOpen = parseBool(req.body.submissionsOpen ?? req.body.acceptingSubmissions, true);
+  }
+  if (req.body.submissionOpenAt !== undefined || req.body.openAt !== undefined) {
+    const ts = toTimestampOrNull(req.body.submissionOpenAt ?? req.body.openAt);
+    updates.submissionOpenAt = ts || null;
+  }
+  if (req.body.submissionCloseAt !== undefined || req.body.closeAt !== undefined) {
+    const ts = toTimestampOrNull(req.body.submissionCloseAt ?? req.body.closeAt);
+    updates.submissionCloseAt = ts || null;
+  }
+
+  // Validate order if both present in this patch (or against stored value)
+  if (updates.submissionOpenAt !== undefined || updates.submissionCloseAt !== undefined) {
+    const current = await firestore.collection('assignments').doc(id).get();
+    if (!current.exists) return res.status(404).json({ success:false, message:'Assignment not found.' });
+    const cur = current.data() || {};
+
+    const openAt = (updates.submissionOpenAt !== undefined ? updates.submissionOpenAt : cur.submissionOpenAt) || null;
+    const closeAt = (updates.submissionCloseAt !== undefined ? updates.submissionCloseAt : cur.submissionCloseAt) || null;
+
+    if (openAt && closeAt && closeAt.toMillis() < openAt.toMillis()) {
+      return res.status(400).json({ success:false, message:'"Close submissions at" cannot be earlier than "Open submissions at".' });
+    }
   }
 
   const ref = firestore.collection('assignments').doc(id);
@@ -687,6 +752,7 @@ router.get('/students/:userId/assignments', asyncHandler(async (req, res) => {
 
 /* ===========================================================
    STUDENT SUBMIT ASSIGNMENT (Cloud Storage)
+   (enforces submission window)
 =========================================================== */
 const memSubmissionUpload = uploadMemory.array('files', 30);
 
@@ -706,6 +772,17 @@ router.post(
     if (aDoc.data()?.moduleId) {
       const modStatus = await checkModuleArchived(aDoc.data().moduleId);
       if (modStatus.archived) return res.status(403).json({ success:false, message:'Module is archived; submissions are closed.' });
+    }
+
+    // NEW: enforce submission window
+    const a = aDoc.data() || {};
+    const { isOpen, reason, opensAt, closesAt } = computeSubmissionsState(a);
+    if (!isOpen) {
+      let msg = 'Submissions are currently closed for this assignment.';
+      if (reason === 'not_open_yet' && opensAt) msg = `Submissions open on ${new Date(opensAt).toLocaleString()}.`;
+      if (reason === 'closed' && closesAt) msg = `Submissions closed on ${new Date(closesAt).toLocaleString()}.`;
+      if (reason === 'switch_off') msg = 'The teacher has turned off submissions for this assignment.';
+      return res.status(403).json({ success:false, message: msg });
     }
 
     const text = (req.body.text || '').toString().trim();
@@ -946,7 +1023,7 @@ router.get('/assignments/:id/submissions', asyncHandler(async (req, res) => {
 }));
 
 /* ===========================================================
-   COMPAT submit endpoints
+   COMPAT submit endpoints (enforce submission window)
 =========================================================== */
 const uploadAny = uploadMemory.any();
 
@@ -958,6 +1035,17 @@ async function saveSubmission({ assignmentId, studentId, text, files, bodyClassI
   if (aDoc.data()?.moduleId) {
     const modStatus = await checkModuleArchived(aDoc.data().moduleId);
     if (modStatus.archived) { const err = new Error('Module is archived; submissions are closed.'); err.statusCode = 403; throw err; }
+  }
+
+  // NEW: enforce submission window
+  const a = aDoc.data() || {};
+  const { isOpen, reason, opensAt, closesAt } = computeSubmissionsState(a);
+  if (!isOpen) {
+    let msg = 'Submissions are currently closed for this assignment.';
+    if (reason === 'not_open_yet' && opensAt) msg = `Submissions open on ${new Date(opensAt).toLocaleString()}.`;
+    if (reason === 'closed' && closesAt) msg = `Submissions closed on ${new Date(closesAt).toLocaleString()}.`;
+    if (reason === 'switch_off') msg = 'The teacher has turned off submissions for this assignment.';
+    const err = new Error(msg); err.statusCode = 403; throw err;
   }
 
   let classId = (bodyClassId || '').toString().trim() || null;
@@ -1319,7 +1407,7 @@ function pickRubricFileFromReq(req) {
     return req.files[0];
   }
 
-if (req.files && req.files.rubric && Array.isArray(req.files.rubric) && req.files.rubric.length) {
+  if (req.files && req.files.rubric && Array.isArray(req.files.rubric) && req.files.rubric.length) {
     return req.files.rubric[0];
   }
 

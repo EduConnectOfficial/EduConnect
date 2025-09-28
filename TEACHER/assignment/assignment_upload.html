@@ -122,6 +122,43 @@
               </div>
             </div>
 
+            <!-- Submission Window (independent from Due At) -->
+            <div class="ui-card mt-3">
+              <div class="ui-card-head">
+                <h2 class="ui-card-title"><i class="bi bi-inbox"></i> Submission Window</h2>
+                <div class="ui-subtext">
+                  Control when students can submit. This is independent of the Due date.
+                </div>
+              </div>
+              <div class="p-3">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-4">
+                    <div class="form-check form-switch">
+                      <input class="form-check-input" type="checkbox" id="submissionsOpen" checked>
+                      <label class="form-check-label" for="submissionsOpen">Accepting submissions</label>
+                    </div>
+                    <div class="hint mt-1">
+                      Toggle OFF to immediately stop new submissions (view/grades unaffected).
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Open submissions at (optional)</label>
+                    <input id="submissionOpenAt" type="datetime-local" class="form-control" />
+                    <div class="hint mt-1">Leave empty to open immediately (when switch is ON).</div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Close submissions at (optional)</label>
+                    <input id="submissionCloseAt" type="datetime-local" class="form-control" />
+                    <div class="hint mt-1">Leave empty to keep open until you toggle OFF.</div>
+                  </div>
+                </div>
+                <div class="form-text mt-2">
+                  Note: <strong>Due At</strong> is for expectations/penalties. Submissions are allowed when
+                  the switch is ON and the current time is within this window.
+                </div>
+              </div>
+            </div>
+
             <!-- Staging UI -->
             <div class="ui-card mt-3">
               <div class="ui-card-head">
@@ -470,6 +507,11 @@
     const filesList = document.getElementById('filesList');
     const pointsInput = document.getElementById('points');
 
+    // NEW: submission window refs
+    const submissionsOpenChk = document.getElementById('submissionsOpen');
+    const submissionOpenAtInput = document.getElementById('submissionOpenAt');
+    const submissionCloseAtInput = document.getElementById('submissionCloseAt');
+
     // Auto-correct points to [0..100]
     if (pointsInput) {
       pointsInput.addEventListener("change", () => {
@@ -484,6 +526,28 @@
         formError.textContent = "";
       });
     }
+
+    /* ===== Submission window helpers ===== */
+    function validateSubmissionWindow() {
+      const openV = submissionOpenAtInput.value;
+      const closeV = submissionCloseAtInput.value;
+      submissionOpenAtInput.classList.remove('is-invalid');
+      submissionCloseAtInput.classList.remove('is-invalid');
+      formError.textContent = '';
+
+      if (openV && closeV) {
+        const o = new Date(openV).getTime();
+        const c = new Date(closeV).getTime();
+        if (Number.isFinite(o) && Number.isFinite(c) && c < o) {
+          formError.textContent = '"Close submissions at" cannot be earlier than "Open submissions at".';
+          submissionCloseAtInput.classList.add('is-invalid');
+          return false;
+        }
+      }
+      return true;
+    }
+    submissionOpenAtInput.addEventListener('change', validateSubmissionWindow);
+    submissionCloseAtInput.addEventListener('change', validateSubmissionWindow);
 
     /* ===== Staging ===== */
     let staged = {
@@ -1018,6 +1082,9 @@
         return;
       }
 
+      // Submission window validation
+      if (!validateSubmissionWindow()) return;
+
       const publishAtVal = document.getElementById("publishAt").value;
       const dueAtVal = document.getElementById("dueAt").value;
 
@@ -1030,6 +1097,14 @@
       if (points !== null && !Number.isNaN(points)) fd.append("points", String(points));
       if (publishAtVal) fd.append("publishAt", String(toMillis(publishAtVal)));
       if (dueAtVal) fd.append("dueAt", String(toMillis(dueAtVal)));
+
+      // NEW: submission window fields
+      const submissionsOpen = !!submissionsOpenChk.checked;
+      const openAtVal = submissionOpenAtInput.value;
+      const closeAtVal = submissionCloseAtInput.value;
+      fd.append("submissionsOpen", String(submissionsOpen));
+      if (openAtVal)  fd.append("submissionOpenAt",  String(toMillis(openAtVal)));
+      if (closeAtVal) fd.append("submissionCloseAt", String(toMillis(closeAtVal)));
 
       // assigned classes
       Array.from(selectedClassIds).forEach(id => fd.append("assignedClasses", id));
@@ -1083,7 +1158,7 @@
     })();
   </script>
 
-  <!-- Mobile-friendly datetime helper (unchanged) -->
+  <!-- Mobile-friendly datetime helper (updated to include submission window) -->
   <script>
     (function enhanceDateTimeForMobile() {
       const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
@@ -1123,8 +1198,8 @@
 
       const pub = makeSplit('publishAt');
       const due = makeSplit('dueAt');
-
-      if (!pub && !due) return;
+      const winOpen  = makeSplit('submissionOpenAt');   // NEW
+      const winClose = makeSplit('submissionCloseAt');  // NEW
 
       function toLocalDatetimeValue(dateVal, timeVal) {
         if (!dateVal || !timeVal) return '';
@@ -1143,12 +1218,18 @@
       function syncOriginals() {
         if (pub) pub.original.value = toLocalDatetimeValue(pub.date.value, pub.time.value);
         if (due) due.original.value = toLocalDatetimeValue(due.date.value, due.time.value);
-        if (pub && due) due.date.min = pub.date.value || '';
+        if (winOpen)  winOpen.original.value  = toLocalDatetimeValue(winOpen.date.value,  winOpen.time.value);
+        if (winClose) winClose.original.value = toLocalDatetimeValue(winClose.date.value, winClose.time.value);
+
+        // Optional: keep close.min ≥ open.date for a little UX help
+        if (winOpen && winClose) winClose.date.min = winOpen.date.value || '';
       }
 
       ['input', 'change'].forEach(ev => {
         if (pub) { pub.date.addEventListener(ev, syncOriginals); pub.time.addEventListener(ev, syncOriginals); }
         if (due) { due.date.addEventListener(ev, syncOriginals); due.time.addEventListener(ev, syncOriginals); }
+        if (winOpen)  { winOpen.date.addEventListener(ev, syncOriginals);  winOpen.time.addEventListener(ev,  syncOriginals); }
+        if (winClose) { winClose.date.addEventListener(ev, syncOriginals); winClose.time.addEventListener(ev, syncOriginals); }
       });
 
       const form = document.getElementById('assignmentForm');

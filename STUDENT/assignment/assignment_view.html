@@ -1,35 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Student – Assignment</title>
 
   <!-- Optional: override if API is a separate Railway service -->
   <!-- <meta name="x-api-base" content="https://your-api.up.railway.app"> -->
 
   <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 
   <!-- Theme -->
-  <link rel="stylesheet" href="../assignment/assignment.css"/>
+  <link rel="stylesheet" href="../assignment/assignment.css" />
 
   <style>
     /* File preview modal tweaks to ensure consistent sizing */
-    #filePreviewModal .modal-dialog { max-width: 96vw; }
-    #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
-    #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
-    .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
+    #filePreviewModal .modal-dialog {
+      max-width: 96vw;
     }
-    .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
-    .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+
+    #filePreviewModal .modal-content {
+      height: 92vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #filePreviewModal .modal-body {
+      flex: 1 1 auto;
+      padding: 0;
+      background: #f8fafc;
+      position: relative;
+    }
+
+    .preview-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .preview-wrap iframe,
+    .preview-wrap embed,
+    .preview-wrap object,
+    .preview-wrap img,
+    .preview-wrap video,
+    .preview-wrap audio {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .preview-fallback {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .spinner-wrap {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+    }
 
     /* Long token wrapping */
-    .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+    .wrap-anywhere {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-break: anywhere;
+    }
 
     /* Drag & drop uploader */
     .dropzone {
@@ -39,21 +89,50 @@
       background: #fafbfc;
       transition: background .2s, border-color .2s;
     }
+
     .dropzone.dragover {
       background: #fff7ed;
       border-color: #ffbf69;
     }
-    .file-list { display: grid; gap: .5rem; }
-    .file-pill {
-      border: 1px solid #e5e7eb; border-radius: .75rem; padding: .5rem .75rem;
-      display: flex; justify-content: space-between; align-items: center; background: #fff;
+
+    .file-list {
+      display: grid;
+      gap: .5rem;
     }
-    .file-pill.bad { border-color: #fecaca; background: #fff1f2; }
-    .file-pill .meta { font-size: .85rem; color: #6b7280; }
-    .file-pill .actions .btn-icon { border: none; background: transparent; padding: .25rem .4rem; cursor: pointer; }
-    .file-pill .actions .btn-icon:hover { opacity: .8; }
+
+    .file-pill {
+      border: 1px solid #e5e7eb;
+      border-radius: .75rem;
+      padding: .5rem .75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .file-pill.bad {
+      border-color: #fecaca;
+      background: #fff1f2;
+    }
+
+    .file-pill .meta {
+      font-size: .85rem;
+      color: #6b7280;
+    }
+
+    .file-pill .actions .btn-icon {
+      border: none;
+      background: transparent;
+      padding: .25rem .4rem;
+      cursor: pointer;
+    }
+
+    .file-pill .actions .btn-icon:hover {
+      opacity: .8;
+    }
   </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -65,11 +144,11 @@
       <header class="header-top">
         <div class="brand">
           <!-- Use relative paths so they work on Railway subpaths -->
-          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo"/>
-          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header"/>
+          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
-          <input type="text" placeholder="Search…"/>
+          <input type="text" placeholder="Search…" />
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn">
@@ -82,7 +161,7 @@
       <div class="content container-fluid">
         <nav aria-label="breadcrumb" class="mb-2">
           <ol class="breadcrumb wrap-anywhere">
-            <li class="breadcrumb-item"><a href="assignment.html">Assignments</a></li>
+            <li class="breadcrumb-item"><a href="/STUDENT/assignment/assignment.html">Assignments</a></li>
             <li class="breadcrumb-item active" id="bcTitle" aria-current="page">Loading…</li>
           </ol>
         </nav>
@@ -98,6 +177,7 @@
               <div class="small-label">
                 <span id="moduleLine"></span>
                 <span id="pointsLine"></span>
+                <span id="windowLine"></span>
               </div>
             </div>
             <div class="meta-row">
@@ -112,7 +192,7 @@
             </div>
           </div>
 
-          <hr class="my-3"/>
+          <hr class="my-3" />
           <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Instructions</h6>
           <div id="assignContent" class="wrap-anywhere">Loading content…</div>
 
@@ -127,7 +207,8 @@
           </p>
           <div class="small text-muted mb-3">
             <i class="bi bi-info-circle me-1"></i>
-            Per-file limit: <strong>100&nbsp;MB</strong>. If a file is too large, compress it (PDF/ZIP) or split into parts.
+            Per-file limit: <strong>100&nbsp;MB</strong>. If a file is too large, compress it (PDF/ZIP) or split into
+            parts.
           </div>
 
           <form id="submitForm" class="d-grid gap-3" novalidate>
@@ -135,7 +216,8 @@
             <div>
               <label class="form-label">File(s)</label>
 
-              <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Drop files here or click to browse">
+              <div id="dropzone" class="dropzone" role="button" tabindex="0"
+                aria-label="Drop files here or click to browse">
                 <div class="d-flex align-items-center gap-2">
                   <i class="bi bi-cloud-arrow-up fs-5"></i>
                   <div>
@@ -143,7 +225,8 @@
                     <div class="text-muted small">Accepted: documents, images, PDFs, audio/video (where allowed).</div>
                   </div>
                 </div>
-                <input class="visually-hidden" type="file" id="fileInput" name="files" multiple aria-hidden="true"/>
+                <input class="visually-hidden" type="file" id="fileInput" name="files" multiple aria-hidden="true"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,image/*,audio/*,video/*,.txt,.csv" />
               </div>
 
               <div id="fileHint" class="form-text mt-2">No files selected.</div>
@@ -152,7 +235,8 @@
 
             <div>
               <label class="form-label">Note (optional)</label>
-              <textarea class="form-control wrap-anywhere" id="noteInput" name="text" rows="3" placeholder="e.g., 'Please see attached. https://…'"></textarea>
+              <textarea class="form-control wrap-anywhere" id="noteInput" name="text" rows="3"
+                placeholder="e.g., 'Please see attached. https://…'"></textarea>
               <div id="autosaveHint" class="form-text">Draft autosaves locally.</div>
             </div>
 
@@ -160,14 +244,15 @@
               <button id="submitBtn" type="submit" class="btn btn-amber">
                 <i class="bi bi-send me-1"></i> Submit
               </button>
-              <a href="assignment.html" class="btn btn-amber-outline">
+              <a href="/STUDENT/assignment/assignment.html" class="btn btn-amber-outline">
                 <i class="bi bi-arrow-left me-1"></i> Back to Assignments
               </a>
               <div id="submitStatus" class="small-label ms-auto wrap-anywhere"></div>
             </div>
           </form>
 
-          <div id="alreadySubmitted" class="alert alert-info py-2 px-3 d-none mt-3 wrap-anywhere" role="alert" style="border:1px solid #b6d4fe;">
+          <div id="alreadySubmitted" class="alert alert-info py-2 px-3 d-none mt-3 wrap-anywhere" role="alert"
+            style="border:1px solid #b6d4fe;">
             <i class="bi bi-info-circle me-1"></i> You have already submitted this assignment. Resubmission is disabled.
           </div>
         </div>
@@ -188,7 +273,8 @@
   </div>
 
   <!-- Full-screen-ish File Preview Modal -->
-  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+  <div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -257,7 +343,6 @@
       const meta = document.querySelector('meta[name="x-api-base"]');
       const override = meta?.content?.trim();
       if (override) return override.replace(/\/+$/, '');
-
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
         return 'http://localhost:5000';
       }
@@ -265,6 +350,12 @@
       return '';
     }
     const API_BASE = resolveApiBase();
+
+    // Attach bearer token when present
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
+    }
 
     const STUDENT_MAX_MB = 100;
     const STUDENT_MAX_BYTES = STUDENT_MAX_MB * 1024 * 1024;
@@ -274,8 +365,8 @@
       const u = raw.user || raw;
       const ok = !!u?.userId && u?.isStudent === true;
       if (!ok) {
-        try { localStorage.removeItem("user"); } catch {}
-        window.location.replace("login/login.html");
+        try { localStorage.removeItem("user"); } catch { }
+        window.location.replace("/STUDENT/login/login.html");
         return;
       }
       window.userData = u;
@@ -287,10 +378,10 @@
         if (s.includes("@")) {
           const local = s.split("@")[0];
           const parts = local.split(/[.\-_]+/).filter(Boolean);
-          return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:local.slice(0,2)).toUpperCase();
+          return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
         }
         const parts = s.split(/[\s\-]+/).filter(Boolean);
-        return (parts.length>=2?parts[0][0]+parts[parts.length-1][0]:parts[0].slice(0,2)).toUpperCase();
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
       }
       const el = document.getElementById("Username");
       if (el) {
@@ -306,9 +397,9 @@
             const next = JSON.parse(e.newValue || "null");
             const nu = (next && (next.user || next)) || null;
             const ok2 = !!nu?.userId && nu?.isStudent === true;
-            if (!ok2) window.location.replace("login/login.html");
+            if (!ok2) window.location.replace("/STUDENT/login/login.html");
           } catch {
-            window.location.replace("login/login.html");
+            window.location.replace("/STUDENT/login/login.html");
           }
         }
       });
@@ -320,11 +411,11 @@
     const qs = new URLSearchParams(location.search);
     const assignmentId = qs.get("id");
 
-    const escapeHTML = (s='') => String(s)
-      .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-      .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    const escapeHTML = (s = '') => String(s)
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
-    function softWrap(s, limit = 40){
+    function softWrap(s, limit = 40) {
       if (!s) return s;
       return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
     }
@@ -332,15 +423,15 @@
       if (!ms) return 'No due date';
       try { return new Date(ms).toLocaleString(); } catch { return '—'; }
     };
-    function bytesKB(b){ return Math.round((b || 0)/102.4)/10; }
-    function human(bytes){
+    function bytesKB(b) { return Math.round((b || 0) / 102.4) / 10; }
+    function human(bytes) {
       if (!Number.isFinite(bytes)) return '';
       const mb = bytes / (1024 * 1024);
-      return mb >= 1024 ? (mb/1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB';
+      return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB';
     }
-    function tsToMs(v){
+    function tsToMs(v) {
       if (v == null) return null;
-      if (typeof v === 'object'){
+      if (typeof v === 'object') {
         if (typeof v.toMillis === 'function') return v.toMillis();
         if (typeof v._seconds === 'number') return v._seconds * 1000;
       }
@@ -351,12 +442,12 @@
     }
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
-             (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
-             (obj.filePath ? (API_BASE + String(obj.filePath)) : '');
+        (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+        (obj.filePath ? (API_BASE + String(obj.filePath)) : '');
     }
     function pickName(obj = {}) {
       const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
-      const fromUrl  = (obj.url || '').split('/').pop();
+      const fromUrl = (obj.url || '').split('/').pop();
       return obj.originalName || fromPath || fromUrl || 'file';
     }
     function isRubricAttachment(obj = {}) {
@@ -367,13 +458,13 @@
     function extractStoragePath(obj = {}) {
       if (obj.storagePath) return String(obj.storagePath);
       if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
-        const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
+        const parts = obj.gsUri.replace('gs://', '').split('/'); parts.shift(); return parts.join('/');
       }
       if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
-        try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
+        try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch { }
       }
       if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
-        try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
+        try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch { }
       }
       return '';
     }
@@ -383,10 +474,12 @@
       const storagePath = extractStoragePath(obj);
       if (!storagePath) return direct || null;
       try {
-        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`);
-        const js = await r.json().catch(()=>null);
+        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`, {
+          headers: authHeaders()
+        });
+        const js = await r.json().catch(() => null);
         if (r.ok && js?.success && js?.url) return js.url;
-      } catch {}
+      } catch { }
       return direct || null;
     }
 
@@ -395,50 +488,50 @@
       try {
         const u = new URL(url);
         const h = u.hostname.replace(/^www\./, '').toLowerCase();
-        return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
+        return ['youtu.be', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(h);
       } catch { return false; }
     }
-    function toYouTubeEmbed(url=''){
-      try{
+    function toYouTubeEmbed(url = '') {
+      try {
         const u = new URL(url);
-        const host = u.hostname.replace(/^www\./,'').toLowerCase();
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
         let id = '';
         let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
-        if (start && /^\d+s$/.test(start)) start = parseInt(start,10);
-        if (start && /^\d+$/.test(start)) start = parseInt(start,10);
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
         if (!Number.isFinite(start)) start = '';
-        if (host === 'youtu.be'){ id = (u.pathname || '').replace(/^\//,'').split('/')[0]; }
+        if (host === 'youtu.be') { id = (u.pathname || '').replace(/^\//, '').split('/')[0]; }
         else { if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || ''; if (!id) id = u.searchParams.get('v') || ''; }
         if (!id) return null;
         const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
-        const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
+        const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start));
         return `${base}?${qs.toString()}`;
-      }catch{ return null; }
+      } catch { return null; }
     }
-    function getExtFromUrl(url=''){ const clean = String(url).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : ''; }
-    function kindFromUrl(url){
+    function getExtFromUrl(url = '') { const clean = String(url).split('?')[0].split('#')[0]; const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : ''; }
+    function kindFromUrl(url) {
       if (isYouTubeUrl(url)) return 'youtube';
       const ext = getExtFromUrl(url);
-      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) return 'audio';
-      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
-      if (ext==='pdf') return 'pdf';
-      if (['txt','csv','log'].includes(ext)) return 'text';
-      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if (['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) return 'audio';
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
       return 'other';
     }
     function setFileInfoUI(kind, url) {
       const info = document.getElementById('fileInfoText');
-      const hdr  = document.getElementById('filePreviewModalLabel');
-      const labelMap = { youtube:'YouTube', video:'Video', audio:'Audio', image:'Image', pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File' };
+      const hdr = document.getElementById('filePreviewModalLabel');
+      const labelMap = { youtube: 'YouTube', video: 'Video', audio: 'Audio', image: 'Image', pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File' };
       const colorMap = {
-        youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
-        audio:'bg-secondary-subtle text-secondary', image:'bg-success-subtle text-success',
-        pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
-        office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
+        youtube: 'bg-danger-subtle text-danger', video: 'bg-danger-subtle text-danger',
+        audio: 'bg-secondary-subtle text-secondary', image: 'bg-success-subtle text-success',
+        pdf: 'bg-primary-subtle text-primary', text: 'bg-info-subtle text-info',
+        office: 'bg-warning-subtle text-warning', other: 'bg-dark-subtle text-dark'
       };
       let badge = document.getElementById('fileKindBadge');
-      if (!badge){ badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
+      if (!badge) { badge = document.createElement('span'); badge.id = 'fileKindBadge'; badge.className = 'ms-2 badge rounded-pill'; hdr.appendChild(badge); }
       badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
       badge.textContent = labelMap[kind] || 'File';
       info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
@@ -473,7 +566,7 @@
 
       const ext = getExtFromUrl(url);
 
-      if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) {
         const img = new Image();
         img.onload = done;
         img.onerror = () => {
@@ -500,7 +593,7 @@
         return;
       }
 
-      if (['mp4','webm','ogg','ogv','mov'].includes(ext)) {
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) {
         const video = document.createElement('video');
         video.controls = true;
         video.onloadeddata = done;
@@ -514,7 +607,7 @@
         return;
       }
 
-      if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) {
+      if (['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) {
         const audio = document.createElement('audio');
         audio.controls = true;
         audio.onloadeddata = done;
@@ -528,7 +621,7 @@
         return;
       }
 
-      if (['txt','csv','log'].includes(ext)) {
+      if (['txt', 'csv', 'log'].includes(ext)) {
         const iframe = document.createElement('iframe');
         iframe.onload = done;
         iframe.onerror = () => {
@@ -541,7 +634,7 @@
         return;
       }
 
-      if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) {
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
         const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
         const iframe = document.createElement('iframe');
         iframe.title = 'Document preview';
@@ -578,6 +671,7 @@
     const assignTitle = document.getElementById("assignTitle");
     const moduleLine = document.getElementById("moduleLine");
     const pointsLine = document.getElementById("pointsLine");
+    const windowLine = document.getElementById("windowLine");
     const dueAtEl = document.getElementById("dueAt");
     const assignContent = document.getElementById("assignContent");
     const attachmentsWrap = document.getElementById("attachmentsWrap");
@@ -606,22 +700,26 @@
     /* =========================
        Data fetchers
     ========================== */
-    async function fetchAssignment(id){
-      const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`);
+    async function fetchAssignment(id) {
+      const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`, {
+        headers: authHeaders()
+      });
       if (!res.ok) return null;
-      const js = await res.json().catch(()=>null);
+      const js = await res.json().catch(() => null);
       return js?.assignment || js;
     }
-    async function fetchMySubmission(id){
-      try{
-        const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/submissions/${encodeURIComponent(userData.userId)}`);
+    async function fetchMySubmission(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/submissions/${encodeURIComponent(userData.userId)}`, {
+          headers: authHeaders()
+        });
         if (!res.ok) return null;
-        const js = await res.json().catch(()=>null);
+        const js = await res.json().catch(() => null);
         return js?.submission || null;
-      }catch{ return null; }
+      } catch { return null; }
     }
 
-    function normalizeAssignment(a){
+    function normalizeAssignment(a) {
       if (!a) return null;
       return {
         id: a.id,
@@ -633,33 +731,54 @@
         points: a.points ?? null,
         publishAt: tsToMs(a.publishAt),
         dueAt: tsToMs(a.dueAt),
+        submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
+        submissionOpenAt: tsToMs(a.submissionOpenAt),
+        submissionCloseAt: tsToMs(a.submissionCloseAt),
         attachments: Array.isArray(a.attachments) ? a.attachments : []
       };
     }
 
-    function computeStatus(a, mySub){
+    // Submission-window aware status (parity with list page)
+    function computeStatus(a, mySub) {
       const now = Date.now();
       if (mySub?.graded) return 'Graded';
       if (mySub) return 'Submitted';
-      if (a.publishAt && now < a.publishAt) return 'Closed';
-      if (a.dueAt && now > a.dueAt) return 'Closed';
+
+      const publishAt = a.publishAt || 0;
+      const dueAt = a.dueAt || null;
+      const openAt = a.submissionOpenAt || null;
+      const closeAt = a.submissionCloseAt || null;
+      const submissionsOpen = (a.submissionsOpen !== undefined) ? !!a.submissionsOpen : true;
+
+      if (publishAt && now < publishAt) return 'NotYetOpen';
+      if (submissionsOpen === false) return (dueAt && now > dueAt) ? 'Overdue' : 'Closed';
+
+      const beforeOpen = openAt && now < openAt;
+      const afterClose = closeAt && now > closeAt;
+      if (beforeOpen) return 'NotYetOpen';
+      if (afterClose) return (dueAt && now > dueAt) ? 'Overdue' : 'Closed';
+
+      if (dueAt && now > dueAt) return 'Overdue';
       return 'Open';
     }
 
-    function setStatusPill(status){
-      const map = {
+    function setStatusPill(status) {
+      const classes = {
         Open: 'badge bg-success-subtle text-success-emphasis',
         Submitted: 'badge bg-primary-subtle text-primary-emphasis',
         Graded: 'badge bg-success text-white',
-        Closed: 'badge bg-danger-subtle text-danger-emphasis'
+        Closed: 'badge bg-secondary-subtle text-secondary-emphasis',
+        Overdue: 'badge bg-danger-subtle text-danger-emphasis',
+        NotYetOpen: 'badge bg-warning-subtle text-warning-emphasis'
       };
-      statusPill.innerHTML = `<span class="${map[status] || 'badge bg-secondary'}">${status}</span>`;
+      const label = (status === 'NotYetOpen') ? 'Opens Later' : status;
+      statusPill.innerHTML = `<span class="${classes[status] || 'badge bg-secondary'}">${label}</span>`;
     }
 
     /* =========================
        Renderers
     ========================== */
-    function renderAssignment(a){
+    function renderAssignment(a) {
       bcTitle.innerText = softWrap(a.title);
       pageTitle.innerText = softWrap(a.title);
       assignTitle.innerText = softWrap(a.title);
@@ -672,14 +791,21 @@
       pointsLine.innerText = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
       dueAtEl.innerText = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
 
+      // Submission window line (optional display)
+      const winBits = [];
+      if (a.submissionsOpen === false) winBits.push("Submissions off");
+      if (a.submissionOpenAt) winBits.push(`Opens: ${fmtDateTime(a.submissionOpenAt)}`);
+      if (a.submissionCloseAt) winBits.push(`Closes: ${fmtDateTime(a.submissionCloseAt)}`);
+      windowLine.innerText = winBits.length ? ((moduleTxt || a.points != null) ? " • " : "") + winBits.join(" • ") : "";
+
       // Instructions (plain text)
       assignContent.innerText = softWrap(a.content || "");
 
       // Attachments (rubrics prioritized)
       const atts = Array.isArray(a.attachments) ? a.attachments : [];
       const rubricFiles = atts.filter(x => !x.url && isRubricAttachment(x));
-      const otherFiles  = atts.filter(x => !x.url && !isRubricAttachment(x));
-      const links       = atts.filter(x => !!x.url);
+      const otherFiles = atts.filter(x => !x.url && !isRubricAttachment(x));
+      const links = atts.filter(x => !!x.url);
 
       let html = '';
 
@@ -735,9 +861,9 @@
       const linkItems = links.map(x => {
         const href = x.url || pickHref(x);
         const display = softWrap(x.url || pickName(x));
-        const safe = (href || '').replace(/"/g,'&quot;');
+        const safe = (href || '').replace(/"/g, '&quot;');
         const kind = kindFromUrl(href || '');
-        const icon = kind==='youtube' ? '▶️' : (kind==='video' ? '🎬' : '🔗');
+        const icon = kind === 'youtube' ? '▶️' : (kind === 'video' ? '🎬' : '🔗');
         return `<li class="mb-1">
                   ${icon}
                   <button type="button" class="btn btn-link p-0 align-baseline att-preview-btn" data-external-url="${safe}">
@@ -770,7 +896,7 @@
             const payload = JSON.parse(btn.dataset.payload);
             fileName = payload.originalName || pickName(payload) || 'File';
             viewUrl = await getSignedViewUrlIfNeeded(payload);
-          } catch {}
+          } catch { }
         }
         if (!viewUrl) return;
         document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
@@ -780,7 +906,7 @@
       };
     }
 
-    function renderSubmission(sub){
+    function renderSubmission(sub) {
       submissionSummary.classList.remove('d-none');
 
       const when = tsToMs(sub.submittedAt);
@@ -792,7 +918,7 @@
         : `<span class="badge rounded-pill text-bg-primary"><i class="bi bi-cloud-check me-1"></i> Submitted</span>`;
 
       const files = Array.isArray(sub.files) ? sub.files : [];
-      if (files.length){
+      if (files.length) {
         const list = files.map(f => {
           const name = softWrap(escapeHTML(pickName(f)));
           const payload = {
@@ -826,7 +952,8 @@
         ? `<div><div class="fw-semibold mb-1"><i class="bi bi-sticky"></i> Note</div><div class="p-2 border rounded wrap-anywhere" style="white-space:pre-wrap">${escapeHTML(softWrap(text))}</div></div>`
         : `<div class="small-label">No note provided.</div>`;
 
-      if (graded || sub.grade != null || (sub.feedback && String(sub.feedback).trim())){
+
+      if (graded || sub.grade != null || (sub.feedback && String(sub.feedback).trim())) {
         const g = (sub.grade != null) ? `<div><span class="fw-semibold">Grade:</span> ${escapeHTML(String(sub.grade))}</div>` : '';
         const fbText = sub.feedback ? escapeHTML(softWrap(String(sub.feedback))) : '';
         const fb = fbText ? `<div class="mt-1"><span class="fw-semibold">Feedback:</span> ${fbText}</div>` : '';
@@ -846,7 +973,7 @@
             const payload = JSON.parse(btn.dataset.payload);
             fileName = payload.originalName || pickName(payload) || 'File';
             viewUrl = await getSignedViewUrlIfNeeded(payload);
-          } catch {}
+          } catch { }
         }
         if (!viewUrl) return;
         document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
@@ -870,14 +997,14 @@
     /* =========================
        Load page
     ========================== */
-    async function loadPage(){
-      if (!assignmentId){
+    async function loadPage() {
+      if (!assignmentId) {
         assignContent.textContent = "Invalid assignment id.";
         return;
       }
       const aRaw = await fetchAssignment(assignmentId);
       const a = normalizeAssignment(aRaw);
-      if (!a){
+      if (!a) {
         assignContent.textContent = "Assignment not found.";
         return;
       }
@@ -890,9 +1017,17 @@
 
       if (status === 'Closed') {
         lockSubmissionUI('This assignment is closed. Submissions are disabled.');
+      } else if (status === 'NotYetOpen') {
+        lockSubmissionUI('Submissions are not open yet.');
+      } else if (status === 'Overdue') {
+        // adjust if you allow late submissions
+        lockSubmissionUI('This assignment is past due.');
       } else if (mySub) {
         renderSubmission(mySub);
         lockSubmissionUI();
+      } else {
+        // If no submission and open, still render submission block empty
+        if (mySub) renderSubmission(mySub);
       }
     }
 
@@ -911,7 +1046,7 @@
       fileHint.textContent = `${selectedFiles.length} file(s) • total ${human(total)} • largest ${human(max)}`;
     }
 
-    function renderFilePreview(){
+    function renderFilePreview() {
       filePreview.innerHTML = '';
       let anyTooLarge = false;
 
@@ -959,7 +1094,7 @@
       renderFilePreview();
     }
 
-    function updateSubmitEnabled(anyTooLarge = false){
+    function updateSubmitEnabled(anyTooLarge = false) {
       const hasFile = selectedFiles.length > 0;
       const hasNote = !!noteInput.value.trim();
       submitBtn.disabled = (currentStatus !== 'Open') || (anyTooLarge || (!hasFile && !hasNote));
@@ -973,9 +1108,9 @@
     });
 
     // Drag & drop
-    ;['dragenter','dragover'].forEach(evt =>
+    ;['dragenter', 'dragover'].forEach(evt =>
       dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
-    ;['dragleave','drop'].forEach(evt =>
+    ;['dragleave', 'drop'].forEach(evt =>
       dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
     dropzone.addEventListener('drop', (e) => {
       if (currentStatus !== 'Open') return;
@@ -993,7 +1128,7 @@
 
     // Note input: autosave + enable submit
     const draftKey = `assignDraft:${assignmentId}:${userData.userId}`;
-    function loadDraft(){
+    function loadDraft() {
       try {
         const s = localStorage.getItem(draftKey);
         if (!s) return;
@@ -1001,16 +1136,16 @@
         if (js && typeof js.note === 'string') {
           noteInput.value = js.note;
         }
-      } catch {}
+      } catch { }
     }
-    function saveDraft(){
+    function saveDraft() {
       try {
         localStorage.setItem(draftKey, JSON.stringify({ note: noteInput.value }));
         autosaveHint.textContent = 'Draft saved locally.';
-      } catch {}
+      } catch { }
     }
     loadDraft();
-    let autosaveTimer=null;
+    let autosaveTimer = null;
     noteInput.addEventListener('input', () => {
       updateSubmitEnabled();
       clearTimeout(autosaveTimer);
@@ -1030,20 +1165,22 @@
     /* =========================
        Submit handler
     ========================== */
-    async function submitAssignment(e){
+    async function submitAssignment(e) {
       e.preventDefault();
       if (!assignmentId) return;
 
       if (currentStatus !== 'Open') {
         submitStatus.textContent = (currentStatus === 'Closed')
           ? 'This assignment is closed. Submissions are disabled.'
-          : 'You have already submitted this assignment.';
+          : (currentStatus === 'NotYetOpen'
+            ? 'Submissions have not opened yet.'
+            : 'You have already submitted this assignment.');
         return;
       }
 
       // Validate sizes
       const tooLarge = selectedFiles.find(f => f.size > STUDENT_MAX_BYTES);
-      if (tooLarge){
+      if (tooLarge) {
         submitStatus.textContent = `“${tooLarge.name}” is ${human(tooLarge.size)} and exceeds the ${STUDENT_MAX_MB} MB limit. Please compress or choose a smaller file.`;
         renderFilePreview();
         return;
@@ -1051,7 +1188,7 @@
 
       const hasFile = selectedFiles.length > 0;
       const hasNote = !!noteInput.value.trim();
-      if (!hasFile && !hasNote){
+      if (!hasFile && !hasNote) {
         submitStatus.textContent = "Please add at least one file or a note.";
         return;
       }
@@ -1064,25 +1201,32 @@
       submitStatus.textContent = "Submitting…";
       submitBtn.disabled = true;
 
-      try{
+      try {
         const url = `${API_BASE}/api/assignments/${encodeURIComponent(assignmentId)}/submissions`;
-        const res = await fetch(url, { method:"POST", body: formData });
+        const res = await fetch(url, { method: "POST", headers: authHeaders(), body: formData });
+
+        if (res.status === 413) {
+          submitStatus.textContent = `Upload is too large for the server. Try removing big files or compressing them.`;
+          submitBtn.disabled = false;
+          return;
+        }
+
         const raw = await res.text();
         let js = {};
-        try { js = JSON.parse(raw); } catch {}
+        try { js = JSON.parse(raw); } catch { }
         if (!res.ok || js.success === false) {
           submitStatus.textContent = js.message ? js.message : `Upload failed (HTTP ${res.status})`;
           submitBtn.disabled = false;
           return;
         }
-      }catch(err){
+      } catch (err) {
         submitStatus.textContent = "Failed to submit: " + (err?.message || "Unknown error");
         submitBtn.disabled = false;
         return;
       }
 
       // Clean up local draft on success
-      try { localStorage.removeItem(draftKey); } catch {}
+      try { localStorage.removeItem(draftKey); } catch { }
 
       lockSubmissionUI();
       const localSub = {
@@ -1094,16 +1238,16 @@
       renderSubmission(localSub);
 
       // Redirect back with success toast
-      window.location.href = "assignment.html?submitted=1";
+      window.location.href = "/STUDENT/assignment/assignment.html?submitted=1";
     }
 
-    function logoutUser(){
+    function logoutUser() {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = "login/login.html";
+      window.location.href = "/STUDENT/login/login.html";
     }
 
-    (async function init(){
+    (async function init() {
       try { await loadPage(); }
       catch (e) { console.error(e); assignContent.textContent = "Failed to load assignment details."; }
       submitForm.addEventListener("submit", submitAssignment);
@@ -1114,4 +1258,5 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
