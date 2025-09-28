@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../assignment/assignment.css" />
 
   <style>
-    /* File preview modal tweaks to ensure consistent sizing */
+    /* ===== Full-screen-ish File Preview Modal (shared look/feel) ===== */
     #filePreviewModal .modal-dialog {
       max-width: 96vw;
     }
@@ -95,6 +95,11 @@
       border-color: #ffbf69;
     }
 
+    .dropzone.disabled {
+      opacity: .6;
+      pointer-events: none;
+    }
+
     .file-list {
       display: grid;
       gap: .5rem;
@@ -130,6 +135,15 @@
     .file-pill .actions .btn-icon:hover {
       opacity: .8;
     }
+
+    /* Light warning chip shown when late but window still open */
+    .late-chip {
+      border: 1px dashed #f19999;
+      background: #fff5f5;
+      color: #b42318;
+      padding: .25rem .5rem;
+      border-radius: .5rem;
+    }
   </style>
 </head>
 
@@ -143,7 +157,6 @@
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <!-- Use relative paths so they work on Railway subpaths -->
           <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
@@ -191,6 +204,9 @@
               </div>
             </div>
           </div>
+
+          <div id="lateChip" class="mt-2 d-none"><span class="late-chip"><i class="bi bi-exclamation-triangle me-1"></i>
+              Past due, but submissions are still open.</span></div>
 
           <hr class="my-3" />
           <h6 class="mb-2"><i class="bi bi-info-circle me-2"></i>Instructions</h6>
@@ -307,7 +323,6 @@
   <!-- Sidebar Loader -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // Use relative include so it works on Railway subpaths
       fetch("/STUDENT/components/sidebar.html")
         .then(res => res.text())
         .then(html => {
@@ -343,15 +358,11 @@
       const meta = document.querySelector('meta[name="x-api-base"]');
       const override = meta?.content?.trim();
       if (override) return override.replace(/\/+$/, '');
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        return 'http://localhost:5000';
-      }
-      // Same-origin on Railway (empty means relative fetch like "/api/…")
-      return '';
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'http://localhost:5000';
+      return ''; // same-origin on Railway
     }
     const API_BASE = resolveApiBase();
 
-    // Attach bearer token when present
     function authHeaders(extra = {}) {
       const token = localStorage.getItem("authToken");
       return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
@@ -371,7 +382,7 @@
       }
       window.userData = u;
 
-      // Header initials
+      // Header initials (initials only)
       function initialsFrom(str) {
         if (!str) return "";
         const s = String(str).trim(); if (!s) return "";
@@ -398,9 +409,7 @@
             const nu = (next && (next.user || next)) || null;
             const ok2 = !!nu?.userId && nu?.isStudent === true;
             if (!ok2) window.location.replace("/STUDENT/login/login.html");
-          } catch {
-            window.location.replace("/STUDENT/login/login.html");
-          }
+          } catch { window.location.replace("/STUDENT/login/login.html"); }
         }
       });
     })();
@@ -440,6 +449,8 @@
       const d = new Date(v);
       return Number.isNaN(d.getTime()) ? null : d.getTime();
     }
+
+    // Attachment helpers (same semantics as list page)
     function pickHref(obj = {}) {
       return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
         (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
@@ -474,16 +485,14 @@
       const storagePath = extractStoragePath(obj);
       if (!storagePath) return direct || null;
       try {
-        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`, {
-          headers: authHeaders()
-        });
+        const r = await fetch(`${API_BASE}/api/attachments/signed?path=${encodeURIComponent(storagePath)}`, { headers: authHeaders() });
         const js = await r.json().catch(() => null);
         if (r.ok && js?.success && js?.url) return js.url;
       } catch { }
       return direct || null;
     }
 
-    // Preview helpers
+    // Preview helpers (same as list page)
     function isYouTubeUrl(url = '') {
       try {
         const u = new URL(url);
@@ -500,8 +509,12 @@
         if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
         if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
         if (!Number.isFinite(start)) start = '';
-        if (host === 'youtu.be') { id = (u.pathname || '').replace(/^\//, '').split('/')[0]; }
-        else { if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || ''; if (!id) id = u.searchParams.get('v') || ''; }
+        if (host === 'youtu.be') {
+          id = (u.pathname || '').replace(/^\//, '').split('/')[0];
+        } else {
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
         if (!id) return null;
         const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
         const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start));
@@ -675,6 +688,7 @@
     const dueAtEl = document.getElementById("dueAt");
     const assignContent = document.getElementById("assignContent");
     const attachmentsWrap = document.getElementById("attachmentsWrap");
+    const lateChip = document.getElementById("lateChip");
 
     const submitForm = document.getElementById("submitForm");
     const submitBtn = document.getElementById("submitBtn");
@@ -695,24 +709,21 @@
     const submissionNote = document.getElementById("submissionNote");
     const submissionGrade = document.getElementById("submissionGrade");
 
-    let currentStatus = 'Open';
+    let currentStatus = 'open'; // normalized lower-case for parity with list page
+    let windowOpenCache = false;
 
     /* =========================
        Data fetchers
     ========================== */
     async function fetchAssignment(id) {
-      const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`, {
-        headers: authHeaders()
-      });
+      const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}`, { headers: authHeaders() });
       if (!res.ok) return null;
       const js = await res.json().catch(() => null);
       return js?.assignment || js;
     }
     async function fetchMySubmission(id) {
       try {
-        const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/submissions/${encodeURIComponent(userData.userId)}`, {
-          headers: authHeaders()
-        });
+        const res = await fetch(`${API_BASE}/api/assignments/${encodeURIComponent(id)}/submissions/${encodeURIComponent(userData.userId)}`, { headers: authHeaders() });
         if (!res.ok) return null;
         const js = await res.json().catch(() => null);
         return js?.submission || null;
@@ -738,41 +749,42 @@
       };
     }
 
-    // Submission-window aware status (parity with list page)
+    // Submission window helper — EXACT parity with list page
+    function isSubmissionWindowOpen(a, now = Date.now()) {
+      if (a.submissionsOpen === false) return false;
+      if (a.submissionOpenAt && now < a.submissionOpenAt) return false;
+      if (a.submissionCloseAt && now > a.submissionCloseAt) return false;
+      return true;
+    }
+
+    // Status engine — EXACT parity with list page
     function computeStatus(a, mySub) {
       const now = Date.now();
-      if (mySub?.graded) return 'Graded';
-      if (mySub) return 'Submitted';
+      const pub = a.publishAt || 0;
+      const due = a.dueAt || null;
 
-      const publishAt = a.publishAt || 0;
-      const dueAt = a.dueAt || null;
-      const openAt = a.submissionOpenAt || null;
-      const closeAt = a.submissionCloseAt || null;
-      const submissionsOpen = (a.submissionsOpen !== undefined) ? !!a.submissionsOpen : true;
+      if (mySub?.graded) return 'graded';
+      if (mySub) return 'submitted';
 
-      if (publishAt && now < publishAt) return 'NotYetOpen';
-      if (submissionsOpen === false) return (dueAt && now > dueAt) ? 'Overdue' : 'Closed';
+      if (pub && now < pub) return 'notYetOpen';
 
-      const beforeOpen = openAt && now < openAt;
-      const afterClose = closeAt && now > closeAt;
-      if (beforeOpen) return 'NotYetOpen';
-      if (afterClose) return (dueAt && now > dueAt) ? 'Overdue' : 'Closed';
-
-      if (dueAt && now > dueAt) return 'Overdue';
-      return 'Open';
+      const windowOpen = isSubmissionWindowOpen(a, now);
+      if (due && now > due) return windowOpen ? 'overdue' : 'closed';
+      return windowOpen ? 'open' : 'closed';
     }
 
     function setStatusPill(status) {
+      const s = String(status);
       const classes = {
-        Open: 'badge bg-success-subtle text-success-emphasis',
-        Submitted: 'badge bg-primary-subtle text-primary-emphasis',
-        Graded: 'badge bg-success text-white',
-        Closed: 'badge bg-secondary-subtle text-secondary-emphasis',
-        Overdue: 'badge bg-danger-subtle text-danger-emphasis',
-        NotYetOpen: 'badge bg-warning-subtle text-warning-emphasis'
+        open: 'badge bg-success-subtle text-success-emphasis',
+        submitted: 'badge bg-primary-subtle text-primary-emphasis',
+        graded: 'badge bg-success text-white',
+        closed: 'badge bg-secondary-subtle text-secondary-emphasis',
+        overdue: 'badge bg-danger-subtle text-danger-emphasis',
+        notYetOpen: 'badge bg-warning-subtle text-warning-emphasis'
       };
-      const label = (status === 'NotYetOpen') ? 'Opens Later' : status;
-      statusPill.innerHTML = `<span class="${classes[status] || 'badge bg-secondary'}">${label}</span>`;
+      const label = (s === 'notYetOpen') ? 'Opens Later' : s.charAt(0).toUpperCase() + s.slice(1);
+      statusPill.innerHTML = `<span class="${classes[s] || 'badge bg-secondary'}">${label}</span>`;
     }
 
     /* =========================
@@ -791,7 +803,7 @@
       pointsLine.innerText = a.points != null ? (moduleTxt ? " • " : "") + `${a.points} pts` : "";
       dueAtEl.innerText = a.dueAt ? fmtDateTime(a.dueAt) : "No due date";
 
-      // Submission window line (optional display)
+      // Submission window bits
       const winBits = [];
       if (a.submissionsOpen === false) winBits.push("Submissions off");
       if (a.submissionOpenAt) winBits.push(`Opens: ${fmtDateTime(a.submissionOpenAt)}`);
@@ -952,7 +964,6 @@
         ? `<div><div class="fw-semibold mb-1"><i class="bi bi-sticky"></i> Note</div><div class="p-2 border rounded wrap-anywhere" style="white-space:pre-wrap">${escapeHTML(softWrap(text))}</div></div>`
         : `<div class="small-label">No note provided.</div>`;
 
-
       if (graded || sub.grade != null || (sub.feedback && String(sub.feedback).trim())) {
         const g = (sub.grade != null) ? `<div><span class="fw-semibold">Grade:</span> ${escapeHTML(String(sub.grade))}</div>` : '';
         const fbText = sub.feedback ? escapeHTML(softWrap(String(sub.feedback))) : '';
@@ -962,7 +973,7 @@
         submissionGrade.innerHTML = '';
       }
 
-      // Preview inside submission area
+      // In-submission preview
       submissionFiles.onclick = async (ev) => {
         const btn = ev.target.closest('.att-preview-btn');
         if (!btn) return;
@@ -984,11 +995,9 @@
     }
 
     function lockSubmissionUI(reason = 'You have already submitted this assignment. Resubmission is disabled.') {
-      if (noteInput) noteInput.disabled = true;
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = `<i class="bi bi-lock-fill me-1"></i> Submission Locked`;
-      }
+      noteInput.disabled = true;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="bi bi-lock-fill me-1"></i> Submission Locked`;
       dropzone.classList.add('disabled');
       alreadySubmitted.classList.remove('d-none');
       alreadySubmitted.innerHTML = `<i class="bi bi-info-circle me-1"></i> ${escapeHTML(softWrap(reason))}`;
@@ -998,52 +1007,57 @@
        Load page
     ========================== */
     async function loadPage() {
-      if (!assignmentId) {
-        assignContent.textContent = "Invalid assignment id.";
-        return;
-      }
+      if (!assignmentId) { assignContent.textContent = "Invalid assignment id."; return; }
       const aRaw = await fetchAssignment(assignmentId);
       const a = normalizeAssignment(aRaw);
-      if (!a) {
-        assignContent.textContent = "Assignment not found.";
-        return;
-      }
+      if (!a) { assignContent.textContent = "Assignment not found."; return; }
+
       renderAssignment(a);
 
       const mySub = await fetchMySubmission(assignmentId);
-      const status = computeStatus(a, mySub);
-      currentStatus = status;
-      setStatusPill(status);
+      currentStatus = computeStatus(a, mySub);       // lower-case
+      windowOpenCache = isSubmissionWindowOpen(a);   // cache window state
+      setStatusPill(currentStatus);
 
-      if (status === 'Closed') {
+      // Late but still open → allow submit (parity with list page)
+      if (currentStatus === 'overdue' && windowOpenCache) {
+        lateChip.classList.remove('d-none');
+      } else {
+        lateChip.classList.add('d-none');
+      }
+
+      // Lock rules
+      if (currentStatus === 'closed') {
         lockSubmissionUI('This assignment is closed. Submissions are disabled.');
-      } else if (status === 'NotYetOpen') {
+      } else if (currentStatus === 'notYetOpen') {
         lockSubmissionUI('Submissions are not open yet.');
-      } else if (status === 'Overdue') {
-        // adjust if you allow late submissions
-        lockSubmissionUI('This assignment is past due.');
       } else if (mySub) {
         renderSubmission(mySub);
-        lockSubmissionUI();
+        lockSubmissionUI(); // keep summary visible, prevent resubmission
       } else {
-        // If no submission and open, still render submission block empty
-        if (mySub) renderSubmission(mySub);
+        // Open or overdue+open → keep UI enabled
+        // If you also want to show a gentle banner for "open" you can add here.
       }
     }
 
     /* =========================
        File selection (with remove)
     ========================== */
-    const selectedFiles = []; // keep our own list so we can remove items
+    const selectedFiles = [];
 
     function refreshFileHint() {
-      if (!selectedFiles.length) {
-        fileHint.textContent = 'No files selected.';
-        return;
-      }
+      if (!selectedFiles.length) { fileHint.textContent = 'No files selected.'; return; }
       let total = 0, max = 0;
       selectedFiles.forEach(f => { total += f.size; if (f.size > max) max = f.size; });
       fileHint.textContent = `${selectedFiles.length} file(s) • total ${human(total)} • largest ${human(max)}`;
+    }
+
+    function updateSubmitEnabled(anyTooLarge = false) {
+      const hasFile = selectedFiles.length > 0;
+      const hasNote = !!noteInput.value.trim();
+      const canSubmit = (currentStatus === 'open') || (currentStatus === 'overdue' && windowOpenCache);
+      submitBtn.disabled = !canSubmit || anyTooLarge || (!hasFile && !hasNote);
+      submitStatus.textContent = anyTooLarge ? `One or more files exceed the ${STUDENT_MAX_MB} MB limit.` : '';
     }
 
     function renderFilePreview() {
@@ -1074,7 +1088,6 @@
 
       refreshFileHint();
 
-      // Remove handlers
       filePreview.querySelectorAll('[data-remove]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = parseInt(btn.getAttribute('data-remove'), 10);
@@ -1094,13 +1107,6 @@
       renderFilePreview();
     }
 
-    function updateSubmitEnabled(anyTooLarge = false) {
-      const hasFile = selectedFiles.length > 0;
-      const hasNote = !!noteInput.value.trim();
-      submitBtn.disabled = (currentStatus !== 'Open') || (anyTooLarge || (!hasFile && !hasNote));
-      submitStatus.textContent = anyTooLarge ? `One or more files exceed the ${STUDENT_MAX_MB} MB limit.` : '';
-    }
-
     // Clicking the dropzone opens input
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('keydown', (e) => {
@@ -1110,17 +1116,17 @@
     // Drag & drop
     ;['dragenter', 'dragover'].forEach(evt =>
       dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
-    ;['dragleave', 'drop'].forEach(evt =>
-      dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
-    dropzone.addEventListener('drop', (e) => {
-      if (currentStatus !== 'Open') return;
-      const files = Array.from(e.dataTransfer?.files || []);
-      if (files.length) addFiles(files);
-    });
+    ;;['dragleave', 'drop'].forEach(evt =>
+      dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+      })
+    );
+
 
     // Traditional file input
     fileInput.addEventListener('change', () => {
-      if (currentStatus !== 'Open') return;
       const files = Array.from(fileInput.files || []);
       if (files.length) addFiles(files);
       fileInput.value = ""; // allow re-adding same file later
@@ -1133,9 +1139,7 @@
         const s = localStorage.getItem(draftKey);
         if (!s) return;
         const js = JSON.parse(s);
-        if (js && typeof js.note === 'string') {
-          noteInput.value = js.note;
-        }
+        if (js && typeof js.note === 'string') noteInput.value = js.note;
       } catch { }
     }
     function saveDraft() {
@@ -1156,7 +1160,8 @@
     window.addEventListener('beforeunload', (e) => {
       const hasFile = selectedFiles.length > 0;
       const hasNote = !!noteInput.value.trim();
-      if (currentStatus === 'Open' && (hasFile || hasNote)) {
+      const canSubmit = (currentStatus === 'open') || (currentStatus === 'overdue' && windowOpenCache);
+      if (canSubmit && (hasFile || hasNote)) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -1169,16 +1174,15 @@
       e.preventDefault();
       if (!assignmentId) return;
 
-      if (currentStatus !== 'Open') {
-        submitStatus.textContent = (currentStatus === 'Closed')
-          ? 'This assignment is closed. Submissions are disabled.'
-          : (currentStatus === 'NotYetOpen'
-            ? 'Submissions have not opened yet.'
-            : 'You have already submitted this assignment.');
+      const canSubmit = (currentStatus === 'open') || (currentStatus === 'overdue' && windowOpenCache);
+      if (!canSubmit) {
+        submitStatus.textContent =
+          (currentStatus === 'closed') ? 'This assignment is closed. Submissions are disabled.' :
+            (currentStatus === 'notYetOpen') ? 'Submissions have not opened yet.' :
+              'You have already submitted this assignment.';
         return;
       }
 
-      // Validate sizes
       const tooLarge = selectedFiles.find(f => f.size > STUDENT_MAX_BYTES);
       if (tooLarge) {
         submitStatus.textContent = `“${tooLarge.name}” is ${human(tooLarge.size)} and exceeds the ${STUDENT_MAX_MB} MB limit. Please compress or choose a smaller file.`;
@@ -1225,10 +1229,9 @@
         return;
       }
 
-      // Clean up local draft on success
+      // Clean draft and show local summary
       try { localStorage.removeItem(draftKey); } catch { }
 
-      lockSubmissionUI();
       const localSub = {
         text: noteInput.value.trim(),
         files: selectedFiles.map(f => ({ filePath: '', originalName: f.name, size: f.size })),
@@ -1236,6 +1239,7 @@
         submittedAt: Date.now()
       };
       renderSubmission(localSub);
+      lockSubmissionUI();
 
       // Redirect back with success toast
       window.location.href = "/STUDENT/assignment/assignment.html?submitted=1";

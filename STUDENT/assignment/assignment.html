@@ -331,12 +331,14 @@
     return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
   }
 
-  // ——— STATUS ENGINE (now respects publishAt + submission window) ———
-  function isWithinWindow(openAt, closeAt, now) {
-    if (openAt && now < openAt) return false;
-    if (closeAt && now > closeAt) return false;
+  // ——— Submission window helper + Status engine ———
+  function isSubmissionWindowOpen(a, now = Date.now()){
+    if (a.submissionsOpen === false) return false;
+    if (a.submissionOpenAt && now < a.submissionOpenAt) return false;
+    if (a.submissionCloseAt && now > a.submissionCloseAt) return false;
     return true;
   }
+
   function computeStatus(a) {
     const now = Date.now();
     const pub = a.publishAt || 0;
@@ -349,28 +351,13 @@
     // Not visible/open yet
     if (pub && now < pub) return 'notYetOpen';
 
-    // Respect submission window
-    if (a.submissionsOpen === false) {
-      // If due passed and no submission, closed (and possibly overdue)
-      if (due && now > due) return 'overdue';
-      return 'closed';
-    }
-    const openAt = a.submissionOpenAt || null;
-    const closeAt = a.submissionCloseAt || null;
+    const windowOpen = isSubmissionWindowOpen(a, now);
 
-    if (!isWithinWindow(openAt, closeAt, now)) {
-      // If it hasn't opened yet
-      if (openAt && now < openAt) return 'notYetOpen';
-      // If it closed already
-      if (closeAt && now > closeAt) {
-        if (due && now > due) return 'overdue';
-        return 'closed';
-      }
-    }
+    // After due date: show "overdue" if still open, else "closed"
+    if (due && now > due) return windowOpen ? 'overdue' : 'closed';
 
-    // Window allows submission
-    if (due && now > due) return 'overdue';
-    return 'open';
+    // Before due date
+    return windowOpen ? 'open' : 'closed';
   }
 
   // === Cloud-safe attachment helpers ===
@@ -862,10 +849,11 @@
              <span class="pill-text">${escapeHTML(moduleLabel)}</span>
            </span>` : '';
 
-      const canSubmit = a.status === 'open';
+      /* Allow submit on 'open' AND 'overdue' */
+      const canSubmit = (a.status === 'open' || a.status === 'overdue');
       const submitTitle =
         a.status === 'notYetOpen' ? `Submissions open ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
-        a.status === 'overdue' ? 'Past due; submissions may be closed' :
+        a.status === 'overdue' ? 'Past due, but submissions are still open' :
         a.status === 'closed' ? (a.submissionCloseAt ? `Closed ${fmtDateTime(a.submissionCloseAt)}` : 'Submissions closed') :
         a.status === 'submitted' ? 'Already submitted' :
         a.status === 'graded' ? 'Already graded' : 'Submit';
