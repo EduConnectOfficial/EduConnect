@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EduConnect Student – Assignments</title>
 
   <!-- Bootstrap & Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="../assignment/assignment.css" />
 
   <style>
@@ -16,21 +17,28 @@
     #filePreviewModal .modal-dialog { max-width: 96vw; }
     #filePreviewModal .modal-content { height: 92vh; display: flex; flex-direction: column; }
     #filePreviewModal .modal-body { flex: 1 1 auto; padding: 0; background: #f8fafc; position: relative; }
+
     .preview-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .preview-wrap iframe, .preview-wrap embed, .preview-wrap object, .preview-wrap img, .preview-wrap video, .preview-wrap audio {
-      width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff;
-    }
+    .preview-wrap iframe,
+    .preview-wrap embed,
+    .preview-wrap object,
+    .preview-wrap img,
+    .preview-wrap video,
+    .preview-wrap audio { width: 100%; height: 100%; border: 0; object-fit: contain; background: #fff; }
+
     .preview-fallback { max-width: 720px; margin: 0 auto; padding: 2rem; text-align: center; }
     #filePreviewFooter { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
     .spinner-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
 
     /* Long token wrapping (titles, meta, etc.) */
-    .wrap-anywhere { overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+    .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; line-break: anywhere; }
 
     /* Tiny helper for disabled submit tooltip button */
     .btn-like-disabled { pointer-events: none; opacity: .6; }
   </style>
 </head>
+
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
@@ -45,7 +53,7 @@
           <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
         </div>
         <div class="search-box">
-          <input type="text" id="searchBox" placeholder="Search assignments…"/>
+          <input type="text" id="searchBox" placeholder="Search assignments…" />
           <i class="fas fa-search"></i>
         </div>
         <button class="profile-btn">
@@ -217,411 +225,410 @@
 
   <!-- Page Logic -->
   <script>
-  // ========= Config (Railway-aware) =========
-  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  const SERVER_BASE = isLocal ? "http://localhost:5000" : "";      // same-origin in Railway
-  const API = `${SERVER_BASE}/api`;
+    // ========= Config (Railway-aware) =========
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const SERVER_BASE = isLocal ? "http://localhost:5000" : "";      // same-origin in Railway
+    const API = `${SERVER_BASE}/api`;
 
-  // Include bearer token when present
-  function authHeaders(extra = {}) {
-    const token = localStorage.getItem("authToken");
-    return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
-  }
-
-  // ========= Stronger auth guard (student only) =========
-  (function guardStudentSession() {
-    const raw = JSON.parse(localStorage.getItem("user") || "{}");
-    const u = raw.user || raw;
-
-    const isValid =
-      !!u?.userId &&
-      u?.isStudent === true &&
-      (u?.studentId ? /^S-/.test(String(u.studentId)) : true);
-
-    if (!isValid) {
-      try { localStorage.removeItem("user"); } catch {}
-      window.location.replace("/STUDENT/login/login.html");
-      return;
+    // Include bearer token when present
+    function authHeaders(extra = {}) {
+      const token = localStorage.getItem("authToken");
+      return { ...(token ? { "Authorization": `Bearer ${token}` } : {}), ...extra };
     }
 
-    // Expose for rest of script
-    window.userData = u;
+    // ========= Stronger auth guard (student only) =========
+    (function guardStudentSession() {
+      const raw = JSON.parse(localStorage.getItem("user") || "{}");
+      const u = raw.user || raw;
 
-    // Header initials (initials only)
-    function initialsFrom(str) {
-      if (!str) return "";
-      const s = String(str).trim();
-      if (!s) return "";
-      if (s.includes("@")) {
-        const local = s.split("@")[0];
-        const parts = local.split(/[.\-_]+/).filter(Boolean);
-        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0,2)).toUpperCase();
+      const isValid =
+        !!u?.userId &&
+        u?.isStudent === true &&
+        (u?.studentId ? /^S-/.test(String(u.studentId)) : true);
+
+      if (!isValid) {
+        try { localStorage.removeItem("user"); } catch { }
+        window.location.replace("/STUDENT/login/login.html");
+        return;
       }
-      const parts = s.split(/[\s\-]+/).filter(Boolean);
-      return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0,2)).toUpperCase();
-    }
-    const el = document.getElementById("Username");
-    if (el) {
-      const displayName = u.fullName || u.username || u.email || "Student";
-      const initials = initialsFrom(displayName) || "?";
-      el.textContent = initials;
-      el.title = displayName;
-      el.setAttribute("aria-label", displayName);
-    }
 
-    // Cross-tab tamper guard
-    window.addEventListener("storage", (e) => {
-      if (e.key === "user") {
-        try {
-          const next = JSON.parse(e.newValue || "null");
-          const nu = (next && (next.user || next)) || null;
-          const ok = !!nu?.userId && nu?.isStudent === true && (nu?.studentId ? /^S-/.test(String(nu.studentId)) : true);
-          if (!ok) window.location.replace("/STUDENT/login/login.html");
-        } catch {
-          window.location.replace("/STUDENT/login/login.html");
+      // Expose for rest of script
+      window.userData = u;
+
+      // Header initials (initials only)
+      function initialsFrom(str) {
+        if (!str) return "";
+        const s = String(str).trim();
+        if (!s) return "";
+        if (s.includes("@")) {
+          const local = s.split("@")[0];
+          const parts = local.split(/[.\-_]+/).filter(Boolean);
+          return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : local.slice(0, 2)).toUpperCase();
         }
+        const parts = s.split(/[\s\-]+/).filter(Boolean);
+        return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2)).toUpperCase();
       }
+      const el = document.getElementById("Username");
+      if (el) {
+        const displayName = u.fullName || u.username || u.email || "Student";
+        const initials = initialsFrom(displayName) || "?";
+        el.textContent = initials;
+        el.title = displayName;
+        el.setAttribute("aria-label", displayName);
+      }
+
+      // Cross-tab tamper guard
+      window.addEventListener("storage", (e) => {
+        if (e.key === "user") {
+          try {
+            const next = JSON.parse(e.newValue || "null");
+            const nu = (next && (next.user || next)) || null;
+            const ok = !!nu?.userId && nu?.isStudent === true && (nu?.studentId ? /^S-/.test(String(nu.studentId)) : true);
+            if (!ok) window.location.replace("/STUDENT/login/login.html");
+          } catch {
+            window.location.replace("/STUDENT/login/login.html");
+          }
+        }
+      });
+    })();
+
+    // ========= DOM refs =========
+    const grid = document.getElementById("assignmentsGrid");
+    const filterCourse = document.getElementById("filterCourse");
+    const filterStatus = document.getElementById("filterStatus");
+    const sortBy = document.getElementById("sortBy");
+    const searchBox = document.getElementById("searchBox");
+
+    // Count pill DOM
+    const elCountOpen = document.getElementById("countOpen");
+    const elCountSubmitted = document.getElementById("countSubmitted");
+    const elCountGraded = document.getElementById("countGraded");
+    const elCountClosed = document.getElementById("countClosed");
+    const elCountOverdue = document.getElementById("countOverdue");
+    const elCountNotYetOpen = document.getElementById("countNotYetOpen");
+
+    const modalEl = document.getElementById('assignmentModal');
+    let assignmentModal = null;
+    document.addEventListener('DOMContentLoaded', () => {
+      assignmentModal = new bootstrap.Modal(modalEl);
     });
-  })();
 
-  // ========= DOM refs =========
-  const grid = document.getElementById("assignmentsGrid");
-  const filterCourse = document.getElementById("filterCourse");
-  const filterStatus = document.getElementById("filterStatus");
-  const sortBy = document.getElementById("sortBy");
-  const searchBox = document.getElementById("searchBox");
+    // ========= State =========
+    let courses = [];     // { id, title }
+    let assignments = []; // normalized items from API
 
-  // Count pill DOM
-  const elCountOpen = document.getElementById("countOpen");
-  const elCountSubmitted = document.getElementById("countSubmitted");
-  const elCountGraded = document.getElementById("countGraded");
-  const elCountClosed = document.getElementById("countClosed");
-  const elCountOverdue = document.getElementById("countOverdue");
-  const elCountNotYetOpen = document.getElementById("countNotYetOpen");
+    // Caches
+    const moduleCache = new Map(); // moduleId -> { title, moduleNumber }
+    const courseCache = new Map(); // courseId -> { title }
 
-  const modalEl = document.getElementById('assignmentModal');
-  let assignmentModal = null;
-  document.addEventListener('DOMContentLoaded', () => {
-    assignmentModal = new bootstrap.Modal(modalEl);
-  });
-
-  // ========= State =========
-  let courses = [];     // { id, title }
-  let assignments = []; // normalized items from API
-
-  // Caches
-  const moduleCache = new Map(); // moduleId -> { title, moduleNumber }
-  const courseCache = new Map(); // courseId -> { title }
-
-  // ========= Utils =========
-  function toServerUrl(pathOrUrl) {
-    return /^https?:\/\//i.test(String(pathOrUrl))
-      ? String(pathOrUrl)
-      : SERVER_BASE + String(pathOrUrl || "");
-  }
-  const fmtDateTime = (ms) => {
-    if (!ms) return 'No due date';
-    try { return new Date(ms).toLocaleString(); } catch { return '—'; }
-  };
-  const escapeHTML = (s='') => String(s)
-    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-    .replaceAll('"','&quot;').replaceAll("'",'&#039;');
-  function softWrap(s, limit = 40){
-    if (!s) return s;
-    return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
-  }
-
-  // ——— Submission window helper + Status engine ———
-  function isSubmissionWindowOpen(a, now = Date.now()){
-    if (a.submissionsOpen === false) return false;
-    if (a.submissionOpenAt && now < a.submissionOpenAt) return false;
-    if (a.submissionCloseAt && now > a.submissionCloseAt) return false;
-    return true;
-  }
-
-  function computeStatus(a) {
-    const now = Date.now();
-    const pub = a.publishAt || 0;
-    const due = a.dueAt || null;
-
-    // Student-centric first
-    if (a.mySubmission?.graded) return 'graded';
-    if (a.mySubmission) return 'submitted';
-
-    // Not visible/open yet
-    if (pub && now < pub) return 'notYetOpen';
-
-    const windowOpen = isSubmissionWindowOpen(a, now);
-
-    // After due date: show "overdue" if still open, else "closed"
-    if (due && now > due) return windowOpen ? 'overdue' : 'closed';
-
-    // Before due date
-    return windowOpen ? 'open' : 'closed';
-  }
-
-  // === Cloud-safe attachment helpers ===
-  function pickHref(obj = {}) {
-    return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
-           (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
-           (obj.filePath ? toServerUrl(obj.filePath) : '');
-  }
-  function pickName(obj = {}) {
-    const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
-    const fromUrl  = (obj.url || '').split('/').pop();
-    return obj.originalName || fromPath || fromUrl || 'file';
-  }
-  function extractStoragePath(obj = {}) {
-    if (obj.storagePath) return String(obj.storagePath);
-    if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
-      const parts = obj.gsUri.replace('gs://','').split('/'); parts.shift(); return parts.join('/');
+    // ========= Utils =========
+    function toServerUrl(pathOrUrl) {
+      return /^https?:\/\//i.test(String(pathOrUrl))
+        ? String(pathOrUrl)
+        : SERVER_BASE + String(pathOrUrl || "");
     }
-    if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
-      try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch {}
+    const fmtDateTime = (ms) => {
+      if (!ms) return 'No due date';
+      try { return new Date(ms).toLocaleString(); } catch { return '—'; }
+    };
+    const escapeHTML = (s = '') => String(s)
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+    function softWrap(s, limit = 40) {
+      if (!s) return s;
+      return String(s).replace(new RegExp(`([^\\s]{${limit}})`, 'g'), '$1\u200B');
     }
-    if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
-      try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch {}
+    /* NEW: percent helper used in score display */
+    function percentFrom(grade, max) {
+      if (!Number.isFinite(grade) || !Number.isFinite(max) || max <= 0) return null;
+      return Math.round((grade / max) * 10000) / 100; // two decimals
     }
-    return '';
-  }
-  async function getSignedViewUrlIfNeeded(obj) {
-    const direct = pickHref(obj);
-    if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
-    const storagePath = extractStoragePath(obj);
-    if (!storagePath) return direct || null;
-    try {
-      const r = await fetch(`${API}/attachments/signed?path=${encodeURIComponent(storagePath)}`, { headers: authHeaders() });
-      const js = await r.json().catch(()=>null);
-      if (r.ok && js?.success && js?.url) return js.url;
-    } catch {}
-    return direct || null;
-  }
 
-  // --- Module & Course meta cache ---
-  async function fetchModuleMeta(moduleId) {
-    if (!moduleId) return null;
-    if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
-    try {
-      const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, { headers: authHeaders() });
-      const js = await res.json();
-      const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
-      moduleCache.set(moduleId, meta);
-      return meta;
-    } catch {
-      moduleCache.set(moduleId, null);
-      return null;
+    // ——— Submission window helper + Status engine ———
+    function isSubmissionWindowOpen(a, now = Date.now()) {
+      if (a.submissionsOpen === false) return false;
+      if (a.submissionOpenAt && now < a.submissionOpenAt) return false;
+      if (a.submissionCloseAt && now > a.submissionCloseAt) return false;
+      return true;
     }
-  }
-  async function fetchCourseMeta(courseId) {
-    if (!courseId) return null;
-    if (courseCache.has(courseId)) return courseCache.get(courseId);
-    try {
-      const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: authHeaders() });
-      const js = await res.json();
-      const data = js && (js.course || js);
-      const meta = data && data.id ? { title: data.title || data.name || 'Untitled' } : null;
-      courseCache.set(courseId, meta);
-      return meta;
-    } catch {
-      courseCache.set(courseId, null);
-      return null;
+
+    function computeStatus(a) {
+      const now = Date.now();
+      const pub = a.publishAt || 0;
+      const due = a.dueAt || null;
+      const closed = a.submissionCloseAt ? now > a.submissionCloseAt : false;
+
+      if (a.mySubmission?.graded) return 'graded';
+      if (a.mySubmission) return 'submitted';
+
+      if (pub && now < pub) return 'notYetOpen';
+      if (closed) return 'closed';
+      if (due && now > due) return 'overdue';
+      return 'open';
     }
-  }
-  async function hydrateMetaForAssignments(list) {
-    const moduleIds = [...new Set((list || []).map(a => a.moduleId).filter(Boolean))];
-    const courseIds = [...new Set((list || []).map(a => a.courseId).filter(Boolean))];
-    await Promise.all([
-      ...moduleIds.map(id => fetchModuleMeta(id)),
-      ...courseIds.map(id => fetchCourseMeta(id)),
-    ]);
-    (list || []).forEach(a => {
-      const m = a.moduleId ? moduleCache.get(a.moduleId) : null;
-      if (m) {
-        if (!a.moduleTitle) a.moduleTitle = m.title || '';
-        if (a.moduleNumber == null) a.moduleNumber = m.moduleNumber ?? null;
+
+    // === Cloud-safe attachment helpers ===
+    function pickHref(obj = {}) {
+      return obj.downloadUrl || obj.publicUrl || obj.previewUrl ||
+        (obj.url && /^https?:\/\//i.test(obj.url) ? obj.url : '') ||
+        (obj.filePath ? toServerUrl(obj.filePath) : '');
+    }
+    function pickName(obj = {}) {
+      const fromPath = (obj.storagePath || obj.filePath || '').split('/').pop();
+      const fromUrl = (obj.url || '').split('/').pop();
+      return obj.originalName || fromPath || fromUrl || 'file';
+    }
+    function extractStoragePath(obj = {}) {
+      if (obj.storagePath) return String(obj.storagePath);
+      if (obj.gsUri && obj.gsUri.startsWith('gs://')) {
+        const parts = obj.gsUri.replace('gs://', '').split('/'); parts.shift(); return parts.join('/');
       }
-      if (!a.courseTitle && a.courseId) {
-        const c = courseCache.get(a.courseId);
-        if (c) a.courseTitle = c.title || 'Untitled';
+      if (obj.publicUrl && /storage\.googleapis\.com/i.test(obj.publicUrl)) {
+        try { const u = new URL(obj.publicUrl); const parts = u.pathname.replace(/^\/+/, '').split('/'); parts.shift(); return parts.join('/'); } catch { }
       }
-    });
-  }
-
-  // ========= Data loaders =========
-  async function loadCourses() {
-    try {
-      const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`, { headers: authHeaders() });
-      if (!res.ok) throw new Error('courses endpoint failed');
-      const js = await res.json();
-      const list = Array.isArray(js.courses) ? js.courses : [];
-      courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
-      courses.forEach(c => courseCache.set(c.id, { title: c.title }));
-      filterCourse.innerHTML = `<option value="All">All Courses</option>` +
-        courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
-    } catch {
-      // fallback: build list from assignments later
-      courses = [];
-      filterCourse.innerHTML = `<option value="All">All Courses</option>`;
+      if (obj.downloadUrl && /firebasestorage\.googleapis\.com/i.test(obj.downloadUrl)) {
+        try { const u = new URL(obj.downloadUrl); if (u.pathname.includes('/o/')) { const enc = u.pathname.split('/o/')[1]; return decodeURIComponent(enc); } } catch { }
+      }
+      return '';
     }
-  }
-  async function tryLoadAssignmentsDirect() {
-    const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/assignments`, { headers: authHeaders() });
-    if (!res.ok) return null;
-    const js = await res.json().catch(()=>null);
-    if (!js || !js.success || !Array.isArray(js.assignments)) return null;
-    return js.assignments;
-  }
-  async function loadAssignmentsViaCourses() {
-    const all = [];
-    for (const c of courses) {
+    async function getSignedViewUrlIfNeeded(obj) {
+      const direct = pickHref(obj);
+      if (direct && /firebasestorage\.googleapis\.com\/v0\/b\//i.test(direct)) return direct;
+      const storagePath = extractStoragePath(obj);
+      if (!storagePath) return direct || null;
       try {
-        const res = await fetch(`${API}/courses/${encodeURIComponent(c.id)}/assignments`, { headers: authHeaders() });
-        if (!res.ok) continue;
+        const r = await fetch(`${API}/attachments/signed?path=${encodeURIComponent(storagePath)}`, { headers: authHeaders() });
+        const js = await r.json().catch(() => null);
+        if (r.ok && js?.success && js?.url) return js.url;
+      } catch { }
+      return direct || null;
+    }
+
+    // --- Module & Course meta cache ---
+    async function fetchModuleMeta(moduleId) {
+      if (!moduleId) return null;
+      if (moduleCache.has(moduleId)) return moduleCache.get(moduleId);
+      try {
+        const res = await fetch(`${API}/modules/${encodeURIComponent(moduleId)}`, { headers: authHeaders() });
         const js = await res.json();
-        const list = Array.isArray(js.assignments) ? js.assignments : Array.isArray(js) ? js : [];
-        list.forEach(a => {
-          all.push({
-            id: a.id,
-            title: a.title || 'Untitled',
-            content: a.content || '',
-            courseId: c.id,
-            courseTitle: c.title,
-            moduleId: a.moduleId || null,
-            moduleNumber: a.moduleNumber || null,
-            moduleTitle: a.moduleTitle || '',
-            publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt) : null,
-            dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt) : null,
-            points: a.points ?? null,
-            submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
-            submissionOpenAt: a.submissionOpenAt ? (a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds*1000 : a.submissionOpenAt) : null,
-            submissionCloseAt: a.submissionCloseAt ? (a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds*1000 : a.submissionCloseAt) : null,
-            mySubmission: a.mySubmission || null,
-            attachments: Array.isArray(a.attachments) ? a.attachments : []
-          });
-        });
-      } catch { /* ignore */ }
-    }
-    return all;
-  }
-  async function loadAll() {
-    // First load courses (may be empty on fallback)
-    await loadCourses();
-
-    // Try direct student endpoint first
-    let list = await tryLoadAssignmentsDirect();
-    if (!list) list = await loadAssignmentsViaCourses();
-
-    // Normalize + include submission window fields (supports both shapes)
-    assignments = (list || []).map(a => ({
-      ...a,
-      publishAt: a.publishAt && a.publishAt._seconds ? a.publishAt._seconds*1000 : a.publishAt || null,
-      dueAt: a.dueAt && a.dueAt._seconds ? a.dueAt._seconds*1000 : a.dueAt || null,
-      submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
-      submissionOpenAt: a.submissionOpenAt && a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds*1000 : (a.submissionOpenAt || null),
-      submissionCloseAt: a.submissionCloseAt && a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds*1000 : (a.submissionCloseAt || null),
-      attachments: Array.isArray(a.attachments) ? a.attachments : []
-    }));
-
-    // Fallback: populate course filter if courses API failed earlier
-    if (!courses.length) {
-      const pairs = [...new Set(assignments.map(x => JSON.stringify({id:x.courseId, title:x.courseTitle || 'Untitled'})))];
-      const derived = pairs.map(s => JSON.parse(s)).filter(x => x.id);
-      courses = derived;
-      filterCourse.innerHTML = `<option value="All">All Courses</option>` +
-        derived.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
-      derived.forEach(c => courseCache.set(c.id, { title: c.title }));
-    }
-
-    await hydrateMetaForAssignments(assignments);
-
-    renderGrid();
-    refreshStatusPills(assignments);
-  }
-
-  // ========= Kind detection & preview helpers =========
-  function isYouTubeUrl(url = '') {
-    try {
-      const u = new URL(url);
-      const h = u.hostname.replace(/^www\./, '').toLowerCase();
-      return ['youtu.be','youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(h);
-    } catch { return false; }
-  }
-  function toYouTubeEmbed(url=''){
-    try{
-      const u = new URL(url);
-      const host = u.hostname.replace(/^www\./,'').toLowerCase();
-      let id = '';
-      let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
-      if (start && /^\d+s$/.test(start)) start = parseInt(start,10);
-      if (start && /^\d+$/.test(start)) start = parseInt(start,10);
-      if (!Number.isFinite(start)) start = '';
-      if (host === 'youtu.be'){
-        id = (u.pathname || '').replace(/^\//,'').split('/')[0];
-      } else {
-        if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
-        if (!id) id = u.searchParams.get('v') || '';
+        const meta = js && js.id ? { title: js.title || '', moduleNumber: js.moduleNumber ?? null } : null;
+        moduleCache.set(moduleId, meta);
+        return meta;
+      } catch {
+        moduleCache.set(moduleId, null);
+        return null;
       }
-      if (!id) return null;
-      const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
-      const qs = new URLSearchParams(); qs.set('rel','0'); if (start) qs.set('start', String(start));
-      return `${base}?${qs.toString()}`;
-    }catch{ return null; }
-  }
-  function getExtFromUrl(url=''){
-    const clean = String(url).split('?')[0].split('#')[0];
-    const parts = clean.split('.'); return parts.length>1 ? parts.pop().toLowerCase() : '';
-  }
-  function kindFromUrl(url){
-    if (isYouTubeUrl(url)) return 'youtube';
-    const ext = getExtFromUrl(url);
-    if (['mp4','webm','ogg','ogv','mov'].includes(ext)) return 'video';
-    if (['mp3','wav','ogg','m4a','aac','flac'].includes(ext)) return 'audio';
-    if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) return 'image';
-    if (ext==='pdf') return 'pdf';
-    if (['txt','csv','log'].includes(ext)) return 'text';
-    if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) return 'office';
-    return 'other';
-  }
-  function setFileInfoUI(kind, url) {
-    const info = document.getElementById('fileInfoText');
-    const hdr  = document.getElementById('filePreviewModalLabel');
-    const badgeId = 'fileKindBadge';
-
-    const labelMap = {
-      youtube:'YouTube', video:'Video', audio:'Audio', image:'Image',
-      pdf:'PDF', text:'Text/CSV', office:'Office Doc', other:'File'
-    };
-    const colorMap = {
-      youtube:'bg-danger-subtle text-danger', video:'bg-danger-subtle text-danger',
-      audio:'bg-secondary-subtle text-secondary', image:'bg-success-subtle text-success',
-      pdf:'bg-primary-subtle text-primary', text:'bg-info-subtle text-info',
-      office:'bg-warning-subtle text-warning', other:'bg-dark-subtle text-dark'
-    };
-
-    let badge = document.getElementById(badgeId);
-    if (!badge){
-      badge = document.createElement('span');
-      badge.id = badgeId;
-      badge.className = 'ms-2 badge rounded-pill';
-      hdr.appendChild(badge);
     }
-    badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
-    badge.textContent = labelMap[kind] || 'File';
+    async function fetchCourseMeta(courseId) {
+      if (!courseId) return null;
+      if (courseCache.has(courseId)) return courseCache.get(courseId);
+      try {
+        const res = await fetch(`${API}/courses/${encodeURIComponent(courseId)}`, { headers: authHeaders() });
+        const js = await res.json();
+        const data = js && (js.course || js);
+        const meta = data && data.id ? { title: data.title || data.name || 'Untitled' } : null;
+        courseCache.set(courseId, meta);
+        return meta;
+      } catch {
+        courseCache.set(courseId, null);
+        return null;
+      }
+    }
+    async function hydrateMetaForAssignments(list) {
+      const moduleIds = [...new Set((list || []).map(a => a.moduleId).filter(Boolean))];
+      const courseIds = [...new Set((list || []).map(a => a.courseId).filter(Boolean))];
+      await Promise.all([
+        ...moduleIds.map(id => fetchModuleMeta(id)),
+        ...courseIds.map(id => fetchCourseMeta(id)),
+      ]);
+      (list || []).forEach(a => {
+        const m = a.moduleId ? moduleCache.get(a.moduleId) : null;
+        if (m) {
+          if (!a.moduleTitle) a.moduleTitle = m.title || '';
+          if (a.moduleNumber == null) a.moduleNumber = m.moduleNumber ?? null;
+        }
+        if (!a.courseTitle && a.courseId) {
+          const c = courseCache.get(a.courseId);
+          if (c) a.courseTitle = c.title || 'Untitled';
+        }
+      });
+    }
 
-    info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
-    document.getElementById('openInNewTabBtn').href = url || '#';
-  }
-  function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
-  function renderFilePreviewInto(container, url) {
-    container.innerHTML = '';
-    showSpinner(true);
-    const done = () => showSpinner(false);
-    const kind = kindFromUrl(url);
+    // ========= Data loaders =========
+    async function loadCourses() {
+      try {
+        const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/courses?includeTeacher=true`, { headers: authHeaders() });
+        if (!res.ok) throw new Error('courses endpoint failed');
+        const js = await res.json();
+        const list = Array.isArray(js.courses) ? js.courses : [];
+        courses = list.map(c => ({ id: c.id, title: c.title || 'Untitled' }));
+        courses.forEach(c => courseCache.set(c.id, { title: c.title }));
+        filterCourse.innerHTML = `<option value="All">All Courses</option>` +
+          courses.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+      } catch {
+        // fallback: build list from assignments later
+        courses = [];
+        filterCourse.innerHTML = `<option value="All">All Courses</option>`;
+      }
+    }
+    async function tryLoadAssignmentsDirect() {
+      const res = await fetch(`${API}/students/${encodeURIComponent(userData.userId)}/assignments`, { headers: authHeaders() });
+      if (!res.ok) return null;
+      const js = await res.json().catch(() => null);
+      if (!js || !js.success || !Array.isArray(js.assignments)) return null;
+      return js.assignments;
+    }
+    async function loadAssignmentsViaCourses() {
+      const all = [];
+      for (const c of courses) {
+        try {
+          const res = await fetch(`${API}/courses/${encodeURIComponent(c.id)}/assignments`, { headers: authHeaders() });
+          if (!res.ok) continue;
+          const js = await res.json();
+          const list = Array.isArray(js.assignments) ? js.assignments : Array.isArray(js) ? js : [];
+          list.forEach(a => {
+            all.push({
+              id: a.id,
+              title: a.title || 'Untitled',
+              content: a.content || '',
+              courseId: c.id,
+              courseTitle: c.title,
+              moduleId: a.moduleId || null,
+              moduleNumber: a.moduleNumber || null,
+              moduleTitle: a.moduleTitle || '',
+              publishAt: a.publishAt ? (a.publishAt._seconds ? a.publishAt._seconds * 1000 : a.publishAt) : null,
+              dueAt: a.dueAt ? (a.dueAt._seconds ? a.dueAt._seconds * 1000 : a.dueAt) : null,
+              points: a.points ?? null,
+              submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
+              submissionOpenAt: a.submissionOpenAt ? (a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds * 1000 : a.submissionOpenAt) : null,
+              submissionCloseAt: a.submissionCloseAt ? (a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds * 1000 : a.submissionCloseAt) : null,
+              mySubmission: a.mySubmission || null,
+              attachments: Array.isArray(a.attachments) ? a.attachments : []
+            });
+          });
+        } catch { /* ignore */ }
+      }
+      return all;
+    }
+    async function loadAll() {
+      // First load courses (may be empty on fallback)
+      await loadCourses();
 
-    if (kind === 'youtube') {
-      const embed = toYouTubeEmbed(url);
-      if (embed) {
-        container.innerHTML = `
+      // Try direct student endpoint first
+      let list = await tryLoadAssignmentsDirect();
+      if (!list) list = await loadAssignmentsViaCourses();
+
+      // Normalize + include submission window fields (supports both shapes)
+      assignments = (list || []).map(a => ({
+        ...a,
+        publishAt: a.publishAt && a.publishAt._seconds ? a.publishAt._seconds * 1000 : a.publishAt || null,
+        dueAt: a.dueAt && a.dueAt._seconds ? a.dueAt._seconds * 1000 : a.dueAt || null,
+        submissionsOpen: a.submissionsOpen !== undefined ? !!a.submissionsOpen : true,
+        submissionOpenAt: a.submissionOpenAt && a.submissionOpenAt._seconds ? a.submissionOpenAt._seconds * 1000 : (a.submissionOpenAt || null),
+        submissionCloseAt: a.submissionCloseAt && a.submissionCloseAt._seconds ? a.submissionCloseAt._seconds * 1000 : (a.submissionCloseAt || null),
+        attachments: Array.isArray(a.attachments) ? a.attachments : []
+      }));
+
+      // Fallback: populate course filter if courses API failed earlier
+      if (!courses.length) {
+        const pairs = [...new Set(assignments.map(x => JSON.stringify({ id: x.courseId, title: x.courseTitle || 'Untitled' })))];
+        const derived = pairs.map(s => JSON.parse(s)).filter(x => x.id);
+        courses = derived;
+        filterCourse.innerHTML = `<option value="All">All Courses</option>` +
+          derived.map(c => `<option value="${c.id}">${escapeHTML(c.title)}</option>`).join('');
+        derived.forEach(c => courseCache.set(c.id, { title: c.title }));
+      }
+
+      await hydrateMetaForAssignments(assignments);
+
+      renderGrid();
+      refreshStatusPills(assignments);
+    }
+
+    // ========= Kind detection & preview helpers =========
+    function isYouTubeUrl(url = '') {
+      try {
+        const u = new URL(url);
+        const h = u.hostname.replace(/^www\./, '').toLowerCase();
+        return ['youtu.be', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'].includes(h);
+      } catch { return false; }
+    }
+    function toYouTubeEmbed(url = '') {
+      try {
+        const u = new URL(url);
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        let id = '';
+        let start = u.searchParams.get('start') || u.searchParams.get('t') || '';
+        if (start && /^\d+s$/.test(start)) start = parseInt(start, 10);
+        if (start && /^\d+$/.test(start)) start = parseInt(start, 10);
+        if (!Number.isFinite(start)) start = '';
+        if (host === 'youtu.be') {
+          id = (u.pathname || '').replace(/^\//, '').split('/')[0];
+        } else {
+          if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2] || '';
+          if (!id) id = u.searchParams.get('v') || '';
+        }
+        if (!id) return null;
+        const base = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+        const qs = new URLSearchParams(); qs.set('rel', '0'); if (start) qs.set('start', String(start));
+        return `${base}?${qs.toString()}`;
+      } catch { return null; }
+    }
+    function getExtFromUrl(url = '') {
+      const clean = String(url).split('?')[0].split('#')[0];
+      const parts = clean.split('.'); return parts.length > 1 ? parts.pop().toLowerCase() : '';
+    }
+    function kindFromUrl(url) {
+      if (isYouTubeUrl(url)) return 'youtube';
+      const ext = getExtFromUrl(url);
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) return 'video';
+      if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) return 'image';
+      if (ext === 'pdf') return 'pdf';
+      if (['txt', 'csv', 'log'].includes(ext)) return 'text';
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) return 'office';
+      return 'other';
+    }
+    function setFileInfoUI(kind, url) {
+      const info = document.getElementById('fileInfoText');
+      const hdr = document.getElementById('filePreviewModalLabel');
+      const badgeId = 'fileKindBadge';
+
+      const labelMap = {
+        youtube: 'YouTube', video: 'Video', audio: 'Audio', image: 'Image',
+        pdf: 'PDF', text: 'Text/CSV', office: 'Office Doc', other: 'File'
+      };
+      const colorMap = {
+        youtube: 'bg-danger-subtle text-danger', video: 'bg-danger-subtle text-danger',
+        audio: 'bg-secondary-subtle text-secondary', image: 'bg-success-subtle text-success',
+        pdf: 'bg-primary-subtle text-primary', text: 'bg-info-subtle text-info',
+        office: 'bg-warning-subtle text-warning', other: 'bg-dark-subtle text-dark'
+      };
+
+      let badge = document.getElementById(badgeId);
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.id = badgeId;
+        badge.className = 'ms-2 badge rounded-pill';
+        hdr.appendChild(badge);
+      }
+      badge.className = 'ms-2 badge rounded-pill ' + (colorMap[kind] || colorMap.other);
+      badge.textContent = labelMap[kind] || 'File';
+
+      info.innerHTML = `<span class="text-muted">Type:</span> <strong>${labelMap[kind] || 'File'}</strong>`;
+      document.getElementById('openInNewTabBtn').href = url || '#';
+    }
+    function showSpinner(show) { document.getElementById('filePreviewSpinner').style.display = show ? 'flex' : 'none'; }
+    function renderFilePreviewInto(container, url) {
+      container.innerHTML = '';
+      showSpinner(true);
+      const done = () => showSpinner(false);
+      const kind = kindFromUrl(url);
+
+      if (kind === 'youtube') {
+        const embed = toYouTubeEmbed(url);
+        if (embed) {
+          container.innerHTML = `
           <div class="ratio ratio-16x9">
             <iframe
               src="${embed}"
@@ -631,240 +638,249 @@
               referrerpolicy="strict-origin-when-cross-origin"
               style="border:0"></iframe>
           </div>`;
-        done();
-        return;
-      }
-      container.innerHTML = `
+          done();
+          return;
+        }
+        container.innerHTML = `
         <div class="preview-fallback">
           <div class="text-muted mb-2">Couldn’t embed this YouTube link.</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a>
         </div>`;
-      done();
-      return;
-    }
+        done();
+        return;
+      }
 
-    const ext = getExtFromUrl(url);
+      const ext = getExtFromUrl(url);
 
-    if (['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
-      const img = new Image();
-      img.onload = done;
-      img.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Image preview failed.</div>
+      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) {
+        const img = new Image();
+        img.onload = done;
+        img.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Image preview failed.</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      img.src = url;
-      container.appendChild(img);
-      return;
-    }
+          done();
+        };
+        img.src = url;
+        container.appendChild(img);
+        return;
+      }
 
-    if (ext === 'pdf') {
-      const iframe = document.createElement('iframe');
-      iframe.title = 'PDF preview';
-      iframe.onload = done;
-      iframe.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">PDF preview failed (viewer blocked or CORS).</div>
+      if (ext === 'pdf') {
+        const iframe = document.createElement('iframe');
+        iframe.title = 'PDF preview';
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">PDF preview failed (viewer blocked or CORS).</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      iframe.src = url;
-      container.appendChild(iframe);
-      return;
-    }
+          done();
+        };
+        iframe.src = url;
+        container.appendChild(iframe);
+        return;
+      }
 
-    if (['mp4','webm','ogg','ogv','mov'].includes(ext)) {
-      const video = document.createElement('video');
-      video.controls = true;
-      video.onloadeddata = done;
-      video.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Video preview failed.</div>
+      if (['mp4', 'webm', 'ogg', 'ogv', 'mov'].includes(ext)) {
+        const video = document.createElement('video');
+        video.controls = true;
+        video.onloadeddata = done;
+        video.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Video preview failed.</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      video.src = url;
-      container.appendChild(video);
-      return;
-    }
+          done();
+        };
+        video.src = url;
+        container.appendChild(video);
+        return;
+      }
 
-    if (['mp3','wav','m4a','ogg','aac','flac'].includes(ext)) {
-      const audio = document.createElement('audio');
-      audio.controls = true;
-      audio.onloadeddata = done;
-      audio.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Audio preview failed.</div>
+      if (['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(ext)) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.onloadeddata = done;
+        audio.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Audio preview failed.</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      audio.src = url;
-      container.appendChild(audio);
-      return;
-    }
+          done();
+        };
+        audio.src = url;
+        container.appendChild(audio);
+        return;
+      }
 
-    if (['txt','csv','log'].includes(ext)) {
-      const iframe = document.createElement('iframe');
-      iframe.onload = done;
-      iframe.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Text preview failed.</div>
+      if (['txt', 'csv', 'log'].includes(ext)) {
+        const iframe = document.createElement('iframe');
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Text preview failed.</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      iframe.src = url;
-      container.appendChild(iframe);
-      return;
-    }
+          done();
+        };
+        iframe.src = url;
+        container.appendChild(iframe);
+        return;
+      }
 
-    if (['doc','docx','ppt','pptx','xls','xlsx'].includes(ext)) {
-      const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
-      const iframe = document.createElement('iframe');
-      iframe.title = 'Document preview';
-      iframe.onload = done;
-      iframe.onerror = () => {
-        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Office preview failed (Google Viewer blocked or CORS).</div>
+      if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+        const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(url)}`;
+        const iframe = document.createElement('iframe');
+        iframe.title = 'Document preview';
+        iframe.onload = done;
+        iframe.onerror = () => {
+          container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">Office preview failed (Google Viewer blocked or CORS).</div>
           <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
           </a></div>`;
-        done();
-      };
-      iframe.src = gview;
-      container.appendChild(iframe);
-      return;
-    }
+          done();
+        };
+        iframe.src = gview;
+        container.appendChild(iframe);
+        return;
+      }
 
-    const obj = document.createElement('object');
-    obj.data = url;
-    obj.type = 'application/octet-stream';
-    obj.onload = done;
-    obj.onerror = () => {
-      container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">This file type cannot be previewed here.</div>
+      const obj = document.createElement('object');
+      obj.data = url;
+      obj.type = 'application/octet-stream';
+      obj.onload = done;
+      obj.onerror = () => {
+        container.innerHTML = `<div class="preview-fallback"><div class="text-muted mb-2">This file type cannot be previewed here.</div>
         <a class="btn btn-amber" href="${url}" target="_blank" rel="noopener">
           <i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab
         </a></div>`;
-      done();
-    };
-    container.appendChild(obj);
-    setTimeout(done, 1200);
-  }
-
-  // ========= Render =========
-  function refreshStatusPills(src) {
-    const counts = { open:0, submitted:0, graded:0, closed:0, overdue:0, notYetOpen:0 };
-    (src || []).forEach(a => { counts[computeStatus(a)] = (counts[computeStatus(a)] || 0) + 1; });
-    if (elCountOpen) elCountOpen.textContent = counts.open || 0;
-    if (elCountSubmitted) elCountSubmitted.textContent = counts.submitted || 0;
-    if (elCountGraded) elCountGraded.textContent = counts.graded || 0;
-    if (elCountClosed) elCountClosed.textContent = counts.closed || 0;
-    if (elCountOverdue) elCountOverdue.textContent = counts.overdue || 0;
-    if (elCountNotYetOpen) elCountNotYetOpen.textContent = counts.notYetOpen || 0;
-  }
-
-  function badgeForStatus(st, dueAt, publishAt, openAt, closeAt){
-    const mapCls = {
-      open: 'st-open',
-      submitted: 'st-submitted',
-      graded: 'st-graded',
-      closed: 'st-closed',
-      overdue: 'st-closed',
-      notYetOpen: 'st-closed'
-    };
-    const label = (
-      st === 'overdue' ? 'Overdue' :
-      st === 'notYetOpen' ? `Opens ${fmtDateTime(openAt || publishAt)}` :
-      st.charAt(0).toUpperCase() + st.slice(1)
-    );
-    return `<span class="status-dot ${mapCls[st] || 'st-open'}"></span>${label}`;
-  }
-
-  function renderGrid() {
-    const q = (searchBox.value || '').toLowerCase();
-    const courseFilter = filterCourse.value;
-    const statusFilter = filterStatus.value;
-
-    let list = assignments.slice()
-      .filter(a => courseFilter === 'All' ? true : a.courseId === courseFilter)
-      .filter(a => {
-        const hay = `${a.title} ${a.content} ${a.courseTitle || ''} ${a.moduleTitle || ''}`.toLowerCase();
-        return hay.includes(q);
-      })
-      .map(a => ({...a, status: computeStatus(a)}));
-
-    if (statusFilter !== 'all') {
-      list = list.filter(a => a.status === statusFilter);
+        done();
+      };
+      container.appendChild(obj);
+      setTimeout(done, 1200);
     }
 
-    if (sortBy.value === 'dueAsc') {
-      list.sort((a,b) => (a.dueAt||Infinity) - (b.dueAt||Infinity));
-    } else if (sortBy.value === 'dueDesc') {
-      list.sort((a,b) => (b.dueAt||0) - (a.dueAt||0));
-    } else if (sortBy.value === 'title') {
-      list.sort((a,b) => (a.title||'').localeCompare(b.title||'')); 
-    } else if (sortBy.value === 'course') {
-      list.sort((a,b) => (a.courseTitle||'').localeCompare(b.courseTitle||'')); 
+    // ========= Render =========
+    function refreshStatusPills(src) {
+      const counts = { open: 0, submitted: 0, graded: 0, closed: 0, overdue: 0, notYetOpen: 0 };
+      (src || []).forEach(a => { counts[computeStatus(a)] = (counts[computeStatus(a)] || 0) + 1; });
+      if (elCountOpen) elCountOpen.textContent = counts.open || 0;
+      if (elCountSubmitted) elCountSubmitted.textContent = counts.submitted || 0;
+      if (elCountGraded) elCountGraded.textContent = counts.graded || 0;
+      if (elCountClosed) elCountClosed.textContent = counts.closed || 0;
+      if (elCountOverdue) elCountOverdue.textContent = counts.overdue || 0;
+      if (elCountNotYetOpen) elCountNotYetOpen.textContent = counts.notYetOpen || 0;
     }
 
-    refreshStatusPills(list);
-
-    grid.innerHTML = '';
-    if (!list.length) {
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No assignments found.</div></div>`;
-      return;
+    function badgeForStatus(st, dueAt, publishAt, openAt, closeAt) {
+      const mapCls = {
+        open: 'st-open',
+        submitted: 'st-submitted',
+        graded: 'st-graded',
+        closed: 'st-closed',
+        overdue: 'st-closed',
+        notYetOpen: 'st-closed'
+      };
+      const label = (
+        st === 'overdue' ? 'Overdue' :
+        st === 'notYetOpen' ? `Opens ${fmtDateTime(openAt || publishAt)}` :
+        st.charAt(0).toUpperCase() + st.slice(1)
+      );
+      return `<span class="status-dot ${mapCls[st] || 'st-open'}"></span>${label}`;
     }
 
-    list.forEach(a => {
-      const col = document.createElement('div');
-      col.className = 'col-12 col-md-6 col-xl-4';
+    function renderGrid() {
+      const q = (searchBox.value || '').toLowerCase();
+      const courseFilter = filterCourse.value;
+      const statusFilter = filterStatus.value;
 
-      const dueTxt = a.dueAt ? fmtDateTime(a.dueAt) : 'No due date';
-      const statusHtml = badgeForStatus(a.status, a.dueAt, a.publishAt, a.submissionOpenAt, a.submissionCloseAt);
+      let list = assignments.slice()
+        .filter(a => courseFilter === 'All' ? true : a.courseId === courseFilter)
+        .filter(a => {
+          const hay = `${a.title} ${a.content} ${a.courseTitle || ''} ${a.moduleTitle || ''}`.toLowerCase();
+          return hay.includes(q);
+        })
+        .map(a => ({ ...a, status: computeStatus(a) }));
 
-      const courseLabel = (a.courseTitle || '').trim();
-      const coursePill = courseLabel
-        ? `<span class="pill pill-course" title="${escapeHTML(courseLabel)}">
-             <i class="bi bi-collection"></i>
-             <span class="pill-text">${escapeHTML(courseLabel)}</span>
-           </span>` : '';
-
-      let moduleLabel = '';
-      if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
-        moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
-      } else if (a.moduleNumber != null) {
-        moduleLabel = `Module ${a.moduleNumber}`;
-      } else if ((a.moduleTitle || '').trim()) {
-        moduleLabel = a.moduleTitle;
+      if (statusFilter !== 'all') {
+        list = list.filter(a => a.status === statusFilter);
       }
-      const modulePill = moduleLabel
-        ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
-             <i class="bi bi-box"></i>
-             <span class="pill-text">${escapeHTML(moduleLabel)}</span>
-           </span>` : '';
 
-      /* Allow submit on 'open' AND 'overdue' */
-      const canSubmit = (a.status === 'open' || a.status === 'overdue');
-      const submitTitle =
-        a.status === 'notYetOpen' ? `Submissions open ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
-        a.status === 'overdue' ? 'Past due, but submissions are still open' :
-        a.status === 'closed' ? (a.submissionCloseAt ? `Closed ${fmtDateTime(a.submissionCloseAt)}` : 'Submissions closed') :
-        a.status === 'submitted' ? 'Already submitted' :
-        a.status === 'graded' ? 'Already graded' : 'Submit';
+      if (sortBy.value === 'dueAsc') {
+        list.sort((a, b) => (a.dueAt || Infinity) - (b.dueAt || Infinity));
+      } else if (sortBy.value === 'dueDesc') {
+        list.sort((a, b) => (b.dueAt || 0) - (a.dueAt || 0));
+      } else if (sortBy.value === 'title') {
+        list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      } else if (sortBy.value === 'course') {
+        list.sort((a, b) => (a.courseTitle || '').localeCompare(b.courseTitle || ''));
+      }
 
-      const pointsLine = (Number.isFinite(a.points) ? `<div class="muted small mb-2">Points: <strong>${a.points}</strong></div>` : '');
+      refreshStatusPills(list);
 
-      const gradeLine = (a.mySubmission && a.mySubmission.graded)
-        ? `<div class="muted small mb-2">Score: <strong>${a.mySubmission.score ?? '-'}</strong> / ${Number.isFinite(a.points) ? a.points : '-'}</div>`
-        : '';
+      grid.innerHTML = '';
+      if (!list.length) {
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center">No assignments found.</div></div>`;
+        return;
+      }
 
-      col.innerHTML = `
+      list.forEach(a => {
+        const col = document.createElement('div');
+        col.className = 'col-12 col-md-6 col-xl-4';
+
+        const dueTxt = a.dueAt ? fmtDateTime(a.dueAt) : 'No due date';
+        const statusHtml = badgeForStatus(a.status, a.dueAt, a.publishAt, a.submissionOpenAt, a.submissionCloseAt);
+
+        const courseLabel = (a.courseTitle || '').trim();
+        const coursePill = courseLabel
+          ? `<span class="pill pill-course" title="${escapeHTML(courseLabel)}">
+               <i class="bi bi-collection"></i>
+               <span class="pill-text">${escapeHTML(courseLabel)}</span>
+             </span>` : '';
+
+        let moduleLabel = '';
+        if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+          moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+        } else if (a.moduleNumber != null) {
+          moduleLabel = `Module ${a.moduleNumber}`;
+        } else if ((a.moduleTitle || '').trim()) {
+          moduleLabel = a.moduleTitle;
+        }
+        const modulePill = moduleLabel
+          ? `<span class="pill pill-module" title="${escapeHTML(moduleLabel)}">
+               <i class="bi bi-box"></i>
+               <span class="pill-text">${escapeHTML(moduleLabel)}</span>
+             </span>` : '';
+
+        /* Allow submit unless we are before publish (notYetOpen) OR past submissionCloseAt (hard close) */
+        const isHardClosed = (a.submissionCloseAt && Date.now() > a.submissionCloseAt);
+        const canSubmit = !isHardClosed && a.status !== 'notYetOpen';
+
+        const submitTitle = isHardClosed
+          ? (a.submissionCloseAt ? `Closed ${fmtDateTime(a.submissionCloseAt)}` : 'Submissions closed')
+          : (a.status === 'notYetOpen'
+              ? `Submissions open ${fmtDateTime(a.submissionOpenAt || a.publishAt)}`
+              : 'Submit or resubmit');
+
+        const pointsLine = (Number.isFinite(a.points) ? `<div class="muted small mb-2">Points: <strong>${a.points}</strong></div>` : '');
+
+        const rawGrade = a.mySubmission?.grade;
+        const maxPts = Number.isFinite(a.points) ? a.points : (Number.isFinite(a.maxPoints) ? a.maxPoints : null);
+        const pct = Number.isFinite(a.mySubmission?.percent)
+          ? Math.round(a.mySubmission.percent * 100) / 100
+          : (Number.isFinite(rawGrade) && Number.isFinite(maxPts) ? percentFrom(rawGrade, maxPts) : null);
+
+        const gradeLine = (a.mySubmission && (a.mySubmission.graded || Number.isFinite(rawGrade)))
+          ? `<div class="muted small mb-2">
+               Score: <strong>${Number.isFinite(rawGrade) ? rawGrade : '-'}</strong>${Number.isFinite(maxPts) ? ` / ${maxPts}` : ''}${Number.isFinite(pct) ? ` (${pct}%)` : ''}
+             </div>`
+          : '';
+
+        col.innerHTML = `
         <div class="assignment-card">
           <div class="d-flex justify-content-between align-items-start mb-1">
             <h5 class="mb-0 wrap-anywhere">${escapeHTML(a.title)}</h5>
@@ -889,173 +905,190 @@
               class="btn btn-sm ${canSubmit ? 'btn-amber-outline' : 'btn-amber-outline btn-like-disabled'}"
               data-action="${canSubmit ? 'submit' : 'noop'}"
               data-id="${a.id}"
-              ${canSubmit ? '' : `data-bs-toggle="tooltip" data-bs-title="${escapeHTML(submitTitle)}"`}
-            >
+              ${canSubmit ? '' : `data-bs-toggle="tooltip" data-bs-title="${escapeHTML(submitTitle)}"`}>
               <i class="bi bi-upload me-1"></i>Submit
             </button>
           </div>
-        </div>
-      `;
-      grid.appendChild(col);
-    });
-
-    // Enable tooltips for disabled-like buttons
-    const ttList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    ttList.forEach(el => new bootstrap.Tooltip(el));
-
-    grid.querySelectorAll('button[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        const action = btn.getAttribute('data-action');
-        const a = assignments.find(x => x.id === id);
-        if (!a) return;
-
-        if (action === 'view') {
-          openAssignmentModal(a);
-        } else if (action === 'submit') {
-          window.location.href = '/STUDENT/assignment/assignment_view.html?id=' + encodeURIComponent(a.id);
-        }
+        </div>`;
+        grid.appendChild(col);
       });
-    });
-  }
 
-  // ========= Modal (details + attachments with PREVIEW) =========
-  function openAssignmentModal(a) {
-    document.getElementById('modalTitle').innerText = softWrap(a.title || 'Assignment');
+      // Enable tooltips for disabled-like buttons
+      const ttList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      ttList.forEach(el => new bootstrap.Tooltip(el));
 
-    let moduleLabel = '';
-    if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
-      moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
-    } else if (a.moduleNumber != null) {
-      moduleLabel = `Module ${a.moduleNumber}`;
-    } else if ((a.moduleTitle || '').trim()) {
-      moduleLabel = a.moduleTitle;
+      grid.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          const action = btn.getAttribute('data-action');
+          const a = assignments.find(x => x.id === id);
+          if (!a) return;
+
+          if (action === 'view') {
+            openAssignmentModal(a);
+          } else if (action === 'submit') {
+            window.location.href = '/STUDENT/assignment/assignment_view.html?id=' + encodeURIComponent(a.id);
+          }
+        });
+      });
     }
 
-    const metaText = `${a.courseTitle || 'Course'}${moduleLabel ? ' • ' + moduleLabel : ''} • Due: ${fmtDateTime(a.dueAt)}`;
-    document.getElementById('modalMeta').innerText = softWrap(metaText);
-    document.getElementById('modalContent').innerText = softWrap(a.content || '');
+    // ========= Modal (details + attachments with PREVIEW) =========
+    function openAssignmentModal(a) {
+      document.getElementById('modalTitle').innerText = softWrap(a.title || 'Assignment');
 
-    const attWrap = document.getElementById('modalAttachments');
-    const atts = Array.isArray(a.attachments) ? a.attachments : [];
-    if (!atts.length) {
-      attWrap.innerHTML = '';
-    } else {
-      const items = atts.map(x => {
-        if (x.url && /^https?:\/\//i.test(String(x.url))) {
-          const display = softWrap(x.url);
-          const safe = x.url.replace(/"/g,'&quot;');
-          const kind = kindFromUrl(x.url);
-          const icon = kind==='youtube' ? '▶️' : (kind==='video' ? '🎬' : '🔗');
-          return `<li class="mb-1">
+      let moduleLabel = '';
+      if (a.moduleNumber != null && (a.moduleTitle || '').trim()) {
+        moduleLabel = `Module ${a.moduleNumber} • ${a.moduleTitle}`;
+      } else if (a.moduleNumber != null) {
+        moduleLabel = `Module ${a.moduleNumber}`;
+      } else if ((a.moduleTitle || '').trim()) {
+        moduleLabel = a.moduleTitle;
+      }
+
+      const metaText = `${a.courseTitle || 'Course'}${moduleLabel ? ' • ' + moduleLabel : ''} • Due: ${fmtDateTime(a.dueAt)}`;
+      document.getElementById('modalMeta').innerText = softWrap(metaText);
+      document.getElementById('modalContent').innerText = softWrap(a.content || '');
+
+      // Show student's score (if any)
+      (function () {
+        const container = document.getElementById('modalContent');
+        const rawGrade = a.mySubmission?.grade;
+        const maxPts = Number.isFinite(a.points) ? a.points : (Number.isFinite(a.maxPoints) ? a.maxPoints : null);
+        const pct = Number.isFinite(a.mySubmission?.percent)
+          ? Math.round(a.mySubmission.percent * 100) / 100
+          : (Number.isFinite(rawGrade) && Number.isFinite(maxPts) ? percentFrom(rawGrade, maxPts) : null);
+
+        const hasScore = a.mySubmission && (a.mySubmission.graded || Number.isFinite(rawGrade));
+        if (!hasScore) return;
+
+        const el = document.createElement('div');
+        el.className = 'muted small mb-3';
+        el.innerHTML = `Your Score: <strong>${Number.isFinite(rawGrade) ? rawGrade : '-'}</strong>${Number.isFinite(maxPts) ? ` / ${maxPts}` : ''}${Number.isFinite(pct) ? ` (${pct}%)` : ''}`;
+        container.parentElement.insertBefore(el, container.nextSibling);
+      })();
+
+      const attWrap = document.getElementById('modalAttachments');
+      const atts = Array.isArray(a.attachments) ? a.attachments : [];
+      if (!atts.length) {
+        attWrap.innerHTML = '';
+      } else {
+        const items = atts.map(x => {
+          if (x.url && /^https?:\/\//i.test(String(x.url))) {
+            const display = softWrap(x.url);
+            const safe = x.url.replace(/"/g, '&quot;');
+            const kind = kindFromUrl(x.url);
+            const icon = kind === 'youtube' ? '▶️' : (kind === 'video' ? '🎬' : '🔗');
+            return `<li class="mb-1">
                     ${icon}
                     <button type="button" class="btn btn-link p-0 align-baseline att-preview-btn"
                             data-external-url="${safe}">
                       ${display}
                     </button>
                   </li>`;
-        }
-        const payload = {
-          downloadUrl: x.downloadUrl || '',
-          publicUrl: x.publicUrl || '',
-          previewUrl: x.previewUrl || '',
-          url: x.url || '',
-          storagePath: x.storagePath || '',
-          gsUri: x.gsUri || '',
-          originalName: x.originalName || ''
-        };
-        const label = softWrap(pickName(x));
-        const data = escapeHTML(JSON.stringify(payload));
-        return `<li class="mb-1">
+          }
+          const payload = {
+            downloadUrl: x.downloadUrl || '',
+            publicUrl: x.publicUrl || '',
+            previewUrl: x.previewUrl || '',
+            url: x.url || '',
+            storagePath: x.storagePath || '',
+            gsUri: x.gsUri || '',
+            originalName: x.originalName || ''
+          };
+          const label = softWrap(pickName(x));
+          const data = escapeHTML(JSON.stringify(payload));
+          return `<li class="mb-1">
                   <i class="bi bi-paperclip"></i>
                   <button type="button" class="btn btn-link p-0 align-baseline att-preview-btn"
                           data-payload="${data}">
                     ${label}
                   </button>
                 </li>`;
-      }).join('');
-      attWrap.innerHTML = `
+        }).join('');
+        attWrap.innerHTML = `
         <div class="mt-2">
           <div class="fw-semibold mb-1"><i class="bi bi-paperclip"></i> Attachments</div>
           <ul class="attachment-list ps-3 mb-0">${items}</ul>
         </div>`;
-    }
-
-    // Due badge color
-    const dueBadge = document.getElementById('modalDueBadge');
-    const st = computeStatus(a);
-    dueBadge.className = 'badge-soft me-auto px-2 ' + (st === 'overdue' ? 'bg-danger-subtle text-danger' :
-                               st === 'open' ? 'bg-success-subtle text-success' :
-                               st === 'notYetOpen' ? 'bg-warning-subtle text-warning' :
-                               'bg-secondary-subtle text-secondary');
-    dueBadge.textContent = st === 'notYetOpen' ? `Opens ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
-                           st === 'overdue' ? 'Overdue' :
-                           st.charAt(0).toUpperCase() + st.slice(1);
-
-    // Wire preview clicks
-    attWrap.onclick = async (ev) => {
-      const btn = ev.target.closest('.att-preview-btn');
-      if (!btn) return;
-
-      let viewUrl = '';
-      let fileName = '';
-      if (btn.dataset.externalUrl) {
-        viewUrl = btn.dataset.externalUrl;
-        fileName = viewUrl.split('/').pop() || 'Link';
-      } else if (btn.dataset.payload) {
-        try {
-          const payload = JSON.parse(btn.dataset.payload);
-          fileName = payload.originalName || 'File';
-          viewUrl = await getSignedViewUrlIfNeeded(payload);
-        } catch {}
       }
-      if (!viewUrl) return;
 
-      document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
-      setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
-      renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
-      new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
-    };
+      // Due badge color
+      const dueBadge = document.getElementById('modalDueBadge');
+      const st = computeStatus(a);
+      dueBadge.className = 'badge-soft me-auto px-2 ' + (st === 'overdue' ? 'bg-danger-subtle text-danger' :
+        st === 'open' ? 'bg-success-subtle text-success' :
+          st === 'notYetOpen' ? 'bg-warning-subtle text-warning' :
+            'bg-secondary-subtle text-secondary');
+      dueBadge.textContent = st === 'notYetOpen' ? `Opens ${fmtDateTime(a.submissionOpenAt || a.publishAt)}` :
+        st === 'overdue' ? 'Overdue' :
+          st.charAt(0).toUpperCase() + st.slice(1);
 
-    assignmentModal.show();
-  }
+      // Wire preview clicks
+      attWrap.onclick = async (ev) => {
+        const btn = ev.target.closest('.att-preview-btn');
+        if (!btn) return;
 
-  // ========= Controls =========
-  document.getElementById('refreshBtn').addEventListener('click', loadAll);
-  filterCourse.addEventListener('change', renderGrid);
-  filterStatus.addEventListener('change', renderGrid);
-  sortBy.addEventListener('change', renderGrid);
+        let viewUrl = '';
+        let fileName = '';
+        if (btn.dataset.externalUrl) {
+          viewUrl = btn.dataset.externalUrl;
+          fileName = viewUrl.split('/').pop() || 'Link';
+        } else if (btn.dataset.payload) {
+          try {
+            const payload = JSON.parse(btn.dataset.payload);
+            fileName = payload.originalName || 'File';
+            viewUrl = await getSignedViewUrlIfNeeded(payload);
+          } catch { }
+        }
+        if (!viewUrl) return;
 
-  // Debounced search for smoother typing
-  (function attachDebouncedSearch(){
-    let t = null;
-    searchBox.addEventListener('input', () => {
-      clearTimeout(t);
-      t = setTimeout(renderGrid, 150);
-    });
-  })();
+        document.getElementById("filePreviewModalLabel").textContent = `${fileName} – Preview`;
+        setFileInfoUI(kindFromUrl(viewUrl), viewUrl);
+        renderFilePreviewInto(document.getElementById("filePreviewContent"), viewUrl);
+        new bootstrap.Modal(document.getElementById("filePreviewModal")).show();
+      };
 
-  function logoutUser() {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = "/STUDENT/login/login.html";
-  }
-
-  // ========= Boot =========
-  (async function init(){
-    try { await loadAll(); }
-    catch (e) {
-      console.error(e);
-      grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load assignments.</div></div>`;
+      assignmentModal.show();
     }
-  })();
+
+    // ========= Controls =========
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+    filterCourse.addEventListener('change', renderGrid);
+    filterStatus.addEventListener('change', renderGrid);
+    sortBy.addEventListener('change', renderGrid);
+
+    // Debounced search for smoother typing
+    (function attachDebouncedSearch() {
+      let t = null;
+      const run = () => renderGrid();
+      searchBox.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(run, 150);
+      });
+    })();
+
+    function logoutUser() {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/STUDENT/login/login.html";
+    }
+
+    // ========= Boot =========
+    (async function init() {
+      try { await loadAll(); }
+      catch (e) {
+        console.error(e);
+        grid.innerHTML = `<div class="col-12"><div class="ui-card text-center text-danger">Failed to load assignments.</div></div>`;
+      }
+    })();
   </script>
 
   <script>
     // Show success modal if redirected with ?submitted=1
-    (function(){
+    (function () {
       const p = new URLSearchParams(location.search);
-      if (p.get("submitted") === "1"){
+      if (p.get("submitted") === "1") {
         const m = new bootstrap.Modal(document.getElementById("submissionSuccessModal"));
         m.show();
         const url = new URL(location.href);
@@ -1068,4 +1101,5 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
