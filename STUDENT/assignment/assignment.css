@@ -451,9 +451,7 @@ background:#113667;
       z-index: 998;
       display: none;
     }
- .btn-amber, .btn-amber-outline, .logout-btn{
-    width:100%; font-size:.9rem; padding:.7rem 1rem; margin-top:8px;
-  }
+
     /* ≤ 480px: replace school logo with hamburger; sidebar is off-canvas */
     @media (max-width:480px){
       .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; }
@@ -489,4 +487,7 @@ background:#113667;
       .sidebar:hover ~ .main{
         margin-left:0 !important; width:100% !important;
       }
+       .btn-amber, .btn-amber-outline, .logout-btn{
+    width:100%; font-size:.9rem; padding:.7rem 1rem; margin-top:8px;
+  }
     }

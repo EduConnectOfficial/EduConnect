@@ -481,3 +481,64 @@ html, body { height: 100%; background: var(--bg); color: var(--text); }
     max-width: 100%;
   }
 }
+/* ---------- Hamburger (hidden on desktop) ---------- */
+    .hamburger-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.8rem;
+      line-height: 1;
+      padding: .25rem .5rem;
+      border-radius: .5rem;
+    }
+    .hamburger-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+    /* Backdrop used to close the sidebar on mobile */
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 998;
+      display: none;
+    }
+
+    /* ≤ 480px: replace school logo with hamburger; sidebar is off-canvas */
+    @media (max-width:480px){
+      .hamburger-btn{ display:inline-flex; align-items:center; justify-content:center; }
+      .school-logo{ display:none !important; }    /* replaced by hamburger */
+      .logo-header{ display:none !important; }    /* already hidden by your CSS */
+
+      /* Sidebar hidden by default; becomes a sliding drawer when opened */
+      .sidebar{
+        display:block;             /* keep in DOM so width/height compute */
+        position: fixed;
+        z-index: 999;
+        top: 0; left: 0;
+        height: 100dvh;
+        width: min(78vw, 320px);
+        max-width: 90vw;
+        background: #fff;
+        box-shadow: 0 10px 30px rgba(0,0,0,.25);
+        border-right: 1px solid var(--border);
+        transform: translateX(-100%);            /* off-canvas */
+        transition: transform .25s ease;
+      }
+      .dashboard.sidebar-open .sidebar{
+        transform: translateX(0);                 /* slide in */
+      }
+      .dashboard.sidebar-open .sidebar-backdrop{
+        display: block;
+      }
+
+      /* Keep main static on mobile (no squeeze) */
+      .main{
+        margin-left:0 !important; width:100% !important;
+      }
+      .sidebar:hover ~ .main{
+        margin-left:0 !important; width:100% !important;
+      }
+       .btn-amber, .btn-amber-outline, .logout-btn{
+    width:100%; font-size:.9rem; padding:.7rem 1rem; margin-top:8px;
+  }
+    }

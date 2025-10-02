@@ -23,16 +23,25 @@
 <body>
   <div class="dashboard">
     <!-- Sidebar -->
-    <div id="sidebar-container"></div>
-
+  <div id="mobileSidebarBackdrop" class="sidebar-backdrop" hidden></div>
+<div id="sidebar-container"></div>
     <!-- Main -->
     <div class="main">
       <!-- Header -->
       <header class="header-top">
         <div class="brand">
-          <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
-          <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
-        </div>
+  <button id="hamburgerBtn"
+          class="hamburger-btn"
+          aria-label="Open menu"
+          aria-controls="sidebar-container"
+          aria-expanded="false">
+    <i class="bi bi-list"></i>
+  </button>
+
+  <!-- Your existing logos -->
+  <img src="/components/CSIS_Logo.png" alt="CSIS Logo" class="school-logo" />
+  <img src="/assets/educonnect_logo.png" alt="EduConnect Logo" class="logo-header" />
+</div>
         <div class="search-box">
           <input type="text" id="lessonSearch" placeholder="Search lessons in this module..." />
           <i class="fas fa-search"></i>
@@ -205,7 +214,70 @@
         .catch(err => console.error("Failed to load sidebar:", err));
     });
   </script>
+<script>
+(function () {
+  const dashboard = document.querySelector(".dashboard");
+  const sidebarContainer = document.getElementById("sidebar-container");
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const backdrop = document.getElementById("mobileSidebarBackdrop");
+  const isMobile = () => window.matchMedia("(max-width: 480px)").matches;
 
+  // ----- open/close helpers -----
+  function openSidebar() {
+    dashboard.classList.add("sidebar-open");
+    hamburgerBtn?.setAttribute("aria-expanded", "true");
+    if (backdrop) backdrop.hidden = false;
+    if (isMobile()) {
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+    }
+  }
+  function closeSidebar() {
+    dashboard.classList.remove("sidebar-open");
+    hamburgerBtn?.setAttribute("aria-expanded", "false");
+    if (backdrop) backdrop.hidden = true;
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+  }
+  function toggleSidebar() {
+    if (dashboard.classList.contains("sidebar-open")) closeSidebar(); else openSidebar();
+  }
+
+  // ----- load sidebar partial once -----
+  fetch("/STUDENT/components/sidebar.html")
+    .then(r => r.text())
+    .then(html => {
+      sidebarContainer.innerHTML = html;
+
+      // Submenu toggles (works with your .has-submenu/.open)
+      sidebarContainer.querySelectorAll(".has-submenu .submenu-toggle").forEach(tg => {
+        tg.addEventListener("click", (e) => {
+          e.preventDefault();
+          const parent = tg.closest(".has-submenu");
+          parent.classList.toggle("open");
+          const expanded = tg.getAttribute("aria-expanded") === "true";
+          tg.setAttribute("aria-expanded", String(!expanded));
+        });
+      });
+
+      // Desktop hover-expand (ignored on mobile via CSS)
+      const sidebar = sidebarContainer.querySelector(".sidebar");
+      if (sidebar && dashboard) {
+        sidebar.addEventListener("mouseenter", () => { if (!isMobile()) dashboard.classList.add("sidebar-expanded"); });
+        sidebar.addEventListener("mouseleave", () => { if (!isMobile()) dashboard.classList.remove("sidebar-expanded"); });
+      }
+    })
+    .catch(err => console.error("Failed to load sidebar:", err));
+
+  // ----- hamburger / backdrop / esc -----
+  hamburgerBtn?.addEventListener("click", (e) => { e.preventDefault(); if (isMobile()) toggleSidebar(); });
+  backdrop?.addEventListener("click", closeSidebar);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && dashboard.classList.contains("sidebar-open")) closeSidebar(); });
+
+  // Clear mobile-open state when resizing to desktop
+  window.addEventListener("resize", () => { if (!isMobile()) closeSidebar(); });
+})();
+</script>
   <!-- Page Logic -->
   <script>
     // ===== Railway-aware base + auth =====
