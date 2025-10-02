@@ -289,3 +289,87 @@ body, html {
 .submenu {
   list-style: none;
 }
+/* =========================================================
+   Add-ons for mobile drawer + screenshot styling
+   (append to the end of your existing sidebar.css)
+   ========================================================= */
+
+/* Ensure the sidebar sits above content (desktop & mobile) */
+.sidebar { z-index: 999; }
+
+/* Style the logout button used in your HTML (.logout-btn) */
+.logout-btn,
+.sidebar-logout { /* keep your old class supported too */
+   background: linear-gradient(to bottom,
+        #6EC9F5 0%,
+        #004891 100%);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 30px;
+    color: #eaf2ff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    text-align: center;
+}
+.sidebar:hover .logout-btn,
+.sidebar:hover .sidebar-logout { opacity: 1; }
+.logout-btn:hover,
+.sidebar-logout:hover { filter: brightness(1.06); }
+
+/* Optional: backdrop (include <div id="mobileSidebarBackdrop" class="sidebar-backdrop"></div> in HTML) */
+.sidebar-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 998;
+  display: none;
+}
+.dashboard.sidebar-open .sidebar-backdrop{ display: block; }
+
+/* =========================================================
+   MOBILE OFF-CANVAS (≤ 480px)
+   Your JS toggles: .dashboard.sidebar-open
+   ========================================================= */
+@media (max-width:480px){
+  /* Keep main static; no squeeze on mobile */
+  .main{
+    margin-left: 0 !important;
+    width: 100% !important;
+    transition: none;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Sidebar becomes a sliding drawer */
+  .sidebar{
+    width: min(78vw, 320px) !important;            /* fixed drawer width */
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    transform: translateX(-100%);                  /* off-canvas by default */
+    transition: transform .25s ease;
+  }
+  .dashboard.sidebar-open .sidebar{
+    transform: translateX(0);                      /* slide in */
+  }
+
+  /* Disable desktop hover-expand on mobile */
+  .sidebar:hover{ width: min(78vw, 320px) !important; }
+
+  /* Show title, labels, and logout when the drawer is open */
+  .dashboard.sidebar-open .sidebar-logo{ opacity: 1; pointer-events: auto; }
+  .dashboard.sidebar-open .sidebar-links a span{ opacity: 1; }
+  .dashboard.sidebar-open .logout-btn,
+  .dashboard.sidebar-open .sidebar-logout{ opacity: 1; }
+
+  /* Prevent hover-expand from affecting main on touch devices */
+  .sidebar:hover ~ .main{
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
